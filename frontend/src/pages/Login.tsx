@@ -109,9 +109,7 @@ export default function Login() {
           {tab === "login" ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <h2 className="text-zena-text-dark text-2xl font-bold mb-2">Bem-vinda de volta</h2>
-              <p className="text-zena-text-light text-sm mb-6">
-                Demo: <span className="font-mono text-xs bg-zena-cream px-2 py-0.5 rounded">ana@zena.app</span> / <span className="font-mono text-xs bg-zena-cream px-2 py-0.5 rounded">zena123</span>
-              </p>
+              <p className="text-zena-text-light text-sm mb-6">Entre com seu e-mail e senha para acessar.</p>
               <div>
                 <label className="text-sm font-medium text-zena-text-mid mb-1.5 block">E-mail</label>
                 <input

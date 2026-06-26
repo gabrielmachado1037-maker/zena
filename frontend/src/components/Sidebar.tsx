@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, Link } from "react-router-dom";
 import { LayoutDashboard, Users, DollarSign, LogOut, Leaf, CalendarDays, CreditCard } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -68,18 +68,25 @@ export default function Sidebar() {
           <CreditCard size={18} />
           Assinatura
         </NavLink>
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-zena-green-mid/30">
-          <div className="w-8 h-8 rounded-full bg-zena-green-light flex items-center justify-center text-white text-xs font-bold">
+        <Link
+          to="/app/perfil"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl bg-zena-green-mid/30 hover:bg-zena-green-mid/50 transition-colors group"
+        >
+          <div className="w-8 h-8 rounded-full bg-zena-green-light flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate">{nutricionista?.nome.split(" ")[0]}</p>
             <p className="text-zena-text-light text-xs">{nutricionista?.crn}</p>
           </div>
-          <button onClick={handleLogout} className="text-zena-text-light hover:text-white">
+          <button
+            onClick={(e) => { e.preventDefault(); handleLogout(); }}
+            className="text-zena-text-light hover:text-white"
+            title="Sair"
+          >
             <LogOut size={16} />
           </button>
-        </div>
+        </Link>
       </div>
     </aside>
   );

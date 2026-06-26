@@ -53,7 +53,7 @@ export async function emailBoasVindas(nome: string, email: string) {
          <li>Receber check-ins semanais automáticos</li>
          <li>Gerenciar agenda e cobranças em um só lugar</li>
        </ul>
-       <a href="${BASE_URL}/dashboard" class="btn">Acessar minha conta →</a>
+       <a href="${BASE_URL}/app/dashboard" class="btn">Acessar minha conta →</a>
        <p style="margin-top:24px;font-size:14px;color:#999">Qualquer dúvida, responda este e-mail. Estamos aqui!</p>`
     ),
   });

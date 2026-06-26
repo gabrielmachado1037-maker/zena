@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import prisma from "../lib/prisma";
 import { emailBoasVindas, emailRecuperacaoSenha } from "../lib/email";
+import { authMiddleware, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "zena-secret-2024";
@@ -79,6 +80,41 @@ router.post("/redefinir-senha", async (req: Request, res: Response) => {
   await prisma.tokenRedefinicao.update({ where: { token }, data: { usado: true } });
 
   res.json({ ok: true });
+});
+
+router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
+  const nutri = await prisma.nutricionista.findUnique({
+    where: { id: req.nutricionistaId as string },
+    select: { id: true, nome: true, email: true, crn: true },
+  });
+  if (!nutri) return res.status(404).json({ error: "Não encontrado" });
+  res.json(nutri);
+});
+
+router.put("/perfil", authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { nome, crn, senhaAtual, novaSenha } = req.body;
+  if (!nome || !crn) return res.status(400).json({ error: "Nome e CRN são obrigatórios" });
+
+  const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId as string } });
+  if (!nutri) return res.status(404).json({ error: "Não encontrado" });
+
+  const updateData: { nome: string; crn: string; senha?: string } = { nome, crn };
+
+  if (novaSenha) {
+    if (!senhaAtual) return res.status(400).json({ error: "Informe a senha atual para alterá-la" });
+    const ok = await bcrypt.compare(senhaAtual, nutri.senha);
+    if (!ok) return res.status(400).json({ error: "Senha atual incorreta" });
+    if (novaSenha.length < 6) return res.status(400).json({ error: "Nova senha deve ter pelo menos 6 caracteres" });
+    updateData.senha = await bcrypt.hash(novaSenha, 10);
+  }
+
+  const atualizado = await prisma.nutricionista.update({
+    where: { id: nutri.id },
+    data: updateData,
+    select: { id: true, nome: true, email: true, crn: true },
+  });
+
+  res.json(atualizado);
 });
 
 export default router;

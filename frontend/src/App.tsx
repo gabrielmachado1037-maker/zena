@@ -14,6 +14,8 @@ import Horarios from "./pages/Horarios";
 import Billing from "./pages/Billing";
 import Privacidade from "./pages/Privacidade";
 import Termos from "./pages/Termos";
+import Cadastro from "./pages/Cadastro";
+import Perfil from "./pages/Perfil";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth();
@@ -26,6 +28,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/esqueci-senha" element={<EsqueciSenha />} />
       <Route path="/redefinir-senha" element={<RedefinirSenha />} />
       <Route path="/privacidade" element={<Privacidade />} />
@@ -46,6 +49,7 @@ function AppRoutes() {
         <Route path="cobrancas" element={<Cobrancas />} />
         <Route path="horarios" element={<Horarios />} />
         <Route path="billing" element={<Billing />} />
+        <Route path="perfil" element={<Perfil />} />
       </Route>
       {/* Legacy routes redirect */}
       <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />

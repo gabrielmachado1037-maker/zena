@@ -20,7 +20,7 @@ export default function Billing() {
     const params = new URLSearchParams(window.location.search);
     if (params.get("sucesso")) {
       setSucesso(true);
-      window.history.replaceState({}, "", "/billing");
+      window.history.replaceState({}, "", "/app/billing");
     }
     api.get<BillingStatus>("/billing/status").then((r) => setStatus(r.data)).finally(() => setLoading(false));
   }, []);
