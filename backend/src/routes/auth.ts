@@ -20,7 +20,7 @@ router.post("/register", async (req: Request, res: Response) => {
 
   const hash = await bcrypt.hash(senha, 10);
   const trialEnd = new Date();
-  trialEnd.setDate(trialEnd.getDate() + 14);
+  trialEnd.setDate(trialEnd.getDate() + 29);
 
   const nutri = await prisma.nutricionista.create({
     data: { nome, email, senha: hash, crn, trialEnd },

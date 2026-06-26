@@ -137,7 +137,7 @@ export default function Billing() {
             <div className="bg-white rounded-2xl border-2 border-gray-100 p-6">
               <p className="text-sm text-zena-text-mid font-medium mb-1">Mensal</p>
               <p className="text-3xl font-bold text-zena-green-dark mb-1">
-                R$ 97<span className="text-base font-normal text-zena-text-mid">/mês</span>
+                R$ 69<span className="text-base font-normal text-zena-text-mid">/mês</span>
               </p>
               <p className="text-xs text-zena-text-light mb-4">Cobrado mensalmente</p>
               <ul className="space-y-2 mb-6 text-sm text-zena-text-mid">
@@ -163,9 +163,9 @@ export default function Billing() {
               </div>
               <p className="text-sm text-zena-text-mid font-medium mb-1">Anual</p>
               <p className="text-3xl font-bold text-zena-green-dark mb-1">
-                R$ 77<span className="text-base font-normal text-zena-text-mid">/mês</span>
+                R$ 59<span className="text-base font-normal text-zena-text-mid">/mês</span>
               </p>
-              <p className="text-xs text-zena-text-light mb-4">R$ 924 cobrado anualmente · Economize R$ 240</p>
+              <p className="text-xs text-zena-text-light mb-4">R$ 708 cobrado anualmente · Economize R$ 120</p>
               <ul className="space-y-2 mb-6 text-sm text-zena-text-mid">
                 {["Tudo do plano mensal", "Suporte prioritário", "Acesso antecipado a novidades"].map((i) => (
                   <li key={i} className="flex items-center gap-2">
