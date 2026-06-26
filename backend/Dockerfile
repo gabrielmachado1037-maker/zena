@@ -1,26 +1,18 @@
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
 
+# Install all deps (including devDeps for tsc)
 COPY package*.json ./
 RUN npm ci
 
+# Copy source and build
 COPY . .
-
 RUN npx prisma generate
 RUN npm run build
 
-# ── Production image ──────────────────────────────────────
-FROM node:20-alpine AS runner
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm ci --only=production
-
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY prisma ./prisma
+# Prune devDeps after build (prisma stays — now in dependencies)
+RUN npm prune --production
 
 EXPOSE 3001
 
