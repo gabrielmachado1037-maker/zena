@@ -1,0 +1,182 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Nutricionista {
+  id                   String              @id @default(cuid())
+  nome                 String
+  email                String              @unique
+  senha                String
+  crn                  String
+  foto                 String?
+  plano                String              @default("trial")
+  planoAtivo           Boolean             @default(true)
+  trialEnd             DateTime?
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  pacientes            Paciente[]
+  horarios             HorarioDisponivel[]
+  lembretes            Lembrete[]
+  createdAt            DateTime            @default(now())
+}
+
+model TokenRedefinicao {
+  id              String   @id @default(cuid())
+  nutricionistaId String
+  token           String   @unique
+  expiresAt       DateTime
+  usado           Boolean  @default(false)
+  criadoEm        DateTime @default(now())
+}
+
+model Paciente {
+  id                String             @id @default(cuid())
+  nome              String
+  email             String?
+  telefone          String?
+  objetivo          String
+  dataInicio        DateTime
+  linkUnico         String             @unique @default(cuid())
+  ativo             Boolean            @default(true)
+  pesoMeta          Float?
+  fotoInicial       String?
+  nutricionistaId   String
+  nutricionista     Nutricionista      @relation(fields: [nutricionistaId], references: [id])
+  medicoes          Medicao[]
+  consultas         Consulta[]
+  cobrancas         Cobranca[]
+  planosAlimentares PlanoAlimentar[]
+  checkIns          CheckIn[]
+  mensagens         MensagemWhatsApp[]
+  anamnese          Anamnese?
+  lembretes         Lembrete[]
+  createdAt         DateTime           @default(now())
+}
+
+model Anamnese {
+  id              String   @id @default(cuid())
+  pacienteId      String   @unique
+  paciente        Paciente @relation(fields: [pacienteId], references: [id])
+  queixaPrincipal String?
+  historicoDieta  String?
+  restricoes      String?
+  medicamentos    String?
+  condicoesSaude  String?
+  nivelAtividade  String?
+  horasSono       Int?
+  nivelEstresse   Int?
+  refeicoesDia    Int?
+  comeCozinha     Boolean?
+  comeForaCasa    Int?
+  consumoAgua     Float?
+  motivacao       String?
+  expectativas    String?
+  criadoEm        DateTime @default(now())
+  atualizadoEm    DateTime @updatedAt
+}
+
+model HorarioDisponivel {
+  id              String        @id @default(cuid())
+  nutricionistaId String
+  nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id])
+  diaSemana       Int
+  hora            String
+  ativo           Boolean       @default(true)
+  duracaoMinutos  Int           @default(60)
+
+  @@unique([nutricionistaId, diaSemana, hora])
+}
+
+model Lembrete {
+  id              String        @id @default(cuid())
+  nutricionistaId String
+  nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id])
+  pacienteId      String
+  paciente        Paciente      @relation(fields: [pacienteId], references: [id])
+  tipo            String
+  status          String        @default("pendente")
+  referencia      String?
+  criadoEm        DateTime      @default(now())
+  atualizadoEm    DateTime      @updatedAt
+}
+
+model CheckIn {
+  id         String   @id @default(cuid())
+  pacienteId String
+  paciente   Paciente @relation(fields: [pacienteId], references: [id])
+  semana     Int
+  ano        Int
+  humor      Int
+  adesao     Int
+  peso       Float?
+  foto       String?
+  nota       String?
+  criadoEm   DateTime @default(now())
+
+  @@unique([pacienteId, semana, ano])
+}
+
+model MensagemWhatsApp {
+  id           String   @id @default(cuid())
+  pacienteId   String
+  paciente     Paciente @relation(fields: [pacienteId], references: [id])
+  template     String
+  textoEnviado String
+  criadoEm     DateTime @default(now())
+}
+
+model Medicao {
+  id          String   @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId], references: [id])
+  data        DateTime
+  peso        Float
+  gordura     Float?
+  musculo     Float?
+  cintura     Float?
+  quadril     Float?
+  laudo       String?
+  observacoes String?
+  createdAt   DateTime @default(now())
+}
+
+model PlanoAlimentar {
+  id          String   @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId], references: [id])
+  dataCriacao DateTime @default(now())
+  cafeManha   String
+  lancheManha String?
+  almoco      String
+  lancheTarde String?
+  jantar      String
+  ceia        String?
+  observacoes String?
+}
+
+model Consulta {
+  id         String   @id @default(cuid())
+  pacienteId String
+  paciente   Paciente @relation(fields: [pacienteId], references: [id])
+  data       DateTime
+  status     String   @default("agendada")
+  notas      String?
+  createdAt  DateTime @default(now())
+}
+
+model Cobranca {
+  id         String    @id @default(cuid())
+  pacienteId String
+  paciente   Paciente  @relation(fields: [pacienteId], references: [id])
+  valor      Float
+  vencimento DateTime
+  status     String    @default("pendente")
+  metodo     String?
+  pagoEm     DateTime?
+  createdAt  DateTime  @default(now())
+}

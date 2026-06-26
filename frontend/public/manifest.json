@@ -1,0 +1,12 @@
+{
+  "name": "Zena — Nutrição",
+  "short_name": "Zena",
+  "description": "Seu acompanhamento nutricional personalizado",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8F9F4",
+  "theme_color": "#1C4A2E",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
