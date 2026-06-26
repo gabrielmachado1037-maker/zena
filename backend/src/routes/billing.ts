@@ -67,7 +67,6 @@ router.post("/checkout", authMiddleware, async (req: AuthRequest, res: Response)
     success_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/app/billing?sucesso=1`,
     cancel_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/app/billing`,
     locale: "pt-BR",
-    subscription_data: { trial_period_days: 0 },
   });
 
   res.json({ url: session.url });
