@@ -14,6 +14,7 @@ model Nutricionista {
   email                String              @unique
   senha                String
   crn                  String
+  tipoProfissional     String              @default("nutricionista")
   foto                 String?
   plano                String              @default("trial")
   planoAtivo           Boolean             @default(true)
