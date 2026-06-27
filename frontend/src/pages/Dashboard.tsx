@@ -187,7 +187,8 @@ export default function Dashboard() {
           title="Consultas hoje"
           value={loading ? "—" : data!.consultasHoje.length}
           sub={
-            !loading && data!.consultasHoje.length === 0
+            loading ? undefined
+            : data!.consultasHoje.length === 0
               ? <button onClick={() => navigate("/app/pacientes")} className="text-zena-green-mid hover:underline flex items-center gap-0.5">Nenhuma agendada. Agendar agora <ChevronRight size={11} /></button>
               : `Próxima: ${format(new Date(data!.consultasHoje[0].data), "HH:mm")}`
           }
