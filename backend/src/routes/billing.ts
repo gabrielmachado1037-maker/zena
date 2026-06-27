@@ -19,7 +19,7 @@ const STRIPE_PLANOS = {
 // Preços Clinne via Asaas/Pix
 const ASAAS_PLANOS = {
   mensal: { valor: Number(process.env.PLANO_MENSAL_VALOR || "69"), ciclo: "MONTHLY" as const, label: "Plano Mensal" },
-  anual:  { valor: Number(process.env.PLANO_ANUAL_VALOR  || "49"), ciclo: "YEARLY"  as const, label: "Plano Anual" },
+  anual:  { valor: Number(process.env.PLANO_ANUAL_VALOR  || "708"), ciclo: "YEARLY"  as const, label: "Plano Anual" },
 };
 
 router.get("/status", authMiddleware, async (req: AuthRequest, res: Response) => {

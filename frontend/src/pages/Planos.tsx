@@ -169,9 +169,9 @@ export default function Planos() {
                 MELHOR VALOR
               </div>
               <h2 className="text-lg font-bold text-white mb-1">Plano Anual</h2>
-              <p className="text-4xl font-extrabold text-zena-mint mb-1">R$49</p>
-              <p className="text-zena-text-light text-sm mb-1">por mês · cobrado como R$588/ano</p>
-              <p className="text-zena-mint text-xs font-semibold mb-6">Economize R$240 por ano</p>
+              <p className="text-4xl font-extrabold text-zena-mint mb-1">R$59</p>
+              <p className="text-zena-text-light text-sm mb-1">por mês · cobrado como R$708/ano</p>
+              <p className="text-zena-mint text-xs font-semibold mb-6">Economize R$120 por ano</p>
               <ul className="space-y-2 mb-8">
                 {["Tudo do plano mensal", "2 meses grátis", "Suporte prioritário"].map(f => (
                   <li key={f} className="flex items-center gap-2 text-sm text-zena-text-light">
@@ -187,7 +187,7 @@ export default function Planos() {
                   className="w-full bg-zena-mint text-zena-green-dark rounded-xl py-3 font-bold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {loadingPlano === "anual" ? <Loader2 size={16} className="animate-spin" /> : null}
-                  Pagar com Pix — R$588/ano
+                  Pagar com Pix — R$708/ano
                 </button>
                 <button
                   onClick={() => assinarCartao("anual")}
@@ -216,7 +216,7 @@ export default function Planos() {
             <CheckCircle size={40} className="text-zena-green-light mx-auto mb-4" />
             <h2 className="text-xl font-bold text-zena-green-dark mb-2">Pague com Pix</h2>
             <p className="text-zena-text text-sm mb-6">
-              Plano {pixData.periodo === "mensal" ? "Mensal" : "Anual"} — R${pixData.periodo === "mensal" ? "69" : "588"}<br />
+              Plano {pixData.periodo === "mensal" ? "Mensal" : "Anual"} — R${pixData.periodo === "mensal" ? "69" : "708"}<br />
               Após o pagamento, seu acesso é liberado em segundos.
             </p>
 
