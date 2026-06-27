@@ -26,7 +26,7 @@ function base(titulo: string, corpo: string) {
 </style></head>
 <body>
 <div class="wrap">
-  <div class="header"><div class="logo">zena</div></div>
+  <div class="header"><div class="logo">clinne</div></div>
   <div class="body"><h2>${titulo}</h2>${corpo}</div>
   <div class="footer">
     Clinne — Plataforma para nutricionistas<br>
@@ -73,6 +73,23 @@ export async function emailRecuperacaoSenha(email: string, token: string) {
        <p>Clique no botão abaixo para criar uma nova senha. O link é válido por <strong>1 hora</strong>.</p>
        <a href="${link}" class="btn">Redefinir senha →</a>
        <p style="margin-top:24px;font-size:14px;color:#999">Se você não solicitou isso, ignore este e-mail. Sua senha permanece a mesma.</p>`
+    ),
+  });
+}
+
+export async function emailTrialExpirando(nome: string, email: string, diasRestantes: number) {
+  const resend = getResend();
+  if (!resend) return;
+  await resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: `Seu trial Clinne expira em ${diasRestantes} dia${diasRestantes !== 1 ? "s" : ""} ⏰`,
+    html: base(
+      `${nome}, seu trial acaba em breve!`,
+      `<p>Você tem apenas <strong>${diasRestantes} dia${diasRestantes !== 1 ? "s" : ""}</strong> restante${diasRestantes !== 1 ? "s" : ""} no seu período gratuito.</p>
+       <p>Para não perder o acesso às suas pacientes, planos e histórico, assine agora:</p>
+       <a href="${BASE_URL}/app/billing" class="btn">Ver planos →</a>
+       <p style="margin-top:24px;font-size:14px;color:#999">Qualquer dúvida, responda este e-mail. Estamos aqui!</p>`
     ),
   });
 }

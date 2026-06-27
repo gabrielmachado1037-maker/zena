@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import prisma from "./lib/prisma";
+import { emailTrialExpirando } from "./lib/email";
 
 export function initCron() {
   // Daily at 8am: create reminders for consultations in the next 24h
@@ -58,6 +59,24 @@ export function initCron() {
       }
     } catch (e) {
       console.error("Cron checkin_semanal error:", e);
+    }
+  });
+
+  // Daily at 10am: send trial expiring email (3 days before)
+  cron.schedule("0 10 * * *", async () => {
+    try {
+      const em3dias = new Date();
+      em3dias.setDate(em3dias.getDate() + 3);
+      const inicio = new Date(em3dias.getFullYear(), em3dias.getMonth(), em3dias.getDate(), 0, 0, 0);
+      const fim = new Date(em3dias.getFullYear(), em3dias.getMonth(), em3dias.getDate(), 23, 59, 59);
+      const nutris = await prisma.nutricionista.findMany({
+        where: { plano: "trial", trialEnd: { gte: inicio, lte: fim } },
+      });
+      for (const n of nutris) {
+        emailTrialExpirando(n.nome, n.email, 3).catch(console.error);
+      }
+    } catch (e) {
+      console.error("Cron trial_expirando error:", e);
     }
   });
 

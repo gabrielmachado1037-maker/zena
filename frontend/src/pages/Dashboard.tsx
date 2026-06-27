@@ -105,20 +105,22 @@ export default function Dashboard() {
   return (
     <div className="p-8">
       {/* Trial banner */}
-      {billing?.emTrial && billing.diasRestantesTrial <= 7 && (
-        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+      {billing?.emTrial && (
+        <div className={`mb-6 rounded-2xl p-4 flex items-center justify-between gap-4 ${billing.diasRestantesTrial <= 3 ? "bg-red-50 border border-red-200" : "bg-amber-50 border border-amber-200"}`}>
           <div className="flex items-center gap-3">
-            <Zap size={18} className="text-amber-600 flex-shrink-0" />
-            <p className="text-amber-700 text-sm font-medium">
-              Seu trial termina em <strong>{billing.diasRestantesTrial} dia{billing.diasRestantesTrial !== 1 ? "s" : ""}</strong>.
-              Assine para continuar usando a Zena.
+            <Zap size={18} className={`flex-shrink-0 ${billing.diasRestantesTrial <= 3 ? "text-red-600" : "text-amber-600"}`} />
+            <p className={`text-sm font-medium ${billing.diasRestantesTrial <= 3 ? "text-red-700" : "text-amber-700"}`}>
+              {billing.diasRestantesTrial <= 3
+                ? <>Seu trial expira em <strong>{billing.diasRestantesTrial} dia{billing.diasRestantesTrial !== 1 ? "s" : ""}</strong>! Assine agora para não perder o acesso.</>
+                : <>Você está no período gratuito — <strong>{billing.diasRestantesTrial} dias</strong> restantes. Aproveite para explorar tudo!</>
+              }
             </p>
           </div>
           <Link
             to="/app/billing"
-            className="flex-shrink-0 bg-amber-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors"
+            className={`flex-shrink-0 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${billing.diasRestantesTrial <= 3 ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"}`}
           >
-            Assinar agora
+            {billing.diasRestantesTrial <= 3 ? "Assinar agora" : "Ver planos"}
           </Link>
         </div>
       )}
