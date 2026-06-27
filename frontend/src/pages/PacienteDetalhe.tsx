@@ -2,11 +2,11 @@ import { useEffect, useState, useRef, useCallback, type ChangeEvent, type DragEv
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Copy, TrendingDown, TrendingUp, Minus, MessageCircle, Camera, Upload, ClipboardList, Pencil, Check, X, Images, Share2, Trash2, ChevronLeft, ChevronRight, LayoutTemplate } from "lucide-react";
 import PdfPlano from "../components/PdfPlano";
-import { format } from "date-fns";
+import { format, differenceInDays, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  BarChart, Bar
+  ReferenceLine, BarChart, Bar
 } from "recharts";
 import api from "../lib/api";
 import { Toast, useToast } from "../components/Toast";
@@ -483,9 +483,60 @@ export default function PacienteDetalhe() {
   );
 }
 
+function classImc(v: number): { label: string; cls: string } {
+  if (v < 18.5) return { label: "Abaixo do peso", cls: "text-blue-500" };
+  if (v < 25)   return { label: "Normal", cls: "text-zena-green-mid" };
+  if (v < 30)   return { label: "Sobrepeso", cls: "text-amber-500" };
+  if (v < 35)   return { label: "Obesidade grau I", cls: "text-orange-500" };
+  if (v < 40)   return { label: "Obesidade grau II", cls: "text-red-500" };
+  return          { label: "Obesidade grau III", cls: "text-red-700" };
+}
+
+function tempoAcomp(dataInicio: string): string {
+  const dias = differenceInDays(new Date(), new Date(dataInicio));
+  if (dias < 30) return `${dias} dia${dias !== 1 ? "s" : ""}`;
+  const meses = differenceInMonths(new Date(), new Date(dataInicio));
+  if (meses < 12) return `${meses} mês${meses !== 1 ? "es" : ""}`;
+  const anos = Math.floor(meses / 12);
+  const r = meses % 12;
+  return r > 0 ? `${anos}a ${r}m` : `${anos} ano${anos !== 1 ? "s" : ""}`;
+}
+
+function TooltipPeso({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <div className="bg-white rounded-xl px-4 py-3 border border-zena-mint/40 shadow-lg text-sm min-w-[160px]">
+      <p className="font-bold text-zena-text-dark mb-1">{d.dataFormatada}</p>
+      <p className="text-zena-text-mid">Peso: <span className="font-bold text-zena-green-dark">{d.peso} kg</span></p>
+      {d.imc != null && (
+        <p className="text-zena-text-mid">IMC: <span className="font-semibold">{d.imc}</span></p>
+      )}
+      {d.consultaNota && (
+        <p className="text-zena-text-light text-xs mt-2 border-t border-zena-cream pt-2 leading-snug">
+          💬 {d.consultaNota}
+        </p>
+      )}
+    </div>
+  );
+}
+
+const MEDIDAS_CFG = [
+  { key: "cintura", label: "Cintura", color: "#2D6A4F" },
+  { key: "quadril", label: "Quadril", color: "#52B788" },
+  { key: "braco",   label: "Braço",   color: "#74C69D" },
+  { key: "coxa",    label: "Coxa",    color: "#B7E4C7" },
+] as const;
+type MedidaKey = typeof MEDIDAS_CFG[number]["key"];
+
 function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paciente; setPaciente: any; medicoes: any[]; show: any }) {
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ data: new Date().toISOString().split("T")[0], peso: "", gordura: "", musculo: "", cintura: "", quadril: "", braco: "", coxa: "", observacoes: "" });
+  const [medidaSel, setMedidaSel] = useState<MedidaKey>("cintura");
+  const [form, setForm] = useState({
+    data: new Date().toISOString().split("T")[0],
+    peso: "", gordura: "", musculo: "", cintura: "", quadril: "", braco: "", coxa: "", observacoes: "",
+  });
   const [loading, setLoading] = useState(false);
 
   async function salvar(e: React.FormEvent) {
@@ -495,6 +546,7 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
       const res = await api.post(`/pacientes/${paciente.id}/medicoes`, form);
       setPaciente((p: Paciente) => ({ ...p, medicoes: [...p.medicoes, res.data] }));
       setShowForm(false);
+      setForm({ data: new Date().toISOString().split("T")[0], peso: "", gordura: "", musculo: "", cintura: "", quadril: "", braco: "", coxa: "", observacoes: "" });
       show("Medição registrada!");
     } catch {
       show("Erro ao salvar.", "error");
@@ -503,10 +555,16 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
     }
   }
 
+  const alturaM = paciente.altura ? paciente.altura / 100 : null;
+
   const chartData = medicoes.map((m) => {
-    const alturaM = paciente.altura ? paciente.altura / 100 : null;
-    const imc = alturaM && m.peso ? parseFloat((m.peso / (alturaM * alturaM)).toFixed(1)) : null;
+    const imcVal = alturaM && m.peso ? parseFloat((m.peso / (alturaM * alturaM)).toFixed(1)) : null;
+    const mTs = new Date(m.data).getTime();
+    const consultaMatch = paciente.consultas.find((c: any) => {
+      return Math.abs(new Date(c.data).getTime() - mTs) <= 3 * 86400000 && c.notas;
+    });
     return {
+      dataFormatada: format(new Date(m.data), "dd/MM/yyyy"),
       data: format(new Date(m.data), "dd/MM"),
       peso: m.peso,
       gordura: m.gordura ?? null,
@@ -514,82 +572,186 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
       quadril: m.quadril ?? null,
       braco: m.braco ?? null,
       coxa: m.coxa ?? null,
-      imc,
+      imc: imcVal,
+      consultaNota: consultaMatch?.notas ?? null,
     };
   });
 
-  const temGordura = medicoes.some((m) => m.gordura);
+  const pesoInicial = medicoes[0]?.peso ?? null;
+  const ultima = medicoes[medicoes.length - 1];
+  const pesoAtual = ultima?.peso ?? null;
+  const diffPeso = pesoAtual != null && pesoInicial != null ? pesoAtual - pesoInicial : null;
+  const imcAtual = alturaM && pesoAtual ? parseFloat((pesoAtual / (alturaM * alturaM)).toFixed(1)) : null;
+  const gorduraAtual = ultima?.gordura ?? null;
   const temMedidas = medicoes.some((m) => m.cintura || m.quadril || m.braco || m.coxa);
+  const cfgSel = MEDIDAS_CFG.find((c) => c.key === medidaSel)!;
+
+  const inputCls = "w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light";
 
   return (
     <div className="space-y-6">
       {medicoes.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 text-center border border-zena-mint/30">
-          <p className="text-zena-text-light mb-4">Nenhuma medição registrada ainda.</p>
-          <button onClick={() => setShowForm(true)} className="bg-zena-green-mid text-white px-5 py-2.5 rounded-xl text-sm font-medium">
-            Registrar primeira medição
+          <p className="text-4xl mb-3">📊</p>
+          <p className="text-zena-text-mid font-medium mb-1">Nenhuma medição registrada ainda.</p>
+          <p className="text-zena-text-light text-sm mb-5">Registre o peso inicial para começar a acompanhar a evolução.</p>
+          <button onClick={() => setShowForm(true)} className="bg-zena-green-mid text-white px-6 py-2.5 rounded-xl text-sm font-semibold">
+            + Registrar primeira medição
           </button>
         </div>
       ) : (
         <>
-          {/* Gráfico de peso */}
+          {/* ── Cards de métricas ── */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Peso */}
+            <div className="bg-white rounded-2xl p-5 border border-zena-mint/30 shadow-sm">
+              <p className="text-zena-text-light text-xs mb-2">Peso</p>
+              <div className="flex items-end gap-2">
+                <p className="text-2xl font-bold text-zena-text-dark font-mono-data">{pesoAtual}</p>
+                <p className="text-zena-text-light text-sm mb-0.5">kg</p>
+              </div>
+              {pesoInicial != null && pesoInicial !== pesoAtual && (
+                <p className="text-xs text-zena-text-light mt-1">Início: {pesoInicial} kg</p>
+              )}
+              {diffPeso != null && (
+                <div className={`flex items-center gap-1 mt-2 text-sm font-semibold ${diffPeso < 0 ? "text-zena-green-mid" : diffPeso > 0 ? "text-zena-brown" : "text-zena-text-light"}`}>
+                  {diffPeso < 0 ? <TrendingDown size={14} /> : diffPeso > 0 ? <TrendingUp size={14} /> : <Minus size={14} />}
+                  {diffPeso > 0 ? "+" : ""}{diffPeso.toFixed(1)} kg
+                </div>
+              )}
+            </div>
+
+            {/* IMC */}
+            <div className="bg-white rounded-2xl p-5 border border-zena-mint/30 shadow-sm">
+              <p className="text-zena-text-light text-xs mb-2">IMC atual</p>
+              {imcAtual ? (
+                <>
+                  <p className="text-2xl font-bold text-zena-text-dark font-mono-data">{imcAtual}</p>
+                  <p className={`text-xs font-semibold mt-2 ${classImc(imcAtual).cls}`}>{classImc(imcAtual).label}</p>
+                </>
+              ) : (
+                <p className="text-zena-text-light text-sm mt-2">Cadastre a altura para calcular</p>
+              )}
+            </div>
+
+            {/* % Gordura */}
+            <div className="bg-white rounded-2xl p-5 border border-zena-mint/30 shadow-sm">
+              <p className="text-zena-text-light text-xs mb-2">% Gordura</p>
+              {gorduraAtual != null ? (
+                <>
+                  <p className="text-2xl font-bold text-zena-text-dark font-mono-data">{gorduraAtual}<span className="text-lg">%</span></p>
+                  <p className="text-xs text-zena-text-light mt-2">última medição</p>
+                </>
+              ) : (
+                <p className="text-zena-text-light text-sm mt-2">Não registrado</p>
+              )}
+            </div>
+
+            {/* Tempo de acompanhamento */}
+            <div className="bg-white rounded-2xl p-5 border border-zena-mint/30 shadow-sm">
+              <p className="text-zena-text-light text-xs mb-2">Em acompanhamento</p>
+              <p className="text-2xl font-bold text-zena-text-dark">{tempoAcomp(paciente.dataInicio)}</p>
+              <p className="text-xs text-zena-text-light mt-2">
+                Desde {format(new Date(paciente.dataInicio), "MMM/yyyy", { locale: ptBR })}
+              </p>
+            </div>
+          </div>
+
+          {/* ── Gráfico principal — Evolução do peso ── */}
           <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-5">
               <h3 className="text-zena-text-dark font-semibold">Evolução do peso</h3>
-              <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 text-sm text-zena-green-mid font-medium hover:text-zena-green-dark">
-                <Plus size={16} /> Nova medição
+              <button
+                onClick={() => setShowForm(true)}
+                className="flex items-center gap-1.5 text-sm text-white bg-zena-green-mid hover:bg-zena-green-dark px-4 py-2 rounded-xl font-medium transition-colors"
+              >
+                <Plus size={15} /> Registrar medidas de hoje
               </button>
             </div>
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={chartData}>
+
+            {paciente.pesoMeta && (
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-6 border-t-2 border-dashed border-zena-green-light" />
+                <p className="text-zena-text-light text-xs">Meta: {paciente.pesoMeta} kg</p>
+              </div>
+            )}
+
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#B7E4C7" />
                 <XAxis dataKey="data" tick={{ fontSize: 11, fill: "#8FA897" }} />
-                <YAxis tick={{ fontSize: 11, fill: "#8FA897" }} domain={["dataMin - 2", "dataMax + 2"]} />
-                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #B7E4C7", fontSize: 12 }} />
-                <Line type="monotone" dataKey="peso" stroke="#2D6A4F" strokeWidth={2.5} dot={{ fill: "#52B788", r: 4 }} name="Peso (kg)" />
+                <YAxis tick={{ fontSize: 11, fill: "#8FA897" }} domain={["dataMin - 2", "dataMax + 2"]} unit=" kg" width={52} />
+                <Tooltip content={<TooltipPeso />} />
                 {paciente.pesoMeta && (
-                  <Line type="monotone" dataKey={() => paciente.pesoMeta} stroke="#B7E4C7" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Meta (kg)" />
+                  <ReferenceLine y={paciente.pesoMeta} stroke="#52B788" strokeDasharray="6 4" strokeWidth={1.5}
+                    label={{ value: `Meta ${paciente.pesoMeta}kg`, position: "insideTopRight", fontSize: 10, fill: "#52B788" }} />
                 )}
+                <Line
+                  type="monotone"
+                  dataKey="peso"
+                  stroke="#2D6A4F"
+                  strokeWidth={2.5}
+                  dot={{ fill: "#52B788", r: 5, strokeWidth: 2, stroke: "#fff" }}
+                  activeDot={{ r: 7, fill: "#2D6A4F", stroke: "#fff", strokeWidth: 2 }}
+                  name="Peso (kg)"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Gráfico de gordura % */}
-          {temGordura && (
-            <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
-              <h3 className="text-zena-text-dark font-semibold mb-4">% Gordura corporal</h3>
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#B7E4C7" />
-                  <XAxis dataKey="data" tick={{ fontSize: 11, fill: "#8FA897" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "#8FA897" }} domain={["dataMin - 1", "dataMax + 1"]} unit="%" />
-                  <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #B7E4C7", fontSize: 12 }} formatter={(v) => [`${v}%`]} />
-                  <Line type="monotone" dataKey="gordura" stroke="#52B788" strokeWidth={2.5} dot={{ fill: "#2D6A4F", r: 4 }} name="Gordura %" connectNulls />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Gráfico de medidas */}
+          {/* ── Gráfico secundário — Medidas com seletor ── */}
           {temMedidas && (
             <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
-              <h3 className="text-zena-text-dark font-semibold mb-4">Medidas corporais (cm)</h3>
-              <ResponsiveContainer width="100%" height={180}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#B7E4C7" />
-                  <XAxis dataKey="data" tick={{ fontSize: 11, fill: "#8FA897" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "#8FA897" }} unit=" cm" />
-                  <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #B7E4C7", fontSize: 12 }} formatter={(v) => [`${v} cm`]} />
-                  <Line type="monotone" dataKey="cintura" stroke="#2D6A4F" strokeWidth={2} dot={{ r: 3 }} name="Cintura" connectNulls />
-                  <Line type="monotone" dataKey="quadril" stroke="#52B788" strokeWidth={2} dot={{ r: 3 }} name="Quadril" connectNulls />
-                  <Line type="monotone" dataKey="braco" stroke="#74C69D" strokeWidth={2} dot={{ r: 3 }} name="Braço" connectNulls />
-                  <Line type="monotone" dataKey="coxa" stroke="#B7E4C7" strokeWidth={2} dot={{ r: 3 }} name="Coxa" connectNulls />
-                </LineChart>
-              </ResponsiveContainer>
+              <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+                <h3 className="text-zena-text-dark font-semibold">Medidas corporais</h3>
+                <div className="flex gap-1 bg-zena-cream rounded-xl p-1">
+                  {MEDIDAS_CFG.map((c) => (
+                    <button
+                      key={c.key}
+                      onClick={() => setMedidaSel(c.key)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        medidaSel === c.key
+                          ? "bg-white text-zena-green-dark shadow-sm"
+                          : "text-zena-text-light hover:text-zena-text-mid"
+                      }`}
+                    >
+                      {c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {chartData.some((d) => (d as any)[medidaSel] != null) ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#B7E4C7" />
+                    <XAxis dataKey="data" tick={{ fontSize: 11, fill: "#8FA897" }} />
+                    <YAxis tick={{ fontSize: 11, fill: "#8FA897" }} unit=" cm" domain={["dataMin - 2", "dataMax + 2"]} width={52} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: 12, border: "1px solid #B7E4C7", fontSize: 12 }}
+                      formatter={(v: any) => [`${v} cm`, cfgSel.label]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey={medidaSel}
+                      stroke={cfgSel.color}
+                      strokeWidth={2.5}
+                      dot={{ fill: cfgSel.color, r: 5, strokeWidth: 2, stroke: "#fff" }}
+                      activeDot={{ r: 7, stroke: "#fff", strokeWidth: 2 }}
+                      name={cfgSel.label}
+                      connectNulls
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <p className="text-zena-text-light text-sm text-center py-8">
+                  Nenhum dado de {cfgSel.label.toLowerCase()} registrado.
+                </p>
+              )}
             </div>
           )}
 
-          {/* Tabela */}
+          {/* ── Tabela histórico ── */}
           <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
             <h3 className="text-zena-text-dark font-semibold mb-4">Histórico de medições</h3>
             <div className="overflow-x-auto">
@@ -608,12 +770,11 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zena-cream">
-                  {[...medicoes].reverse().map((m, i) => {
-                    const alturaM = paciente.altura ? paciente.altura / 100 : null;
+                  {[...medicoes].reverse().map((m) => {
                     const imc = alturaM ? (m.peso / (alturaM * alturaM)).toFixed(1) : null;
                     return (
                       <tr key={m.id} className="text-zena-text-dark">
-                        <td className="py-3 text-zena-text-light text-xs">{format(new Date(m.data), "dd/MM/yyyy")}</td>
+                        <td className="py-3 text-zena-text-light text-xs whitespace-nowrap">{format(new Date(m.data), "dd/MM/yyyy")}</td>
                         <td className="py-3 font-mono-data font-semibold">{m.peso} kg</td>
                         <td className="py-3 text-zena-text-mid font-mono-data">{imc ?? "—"}</td>
                         <td className="py-3 text-zena-text-mid">{m.gordura ? `${m.gordura}%` : "—"}</td>
@@ -632,30 +793,46 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
         </>
       )}
 
+      {/* ── Modal: Registrar medidas ── */}
       {showForm && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
-            <h2 className="text-zena-text-dark text-xl font-bold mb-6">Nova medição</h2>
+          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-zena-text-dark text-xl font-bold">Registrar medidas</h2>
+              <button onClick={() => setShowForm(false)} className="text-zena-text-light hover:text-zena-text-dark">
+                <X size={20} />
+              </button>
+            </div>
             <form onSubmit={salvar} className="space-y-4">
+              <div>
+                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Data *</label>
+                <input
+                  type="date"
+                  value={form.data}
+                  onChange={(e) => setForm({ ...form, data: e.target.value })}
+                  className={inputCls}
+                  required
+                />
+              </div>
               <div className="grid grid-cols-2 gap-3">
-                {[
-                  ["Data", "data", "date"],
-                  ["Peso (kg) *", "peso", "number"],
-                  ["% Gordura", "gordura", "number"],
-                  ["% Músculo", "musculo", "number"],
-                  ["Cintura (cm)", "cintura", "number"],
-                  ["Quadril (cm)", "quadril", "number"],
-                  ["Braço (cm)", "braco", "number"],
-                  ["Coxa (cm)", "coxa", "number"],
-                ].map(([label, key, type]) => (
+                {([
+                  ["Peso (kg) *", "peso"],
+                  ["% Gordura", "gordura"],
+                  ["% Músculo", "musculo"],
+                  ["Cintura (cm)", "cintura"],
+                  ["Quadril (cm)", "quadril"],
+                  ["Braço (cm)", "braco"],
+                  ["Coxa (cm)", "coxa"],
+                ] as const).map(([label, key]) => (
                   <div key={key}>
                     <label className="text-xs font-medium text-zena-text-mid mb-1 block">{label}</label>
                     <input
-                      type={type}
+                      type="number"
                       value={(form as any)[key]}
                       onChange={(e) => setForm({ ...form, [key]: e.target.value })}
                       step="0.1"
-                      className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                      min="0"
+                      className={inputCls}
                     />
                   </div>
                 ))}
@@ -666,12 +843,17 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
                   value={form.observacoes}
                   onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light resize-none"
+                  placeholder="Notas da consulta, percepções, intercorrências..."
+                  className={`${inputCls} resize-none`}
                 />
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-zena-mint/50 text-zena-text-mid text-sm">Cancelar</button>
-                <button type="submit" disabled={loading || !form.peso} className="flex-1 py-2.5 rounded-xl bg-zena-green-mid text-white text-sm font-medium disabled:opacity-50">{loading ? "Salvando..." : "Registrar"}</button>
+                <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl border border-zena-mint/50 text-zena-text-mid text-sm">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={loading || !form.peso} className="flex-1 py-2.5 rounded-xl bg-zena-green-mid text-white text-sm font-semibold disabled:opacity-50">
+                  {loading ? "Salvando..." : "Registrar"}
+                </button>
               </div>
             </form>
           </div>
