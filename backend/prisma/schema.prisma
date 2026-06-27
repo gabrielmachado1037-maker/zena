@@ -202,7 +202,7 @@ model FotoEvolucao {
   paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   data       DateTime
   tipo       String
-  imagem     String   @db.Text
+  imagem     String
   criadoEm  DateTime @default(now())
 }
 
