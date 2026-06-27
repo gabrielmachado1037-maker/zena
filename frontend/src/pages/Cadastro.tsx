@@ -5,7 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 
 const BENEFICIOS = [
-  "14 dias grátis, sem cartão de crédito",
+  "29 dias grátis, sem cartão de crédito",
   "Pacientes ilimitadas",
   "Portal digital para cada paciente",
   "PDF profissional com 1 clique",
@@ -51,16 +51,16 @@ export default function Cadastro() {
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16">
         <div className="flex items-center gap-3">
           <Leaf className="text-zena-mint" size={32} />
-          <span className="text-white font-bold text-3xl tracking-wide">zena</span>
+          <span className="text-white font-bold text-3xl tracking-wide">clinne</span>
         </div>
         <div>
-          <p className="text-zena-mint/70 text-sm font-medium mb-3 uppercase tracking-widest">14 dias grátis</p>
+          <p className="text-zena-mint/70 text-sm font-medium mb-3 uppercase tracking-widest">29 dias grátis</p>
           <h1 className="text-white text-5xl font-bold leading-tight mb-6">
             Seu consultório.<br />
             <span className="text-zena-green-light">Do jeito certo.</span>
           </h1>
           <p className="text-zena-mint/70 text-lg leading-relaxed mb-10">
-            Junte-se a nutricionistas que já economizam horas toda semana com a Zena.
+            Junte-se a nutricionistas que já economizam horas toda semana com a Clinne.
           </p>
           <div className="space-y-4">
             {BENEFICIOS.map((b) => (
@@ -71,7 +71,7 @@ export default function Cadastro() {
             ))}
           </div>
         </div>
-        <p className="text-zena-mint/40 text-xs">© {new Date().getFullYear()} Zena. Todos os direitos reservados.</p>
+        <p className="text-zena-mint/40 text-xs">© {new Date().getFullYear()} Clinne. Todos os direitos reservados.</p>
       </div>
 
       {/* Painel direito */}
@@ -80,7 +80,7 @@ export default function Cadastro() {
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-2 mb-6">
             <Leaf className="text-zena-green-mid" size={24} />
-            <span className="text-zena-green-dark font-bold text-xl">zena</span>
+            <span className="text-zena-green-dark font-bold text-xl">clinne</span>
           </div>
 
           <Link
@@ -92,7 +92,7 @@ export default function Cadastro() {
 
           <h2 className="text-2xl font-bold text-zena-text-dark mb-1">Criar sua conta grátis</h2>
           <p className="text-zena-text-light text-sm mb-6">
-            14 dias grátis · Sem cartão · Cancele quando quiser
+            29 dias grátis · Sem cartão · Cancele quando quiser
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">

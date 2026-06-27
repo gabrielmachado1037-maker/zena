@@ -72,7 +72,7 @@ export default function Billing() {
       {sucesso && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3">
           <CheckCircle size={20} className="text-emerald-600 flex-shrink-0" />
-          <p className="text-emerald-700 font-medium">Assinatura ativada com sucesso! Obrigada por escolher a Zena. 🌿</p>
+          <p className="text-emerald-700 font-medium">Assinatura ativada com sucesso! Obrigada por escolher a Clinne. 🌿</p>
         </div>
       )}
 

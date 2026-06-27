@@ -5,7 +5,7 @@ function getResend(): Resend | null {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
-const FROM = "Zena <noreply@zena.app>";
+const FROM = "Clinne <noreply@clinne.com.br>";
 const BASE_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 function base(titulo: string, corpo: string) {
@@ -29,7 +29,7 @@ function base(titulo: string, corpo: string) {
   <div class="header"><div class="logo">zena</div></div>
   <div class="body"><h2>${titulo}</h2>${corpo}</div>
   <div class="footer">
-    Zena — Plataforma para nutricionistas<br>
+    Clinne — Plataforma para nutricionistas<br>
     <a href="${BASE_URL}/privacidade">Privacidade</a> · <a href="${BASE_URL}/termos">Termos</a>
   </div>
 </div>
@@ -42,11 +42,11 @@ export async function emailBoasVindas(nome: string, email: string) {
   await resend.emails.send({
     from: FROM,
     to: email,
-    subject: "Bem-vinda à Zena! 🌿",
+    subject: "Bem-vinda à Clinne! 🌿",
     html: base(
       `Olá, ${nome}! 🌿`,
       `<p>Seu período de teste de <strong>29 dias grátis</strong> começa agora. Nenhum cartão necessário.</p>
-       <p>Com a Zena você vai:</p>
+       <p>Com a Clinne você vai:</p>
        <ul style="color:#4a4a4a;line-height:2">
          <li>Enviar planos alimentares em PDF profissional</li>
          <li>Acompanhar seus pacientes pelo portal digital</li>
@@ -66,10 +66,10 @@ export async function emailRecuperacaoSenha(email: string, token: string) {
   await resend.emails.send({
     from: FROM,
     to: email,
-    subject: "Redefinição de senha — Zena",
+    subject: "Redefinição de senha — Clinne",
     html: base(
       "Redefinir sua senha",
-      `<p>Recebemos uma solicitação para redefinir a senha da sua conta Zena.</p>
+      `<p>Recebemos uma solicitação para redefinir a senha da sua conta Clinne.</p>
        <p>Clique no botão abaixo para criar uma nova senha. O link é válido por <strong>1 hora</strong>.</p>
        <a href="${link}" class="btn">Redefinir senha →</a>
        <p style="margin-top:24px;font-size:14px;color:#999">Se você não solicitou isso, ignore este e-mail. Sua senha permanece a mesma.</p>`

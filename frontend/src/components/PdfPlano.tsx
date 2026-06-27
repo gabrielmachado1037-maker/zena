@@ -97,7 +97,7 @@ export default function PdfPlano({ pacienteNome, nutricionistaNome, plano }: Pro
         <div style={{ background: "#1C4A2E", padding: "32px 40px", color: "white" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
-              <div style={{ fontSize: "28px", fontWeight: "bold", color: "#B7E4C7", letterSpacing: "2px" }}>zena</div>
+              <div style={{ fontSize: "28px", fontWeight: "bold", color: "#B7E4C7", letterSpacing: "2px" }}>clinne</div>
               <div style={{ fontSize: "12px", color: "#B7E4C7", opacity: 0.7, marginTop: "2px" }}>seu consultório. simplificado.</div>
             </div>
             <div style={{ textAlign: "right" }}>
@@ -146,7 +146,7 @@ export default function PdfPlano({ pacienteNome, nutricionistaNome, plano }: Pro
 
         {/* Footer */}
         <div style={{ borderTop: "1px solid #E8EDE8", padding: "16px 40px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontSize: "11px", color: "#8FA897" }}>Gerado por <strong>Zena</strong> · zena.app</span>
+          <span style={{ fontSize: "11px", color: "#8FA897" }}>Gerado por <strong>Clinne</strong> · clinne.com.br</span>
           <span style={{ fontSize: "11px", color: "#8FA897" }}>Este plano é personalizado para {pacienteNome}. Não compartilhe.</span>
         </div>
       </div>

@@ -54,7 +54,7 @@ export default function Login() {
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16">
         <div className="flex items-center gap-3">
           <Leaf className="text-zena-mint" size={32} />
-          <span className="text-white font-bold text-3xl tracking-wide">zena</span>
+          <span className="text-white font-bold text-3xl tracking-wide">clinne</span>
         </div>
         <div>
           <h1 className="text-white text-5xl font-bold leading-tight mb-6">
@@ -75,7 +75,7 @@ export default function Login() {
             ))}
           </div>
         </div>
-        <p className="text-zena-text-light text-xs">© 2024 Zena. Todos os direitos reservados.</p>
+        <p className="text-zena-text-light text-xs">© 2024 Clinne. Todos os direitos reservados.</p>
       </div>
 
       {/* Right panel */}
@@ -83,7 +83,7 @@ export default function Login() {
         <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
           <div className="flex lg:hidden items-center gap-2 mb-8">
             <Leaf className="text-zena-green-mid" size={24} />
-            <span className="text-zena-green-dark font-bold text-xl">zena</span>
+            <span className="text-zena-green-dark font-bold text-xl">clinne</span>
           </div>
 
           {/* Tabs */}

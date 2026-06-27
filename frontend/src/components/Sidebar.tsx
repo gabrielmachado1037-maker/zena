@@ -30,7 +30,7 @@ export default function Sidebar() {
       <div className="px-6 py-8">
         <div className="flex items-center gap-2">
           <Leaf className="text-zena-mint" size={24} />
-          <span className="text-white font-bold text-xl tracking-wide">zena</span>
+          <span className="text-white font-bold text-xl tracking-wide">clinne</span>
         </div>
         <p className="text-zena-text-light text-xs mt-1 ml-8">seu consultório. simplificado.</p>
       </div>
