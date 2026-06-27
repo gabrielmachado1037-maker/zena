@@ -6,15 +6,40 @@ const router = Router();
 router.use(authMiddleware);
 
 router.get("/", async (req: AuthRequest, res: Response) => {
+  const now = new Date();
   const pacientes = await prisma.paciente.findMany({
     where: { nutricionistaId: req.nutricionistaId as string },
     include: {
       medicoes: { orderBy: { data: "desc" }, take: 1 },
-      consultas: { orderBy: { data: "desc" }, take: 1 },
+      consultas: { orderBy: { data: "desc" }, take: 10 },
+      cobrancas: {
+        where: { status: { not: "pago" } },
+        orderBy: { vencimento: "asc" },
+        take: 1,
+        select: { status: true, vencimento: true },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
-  res.json(pacientes);
+
+  const result = pacientes.map((p) => {
+    const ultimaConsulta = p.consultas.find((c) => new Date(c.data) < now) ?? null;
+    const proximaConsulta = [...p.consultas].reverse().find((c) => new Date(c.data) >= now) ?? null;
+
+    let cobrancaStatus: "em_dia" | "pendente" | "vencido" = "em_dia";
+    if (p.cobrancas.length > 0) {
+      cobrancaStatus = new Date(p.cobrancas[0].vencimento) < now ? "vencido" : "pendente";
+    }
+
+    return {
+      ...p,
+      ultimaConsulta: ultimaConsulta ? { data: ultimaConsulta.data } : null,
+      proximaConsulta: proximaConsulta ? { data: proximaConsulta.data } : null,
+      cobrancaStatus,
+    };
+  });
+
+  res.json(result);
 });
 
 router.get("/:id", async (req: AuthRequest, res: Response) => {
