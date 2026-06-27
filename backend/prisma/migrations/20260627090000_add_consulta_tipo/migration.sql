@@ -1,0 +1,1 @@
+ALTER TABLE "Consulta" ADD COLUMN IF NOT EXISTS "tipo" TEXT NOT NULL DEFAULT 'consulta';

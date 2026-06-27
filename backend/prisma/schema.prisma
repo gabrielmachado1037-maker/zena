@@ -179,6 +179,7 @@ model Consulta {
   paciente   Paciente @relation(fields: [pacienteId], references: [id])
   data       DateTime
   status     String   @default("agendada")
+  tipo       String   @default("consulta")
   notas      String?
   createdAt  DateTime @default(now())
 }
