@@ -1,6 +1,7 @@
 import { NavLink, useNavigate, Link } from "react-router-dom";
 import { LayoutDashboard, Users, DollarSign, LogOut, Leaf, CalendarDays, CreditCard, BarChart2, ChevronRight } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useAlertas } from "../contexts/AlertasContext";
 
 const links = [
   { to: "/app/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -12,6 +13,7 @@ const links = [
 
 export default function Sidebar() {
   const { nutricionista, logout } = useAuth();
+  const { count: alertCount } = useAlertas();
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -59,7 +61,12 @@ export default function Sidebar() {
             }
           >
             <Icon size={18} />
-            {label}
+            <span className="flex-1">{label}</span>
+            {to === "/app/dashboard" && alertCount > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-tight">
+                {alertCount > 9 ? "9+" : alertCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "../contexts/AuthContext";
+import { useAlertas } from "../contexts/AlertasContext";
 import StatCard from "../components/StatCard";
 import WhatsAppModal from "../components/WhatsAppModal";
 import OnboardingGuide from "../components/OnboardingGuide";
@@ -56,6 +57,27 @@ const lembreteCfg: Record<string, { emoji: string; label: string; template: Temp
   cobranca_vencida: { emoji: "💚", label: "Cobrança vencida hoje", template: "lembrete_cobranca" },
 };
 
+interface Alerta {
+  id: string;
+  tipo: string;
+  prioridade: number;
+  texto: string;
+  acao: string;
+  link: string;
+  template?: string;
+  paciente?: { id: string; nome: string; telefone?: string; linkUnico: string };
+}
+
+const ALERTA_CFG: Record<string, { dot: string; ringCls: string; textCls: string; btnCls: string }> = {
+  cobranca_vencida:  { dot: "bg-red-500",     ringCls: "bg-red-50 border-red-200",         textCls: "text-red-800",     btnCls: "bg-red-100 hover:bg-red-200 text-red-700" },
+  sem_consulta:      { dot: "bg-amber-500",   ringCls: "bg-amber-50 border-amber-200",     textCls: "text-amber-800",   btnCls: "bg-amber-100 hover:bg-amber-200 text-amber-700" },
+  consulta_proxima:  { dot: "bg-amber-400",   ringCls: "bg-amber-50 border-amber-200",     textCls: "text-amber-800",   btnCls: "bg-amber-100 hover:bg-amber-200 text-amber-700" },
+  cobranca_vencendo: { dot: "bg-emerald-500", ringCls: "bg-emerald-50 border-emerald-200", textCls: "text-emerald-800", btnCls: "bg-emerald-100 hover:bg-emerald-200 text-emerald-700" },
+  aniversario:       { dot: "bg-emerald-400", ringCls: "bg-emerald-50 border-emerald-200", textCls: "text-emerald-800", btnCls: "bg-emerald-100 hover:bg-emerald-200 text-emerald-700" },
+};
+
+const WA_TIPOS = new Set(["cobranca_vencida", "cobranca_vencendo", "sem_consulta", "consulta_proxima"]);
+
 function getInitials(nome: string) {
   return nome.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
 }
@@ -69,6 +91,7 @@ interface BillingStatus {
 
 export default function Dashboard() {
   const { nutricionista } = useAuth();
+  const { setCount: setAlertCount } = useAlertas();
   const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,6 +99,9 @@ export default function Dashboard() {
   const [lembretes, setLembretes] = useState<Lembrete[]>([]);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [alertas, setAlertas] = useState<Alerta[]>([]);
+  const [loadingAlertas, setLoadingAlertas] = useState(true);
+  const [dispensados, setDispensados] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     api.get("/dashboard").then((res) => {
@@ -87,6 +113,10 @@ export default function Dashboard() {
     });
     api.get("/lembretes?status=pendente").then((res) => setLembretes(res.data));
     api.get<BillingStatus>("/billing/status").then((res) => setBilling(res.data)).catch(() => null);
+    api.get<Alerta[]>("/dashboard/alertas").then((res) => {
+      setAlertas(res.data);
+      setAlertCount(res.data.length);
+    }).catch(() => null).finally(() => setLoadingAlertas(false));
   }, []);
 
   const pctRecebido = data ? Math.round((data.recebidoMes / (data.faturamentoMes || 1)) * 100) : 0;
@@ -113,6 +143,27 @@ export default function Dashboard() {
     localStorage.setItem("clinne_onboarding_done", "1");
     setShowOnboarding(false);
   }
+
+  function dispensarAlerta(id: string) {
+    const novos = new Set(dispensados).add(id);
+    setDispensados(novos);
+    const visiveis = alertas.filter((a) => !novos.has(a.id));
+    setAlertCount(visiveis.length);
+  }
+
+  function handleAlertaAction(alerta: Alerta) {
+    if (WA_TIPOS.has(alerta.tipo) && alerta.paciente && alerta.template) {
+      abrirWA(
+        { id: alerta.paciente.id, nome: alerta.paciente.nome, telefone: alerta.paciente.telefone, linkUnico: alerta.paciente.linkUnico },
+        alerta.template as TemplateWhatsApp,
+      );
+    } else {
+      navigate(`/app${alerta.link}`);
+    }
+    dispensarAlerta(alerta.id);
+  }
+
+  const alertasVisiveis = alertas.filter((a) => !dispensados.has(a.id)).slice(0, 5);
 
   return (
     <div className="p-8">
@@ -357,79 +408,60 @@ export default function Dashboard() {
           })()}
         </div>
 
-        {/* Alertas */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-zena-mint/30">
-          <h2 className="text-zena-text-dark font-semibold text-lg mb-4">Alertas</h2>
-          {loading ? (
-            <div className="space-y-3 animate-pulse">
-              {[1, 2].map((i) => <div key={i} className="h-16 bg-zena-mint/20 rounded-xl" />)}
+        {/* Alertas — dinâmicos */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-zena-mint/30 flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-zena-text-dark font-semibold text-lg">Alertas</h2>
+            {alertasVisiveis.length > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center">
+                {alertasVisiveis.length}
+              </span>
+            )}
+          </div>
+
+          {loadingAlertas ? (
+            <div className="space-y-2 animate-pulse">
+              {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-zena-mint/20 rounded-xl" />)}
+            </div>
+          ) : alertasVisiveis.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center py-8 text-center">
+              <CheckCircle className="text-zena-green-light mb-2" size={34} />
+              <p className="text-zena-text-mid font-medium text-sm">Tudo em ordem!</p>
+              <p className="text-zena-text-light text-xs mt-1">Nenhum alerta pendente.</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {data!.cobrancasVencidas > 0 && (
-                <div className="bg-zena-brown/10 border border-zena-brown/20 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-1">
-                    <AlertCircle size={14} className="text-zena-brown" />
-                    <span className="text-zena-brown font-medium text-sm">Cobranças vencidas</span>
+            <div className="space-y-2">
+              {alertasVisiveis.map((alerta) => {
+                const cfg = ALERTA_CFG[alerta.tipo] ?? ALERTA_CFG.sem_consulta;
+                return (
+                  <div key={alerta.id} className={`flex items-start gap-2.5 p-3 rounded-xl border ${cfg.ringCls}`}>
+                    <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${cfg.dot}`} />
+                    <p className={`flex-1 text-xs leading-snug ${cfg.textCls}`}>{alerta.texto}</p>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => handleAlertaAction(alerta)}
+                        className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition-colors ${cfg.btnCls}`}
+                      >
+                        {alerta.acao}
+                      </button>
+                      <button
+                        onClick={() => dispensarAlerta(alerta.id)}
+                        className="text-zena-text-light hover:text-zena-text-mid p-0.5"
+                        title="Dispensar"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-zena-text-mid text-xs">{data!.cobrancasVencidas} cobrança(s) vencida(s) este mês.</p>
-                </div>
-              )}
-              {data!.pacientesSemConsulta.length > 0 && (
-                <div className="bg-zena-sand border border-zena-brown/10 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Clock size={14} className="text-zena-text-mid" />
-                    <span className="text-zena-text-mid font-medium text-sm">Sem consulta recente</span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {data!.pacientesSemConsulta.slice(0, 3).map((p) => (
-                      <div key={p.id} className="flex items-center justify-between gap-2">
-                        <p className="text-zena-text-light text-xs truncate">{p.nome.split(" ")[0]}</p>
-                        <button
-                          onClick={() => abrirWA({ id: p.id, nome: p.nome, telefone: p.telefone, linkUnico: p.linkUnico }, "lembrete_checkin")}
-                          className="flex-shrink-0 flex items-center gap-1 text-[10px] text-[#25D366] font-medium hover:underline"
-                        >
-                          <MessageCircle size={11} />
-                          Chamar
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {data!.cobrancasVencidas === 0 && data!.pacientesSemConsulta.length === 0 && (
-                <div className="text-center py-8">
-                  <CheckCircle className="mx-auto text-zena-green-light mb-2" size={32} />
-                  <p className="text-zena-text-light text-sm">Tudo em ordem!</p>
-                </div>
-              )}
+                );
+              })}
             </div>
           )}
 
-          {!loading && (
-            <div className="mt-4 pt-4 border-t border-zena-cream">
-              <p className="text-zena-text-light text-xs font-medium mb-2">Ações rápidas WhatsApp</p>
-              <div className="space-y-1.5">
-                {data?.pacientesSemConsulta[0] && (
-                  <button
-                    onClick={() => abrirWA({ id: data.pacientesSemConsulta[0].id, nome: data.pacientesSemConsulta[0].nome, telefone: data.pacientesSemConsulta[0].telefone, linkUnico: data.pacientesSemConsulta[0].linkUnico }, "lembrete_checkin")}
-                    className="w-full flex items-center gap-2 text-xs text-[#25D366] font-medium hover:bg-[#25D366]/5 px-3 py-2 rounded-lg transition-colors"
-                  >
-                    <MessageCircle size={13} />
-                    Lembrete de check-in
-                  </button>
-                )}
-                {data?.consultasHoje[0] && (
-                  <button
-                    onClick={() => abrirWA({ id: data.consultasHoje[0].paciente.id, nome: data.consultasHoje[0].paciente.nome, telefone: data.consultasHoje[0].paciente.telefone, linkUnico: data.consultasHoje[0].paciente.linkUnico }, "lembrete_consulta", format(new Date(data.consultasHoje[0].data), "dd/MM 'às' HH:mm"))}
-                    className="w-full flex items-center gap-2 text-xs text-[#25D366] font-medium hover:bg-[#25D366]/5 px-3 py-2 rounded-lg transition-colors"
-                  >
-                    <MessageCircle size={13} />
-                    Lembrete de consulta
-                  </button>
-                )}
-              </div>
-            </div>
+          {!loadingAlertas && alertasVisiveis.length > 0 && (
+            <p className="text-zena-text-light text-[10px] mt-4 text-center">
+              Clicar em "Cobrar" / "Chamar" / "Lembrar" abre o WhatsApp direto.
+            </p>
           )}
         </div>
       </div>
