@@ -12,6 +12,7 @@ import anamneseRouter from "./routes/anamnese";
 import horariosRouter from "./routes/horarios";
 import lembretesRouter from "./routes/lembretes";
 import billingRouter, { webhookHandler } from "./routes/billing";
+import financeiroRouter from "./routes/financeiro";
 import { initCron } from "./cron";
 
 dotenv.config();
@@ -39,6 +40,7 @@ app.use("/api/anamnese", anamneseRouter);
 app.use("/api/horarios", horariosRouter);
 app.use("/api/lembretes", lembretesRouter);
 app.use("/api/billing", billingRouter);
+app.use("/api/financeiro", financeiroRouter);
 
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 

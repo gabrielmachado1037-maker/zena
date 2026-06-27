@@ -80,6 +80,39 @@ export function initCron() {
     }
   });
 
+  // Daily at 8am: generate monthly charges from payment plans
+  cron.schedule("30 8 * * *", async () => {
+    try {
+      const hoje = new Date();
+      const diaHoje = hoje.getDate();
+      const planos = await prisma.planoCobranca.findMany({
+        where: { ativo: true },
+        include: { paciente: true },
+      });
+      for (const plano of planos) {
+        if (plano.diaVencimento !== diaHoje) continue;
+        const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const jaExiste = await prisma.cobranca.findFirst({
+          where: { pacienteId: plano.pacienteId, vencimento: { gte: inicioMes }, status: { not: "cancelada" } },
+        });
+        if (!jaExiste) {
+          const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), plano.diaVencimento);
+          await prisma.cobranca.create({
+            data: {
+              pacienteId: plano.pacienteId,
+              valor: plano.valor,
+              vencimento,
+              metodo: "pix",
+              descricao: `Mensalidade ${hoje.toLocaleString("pt-BR", { month: "long" })}`,
+            },
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Cron plano_cobranca error:", e);
+    }
+  });
+
   // Daily at 9am: create reminders for overdue payments
   cron.schedule("0 9 * * *", async () => {
     try {

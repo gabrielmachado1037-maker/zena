@@ -1,11 +1,12 @@
 import { NavLink, useNavigate, Link } from "react-router-dom";
-import { LayoutDashboard, Users, DollarSign, LogOut, Leaf, CalendarDays, CreditCard } from "lucide-react";
+import { LayoutDashboard, Users, DollarSign, LogOut, Leaf, CalendarDays, CreditCard, BarChart2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 const links = [
   { to: "/app/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/app/pacientes", icon: Users, label: "Pacientes" },
   { to: "/app/cobrancas", icon: DollarSign, label: "Cobranças" },
+  { to: "/app/financeiro", icon: BarChart2, label: "Financeiro" },
   { to: "/app/horarios", icon: CalendarDays, label: "Agenda" },
 ];
 

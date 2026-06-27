@@ -21,6 +21,7 @@ model Nutricionista {
   trialEnd             DateTime?
   stripeCustomerId     String?
   stripeSubscriptionId String?
+  asaasApiKey          String?
   pacientes            Paciente[]
   horarios             HorarioDisponivel[]
   lembretes            Lembrete[]
@@ -60,6 +61,7 @@ model Paciente {
   mensagens         MensagemWhatsApp[]
   anamnese          Anamnese?
   lembretes         Lembrete[]
+  planoCobranca     PlanoCobranca?
   createdAt         DateTime           @default(now())
 }
 
@@ -175,13 +177,28 @@ model Consulta {
 }
 
 model Cobranca {
-  id         String    @id @default(cuid())
-  pacienteId String
-  paciente   Paciente  @relation(fields: [pacienteId], references: [id])
-  valor      Float
-  vencimento DateTime
-  status     String    @default("pendente")
-  metodo     String?
-  pagoEm     DateTime?
-  createdAt  DateTime  @default(now())
+  id              String    @id @default(cuid())
+  pacienteId      String
+  paciente        Paciente  @relation(fields: [pacienteId], references: [id])
+  valor           Float
+  vencimento      DateTime
+  status          String    @default("pendente")
+  metodo          String?
+  pagoEm          DateTime?
+  descricao       String?
+  asaasChargeId   String?
+  pixCopiaECola   String?
+  linkPagamento   String?
+  createdAt       DateTime  @default(now())
+}
+
+model PlanoCobranca {
+  id              String   @id @default(cuid())
+  pacienteId      String   @unique
+  paciente        Paciente @relation(fields: [pacienteId], references: [id])
+  valor           Float
+  periodicidade   String   @default("mensal")
+  diaVencimento   Int      @default(10)
+  ativo           Boolean  @default(true)
+  criadoEm        DateTime @default(now())
 }
