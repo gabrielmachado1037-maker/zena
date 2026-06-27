@@ -106,11 +106,17 @@ export default function Financeiro() {
       {/* Config Asaas */}
       {showKeyForm && (
         <div className="bg-white border border-zena-mint/30 rounded-2xl p-6 mb-6 shadow-sm">
-          <h3 className="font-semibold text-zena-text-dark mb-1">Integração Asaas (Pix)</h3>
-          <p className="text-zena-text-light text-sm mb-4">
-            Crie uma conta em <strong>asaas.com.br</strong>, acesse API → Configurações e cole sua chave aqui.
-            Os pagamentos vão direto para sua conta Asaas.
+          <h3 className="font-semibold text-zena-text-dark mb-1">Conectar minha conta Asaas</h3>
+          <p className="text-zena-text-light text-sm mb-2">
+            Crie uma conta em <strong>asaas.com.br</strong>, acesse <strong>Integrações → Chave de API</strong> e cole aqui.
           </p>
+          <div className="bg-zena-cream rounded-xl p-3 mb-4 border border-zena-mint/20">
+            <p className="text-zena-green-dark text-sm font-medium">
+              🔒 Os pagamentos dos seus pacientes vão direto para a sua conta Asaas.
+              O Clinne não tem acesso a esses valores.
+            </p>
+            <p className="text-zena-text-light text-xs mt-1">A chave é armazenada de forma criptografada no banco.</p>
+          </div>
           <div className="flex gap-3">
             <input
               type="password"

@@ -29,10 +29,10 @@ export default function Layout() {
   }
 
   const expirado = billing && !billing.planoAtivo && !billing.emTrial;
-  const naBilling = location.pathname === "/app/billing";
+  const naPlanos = location.pathname === "/app/planos" || location.pathname === "/app/billing";
 
-  if (expirado && !naBilling) {
-    return <Navigate to="/app/billing" replace />;
+  if (expirado && !naPlanos) {
+    return <Navigate to="/app/planos" replace />;
   }
 
   return (

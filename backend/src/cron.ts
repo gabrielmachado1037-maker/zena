@@ -113,6 +113,24 @@ export function initCron() {
     }
   });
 
+  // Daily at 7am: block Clinne subscriptions overdue by more than 3 days
+  cron.schedule("0 7 * * *", async () => {
+    try {
+      const tresAtraso = new Date();
+      tresAtraso.setDate(tresAtraso.getDate() - 3);
+      await prisma.nutricionista.updateMany({
+        where: {
+          planoAtivo: true,
+          planoVencimento: { lt: tresAtraso },
+          plano: { in: ["mensal", "anual"] },
+        },
+        data: { planoAtivo: false },
+      });
+    } catch (e) {
+      console.error("Cron assinatura_vencida error:", e);
+    }
+  });
+
   // Daily at 9am: create reminders for overdue payments
   cron.schedule("0 9 * * *", async () => {
     try {

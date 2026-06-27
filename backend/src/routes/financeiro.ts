@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { criarOuBuscarCliente, criarCobrancaPix, cancelarCobranca } from "../lib/asaas";
+import { encrypt, decrypt } from "../lib/crypto";
 
 const router = Router();
 router.use(authMiddleware);
@@ -84,7 +85,8 @@ router.put("/plano/:pacienteId", async (req: AuthRequest, res: Response) => {
 // Gerar cobrança Pix via Asaas
 router.post("/cobrar/:cobrancaId/pix", async (req: AuthRequest, res: Response) => {
   const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId! } });
-  if (!nutri?.asaasApiKey) return res.status(400).json({ error: "Configure sua chave Asaas em Configurações." });
+  if (!nutri?.asaasApiKey) return res.status(400).json({ error: "Configure sua chave Asaas em Financeiro → Conectar conta Asaas." });
+  const apiKey = decrypt(nutri.asaasApiKey);
 
   const cobranca = await prisma.cobranca.findFirst({
     where: { id: req.params["cobrancaId"] as string },
@@ -92,11 +94,11 @@ router.post("/cobrar/:cobrancaId/pix", async (req: AuthRequest, res: Response) =
   });
   if (!cobranca) return res.status(404).json({ error: "Cobrança não encontrada" });
 
-  const cliente = await criarOuBuscarCliente(nutri.asaasApiKey, cobranca.paciente.nome, cobranca.paciente.email || undefined);
+  const cliente = await criarOuBuscarCliente(apiKey, cobranca.paciente.nome, cobranca.paciente.email || undefined);
   const vencimento = cobranca.vencimento.toISOString().split("T")[0];
   const descricao = cobranca.descricao || `Consulta — ${cobranca.paciente.nome}`;
 
-  const { charge, pix } = await criarCobrancaPix(nutri.asaasApiKey, cliente.id, cobranca.valor, vencimento, descricao);
+  const { charge, pix } = await criarCobrancaPix(apiKey, cliente.id, cobranca.valor, vencimento, descricao);
 
   const updated = await prisma.cobranca.update({
     where: { id: cobranca.id },
@@ -117,7 +119,7 @@ router.delete("/cobrar/:cobrancaId/pix", async (req: AuthRequest, res: Response)
   const cobranca = await prisma.cobranca.findFirst({ where: { id: req.params["cobrancaId"] as string } });
   if (!cobranca?.asaasChargeId) return res.status(400).json({ error: "Cobrança sem Pix gerado." });
 
-  await cancelarCobranca(nutri.asaasApiKey, cobranca.asaasChargeId);
+  await cancelarCobranca(decrypt(nutri.asaasApiKey), cobranca.asaasChargeId);
   const updated = await prisma.cobranca.update({
     where: { id: cobranca.id },
     data: { asaasChargeId: null, pixCopiaECola: null, linkPagamento: null },
@@ -125,14 +127,20 @@ router.delete("/cobrar/:cobrancaId/pix", async (req: AuthRequest, res: Response)
   res.json(updated);
 });
 
-// Salvar chave Asaas
+// Salvar chave Asaas do nutricionista (criptografada)
 router.put("/asaas-key", async (req: AuthRequest, res: Response) => {
   const { asaasApiKey } = req.body;
   await prisma.nutricionista.update({
     where: { id: req.nutricionistaId! },
-    data: { asaasApiKey: asaasApiKey || null },
+    data: { asaasApiKey: asaasApiKey ? encrypt(asaasApiKey) : null },
   });
   res.json({ ok: true });
+});
+
+// Verificar se chave está configurada (sem expor a chave)
+router.get("/asaas-status", async (req: AuthRequest, res: Response) => {
+  const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId! } });
+  res.json({ configurado: !!nutri?.asaasApiKey });
 });
 
 // Webhook Asaas (sem auth)

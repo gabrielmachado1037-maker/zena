@@ -57,7 +57,7 @@ export default function Sidebar() {
 
       <div className="px-3 pb-6 space-y-1">
         <NavLink
-          to="/app/billing"
+          to="/app/planos"
           className={({ isActive }) =>
             `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
               isActive
@@ -67,7 +67,7 @@ export default function Sidebar() {
           }
         >
           <CreditCard size={18} />
-          Assinatura
+          Planos
         </NavLink>
         <Link
           to="/app/perfil"

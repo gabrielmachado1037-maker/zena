@@ -22,6 +22,9 @@ model Nutricionista {
   stripeCustomerId     String?
   stripeSubscriptionId String?
   asaasApiKey          String?
+  asaasCustomerId      String?
+  asaasSubscriptionId  String?
+  planoVencimento      DateTime?
   pacientes            Paciente[]
   horarios             HorarioDisponivel[]
   lembretes            Lembrete[]

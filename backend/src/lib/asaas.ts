@@ -1,11 +1,11 @@
-const BASE = process.env.ASAAS_ENV === 'production'
-  ? 'https://api.asaas.com/v3'
-  : 'https://sandbox.asaas.com/api/v3';
+const BASE = process.env.ASAAS_ENV === "production"
+  ? "https://api.asaas.com/v3"
+  : "https://sandbox.asaas.com/api/v3";
 
 async function req(apiKey: string, method: string, path: string, body?: any) {
   const res = await fetch(`${BASE}${path}`, {
     method,
-    headers: { access_token: apiKey, 'Content-Type': 'application/json' },
+    headers: { access_token: apiKey, "Content-Type": "application/json" },
     body: body ? JSON.stringify(body) : undefined,
   });
   const json = await res.json() as any;
@@ -13,12 +13,13 @@ async function req(apiKey: string, method: string, path: string, body?: any) {
   return json;
 }
 
+// Usa a chave do NUTRICIONISTA — dinheiro vai para a conta do nutricionista
 export async function criarOuBuscarCliente(apiKey: string, nome: string, email?: string, cpfCnpj?: string) {
   if (email) {
-    const existing = await req(apiKey, 'GET', `/customers?email=${encodeURIComponent(email)}&limit=1`);
+    const existing = await req(apiKey, "GET", `/customers?email=${encodeURIComponent(email)}&limit=1`);
     if (existing.data?.length > 0) return existing.data[0];
   }
-  return req(apiKey, 'POST', '/customers', {
+  return req(apiKey, "POST", "/customers", {
     name: nome,
     email: email || undefined,
     cpfCnpj: cpfCnpj || undefined,
@@ -26,29 +27,75 @@ export async function criarOuBuscarCliente(apiKey: string, nome: string, email?:
   });
 }
 
-export async function criarCobrancaPix(
-  apiKey: string,
-  customerId: string,
-  valor: number,
-  vencimento: string,
-  descricao: string
-) {
-  const charge = await req(apiKey, 'POST', '/payments', {
+export async function criarCobrancaPix(apiKey: string, customerId: string, valor: number, vencimento: string, descricao: string) {
+  const charge = await req(apiKey, "POST", "/payments", {
     customer: customerId,
-    billingType: 'PIX',
+    billingType: "PIX",
     value: valor,
     dueDate: vencimento,
     description: descricao,
-    externalReference: undefined,
   });
-  const pix = await req(apiKey, 'GET', `/payments/${charge.id}/pixQrCode`);
+  const pix = await req(apiKey, "GET", `/payments/${charge.id}/pixQrCode`);
   return { charge, pix };
 }
 
 export async function cancelarCobranca(apiKey: string, chargeId: string) {
-  return req(apiKey, 'DELETE', `/payments/${chargeId}`);
+  return req(apiKey, "DELETE", `/payments/${chargeId}`);
 }
 
 export async function buscarStatusCobranca(apiKey: string, chargeId: string) {
-  return req(apiKey, 'GET', `/payments/${chargeId}`);
+  return req(apiKey, "GET", `/payments/${chargeId}`);
+}
+
+// ── Clinne subscription (usa a chave DO CLINNE, não do nutricionista) ──────────
+
+function clinneKey() {
+  const k = process.env.CLINNE_ASAAS_API_KEY;
+  if (!k) throw new Error("CLINNE_ASAAS_API_KEY não configurada.");
+  return k;
+}
+
+export async function clinneReq(method: string, path: string, body?: any) {
+  return req(clinneKey(), method, path, body);
+}
+
+export async function criarClienteCliNNe(nome: string, email: string, cpfCnpj?: string) {
+  const existing = await clinneReq("GET", `/customers?email=${encodeURIComponent(email)}&limit=1`);
+  if (existing.data?.length > 0) return existing.data[0];
+  return clinneReq("POST", "/customers", {
+    name: nome,
+    email,
+    cpfCnpj: cpfCnpj || undefined,
+    notificationDisabled: false,
+  });
+}
+
+export async function criarAssinaturaPix(customerId: string, valor: number, ciclo: "MONTHLY" | "YEARLY", descricao: string, nutricionistaId: string) {
+  const hoje = new Date();
+  const nextDue = hoje.toISOString().split("T")[0];
+  const sub = await clinneReq("POST", "/subscriptions", {
+    customer: customerId,
+    billingType: "PIX",
+    nextDueDate: nextDue,
+    value: valor,
+    cycle: ciclo,
+    description: descricao,
+    externalReference: nutricionistaId,
+  });
+  // Busca o primeiro pagamento gerado pela assinatura
+  const payments = await clinneReq("GET", `/subscriptions/${sub.id}/payments?limit=1`);
+  const firstPayment = payments.data?.[0];
+  let pix = null;
+  if (firstPayment) {
+    pix = await clinneReq("GET", `/payments/${firstPayment.id}/pixQrCode`);
+  }
+  return { subscription: sub, firstPayment, pix };
+}
+
+export async function cancelarAssinatura(subscriptionId: string) {
+  return clinneReq("DELETE", `/subscriptions/${subscriptionId}`);
+}
+
+export async function buscarAssinatura(subscriptionId: string) {
+  return clinneReq("GET", `/subscriptions/${subscriptionId}`);
 }

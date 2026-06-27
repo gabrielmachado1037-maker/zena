@@ -17,6 +17,7 @@ import Termos from "./pages/Termos";
 import Cadastro from "./pages/Cadastro";
 import Perfil from "./pages/Perfil";
 import Financeiro from "./pages/Financeiro";
+import Planos from "./pages/Planos";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { token, loading } = useAuth();
@@ -51,6 +52,7 @@ function AppRoutes() {
         <Route path="horarios" element={<Horarios />} />
         <Route path="billing" element={<Billing />} />
         <Route path="financeiro" element={<Financeiro />} />
+        <Route path="planos" element={<Planos />} />
         <Route path="perfil" element={<Perfil />} />
       </Route>
       {/* Legacy routes redirect */}
