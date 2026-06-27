@@ -15,7 +15,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   const fimHoje = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
   const ha30dias = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const [pacientesAtivos, consultasHoje, cobrancasMes, semConsulta] = await Promise.all([
+  const [pacientesAtivos, consultasHoje, cobrancasMes, semConsulta, totalConsultas] = await Promise.all([
     prisma.paciente.count({ where: { nutricionistaId: req.nutricionistaId, ativo: true } }),
     prisma.consulta.findMany({
       where: {
@@ -39,6 +39,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
       },
       select: { id: true, nome: true, telefone: true, linkUnico: true },
     }),
+    prisma.consulta.count({ where: { paciente: { nutricionistaId: req.nutricionistaId } } }),
   ]);
 
   const faturamentoMes = cobrancasMes.reduce((s, c) => s + c.valor, 0);
@@ -54,6 +55,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     consultasHoje,
     cobrancasVencidas: vencidas.length,
     pacientesSemConsulta: semConsulta,
+    totalConsultas,
   });
 });
 

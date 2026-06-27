@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Users, DollarSign, Calendar, AlertCircle, Clock, CheckCircle, XCircle, MessageCircle, Bell, X, Zap } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Users, DollarSign, Calendar, AlertCircle, Clock, CheckCircle, XCircle, MessageCircle, Bell, X, Zap, ChevronRight } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useAuth } from "../contexts/AuthContext";
@@ -25,6 +25,7 @@ interface DashboardData {
   consultasHoje: ConsultaHoje[];
   cobrancasVencidas: number;
   pacientesSemConsulta: Array<{ id: string; nome: string; linkUnico: string; telefone?: string }>;
+  totalConsultas: number;
 }
 
 interface Lembrete {
@@ -68,6 +69,7 @@ interface BillingStatus {
 
 export default function Dashboard() {
   const { nutricionista } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [waState, setWaState] = useState<WAState | null>(null);
@@ -172,7 +174,11 @@ export default function Dashboard() {
         <StatCard
           title="Faturamento do mês"
           value={loading ? "—" : `R$ ${data!.faturamentoMes.toFixed(2).replace(".", ",")}`}
-          sub={`${pctRecebido}% recebido`}
+          sub={
+            !loading && data!.faturamentoMes === 0
+              ? <button onClick={() => navigate("/app/cobrancas")} className="text-zena-green-mid hover:underline flex items-center gap-0.5">Crie sua primeira cobrança <ChevronRight size={11} /></button>
+              : `${pctRecebido}% recebido`
+          }
           icon={<DollarSign size={18} />}
           accent="mint"
           loading={loading}
@@ -180,7 +186,11 @@ export default function Dashboard() {
         <StatCard
           title="Consultas hoje"
           value={loading ? "—" : data!.consultasHoje.length}
-          sub={data?.consultasHoje[0] ? `Próxima: ${format(new Date(data.consultasHoje[0].data), "HH:mm")}` : "Nenhuma hoje"}
+          sub={
+            !loading && data!.consultasHoje.length === 0
+              ? <button onClick={() => navigate("/app/pacientes")} className="text-zena-green-mid hover:underline flex items-center gap-0.5">Nenhuma agendada. Agendar agora <ChevronRight size={11} /></button>
+              : `Próxima: ${format(new Date(data!.consultasHoje[0].data), "HH:mm")}`
+          }
           icon={<Calendar size={18} />}
           accent="green"
           loading={loading}
@@ -240,9 +250,8 @@ export default function Dashboard() {
       )}
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Agenda do dia */}
+        {/* Agenda do dia / Primeiros passos */}
         <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-zena-mint/30">
-          <h2 className="text-zena-text-dark font-semibold text-lg mb-4">Agenda de hoje</h2>
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
@@ -255,47 +264,96 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
-          ) : data?.consultasHoje.length === 0 ? (
-            <div className="text-center py-12">
-              <Calendar className="mx-auto text-zena-mint mb-3" size={40} />
-              <p className="text-zena-text-light text-sm">Nenhuma consulta agendada para hoje.</p>
-              <p className="text-zena-text-light text-xs mt-1">Aproveite para atualizar os planos das suas pacientes!</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {data!.consultasHoje.map((consulta) => {
-                const cfg = statusConfig[consulta.status] || statusConfig["agendada"];
-                const StatusIcon = cfg.icon;
-                const dataFormatada = format(new Date(consulta.data), "dd/MM 'às' HH:mm");
-                return (
-                  <div key={consulta.id} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-zena-cream transition-colors">
-                    <div className="w-10 h-10 rounded-full bg-zena-green-light/20 flex items-center justify-center text-zena-green-dark font-bold text-sm flex-shrink-0">
-                      {getInitials(consulta.paciente.nome)}
+          ) : (() => {
+            const passos = [
+              { label: "Cadastre seu primeiro paciente", done: data!.pacientesAtivos >= 1, to: "/app/pacientes", btn: "Cadastrar" },
+              { label: "Agende uma consulta", done: data!.totalConsultas >= 1, to: "/app/pacientes", btn: "Agendar" },
+              { label: "Configure sua cobrança", done: data!.faturamentoMes > 0 || data!.aReceber > 0, to: "/app/financeiro", btn: "Configurar" },
+            ];
+            const todosConcluidos = passos.every((p) => p.done);
+            const showChecklist = !todosConcluidos && data!.consultasHoje.length === 0;
+
+            if (showChecklist) {
+              return (
+                <>
+                  <div className="flex items-center gap-2 mb-5">
+                    <div className="w-8 h-8 rounded-xl bg-zena-green-light/20 flex items-center justify-center">
+                      <Zap size={16} className="text-zena-green-mid" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-zena-text-dark font-medium text-sm truncate">{consulta.paciente.nome}</p>
-                      <p className="text-zena-text-light text-xs">{format(new Date(consulta.data), "HH:mm")}</p>
-                    </div>
-                    <span className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${cfg.color}`}>
-                      <StatusIcon size={12} />
-                      {cfg.label}
-                    </span>
-                    <button
-                      onClick={() => abrirWA(
-                        { id: consulta.paciente.id, nome: consulta.paciente.nome, telefone: consulta.paciente.telefone, linkUnico: consulta.paciente.linkUnico },
-                        "lembrete_consulta",
-                        dataFormatada
-                      )}
-                      className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-xs text-[#25D366] font-medium hover:bg-[#25D366]/10 px-2.5 py-1.5 rounded-lg"
-                    >
-                      <MessageCircle size={14} />
-                      <span className="hidden lg:inline">Lembrete</span>
-                    </button>
+                    <h2 className="text-zena-text-dark font-semibold text-lg">Primeiros passos</h2>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                  <p className="text-zena-text-light text-sm mb-5">Complete estas etapas para começar a usar o Clinne.</p>
+                  <div className="space-y-3">
+                    {passos.map((p) => (
+                      <div key={p.label} className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${p.done ? "border-zena-green-light/40 bg-zena-green-light/5" : "border-zena-mint/40 bg-zena-cream/40"}`}>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${p.done ? "bg-zena-green-light text-white" : "border-2 border-zena-mint"}`}>
+                          {p.done && <CheckCircle size={14} />}
+                        </div>
+                        <p className={`flex-1 text-sm font-medium ${p.done ? "text-zena-text-light line-through" : "text-zena-text-dark"}`}>{p.label}</p>
+                        {!p.done && (
+                          <Link to={p.to} className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-white bg-zena-green-mid hover:bg-zena-green-dark px-3 py-1.5 rounded-lg transition-colors">
+                            {p.btn} <ChevronRight size={12} />
+                          </Link>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            }
+
+            if (data!.consultasHoje.length === 0) {
+              return (
+                <>
+                  <h2 className="text-zena-text-dark font-semibold text-lg mb-4">Agenda de hoje</h2>
+                  <div className="text-center py-12">
+                    <Calendar className="mx-auto text-zena-mint mb-3" size={40} />
+                    <p className="text-zena-text-light text-sm">Nenhuma consulta agendada para hoje.</p>
+                    <p className="text-zena-text-light text-xs mt-1">Aproveite para atualizar os planos das suas pacientes!</p>
+                  </div>
+                </>
+              );
+            }
+
+            return (
+              <>
+                <h2 className="text-zena-text-dark font-semibold text-lg mb-4">Agenda de hoje</h2>
+                <div className="space-y-2">
+                  {data!.consultasHoje.map((consulta) => {
+                    const cfg = statusConfig[consulta.status] || statusConfig["agendada"];
+                    const StatusIcon = cfg.icon;
+                    const dataFormatada = format(new Date(consulta.data), "dd/MM 'às' HH:mm");
+                    return (
+                      <div key={consulta.id} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-zena-cream transition-colors">
+                        <div className="w-10 h-10 rounded-full bg-zena-green-light/20 flex items-center justify-center text-zena-green-dark font-bold text-sm flex-shrink-0">
+                          {getInitials(consulta.paciente.nome)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-zena-text-dark font-medium text-sm truncate">{consulta.paciente.nome}</p>
+                          <p className="text-zena-text-light text-xs">{format(new Date(consulta.data), "HH:mm")}</p>
+                        </div>
+                        <span className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${cfg.color}`}>
+                          <StatusIcon size={12} />
+                          {cfg.label}
+                        </span>
+                        <button
+                          onClick={() => abrirWA(
+                            { id: consulta.paciente.id, nome: consulta.paciente.nome, telefone: consulta.paciente.telefone, linkUnico: consulta.paciente.linkUnico },
+                            "lembrete_consulta",
+                            dataFormatada
+                          )}
+                          className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-xs text-[#25D366] font-medium hover:bg-[#25D366]/10 px-2.5 py-1.5 rounded-lg"
+                        >
+                          <MessageCircle size={14} />
+                          <span className="hidden lg:inline">Lembrete</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         {/* Alertas */}
