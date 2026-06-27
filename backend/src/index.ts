@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRouter from "./routes/auth";
@@ -47,5 +47,11 @@ app.use("/api/fotos", fotosRouter);
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 
 initCron();
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("[ERROR]", err.message, err.stack);
+  res.status(500).json({ error: err.message });
+});
 
 app.listen(PORT, () => console.log(`Zena backend rodando na porta ${PORT}`));
