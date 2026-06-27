@@ -42,7 +42,7 @@ router.post("/login", async (req: Request, res: Response) => {
   if (!ok) return res.status(401).json({ error: "Credenciais inválidas" });
 
   const token = jwt.sign({ id: nutri.id }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn } });
+  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio } });
 });
 
 router.post("/esqueci-senha", async (req: Request, res: Response) => {
