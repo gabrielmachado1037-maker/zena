@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { DollarSign, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { DollarSign, CheckCircle, Clock, AlertCircle, Plus, X } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import api from "../lib/api";
@@ -11,6 +11,7 @@ interface Cobranca {
   vencimento: string;
   status: string;
   metodo?: string;
+  descricao?: string;
   paciente: { nome: string };
 }
 
@@ -21,15 +22,33 @@ interface Resumo {
   vencidas: number;
 }
 
+interface Paciente {
+  id: string;
+  nome: string;
+}
+
+const METODOS = ["pix", "transferência", "cartão de crédito", "cartão de débito", "dinheiro", "outro"];
+
 export default function Cobrancas() {
   const [cobrancas, setCobrancas] = useState<Cobranca[]>([]);
   const [resumo, setResumo] = useState<Resumo | null>(null);
+  const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast, show, hide } = useToast();
 
   const now = new Date();
   const [mes, setMes] = useState(now.getMonth() + 1);
   const [ano, setAno] = useState(now.getFullYear());
+
+  const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    pacienteId: "",
+    valor: "",
+    vencimento: format(now, "yyyy-MM-dd"),
+    metodo: "pix",
+    descricao: "",
+  });
 
   async function carregar() {
     setLoading(true);
@@ -44,6 +63,10 @@ export default function Cobrancas() {
 
   useEffect(() => { carregar(); }, [mes, ano]);
 
+  useEffect(() => {
+    api.get("/pacientes").then((r) => setPacientes(r.data));
+  }, []);
+
   async function marcarPago(id: string) {
     try {
       const res = await api.patch(`/cobrancas/${id}/pagar`);
@@ -52,6 +75,42 @@ export default function Cobrancas() {
       carregar();
     } catch {
       show("Erro ao registrar.", "error");
+    }
+  }
+
+  function abrirModal() {
+    setForm({
+      pacienteId: pacientes[0]?.id || "",
+      valor: "",
+      vencimento: format(now, "yyyy-MM-dd"),
+      metodo: "pix",
+      descricao: "",
+    });
+    setShowModal(true);
+  }
+
+  async function criarCobranca() {
+    if (!form.pacienteId) return show("Selecione um paciente.", "error");
+    if (!form.valor || isNaN(parseFloat(form.valor)) || parseFloat(form.valor) <= 0)
+      return show("Informe um valor válido.", "error");
+    if (!form.vencimento) return show("Informe a data de vencimento.", "error");
+
+    setSaving(true);
+    try {
+      await api.post("/cobrancas", {
+        pacienteId: form.pacienteId,
+        valor: parseFloat(form.valor),
+        vencimento: form.vencimento,
+        metodo: form.metodo,
+        descricao: form.descricao || undefined,
+      });
+      setShowModal(false);
+      show("Cobrança criada!");
+      carregar();
+    } catch {
+      show("Erro ao criar cobrança.", "error");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -78,9 +137,18 @@ export default function Cobrancas() {
     <div className="p-8">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hide} />}
 
-      <div className="mb-8">
-        <h1 className="text-zena-text-dark text-3xl font-bold">Cobranças</h1>
-        <p className="text-zena-text-light text-sm mt-1">Controle financeiro do consultório</p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-zena-text-dark text-3xl font-bold">Cobranças</h1>
+          <p className="text-zena-text-light text-sm mt-1">Controle financeiro do consultório</p>
+        </div>
+        <button
+          onClick={abrirModal}
+          className="flex items-center gap-2 px-4 py-2.5 bg-zena-green-mid text-white rounded-xl text-sm font-semibold hover:bg-zena-green-dark transition-colors"
+        >
+          <Plus size={16} />
+          Nova cobrança
+        </button>
       </div>
 
       {/* Resumo financeiro */}
@@ -147,7 +215,14 @@ export default function Cobrancas() {
         ) : cobrancas.length === 0 ? (
           <div className="p-12 text-center">
             <DollarSign className="mx-auto text-zena-mint mb-3" size={40} />
-            <p className="text-zena-text-light text-sm">Nenhuma cobrança neste período.</p>
+            <p className="text-zena-text-light text-sm mb-4">Nenhuma cobrança neste período.</p>
+            <button
+              onClick={abrirModal}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-zena-green-mid text-white rounded-xl text-sm font-semibold hover:bg-zena-green-dark transition-colors"
+            >
+              <Plus size={15} />
+              Criar primeira cobrança
+            </button>
           </div>
         ) : (
           <table className="w-full">
@@ -199,6 +274,99 @@ export default function Cobrancas() {
           </table>
         )}
       </div>
+
+      {/* Modal nova cobrança */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-zena-cream">
+              <h2 className="text-zena-text-dark font-semibold text-lg">Nova cobrança</h2>
+              <button onClick={() => setShowModal(false)} className="text-zena-text-light hover:text-zena-text-dark transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Paciente</label>
+                <select
+                  value={form.pacienteId}
+                  onChange={(e) => setForm((f) => ({ ...f, pacienteId: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                >
+                  <option value="">Selecione...</option>
+                  {pacientes.map((p) => (
+                    <option key={p.id} value={p.id}>{p.nome}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Valor (R$)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={form.valor}
+                  onChange={(e) => setForm((f) => ({ ...f, valor: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                />
+              </div>
+
+              <div>
+                <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Vencimento</label>
+                <input
+                  type="date"
+                  value={form.vencimento}
+                  onChange={(e) => setForm((f) => ({ ...f, vencimento: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                />
+              </div>
+
+              <div>
+                <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Método de pagamento</label>
+                <select
+                  value={form.metodo}
+                  onChange={(e) => setForm((f) => ({ ...f, metodo: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                >
+                  {METODOS.map((m) => (
+                    <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-zena-text-dark text-sm font-medium mb-1.5">
+                  Descrição <span className="text-zena-text-light font-normal">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Consulta mensal, retorno..."
+                  value={form.descricao}
+                  onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
+                  className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 px-6 py-5 border-t border-zena-cream">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 px-4 py-2.5 border border-zena-mint/40 text-zena-text-mid rounded-xl text-sm font-medium hover:bg-zena-cream transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={criarCobranca}
+                disabled={saving}
+                className="flex-1 px-4 py-2.5 bg-zena-green-mid text-white rounded-xl text-sm font-semibold hover:bg-zena-green-dark transition-colors disabled:opacity-60"
+              >
+                {saving ? "Salvando..." : "Criar cobrança"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
