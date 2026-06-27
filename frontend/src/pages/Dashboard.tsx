@@ -6,6 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { useAuth } from "../contexts/AuthContext";
 import StatCard from "../components/StatCard";
 import WhatsAppModal from "../components/WhatsAppModal";
+import OnboardingGuide from "../components/OnboardingGuide";
 import api from "../lib/api";
 import { type TemplateWhatsApp } from "../lib/utils";
 
@@ -72,11 +73,15 @@ export default function Dashboard() {
   const [waState, setWaState] = useState<WAState | null>(null);
   const [lembretes, setLembretes] = useState<Lembrete[]>([]);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     api.get("/dashboard").then((res) => {
       setData(res.data);
       setLoading(false);
+      if (!localStorage.getItem("clinne_onboarding_done") && res.data.pacientesAtivos === 0) {
+        setShowOnboarding(true);
+      }
     });
     api.get("/lembretes?status=pendente").then((res) => setLembretes(res.data));
     api.get<BillingStatus>("/billing/status").then((res) => setBilling(res.data)).catch(() => null);
@@ -102,8 +107,14 @@ export default function Dashboard() {
     setLembretes((prev) => prev.filter((l) => l.id !== id));
   }
 
+  function dismissOnboarding() {
+    localStorage.setItem("clinne_onboarding_done", "1");
+    setShowOnboarding(false);
+  }
+
   return (
     <div className="p-8">
+      {showOnboarding && <OnboardingGuide onDismiss={dismissOnboarding} />}
       {/* Trial banner */}
       {billing?.emTrial && (
         <div className={`mb-6 rounded-2xl p-4 flex items-center justify-between gap-4 ${billing.diasRestantesTrial <= 3 ? "bg-red-50 border border-red-200" : "bg-amber-50 border border-amber-200"}`}>

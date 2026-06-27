@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { CheckCircle, CreditCard, AlertCircle, ExternalLink, Zap } from "lucide-react";
+import { Link } from "react-router-dom";
+import { CheckCircle, CreditCard, AlertCircle, ExternalLink, Zap, Star } from "lucide-react";
 import api from "../lib/api";
 
 interface BillingStatus {
@@ -62,19 +63,46 @@ export default function Billing() {
 
   const assinaturaAtiva = status?.plano === "mensal" || status?.plano === "anual";
 
+  if (sucesso) {
+    return (
+      <div className="flex items-center justify-center min-h-[70vh]">
+        <div className="text-center max-w-md px-6">
+          <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 relative">
+            <CheckCircle size={48} className="text-emerald-500" />
+            <span className="absolute -top-1 -right-1 text-2xl">🌿</span>
+          </div>
+          <h1 className="text-3xl font-bold text-zena-green-dark mb-3">Bem-vinda à Clinne!</h1>
+          <p className="text-zena-text-mid text-lg mb-2">Sua assinatura foi ativada com sucesso.</p>
+          <p className="text-zena-text-light text-sm mb-8">Agora você tem acesso completo à plataforma. Vamos começar?</p>
+          <div className="bg-zena-cream rounded-2xl p-5 mb-8 text-left space-y-3">
+            {[
+              "Adicione suas primeiras pacientes",
+              "Crie planos alimentares em PDF",
+              "Acompanhe o progresso e check-ins",
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-3">
+                <Star size={14} className="text-zena-green-light flex-shrink-0" />
+                <span className="text-sm text-zena-text-mid">{item}</span>
+              </div>
+            ))}
+          </div>
+          <Link
+            to="/app/dashboard"
+            className="inline-block bg-zena-green-dark text-white font-semibold px-8 py-3 rounded-xl hover:bg-zena-green-mid transition-colors"
+          >
+            Ir para o dashboard →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-zena-green-dark">Assinatura</h1>
         <p className="text-zena-text-mid mt-1">Gerencie seu plano e pagamentos.</p>
       </div>
-
-      {sucesso && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3">
-          <CheckCircle size={20} className="text-emerald-600 flex-shrink-0" />
-          <p className="text-emerald-700 font-medium">Assinatura ativada com sucesso! Obrigada por escolher a Clinne. 🌿</p>
-        </div>
-      )}
 
       {/* Status atual */}
       <div className="bg-white rounded-2xl border border-zena-mint/30 p-6">
@@ -193,3 +221,4 @@ export default function Billing() {
     </div>
   );
 }
+
