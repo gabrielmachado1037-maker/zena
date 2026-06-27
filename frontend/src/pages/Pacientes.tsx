@@ -125,7 +125,7 @@ export default function Pacientes() {
           {filtrados.map((p) => (
             <div
               key={p.id}
-              onClick={() => navigate(`/pacientes/${p.id}`)}
+              onClick={() => navigate(`/app/pacientes/${p.id}`)}
               className="bg-white rounded-2xl p-5 border border-zena-mint/30 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex items-center gap-4"
             >
               <div className={`w-12 h-12 rounded-full ${getColor(p.nome)} flex items-center justify-center text-white font-bold`}>
