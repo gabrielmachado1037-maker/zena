@@ -66,6 +66,7 @@ model Paciente {
   lembretes         Lembrete[]
   planoCobranca     PlanoCobranca?
   fotosEvolucao     FotoEvolucao[]
+  registrosFotos    RegistroFotos[]
   createdAt         DateTime           @default(now())
 }
 
@@ -206,6 +207,21 @@ model FotoEvolucao {
   tipo       String
   imagem     String
   criadoEm  DateTime @default(now())
+}
+
+model RegistroFotos {
+  id          String   @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  mes         Int
+  ano         Int
+  frenteUrl   String?
+  perfilUrl   String?
+  costasUrl   String?
+  observacoes String?
+  criadoEm    DateTime @default(now())
+
+  @@unique([pacienteId, mes, ano])
 }
 
 model PlanoCobranca {

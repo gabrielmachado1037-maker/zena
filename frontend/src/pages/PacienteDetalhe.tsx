@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef, useCallback, type ChangeEvent } from "react";
+import { useEffect, useState, useRef, useCallback, type ChangeEvent, type DragEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Copy, TrendingDown, TrendingUp, Minus, MessageCircle, Camera, Upload, ClipboardList, Pencil, Check, X, Images, Share2, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Copy, TrendingDown, TrendingUp, Minus, MessageCircle, Camera, Upload, ClipboardList, Pencil, Check, X, Images, Share2, Trash2, ChevronLeft, ChevronRight, LayoutTemplate } from "lucide-react";
 import PdfPlano from "../components/PdfPlano";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -1294,195 +1294,279 @@ function AbaComunicacao({ paciente, setPaciente: _sp, show: _sh, nutricionista }
 }
 
 // ---------- Aba Galeria ----------
-interface FotoMeta { id: string; data: string; tipo: string; }
-interface FotoComImagem extends FotoMeta { imagem: string; }
+interface RegistroFotos {
+  id: string;
+  pacienteId: string;
+  mes: number;
+  ano: number;
+  frenteUrl?: string | null;
+  perfilUrl?: string | null;
+  costasUrl?: string | null;
+  observacoes?: string | null;
+  criadoEm: string;
+}
 
-function AbaGaleria({ paciente, show }: { paciente: Paciente; show: any }) {
-  const [fotos, setFotos] = useState<FotoMeta[]>([]);
-  const [loadingFotos, setLoadingFotos] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [uploadForm, setUploadForm] = useState({ data: new Date().toISOString().split("T")[0], tipo: "frente" });
-  const fileRef = useRef<HTMLInputElement>(null);
+const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const ANGULOS = [
+  { key: "frente", label: "Frente" },
+  { key: "perfil", label: "Perfil" },
+  { key: "costas", label: "Costas" },
+] as const;
 
-  // Comparativo
-  const [modo, setModo] = useState<"galeria" | "comparar">("galeria");
-  const [dataAntes, setDataAntes] = useState("");
-  const [dataDepois, setDataDepois] = useState("");
-  const [fotoAntes, setFotoAntes] = useState<FotoComImagem | null>(null);
-  const [fotoDepois2, setFotoDepois2] = useState<FotoComImagem | null>(null);
-  const [tipoComparativo, setTipoComparativo] = useState("frente");
-  const [loadingCompar, setLoadingCompar] = useState(false);
+type AnguloKey = "frente" | "perfil" | "costas";
 
-  useEffect(() => {
-    api.get(`/fotos/${paciente.id}/meta`).then(r => setFotos(r.data)).finally(() => setLoadingFotos(false));
-  }, [paciente.id]);
+function DropZone({ label, preview, onFile, disabled }: {
+  label: string;
+  preview: string | null;
+  onFile: (file: File) => void;
+  disabled?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
 
-  // Datas únicas disponíveis
-  const datasUnicas = [...new Set(fotos.map(f => f.data.split("T")[0]))].sort();
-
-  async function handleUpload(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const imagem = await comprimirImagem(file, 800, 0.75);
-      const res = await api.post(`/fotos/${paciente.id}`, { ...uploadForm, imagem });
-      setFotos(prev => [...prev, res.data]);
-      show("Foto salva!");
-    } catch {
-      show("Erro ao salvar foto.", "error");
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith("image/")) onFile(file);
   }
-
-  async function deletar(fotoId: string) {
-    await api.delete(`/fotos/${fotoId}`);
-    setFotos(prev => prev.filter(f => f.id !== fotoId));
-    show("Foto removida.");
-  }
-
-  async function carregarComparativo() {
-    if (!dataAntes || !dataDepois) return;
-    setLoadingCompar(true);
-    try {
-      const fotosAntes = fotos.filter(f => f.data.startsWith(dataAntes) && f.tipo === tipoComparativo);
-      const fotosDepois = fotos.filter(f => f.data.startsWith(dataDepois) && f.tipo === tipoComparativo);
-      if (!fotosAntes[0] || !fotosDepois[0]) { show("Foto não encontrada para essa data e ângulo.", "error"); return; }
-      const [ra, rd] = await Promise.all([
-        api.get(`/fotos/${fotosAntes[0].id}/imagem`),
-        api.get(`/fotos/${fotosDepois[0].id}/imagem`),
-      ]);
-      setFotoAntes({ ...fotosAntes[0], imagem: ra.data.imagem });
-      setFotoDepois2({ ...fotosDepois[0], imagem: rd.data.imagem });
-    } catch {
-      show("Erro ao carregar fotos.", "error");
-    } finally {
-      setLoadingCompar(false);
-    }
-  }
-
-  function compartilhar() {
-    if (!fotoAntes || !fotoDepois2) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = 800; canvas.height = 500;
-    const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#f5f5f0";
-    ctx.fillRect(0, 0, 800, 500);
-
-    // Header
-    ctx.fillStyle = "#2D6A4F";
-    ctx.fillRect(0, 0, 800, 60);
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 22px sans-serif";
-    ctx.fillText(`${paciente.nome} — Evolução Clinne`, 24, 38);
-
-    function drawImg(src: string, x: number, w: number, label: string, cb: () => void) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, x, 70, w, 400);
-        ctx.fillStyle = "rgba(0,0,0,0.5)";
-        ctx.fillRect(x, 420, w, 50);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 16px sans-serif";
-        ctx.fillText(label, x + 16, 450);
-        cb();
-      };
-      img.src = src;
-    }
-
-    drawImg(fotoAntes.imagem, 10, 385, `ANTES — ${dataAntes}`, () => {
-      drawImg(fotoDepois2.imagem, 405, 385, `DEPOIS — ${dataDepois}`, () => {
-        const link = document.createElement("a");
-        link.download = `evolucao-${paciente.nome.replace(/\s+/g, "-")}.png`;
-        link.href = canvas.toDataURL("image/png");
-        link.click();
-      });
-    });
-  }
-
-  // Agrupar fotos por data para o grid
-  const fotosPorData: Record<string, FotoMeta[]> = {};
-  for (const f of fotos) {
-    const d = f.data.split("T")[0];
-    if (!fotosPorData[d]) fotosPorData[d] = [];
-    fotosPorData[d].push(f);
-  }
-
-  const TIPOS = ["frente", "perfil", "costas"];
-  const tipoLabel: Record<string, string> = { frente: "Frente", perfil: "Perfil", costas: "Costas" };
 
   return (
-    <div className="space-y-6">
-      {/* Upload + controles */}
-      <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
+    <div
+      className={`relative aspect-[3/4] rounded-xl border-2 border-dashed transition-all cursor-pointer overflow-hidden
+        ${dragging ? "border-zena-green-mid bg-zena-green-light/10 scale-[1.02]" : "border-zena-mint/60 bg-zena-cream/60 hover:border-zena-green-light hover:bg-zena-cream"}
+        ${disabled ? "opacity-50 pointer-events-none" : ""}`}
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={handleDrop}
+    >
+      <input ref={inputRef} type="file" accept="image/*" className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }} />
+      {preview ? (
+        <>
+          <img src={preview} alt={label} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center">
+            <div className="opacity-0 hover:opacity-100 transition-opacity bg-white/90 rounded-lg px-3 py-1.5 text-xs font-medium text-zena-text-dark">
+              Trocar foto
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent pt-6 pb-2 text-center">
+            <span className="text-white text-xs font-semibold">{label}</span>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full gap-2 p-3">
+          <div className="w-10 h-10 rounded-full bg-zena-green-light/20 flex items-center justify-center">
+            <Upload size={18} className="text-zena-green-mid" />
+          </div>
+          <span className="text-zena-text-mid text-sm font-semibold">{label}</span>
+          <span className="text-zena-text-light text-xs text-center">Clique ou arraste a foto</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AbaGaleria({ paciente, show }: { paciente: Paciente; show: any }) {
+  const [registros, setRegistros] = useState<RegistroFotos[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [modo, setModo] = useState<"galeria" | "upload" | "comparar">("galeria");
+
+  const now = new Date();
+  const [uploadMes, setUploadMes] = useState(now.getMonth() + 1);
+  const [uploadAno, setUploadAno] = useState(now.getFullYear());
+  const [uploadObs, setUploadObs] = useState("");
+  const [previews, setPreviews] = useState<Record<AnguloKey, string | null>>({ frente: null, perfil: null, costas: null });
+  const [files, setFiles] = useState<Record<AnguloKey, File | null>>({ frente: null, perfil: null, costas: null });
+
+  // Comparar
+  const [compIdAntes, setCompIdAntes] = useState("");
+  const [compIdDepois, setCompIdDepois] = useState("");
+  const [compAngulo, setCompAngulo] = useState<AnguloKey>("frente");
+
+  // Modal
+  const [modalUrl, setModalUrl] = useState<string | null>(null);
+  const [modalLabel, setModalLabel] = useState("");
+
+  useEffect(() => {
+    api.get(`/registro-fotos/${paciente.id}`)
+      .then(r => setRegistros(r.data))
+      .finally(() => setLoading(false));
+  }, [paciente.id]);
+
+  async function handleFile(angulo: AnguloKey, file: File) {
+    const compressed = await comprimirImagem(file, 1200, 0.82);
+    setFiles(f => ({ ...f, [angulo]: file }));
+    setPreviews(p => ({ ...p, [angulo]: compressed }));
+  }
+
+  async function salvar() {
+    if (!previews.frente && !previews.perfil && !previews.costas)
+      return show("Adicione ao menos uma foto.", "error");
+    setUploading(true);
+    try {
+      const body: Record<string, unknown> = { mes: uploadMes, ano: uploadAno, observacoes: uploadObs || undefined };
+      if (previews.frente) body.frente = previews.frente;
+      if (previews.perfil) body.perfil = previews.perfil;
+      if (previews.costas) body.costas = previews.costas;
+
+      const res = await api.post(`/registro-fotos/${paciente.id}`, body);
+      setRegistros(prev => {
+        const idx = prev.findIndex(r => r.mes === uploadMes && r.ano === uploadAno);
+        if (idx >= 0) { const n = [...prev]; n[idx] = res.data; return n; }
+        return [res.data, ...prev].sort((a, b) => b.ano !== a.ano ? b.ano - a.ano : b.mes - a.mes);
+      });
+      setPreviews({ frente: null, perfil: null, costas: null });
+      setFiles({ frente: null, perfil: null, costas: null });
+      setUploadObs("");
+      setModo("galeria");
+      show("Fotos salvas!");
+    } catch (e: any) {
+      show(e?.response?.data?.error || "Erro ao salvar fotos.", "error");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function deletarRegistro(id: string) {
+    await api.delete(`/registro-fotos/${id}`);
+    setRegistros(prev => prev.filter(r => r.id !== id));
+    show("Registro removido.");
+  }
+
+  function urlPorAngulo(r: RegistroFotos, angulo: AnguloKey) {
+    return angulo === "frente" ? r.frenteUrl : angulo === "perfil" ? r.perfilUrl : r.costasUrl;
+  }
+
+  const registroAntes = registros.find(r => r.id === compIdAntes);
+  const registroDepois = registros.find(r => r.id === compIdDepois);
+  const urlAntes = registroAntes ? urlPorAngulo(registroAntes, compAngulo) : null;
+  const urlDepois = registroDepois ? urlPorAngulo(registroDepois, compAngulo) : null;
+
+  const anos = [...new Set(registros.map(r => r.ano))];
+
+  return (
+    <div className="space-y-5">
+      {/* Header + tabs */}
+      <div className="bg-white rounded-2xl p-5 border border-zena-mint/30 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-zena-text-dark font-semibold flex items-center gap-2"><Images size={18} /> Galeria de fotos</h3>
-          <div className="flex gap-2">
-            <button onClick={() => setModo("galeria")} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${modo === "galeria" ? "bg-zena-green-mid text-white" : "text-zena-text-mid hover:bg-zena-cream"}`}>
-              Galeria
-            </button>
-            <button onClick={() => setModo("comparar")} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${modo === "comparar" ? "bg-zena-green-mid text-white" : "text-zena-text-mid hover:bg-zena-cream"}`}>
-              Comparar
-            </button>
+          <div className="flex gap-1.5">
+            {(["galeria", "upload", "comparar"] as const).map(m => (
+              <button key={m} onClick={() => setModo(m)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${modo === m ? "bg-zena-green-mid text-white" : "text-zena-text-mid hover:bg-zena-cream"}`}>
+                {m === "upload" ? "Adicionar" : m === "galeria" ? "Galeria" : "Comparar"}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Upload */}
-        <div className="flex flex-wrap gap-3 items-end p-4 bg-zena-cream rounded-xl mb-4">
-          <div>
-            <label className="text-xs font-medium text-zena-text-mid mb-1 block">Data</label>
-            <input type="date" value={uploadForm.data} onChange={e => setUploadForm(f => ({ ...f, data: e.target.value }))}
-              className="px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-zena-text-mid mb-1 block">Ângulo</label>
-            <select value={uploadForm.tipo} onChange={e => setUploadForm(f => ({ ...f, tipo: e.target.value }))}
-              className="px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
-              {TIPOS.map(t => <option key={t} value={t}>{tipoLabel[t]}</option>)}
-            </select>
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
-          <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="flex items-center gap-2 bg-zena-green-dark text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-zena-green-mid disabled:opacity-50">
-            <Camera size={15} /> {uploading ? "Enviando..." : "Adicionar foto"}
-          </button>
-        </div>
+        {/* ── UPLOAD ── */}
+        {modo === "upload" && (
+          <div className="space-y-5">
+            <div className="flex gap-3 items-end flex-wrap">
+              <div>
+                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Mês</label>
+                <select value={uploadMes} onChange={e => setUploadMes(Number(e.target.value))}
+                  className="px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
+                  {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Ano</label>
+                <select value={uploadAno} onChange={e => setUploadAno(Number(e.target.value))}
+                  className="px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
+                  {[2023,2024,2025,2026,2027].map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+            </div>
 
-        {/* Grid galeria */}
+            <div className="grid grid-cols-3 gap-3">
+              {ANGULOS.map(({ key, label }) => (
+                <DropZone key={key} label={label} preview={previews[key]} onFile={f => handleFile(key, f)} disabled={uploading} />
+              ))}
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-zena-text-mid mb-1 block">Observação <span className="font-normal">(opcional)</span></label>
+              <input type="text" value={uploadObs} onChange={e => setUploadObs(e.target.value)} placeholder="Ex: 30 dias de acompanhamento"
+                className="w-full px-3 py-2.5 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light" />
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={() => { setModo("galeria"); setPreviews({ frente: null, perfil: null, costas: null }); }}
+                className="px-4 py-2.5 border border-zena-mint/40 text-zena-text-mid rounded-xl text-sm hover:bg-zena-cream transition-colors">
+                Cancelar
+              </button>
+              <button onClick={salvar} disabled={uploading || (!previews.frente && !previews.perfil && !previews.costas)}
+                className="flex-1 flex items-center justify-center gap-2 bg-zena-green-mid text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-zena-green-dark transition-colors disabled:opacity-50">
+                <Camera size={15} /> {uploading ? "Enviando..." : "Salvar fotos do mês"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── GALERIA ── */}
         {modo === "galeria" && (
-          loadingFotos ? (
-            <p className="text-center text-zena-text-light text-sm py-8">Carregando...</p>
-          ) : fotos.length === 0 ? (
+          loading ? (
+            <div className="space-y-4 animate-pulse">
+              {[1,2].map(i => <div key={i} className="h-40 bg-zena-cream rounded-xl" />)}
+            </div>
+          ) : registros.length === 0 ? (
             <div className="text-center py-12">
               <Camera className="mx-auto text-zena-mint mb-3" size={40} />
               <p className="text-zena-text-mid font-medium">Nenhuma foto ainda.</p>
-              <p className="text-zena-text-light text-sm mt-1">Adicione fotos por data para acompanhar a evolução visual.</p>
+              <p className="text-zena-text-light text-sm mt-2 mb-4">Registre fotos mensais para acompanhar a evolução visual.</p>
+              <button onClick={() => setModo("upload")}
+                className="inline-flex items-center gap-2 bg-zena-green-mid text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-zena-green-dark transition-colors">
+                <Plus size={15} /> Adicionar primeiro registro
+              </button>
             </div>
           ) : (
-            <div className="space-y-6">
-              {Object.entries(fotosPorData).sort(([a], [b]) => b.localeCompare(a)).map(([data, fts]) => (
-                <div key={data}>
-                  <p className="text-zena-text-mid text-sm font-semibold mb-3">
-                    {format(new Date(data + "T12:00:00"), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                  </p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {TIPOS.map(tipo => {
-                      const foto = fts.find(f => f.tipo === tipo);
-                      return (
-                        <div key={tipo} className="aspect-[3/4] rounded-xl bg-zena-cream border border-zena-mint/30 overflow-hidden relative group">
-                          {foto ? (
-                            <FotoThumb fotoId={foto.id} label={tipoLabel[tipo]} onDelete={() => deletar(foto.id)} />
-                          ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-zena-text-light text-xs gap-1">
-                              <Camera size={20} className="opacity-40" />
-                              <span>{tipoLabel[tipo]}</span>
-                            </div>
-                          )}
+            <div className="space-y-8">
+              {anos.map(ano => (
+                <div key={ano}>
+                  <p className="text-zena-text-light text-xs font-bold uppercase tracking-widest mb-4">{ano}</p>
+                  <div className="space-y-6">
+                    {registros.filter(r => r.ano === ano).map(reg => (
+                      <div key={reg.id} className="border border-zena-mint/30 rounded-2xl p-4 group">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <span className="font-semibold text-zena-text-dark">{MESES[reg.mes - 1]} {reg.ano}</span>
+                            {reg.observacoes && <span className="ml-2 text-zena-text-light text-sm">— {reg.observacoes}</span>}
+                          </div>
+                          <button onClick={() => deletarRegistro(reg.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-zena-text-light hover:text-red-500">
+                            <Trash2 size={15} />
+                          </button>
                         </div>
-                      );
-                    })}
+                        <div className="grid grid-cols-3 gap-2">
+                          {ANGULOS.map(({ key, label }) => {
+                            const url = urlPorAngulo(reg, key);
+                            return (
+                              <div key={key} className="aspect-[3/4] rounded-xl overflow-hidden bg-zena-cream border border-zena-mint/20">
+                                {url ? (
+                                  <button className="w-full h-full relative group/foto" onClick={() => { setModalUrl(url); setModalLabel(`${MESES[reg.mes-1]} ${reg.ano} — ${label}`); }}>
+                                    <img src={url} alt={label} className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/0 group-hover/foto:bg-black/20 transition-colors" />
+                                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent pt-4 pb-1.5 text-center">
+                                      <span className="text-white text-xs font-medium">{label}</span>
+                                    </div>
+                                  </button>
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center text-zena-text-light/50 gap-1">
+                                    <Camera size={18} />
+                                    <span className="text-xs">{label}</span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -1490,79 +1574,71 @@ function AbaGaleria({ paciente, show }: { paciente: Paciente; show: any }) {
           )
         )}
 
-        {/* Modo comparar */}
+        {/* ── COMPARAR ── */}
         {modo === "comparar" && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-3 items-end">
-              <div>
-                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Data ANTES</label>
-                <select value={dataAntes} onChange={e => setDataAntes(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
-                  <option value="">Selecione...</option>
-                  {datasUnicas.map(d => <option key={d} value={d}>{format(new Date(d + "T12:00:00"), "dd/MM/yyyy")}</option>)}
-                </select>
+          <div className="space-y-5">
+            {registros.length < 2 ? (
+              <div className="text-center py-10 text-zena-text-light text-sm">
+                Você precisa de ao menos 2 registros de meses diferentes para comparar.
               </div>
-              <div>
-                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Data DEPOIS</label>
-                <select value={dataDepois} onChange={e => setDataDepois(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
-                  <option value="">Selecione...</option>
-                  {datasUnicas.map(d => <option key={d} value={d}>{format(new Date(d + "T12:00:00"), "dd/MM/yyyy")}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Ângulo</label>
-                <select value={tipoComparativo} onChange={e => setTipoComparativo(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
-                  {TIPOS.map(t => <option key={t} value={t}>{tipoLabel[t]}</option>)}
-                </select>
-              </div>
-              <button onClick={carregarComparativo} disabled={!dataAntes || !dataDepois || loadingCompar}
-                className="bg-zena-green-dark text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-zena-green-mid disabled:opacity-50">
-                {loadingCompar ? "Carregando..." : "Comparar"}
-              </button>
-            </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-zena-text-mid mb-1 block">Mês anterior</label>
+                    <select value={compIdAntes} onChange={e => setCompIdAntes(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
+                      <option value="">Selecione...</option>
+                      {registros.map(r => <option key={r.id} value={r.id}>{MESES[r.mes-1]} {r.ano}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-zena-text-mid mb-1 block">Mês atual</label>
+                    <select value={compIdDepois} onChange={e => setCompIdDepois(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
+                      <option value="">Selecione...</option>
+                      {registros.map(r => <option key={r.id} value={r.id}>{MESES[r.mes-1]} {r.ano}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-zena-text-mid mb-1 block">Ângulo</label>
+                    <select value={compAngulo} onChange={e => setCompAngulo(e.target.value as AnguloKey)}
+                      className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
+                      {ANGULOS.map(a => <option key={a.key} value={a.key}>{a.label}</option>)}
+                    </select>
+                  </div>
+                </div>
 
-            {fotoAntes && fotoDepois2 && (
-              <div>
-                <div className="max-w-sm mx-auto">
-                  <FotoSlider antes={fotoAntes.imagem} depois={fotoDepois2.imagem} />
-                </div>
-                <div className="flex justify-center mt-4">
-                  <button onClick={compartilhar}
-                    className="flex items-center gap-2 bg-[#25D366] text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:opacity-90">
-                    <Share2 size={16} /> Baixar imagem para compartilhar
-                  </button>
-                </div>
-              </div>
+                {compIdAntes && compIdDepois && urlAntes && urlDepois ? (
+                  <div className="max-w-sm mx-auto">
+                    <FotoSlider
+                      antes={urlAntes}
+                      depois={urlDepois}
+                      labelAntes={registroAntes ? `${MESES[registroAntes.mes-1]} ${registroAntes.ano}` : "ANTES"}
+                      labelDepois={registroDepois ? `${MESES[registroDepois.mes-1]} ${registroDepois.ano}` : "DEPOIS"}
+                    />
+                  </div>
+                ) : compIdAntes && compIdDepois ? (
+                  <p className="text-center text-zena-text-light text-sm py-4">
+                    Foto de {ANGULOS.find(a => a.key === compAngulo)?.label.toLowerCase()} não disponível em um dos registros.
+                  </p>
+                ) : null}
+              </>
             )}
           </div>
         )}
       </div>
-    </div>
-  );
-}
 
-function FotoThumb({ fotoId, label, onDelete }: { fotoId: string; label: string; onDelete: () => void }) {
-  const [imagem, setImagem] = useState<string | null>(null);
-  useEffect(() => {
-    api.get(`/fotos/${fotoId}/imagem`).then(r => setImagem(r.data.imagem));
-  }, [fotoId]);
-
-  return (
-    <div className="w-full h-full relative group">
-      {imagem ? (
-        <>
-          <img src={imagem} alt={label} className="w-full h-full object-cover" />
-          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs py-1 text-center">{label}</div>
-          <button onClick={onDelete}
-            className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-            <Trash2 size={12} />
-          </button>
-        </>
-      ) : (
-        <div className="w-full h-full flex items-center justify-center">
-          <div className="w-5 h-5 border-2 border-zena-green-light border-t-transparent rounded-full animate-spin" />
+      {/* Modal foto ampliada */}
+      {modalUrl && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={() => setModalUrl(null)}>
+          <div className="relative max-h-[90vh] max-w-lg w-full" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-white text-sm font-medium">{modalLabel}</span>
+              <button onClick={() => setModalUrl(null)} className="text-white/70 hover:text-white"><X size={20} /></button>
+            </div>
+            <img src={modalUrl} alt={modalLabel} className="w-full max-h-[80vh] object-contain rounded-xl" />
+          </div>
         </div>
       )}
     </div>

@@ -1,0 +1,81 @@
+import { Router, Response } from "express";
+import prisma from "../lib/prisma";
+import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { uploadFoto, deleteFoto } from "../lib/supabase";
+
+const router = Router();
+router.use(authMiddleware);
+
+router.get("/:pacienteId", async (req: AuthRequest, res: Response) => {
+  const { pacienteId } = req.params as { pacienteId: string };
+  const paciente = await prisma.paciente.findFirst({
+    where: { id: pacienteId, nutricionistaId: req.nutricionistaId! },
+  });
+  if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });
+
+  const registros = await prisma.registroFotos.findMany({
+    where: { pacienteId },
+    orderBy: [{ ano: "desc" }, { mes: "desc" }],
+  });
+  res.json(registros);
+});
+
+router.post("/:pacienteId", async (req: AuthRequest, res: Response) => {
+  const { pacienteId } = req.params as { pacienteId: string };
+  const { mes, ano, frente, perfil, costas, observacoes } = req.body as {
+    mes: number; ano: number;
+    frente?: string; perfil?: string; costas?: string;
+    observacoes?: string;
+  };
+
+  if (!mes || !ano) return res.status(400).json({ error: "mes e ano são obrigatórios" });
+  if (!frente && !perfil && !costas) return res.status(400).json({ error: "Envie ao menos uma foto" });
+
+  const paciente = await prisma.paciente.findFirst({
+    where: { id: pacienteId, nutricionistaId: req.nutricionistaId! },
+  });
+  if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });
+
+  const existing = await prisma.registroFotos.findUnique({
+    where: { pacienteId_mes_ano: { pacienteId, mes: Number(mes), ano: Number(ano) } },
+  });
+
+  const base = `${pacienteId}/${ano}/${mes}`;
+  const urls: { frenteUrl?: string; perfilUrl?: string; costasUrl?: string } = {};
+
+  if (frente) urls.frenteUrl = await uploadFoto(`${base}/frente.jpg`, frente);
+  if (perfil) urls.perfilUrl = await uploadFoto(`${base}/perfil.jpg`, perfil);
+  if (costas) urls.costasUrl = await uploadFoto(`${base}/costas.jpg`, costas);
+
+  let registro;
+  if (existing) {
+    registro = await prisma.registroFotos.update({
+      where: { id: existing.id },
+      data: { ...urls, observacoes: observacoes ?? existing.observacoes },
+    });
+  } else {
+    registro = await prisma.registroFotos.create({
+      data: { pacienteId, mes: Number(mes), ano: Number(ano), ...urls, observacoes },
+    });
+  }
+
+  res.json(registro);
+});
+
+router.delete("/:registroId", async (req: AuthRequest, res: Response) => {
+  const { registroId } = req.params as { registroId: string };
+  const registro = await prisma.registroFotos.findUnique({ where: { id: registroId } });
+  if (!registro) return res.status(404).json({ error: "Registro não encontrado" });
+
+  const base = `${registro.pacienteId}/${registro.ano}/${registro.mes}`;
+  await Promise.all([
+    registro.frenteUrl && deleteFoto(`${base}/frente.jpg`),
+    registro.perfilUrl && deleteFoto(`${base}/perfil.jpg`),
+    registro.costasUrl && deleteFoto(`${base}/costas.jpg`),
+  ].filter(Boolean));
+
+  await prisma.registroFotos.delete({ where: { id: registroId } });
+  res.json({ ok: true });
+});
+
+export default router;

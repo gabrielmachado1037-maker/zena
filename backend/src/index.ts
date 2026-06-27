@@ -14,6 +14,7 @@ import lembretesRouter from "./routes/lembretes";
 import billingRouter, { webhookHandler } from "./routes/billing";
 import financeiroRouter from "./routes/financeiro";
 import fotosRouter from "./routes/fotos";
+import registroFotosRouter from "./routes/registroFotos";
 import { initCron } from "./cron";
 
 dotenv.config();
@@ -43,6 +44,7 @@ app.use("/api/lembretes", lembretesRouter);
 app.use("/api/billing", billingRouter);
 app.use("/api/financeiro", financeiroRouter);
 app.use("/api/fotos", fotosRouter);
+app.use("/api/registro-fotos", registroFotosRouter);
 
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 
