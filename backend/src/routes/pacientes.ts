@@ -71,7 +71,7 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
 
 router.post("/:id/medicoes", async (req: AuthRequest, res: Response) => {
   const pacienteId = req.params["id"] as string;
-  const { data, peso, gordura, musculo, cintura, quadril, laudo, observacoes } = req.body;
+  const { data, peso, gordura, musculo, cintura, quadril, braco, coxa, laudo, observacoes } = req.body;
   const medicao = await prisma.medicao.create({
     data: {
       pacienteId,
@@ -81,6 +81,8 @@ router.post("/:id/medicoes", async (req: AuthRequest, res: Response) => {
       musculo: musculo ? parseFloat(musculo) : null,
       cintura: cintura ? parseFloat(cintura) : null,
       quadril: quadril ? parseFloat(quadril) : null,
+      braco: braco ? parseFloat(braco) : null,
+      coxa: coxa ? parseFloat(coxa) : null,
       laudo,
       observacoes,
     },

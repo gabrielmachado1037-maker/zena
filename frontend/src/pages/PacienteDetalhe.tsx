@@ -66,7 +66,7 @@ interface Paciente {
   altura?: number | null;
   fotoInicial?: string;
   linkUnico: string;
-  medicoes: Array<{ id: string; data: string; peso: number; gordura?: number; musculo?: number; cintura?: number; quadril?: number; observacoes?: string }>;
+  medicoes: Array<{ id: string; data: string; peso: number; gordura?: number; musculo?: number; cintura?: number; quadril?: number; braco?: number; coxa?: number; observacoes?: string }>;
   consultas: Array<{ id: string; data: string; status: string; notas?: string }>;
   cobrancas: Array<{ id: string; valor: number; vencimento: string; status: string; metodo?: string }>;
   planosAlimentares: Array<{ id: string; dataCriacao: string; cafeManha: string; lancheManha?: string; almoco: string; lancheTarde?: string; jantar: string; ceia?: string; observacoes?: string }>;
@@ -377,35 +377,76 @@ export default function PacienteDetalhe() {
             </div>
 
             {/* Métricas rápidas */}
-            {medicoes.length > 0 && (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-zena-cream">
-                <div>
-                  <p className="text-zena-text-light text-xs">Peso inicial</p>
-                  <p className="text-zena-text-dark font-bold font-mono-data">{pesoInicial} kg</p>
-                </div>
-                <div>
-                  <p className="text-zena-text-light text-xs">Peso atual</p>
-                  <p className="text-zena-text-dark font-bold font-mono-data">{pesoAtual} kg</p>
-                </div>
-                {paciente.pesoMeta && (
-                  <div>
-                    <p className="text-zena-text-light text-xs">Meta</p>
-                    <p className="text-zena-text-dark font-bold font-mono-data">{paciente.pesoMeta} kg</p>
-                  </div>
-                )}
-                {diff !== null && (
-                  <div>
-                    <p className="text-zena-text-light text-xs">Variação</p>
-                    <div className="flex items-center gap-1">
-                      {diff < 0 ? <TrendingDown size={14} className="text-zena-green-light" /> : diff > 0 ? <TrendingUp size={14} className="text-zena-brown" /> : <Minus size={14} className="text-zena-text-light" />}
-                      <p className={`font-bold font-mono-data ${diff < 0 ? "text-zena-green-light" : diff > 0 ? "text-zena-brown" : "text-zena-text-light"}`}>
-                        {diff > 0 ? "+" : ""}{diff.toFixed(1)} kg
-                      </p>
+            {medicoes.length > 0 && (() => {
+              const ultima = medicoes[medicoes.length - 1];
+              return (
+                <div className="mt-6 pt-6 border-t border-zena-cream space-y-4">
+                  {/* Peso */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-zena-text-light text-xs">Peso inicial</p>
+                      <p className="text-zena-text-dark font-bold font-mono-data">{pesoInicial} kg</p>
                     </div>
+                    <div>
+                      <p className="text-zena-text-light text-xs">Peso atual</p>
+                      <p className="text-zena-text-dark font-bold font-mono-data">{pesoAtual} kg</p>
+                    </div>
+                    {paciente.pesoMeta && (
+                      <div>
+                        <p className="text-zena-text-light text-xs">Meta</p>
+                        <p className="text-zena-text-dark font-bold font-mono-data">{paciente.pesoMeta} kg</p>
+                      </div>
+                    )}
+                    {diff !== null && (
+                      <div>
+                        <p className="text-zena-text-light text-xs">Variação total</p>
+                        <div className="flex items-center gap-1">
+                          {diff < 0 ? <TrendingDown size={14} className="text-zena-green-light" /> : diff > 0 ? <TrendingUp size={14} className="text-zena-brown" /> : <Minus size={14} className="text-zena-text-light" />}
+                          <p className={`font-bold font-mono-data ${diff < 0 ? "text-zena-green-light" : diff > 0 ? "text-zena-brown" : "text-zena-text-light"}`}>
+                            {diff > 0 ? "+" : ""}{diff.toFixed(1)} kg
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                  {/* Composição corporal da última medição */}
+                  {(ultima.gordura || ultima.cintura || ultima.quadril || ultima.braco || ultima.coxa) && (
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 pt-3 border-t border-zena-cream/60">
+                      {ultima.gordura != null && (
+                        <div>
+                          <p className="text-zena-text-light text-xs">% Gordura</p>
+                          <p className="text-zena-text-dark font-semibold font-mono-data">{ultima.gordura}%</p>
+                        </div>
+                      )}
+                      {ultima.cintura != null && (
+                        <div>
+                          <p className="text-zena-text-light text-xs">Cintura</p>
+                          <p className="text-zena-text-dark font-semibold font-mono-data">{ultima.cintura} cm</p>
+                        </div>
+                      )}
+                      {ultima.quadril != null && (
+                        <div>
+                          <p className="text-zena-text-light text-xs">Quadril</p>
+                          <p className="text-zena-text-dark font-semibold font-mono-data">{ultima.quadril} cm</p>
+                        </div>
+                      )}
+                      {ultima.braco != null && (
+                        <div>
+                          <p className="text-zena-text-light text-xs">Braço</p>
+                          <p className="text-zena-text-dark font-semibold font-mono-data">{ultima.braco} cm</p>
+                        </div>
+                      )}
+                      {ultima.coxa != null && (
+                        <div>
+                          <p className="text-zena-text-light text-xs">Coxa</p>
+                          <p className="text-zena-text-dark font-semibold font-mono-data">{ultima.coxa} cm</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </>
         )}
       </div>
@@ -444,7 +485,7 @@ export default function PacienteDetalhe() {
 
 function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paciente; setPaciente: any; medicoes: any[]; show: any }) {
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ data: new Date().toISOString().split("T")[0], peso: "", gordura: "", musculo: "", cintura: "", quadril: "", observacoes: "" });
+  const [form, setForm] = useState({ data: new Date().toISOString().split("T")[0], peso: "", gordura: "", musculo: "", cintura: "", quadril: "", braco: "", coxa: "", observacoes: "" });
   const [loading, setLoading] = useState(false);
 
   async function salvar(e: React.FormEvent) {
@@ -471,12 +512,14 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
       gordura: m.gordura ?? null,
       cintura: m.cintura ?? null,
       quadril: m.quadril ?? null,
+      braco: m.braco ?? null,
+      coxa: m.coxa ?? null,
       imc,
     };
   });
 
   const temGordura = medicoes.some((m) => m.gordura);
-  const temMedidas = medicoes.some((m) => m.cintura || m.quadril);
+  const temMedidas = medicoes.some((m) => m.cintura || m.quadril || m.braco || m.coxa);
 
   return (
     <div className="space-y-6">
@@ -539,6 +582,8 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
                   <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #B7E4C7", fontSize: 12 }} formatter={(v) => [`${v} cm`]} />
                   <Line type="monotone" dataKey="cintura" stroke="#2D6A4F" strokeWidth={2} dot={{ r: 3 }} name="Cintura" connectNulls />
                   <Line type="monotone" dataKey="quadril" stroke="#52B788" strokeWidth={2} dot={{ r: 3 }} name="Quadril" connectNulls />
+                  <Line type="monotone" dataKey="braco" stroke="#74C69D" strokeWidth={2} dot={{ r: 3 }} name="Braço" connectNulls />
+                  <Line type="monotone" dataKey="coxa" stroke="#B7E4C7" strokeWidth={2} dot={{ r: 3 }} name="Coxa" connectNulls />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -557,6 +602,8 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
                     <th className="pb-3 font-medium">% Gord.</th>
                     <th className="pb-3 font-medium">Cintura</th>
                     <th className="pb-3 font-medium">Quadril</th>
+                    <th className="pb-3 font-medium">Braço</th>
+                    <th className="pb-3 font-medium">Coxa</th>
                     <th className="pb-3 font-medium">Obs.</th>
                   </tr>
                 </thead>
@@ -572,6 +619,8 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
                         <td className="py-3 text-zena-text-mid">{m.gordura ? `${m.gordura}%` : "—"}</td>
                         <td className="py-3 text-zena-text-mid">{m.cintura ? `${m.cintura}cm` : "—"}</td>
                         <td className="py-3 text-zena-text-mid">{m.quadril ? `${m.quadril}cm` : "—"}</td>
+                        <td className="py-3 text-zena-text-mid">{m.braco ? `${m.braco}cm` : "—"}</td>
+                        <td className="py-3 text-zena-text-mid">{m.coxa ? `${m.coxa}cm` : "—"}</td>
                         <td className="py-3 text-zena-text-light text-xs max-w-xs truncate">{m.observacoes || "—"}</td>
                       </tr>
                     );
@@ -596,6 +645,8 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
                   ["% Músculo", "musculo", "number"],
                   ["Cintura (cm)", "cintura", "number"],
                   ["Quadril (cm)", "quadril", "number"],
+                  ["Braço (cm)", "braco", "number"],
+                  ["Coxa (cm)", "coxa", "number"],
                 ].map(([label, key, type]) => (
                   <div key={key}>
                     <label className="text-xs font-medium text-zena-text-mid mb-1 block">{label}</label>

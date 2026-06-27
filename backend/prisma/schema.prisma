@@ -151,6 +151,8 @@ model Medicao {
   musculo     Float?
   cintura     Float?
   quadril     Float?
+  braco       Float?
+  coxa        Float?
   laudo       String?
   observacoes String?
   createdAt   DateTime @default(now())
