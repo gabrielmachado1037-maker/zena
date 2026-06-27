@@ -128,78 +128,127 @@ export default function Planos() {
 
         {/* Cards de plano */}
         {!pixData && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-
-            {/* Plano Mensal */}
-            <div className="bg-white rounded-2xl shadow-sm border border-zena-sage/20 p-8">
-              <h2 className="text-lg font-bold text-zena-green-dark mb-1">Plano Mensal</h2>
-              <p className="text-4xl font-extrabold text-zena-green-light mb-1">R$69</p>
-              <p className="text-zena-text text-sm mb-6">por mês</p>
-              <ul className="space-y-2 mb-8">
-                {["Pacientes ilimitados", "Planos alimentares", "Área do paciente", "Cobranças via Pix", "Suporte por email"].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-zena-text">
-                    <Check size={16} className="text-zena-green-light flex-shrink-0" />
-                    {f}
-                  </li>
+          <>
+            {/* Prova social */}
+            <div className="flex items-center justify-center gap-3 mb-8">
+              <div className="flex -space-x-2">
+                {["FL", "AC", "RS", "MB"].map((i, idx) => (
+                  <div key={idx} className="w-8 h-8 rounded-full bg-zena-green-mid border-2 border-zena-cream flex items-center justify-center text-white text-[10px] font-bold">{i}</div>
                 ))}
-              </ul>
-              <div className="space-y-3">
-                <button
-                  onClick={() => assinarPix("mensal")}
-                  disabled={!!loadingPlano}
-                  className="w-full bg-zena-green-light text-white rounded-xl py-3 font-semibold hover:bg-zena-green-mid transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {loadingPlano === "mensal" ? <Loader2 size={16} className="animate-spin" /> : null}
-                  Pagar com Pix — R$69/mês
-                </button>
-                <button
-                  onClick={() => assinarCartao("mensal")}
-                  disabled={!!loadingPlano}
-                  className="w-full border border-zena-sage text-zena-text rounded-xl py-2.5 text-sm font-medium hover:bg-zena-cream transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {loadingPlano === "cartao-mensal" ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
-                  Pagar com cartão (Stripe)
-                </button>
+              </div>
+              <p className="text-zena-text-mid text-sm font-medium">
+                Usado por <span className="text-zena-green-dark font-bold">+200 nutricionistas</span> em todo o Brasil
+              </p>
+            </div>
+
+            {/* Grid: mensal | depoimento | anual */}
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 mb-6 items-start">
+
+              {/* Plano Mensal */}
+              <div className="bg-white rounded-2xl shadow-sm border border-zena-sage/20 p-8">
+                <h2 className="text-lg font-bold text-zena-green-dark mb-1">Plano Mensal</h2>
+                <p className="text-4xl font-extrabold text-zena-green-light mb-0.5">R$69</p>
+                <p className="text-zena-text text-sm mb-1">por mês</p>
+                <p className="text-zena-text-mid text-xs italic mb-6">Menos que uma consulta por mês</p>
+                <ul className="space-y-2 mb-8">
+                  {["Pacientes ilimitados", "Planos alimentares", "Área do paciente", "Cobranças via Pix", "Suporte por email"].map(f => (
+                    <li key={f} className="flex items-center gap-2 text-sm text-zena-text">
+                      <Check size={16} className="text-zena-green-light flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => assinarPix("mensal")}
+                    disabled={!!loadingPlano}
+                    className="w-full bg-zena-green-light text-white rounded-xl py-3 font-semibold hover:bg-zena-green-mid transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {loadingPlano === "mensal" ? <Loader2 size={16} className="animate-spin" /> : null}
+                    Pagar com Pix — R$69/mês
+                  </button>
+                  <button
+                    onClick={() => assinarCartao("mensal")}
+                    disabled={!!loadingPlano}
+                    className="w-full border border-zena-sage text-zena-text rounded-xl py-2.5 text-sm font-medium hover:bg-zena-cream transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {loadingPlano === "cartao-mensal" ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
+                    Pagar com cartão (Stripe)
+                  </button>
+                  <Garantias />
+                </div>
+              </div>
+
+              {/* Depoimento (centro) */}
+              <div className="hidden md:flex flex-col items-center justify-center gap-4 w-48 py-8 px-2 self-center">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-zena-green-mid to-teal-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow-md">
+                  FL
+                </div>
+                <blockquote className="text-center">
+                  <p className="text-zena-text-dark text-sm font-medium leading-snug mb-2">
+                    "Reduzi 3h de trabalho semanal com o Clinne."
+                  </p>
+                  <footer className="text-zena-text-light text-xs">
+                    <strong className="text-zena-text-mid">Dra. Fernanda Lima</strong><br />
+                    CRN-3 15890 · São Paulo
+                  </footer>
+                </blockquote>
+                <div className="flex gap-0.5">
+                  {[1,2,3,4,5].map(s => <span key={s} className="text-amber-400 text-sm">★</span>)}
+                </div>
+              </div>
+
+              {/* Plano Anual */}
+              <div className="bg-zena-green-dark rounded-2xl shadow-sm p-8 relative overflow-hidden">
+                <div className="absolute top-4 right-4 bg-zena-green-light text-white text-xs font-bold px-3 py-1 rounded-full">
+                  MELHOR VALOR
+                </div>
+                <h2 className="text-lg font-bold text-white mb-1">Plano Anual</h2>
+                <p className="text-4xl font-extrabold text-zena-mint mb-0.5">R$59</p>
+                <p className="text-zena-text-light text-sm mb-1">por mês · cobrado como R$708/ano</p>
+                <p className="text-zena-mint text-xs font-semibold mb-6">Você economiza R$120 — 2 meses grátis</p>
+                <ul className="space-y-2 mb-8">
+                  {["Tudo do plano mensal", "2 meses grátis", "Suporte prioritário"].map(f => (
+                    <li key={f} className="flex items-center gap-2 text-sm text-zena-text-light">
+                      <Check size={16} className="text-zena-mint flex-shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <div className="space-y-3">
+                  <button
+                    onClick={() => assinarPix("anual")}
+                    disabled={!!loadingPlano}
+                    className="w-full bg-zena-mint text-zena-green-dark rounded-xl py-3 font-bold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {loadingPlano === "anual" ? <Loader2 size={16} className="animate-spin" /> : null}
+                    Pagar com Pix — R$708/ano
+                  </button>
+                  <button
+                    onClick={() => assinarCartao("anual")}
+                    disabled={!!loadingPlano}
+                    className="w-full border border-zena-text-light/30 text-zena-text-light rounded-xl py-2.5 text-sm font-medium hover:bg-zena-green-mid transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {loadingPlano === "cartao-anual" ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
+                    Pagar com cartão (Stripe)
+                  </button>
+                  <Garantias dark />
+                </div>
               </div>
             </div>
 
-            {/* Plano Anual */}
-            <div className="bg-zena-green-dark rounded-2xl shadow-sm p-8 relative overflow-hidden">
-              <div className="absolute top-4 right-4 bg-zena-green-light text-white text-xs font-bold px-3 py-1 rounded-full">
-                MELHOR VALOR
+            {/* Depoimento mobile (abaixo dos cards) */}
+            <div className="md:hidden flex items-center gap-4 bg-white rounded-2xl p-5 border border-zena-sage/20 mb-6">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-zena-green-mid to-teal-600 flex items-center justify-center text-white font-bold flex-shrink-0">
+                FL
               </div>
-              <h2 className="text-lg font-bold text-white mb-1">Plano Anual</h2>
-              <p className="text-4xl font-extrabold text-zena-mint mb-1">R$59</p>
-              <p className="text-zena-text-light text-sm mb-1">por mês · cobrado como R$708/ano</p>
-              <p className="text-zena-mint text-xs font-semibold mb-6">Economize R$120 por ano</p>
-              <ul className="space-y-2 mb-8">
-                {["Tudo do plano mensal", "2 meses grátis", "Suporte prioritário"].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-zena-text-light">
-                    <Check size={16} className="text-zena-mint flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <div className="space-y-3">
-                <button
-                  onClick={() => assinarPix("anual")}
-                  disabled={!!loadingPlano}
-                  className="w-full bg-zena-mint text-zena-green-dark rounded-xl py-3 font-bold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {loadingPlano === "anual" ? <Loader2 size={16} className="animate-spin" /> : null}
-                  Pagar com Pix — R$708/ano
-                </button>
-                <button
-                  onClick={() => assinarCartao("anual")}
-                  disabled={!!loadingPlano}
-                  className="w-full border border-zena-text-light/30 text-zena-text-light rounded-xl py-2.5 text-sm font-medium hover:bg-zena-green-mid transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {loadingPlano === "cartao-anual" ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
-                  Pagar com cartão (Stripe)
-                </button>
+              <div>
+                <p className="text-zena-text-dark text-sm font-medium">"Reduzi 3h de trabalho semanal com o Clinne."</p>
+                <p className="text-zena-text-light text-xs mt-1">Dra. Fernanda Lima · CRN-3 15890</p>
+                <div className="flex gap-0.5 mt-1">{[1,2,3,4,5].map(s => <span key={s} className="text-amber-400 text-xs">★</span>)}</div>
               </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Erro */}
@@ -272,6 +321,17 @@ export default function Planos() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function Garantias({ dark }: { dark?: boolean }) {
+  const cls = dark ? "text-zena-text-light/70" : "text-zena-text-light";
+  return (
+    <div className={`flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-1 ${cls} text-[11px]`}>
+      <span>✓ Cancele quando quiser</span>
+      <span>✓ Sem fidelidade</span>
+      <span>✓ Dados protegidos (LGPD)</span>
     </div>
   );
 }

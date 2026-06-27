@@ -125,15 +125,15 @@ export default function Dashboard() {
             <p className={`text-sm font-medium ${billing.diasRestantesTrial <= 3 ? "text-red-700" : "text-amber-700"}`}>
               {billing.diasRestantesTrial <= 3
                 ? <>Seu trial expira em <strong>{billing.diasRestantesTrial} dia{billing.diasRestantesTrial !== 1 ? "s" : ""}</strong>! Assine agora para não perder o acesso.</>
-                : <>Você está no período gratuito — <strong>{billing.diasRestantesTrial} dias</strong> restantes. Aproveite para explorar tudo!</>
+                : <>⚡ <strong>{billing.diasRestantesTrial} dias grátis</strong> restantes — sem cartão, cancele quando quiser.</>
               }
             </p>
           </div>
           <Link
-            to="/app/billing"
-            className={`flex-shrink-0 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${billing.diasRestantesTrial <= 3 ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"}`}
+            to="/app/planos"
+            className={`flex-shrink-0 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${billing.diasRestantesTrial <= 3 ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"}`}
           >
-            {billing.diasRestantesTrial <= 3 ? "Assinar agora" : "Ver planos"}
+            {billing.diasRestantesTrial <= 3 ? "Assinar agora" : "Ver planos →"}
           </Link>
         </div>
       )}
