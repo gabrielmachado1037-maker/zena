@@ -98,6 +98,7 @@ export default function PacienteDetalhe() {
   const { toast, show, hide } = useToast();
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
+  const [editError, setEditError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -109,6 +110,7 @@ export default function PacienteDetalhe() {
 
   const startEdit = useCallback(() => {
     if (!paciente) return;
+    setEditError("");
     setEditForm({
       nome: paciente.nome,
       email: paciente.email || "",
@@ -118,11 +120,14 @@ export default function PacienteDetalhe() {
       dataNascimento: paciente.dataNascimento ? paciente.dataNascimento.split("T")[0] : "",
       sexo: paciente.sexo || "",
       altura: paciente.altura ?? "",
+      condicoesSaude: paciente.anamnese?.condicoesSaude || "",
+      restricoes: paciente.anamnese?.restricoes || "",
+      medicamentos: paciente.anamnese?.medicamentos || "",
     });
     setEditMode(true);
   }, [paciente]);
 
-  const cancelEdit = useCallback(() => { setEditMode(false); }, []);
+  const cancelEdit = useCallback(() => { setEditMode(false); setEditError(""); }, []);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") cancelEdit(); }
@@ -131,10 +136,19 @@ export default function PacienteDetalhe() {
   }, [editMode, cancelEdit]);
 
   async function saveEdit() {
+    if (!editForm.nome?.trim()) { setEditError("Nome é obrigatório."); return; }
+    setEditError("");
     setSaving(true);
     try {
-      const res = await api.put(`/pacientes/${id}`, editForm);
-      setPaciente((p: Paciente | null) => p ? { ...p, ...res.data } : p);
+      const { condicoesSaude, restricoes, medicamentos, ...pacienteFields } = editForm;
+      const [res] = await Promise.all([
+        api.put(`/pacientes/${id}`, pacienteFields),
+        api.put(`/anamnese/paciente/${id}`, { condicoesSaude, restricoes, medicamentos }),
+      ]);
+      setPaciente((p: Paciente | null) => p ? {
+        ...p, ...res.data,
+        anamnese: { ...(p.anamnese || {}), condicoesSaude, restricoes, medicamentos },
+      } : p);
       setEditMode(false);
       show("Ficha atualizada!");
     } catch {
@@ -178,7 +192,7 @@ export default function PacienteDetalhe() {
         />
       )}
 
-      <button onClick={() => navigate("/pacientes")} className="flex items-center gap-2 text-zena-text-light hover:text-zena-text-mid text-sm mb-6 transition-colors">
+      <button onClick={() => navigate("/app/pacientes")} className="flex items-center gap-2 text-zena-text-light hover:text-zena-text-mid text-sm mb-6 transition-colors">
         <ArrowLeft size={16} />
         Voltar para pacientes
       </button>
@@ -198,27 +212,57 @@ export default function PacienteDetalhe() {
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { label: "Nome *", key: "nome", type: "text" },
-                { label: "Objetivo *", key: "objetivo", type: "text" },
-                { label: "E-mail", key: "email", type: "email" },
-                { label: "Telefone / WhatsApp", key: "telefone", type: "tel" },
-                { label: "Data de nascimento", key: "dataNascimento", type: "date" },
-                { label: "Altura (cm)", key: "altura", type: "number" },
-                { label: "Meta de peso (kg)", key: "pesoMeta", type: "number" },
-              ].map(({ label, key, type }) => (
-                <div key={key}>
-                  <label className="text-xs font-medium text-zena-text-mid mb-1 block">{label}</label>
-                  <input
-                    type={type}
-                    value={editForm[key]}
-                    onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
-                    step="0.1"
-                    className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light"
-                  />
-                </div>
-              ))}
+
+            {editError && <p className="text-red-500 text-sm mb-4">{editError}</p>}
+
+            {/* Dados pessoais */}
+            <p className="text-xs font-semibold text-zena-text-light uppercase tracking-wide mb-3">Dados pessoais</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+              <div>
+                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Nome *</label>
+                <input
+                  type="text"
+                  value={editForm.nome}
+                  onChange={(e) => setEditForm({ ...editForm, nome: e.target.value })}
+                  className={`w-full px-3 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light bg-zena-cream ${editError && !editForm.nome?.trim() ? "border-red-400" : "border-zena-mint/50"}`}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Objetivo</label>
+                <input
+                  type="text"
+                  value={editForm.objetivo}
+                  onChange={(e) => setEditForm({ ...editForm, objetivo: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zena-text-mid mb-1 block">E-mail</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Telefone / WhatsApp</label>
+                <input
+                  type="tel"
+                  value={editForm.telefone}
+                  onChange={(e) => setEditForm({ ...editForm, telefone: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Data de nascimento</label>
+                <input
+                  type="date"
+                  value={editForm.dataNascimento}
+                  onChange={(e) => setEditForm({ ...editForm, dataNascimento: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                />
+              </div>
               <div>
                 <label className="text-xs font-medium text-zena-text-mid mb-1 block">Sexo</label>
                 <select
@@ -232,6 +276,46 @@ export default function PacienteDetalhe() {
                   <option value="outro">Outro</option>
                 </select>
               </div>
+            </div>
+
+            {/* Corpo */}
+            <p className="text-xs font-semibold text-zena-text-light uppercase tracking-wide mb-3">Corpo</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5">
+              {[
+                { label: "Altura (cm)", key: "altura" },
+                { label: "Meta de peso (kg)", key: "pesoMeta" },
+              ].map(({ label, key }) => (
+                <div key={key}>
+                  <label className="text-xs font-medium text-zena-text-mid mb-1 block">{label}</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={editForm[key]}
+                    onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                  />
+                </div>
+              ))}
+            </div>
+
+            {/* Saúde */}
+            <p className="text-xs font-semibold text-zena-text-light uppercase tracking-wide mb-3">Saúde</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { label: "Patologias / Condições de saúde", key: "condicoesSaude" },
+                { label: "Alergias / Restrições alimentares", key: "restricoes" },
+                { label: "Medicamentos em uso", key: "medicamentos" },
+              ].map(({ label, key }) => (
+                <div key={key}>
+                  <label className="text-xs font-medium text-zena-text-mid mb-1 block">{label}</label>
+                  <textarea
+                    rows={3}
+                    value={editForm[key]}
+                    onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light resize-none"
+                  />
+                </div>
+              ))}
             </div>
           </div>
         ) : (
