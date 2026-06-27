@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
-import { DollarSign, CheckCircle, Clock, AlertCircle, Plus, X } from "lucide-react";
+import {
+  DollarSign, CheckCircle, Clock, AlertCircle, Plus, X,
+  Key, User, QrCode, CheckCircle2, ChevronRight,
+} from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import api from "../lib/api";
@@ -29,11 +32,21 @@ interface Paciente {
 
 const METODOS = ["pix", "transferência", "cartão de crédito", "cartão de débito", "dinheiro", "outro"];
 
+const meses = [
+  "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
+];
+
+function fmt(v: number) {
+  return `R$ ${v.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+}
+
 export default function Cobrancas() {
   const [cobrancas, setCobrancas] = useState<Cobranca[]>([]);
   const [resumo, setResumo] = useState<Resumo | null>(null);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [loading, setLoading] = useState(true);
+  const [asaasConectado, setAsaasConectado] = useState<boolean | null>(null);
   const { toast, show, hide } = useToast();
 
   const now = new Date();
@@ -41,7 +54,11 @@ export default function Cobrancas() {
   const [ano, setAno] = useState(now.getFullYear());
 
   const [showModal, setShowModal] = useState(false);
+  const [showAsaasModal, setShowAsaasModal] = useState(false);
+  const [showSeletor, setShowSeletor] = useState(false);
+  const [pacienteEscolhido, setPacienteEscolhido] = useState<Paciente | null>(null);
   const [saving, setSaving] = useState(false);
+
   const [form, setForm] = useState({
     pacienteId: "",
     valor: "",
@@ -65,12 +82,14 @@ export default function Cobrancas() {
 
   useEffect(() => {
     api.get("/pacientes").then((r) => setPacientes(r.data));
+    api.get("/financeiro/asaas-status")
+      .then((r) => setAsaasConectado(r.data.configurado))
+      .catch(() => setAsaasConectado(false));
   }, []);
 
   async function marcarPago(id: string) {
     try {
-      const res = await api.patch(`/cobrancas/${id}/pagar`);
-      setCobrancas((prev) => prev.map((c) => c.id === id ? { ...c, ...res.data } : c));
+      await api.patch(`/cobrancas/${id}/pagar`);
       show("Pagamento registrado!");
       carregar();
     } catch {
@@ -78,9 +97,9 @@ export default function Cobrancas() {
     }
   }
 
-  function abrirModal() {
+  function abrirModal(pacienteId?: string) {
     setForm({
-      pacienteId: pacientes[0]?.id || "",
+      pacienteId: pacienteId || pacientes[0]?.id || "",
       valor: "",
       vencimento: format(now, "yyyy-MM-dd"),
       metodo: "pix",
@@ -127,24 +146,25 @@ export default function Cobrancas() {
   };
 
   const pctRecebido = resumo ? Math.round((resumo.totalRecebido / (resumo.totalFaturado || 1)) * 100) : 0;
+  const resumoZerado = resumo && resumo.totalFaturado === 0;
 
-  const meses = [
-    "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-    "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
-  ];
+  const step1Done = asaasConectado === true;
+  const step2Done = !!pacienteEscolhido;
+  const step3Enabled = step1Done && step2Done;
 
   return (
     <div className="p-8">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hide} />}
 
+      {/* Cabeçalho */}
       <div className="mb-8 flex items-start justify-between">
         <div>
           <h1 className="text-zena-text-dark text-3xl font-bold">Cobranças</h1>
           <p className="text-zena-text-light text-sm mt-1">Controle financeiro do consultório</p>
         </div>
         <button
-          onClick={abrirModal}
-          className="flex items-center gap-2 px-4 py-2.5 bg-zena-green-mid text-white rounded-xl text-sm font-semibold hover:bg-zena-green-dark transition-colors"
+          onClick={() => abrirModal()}
+          className="flex items-center gap-2 px-5 py-3 bg-zena-green-mid text-white rounded-xl text-sm font-semibold hover:bg-zena-green-dark transition-colors shadow-sm"
         >
           <Plus size={16} />
           Nova cobrança
@@ -158,15 +178,15 @@ export default function Cobrancas() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-5">
             <div>
               <p className="text-zena-text-light text-xs mb-1">Total faturado</p>
-              <p className="text-2xl font-bold font-mono-data text-zena-text-dark">R$ {resumo.totalFaturado.toFixed(2).replace(".", ",")}</p>
+              <p className="text-2xl font-bold font-mono-data text-zena-text-dark">{fmt(resumo.totalFaturado)}</p>
             </div>
             <div>
               <p className="text-zena-text-light text-xs mb-1">Recebido</p>
-              <p className="text-2xl font-bold font-mono-data text-zena-green-mid">R$ {resumo.totalRecebido.toFixed(2).replace(".", ",")}</p>
+              <p className="text-2xl font-bold font-mono-data text-zena-green-mid">{fmt(resumo.totalRecebido)}</p>
             </div>
             <div>
               <p className="text-zena-text-light text-xs mb-1">Pendente</p>
-              <p className="text-2xl font-bold font-mono-data text-zena-text-mid">R$ {resumo.totalPendente.toFixed(2).replace(".", ",")}</p>
+              <p className="text-2xl font-bold font-mono-data text-zena-text-mid">{fmt(resumo.totalPendente)}</p>
             </div>
             <div>
               <p className="text-zena-text-light text-xs mb-1">Vencidas</p>
@@ -179,12 +199,20 @@ export default function Cobrancas() {
               <span className="font-medium text-zena-green-mid">{pctRecebido}%</span>
             </div>
             <div className="h-2 bg-zena-cream rounded-full overflow-hidden">
-              <div
-                className="h-full bg-zena-green-light rounded-full transition-all"
-                style={{ width: `${pctRecebido}%` }}
-              />
+              <div className="h-full bg-zena-green-light rounded-full transition-all" style={{ width: `${pctRecebido}%` }} />
             </div>
           </div>
+          {resumoZerado && (
+            <div className="mt-4 pt-4 border-t border-zena-cream flex items-center justify-between">
+              <p className="text-zena-text-light text-sm">Nenhuma cobrança gerada este mês.</p>
+              <button
+                onClick={() => abrirModal()}
+                className="flex items-center gap-1 text-zena-green-mid text-sm font-medium hover:underline"
+              >
+                Gerar cobrança <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -206,24 +234,22 @@ export default function Cobrancas() {
         </select>
       </div>
 
-      {/* Lista de cobranças */}
+      {/* Lista / Empty state */}
       <div className="bg-white rounded-2xl border border-zena-mint/30 shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3 animate-pulse">
             {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-zena-cream rounded-xl" />)}
           </div>
         ) : cobrancas.length === 0 ? (
-          <div className="p-12 text-center">
-            <DollarSign className="mx-auto text-zena-mint mb-3" size={40} />
-            <p className="text-zena-text-light text-sm mb-4">Nenhuma cobrança neste período.</p>
-            <button
-              onClick={abrirModal}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-zena-green-mid text-white rounded-xl text-sm font-semibold hover:bg-zena-green-dark transition-colors"
-            >
-              <Plus size={15} />
-              Criar primeira cobrança
-            </button>
-          </div>
+          <EmptyState
+            step1Done={step1Done}
+            step2Done={step2Done}
+            step3Enabled={step3Enabled}
+            pacienteEscolhido={pacienteEscolhido}
+            onConectarAsaas={() => setShowAsaasModal(true)}
+            onSelecionarPaciente={() => setShowSeletor(true)}
+            onGerarCobranca={() => abrirModal(pacienteEscolhido?.id)}
+          />
         ) : (
           <table className="w-full">
             <thead>
@@ -281,7 +307,7 @@ export default function Cobrancas() {
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
             <div className="flex items-center justify-between px-6 py-5 border-b border-zena-cream">
               <h2 className="text-zena-text-dark font-semibold text-lg">Nova cobrança</h2>
-              <button onClick={() => setShowModal(false)} className="text-zena-text-light hover:text-zena-text-dark transition-colors">
+              <button onClick={() => setShowModal(false)} className="text-zena-text-light hover:text-zena-text-dark">
                 <X size={20} />
               </button>
             </div>
@@ -294,35 +320,26 @@ export default function Cobrancas() {
                   className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
                 >
                   <option value="">Selecione...</option>
-                  {pacientes.map((p) => (
-                    <option key={p.id} value={p.id}>{p.nome}</option>
-                  ))}
+                  {pacientes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </div>
-
               <div>
                 <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Valor (R$)</label>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0,00"
+                  type="number" min="0" step="0.01" placeholder="0,00"
                   value={form.valor}
                   onChange={(e) => setForm((f) => ({ ...f, valor: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
                 />
               </div>
-
               <div>
                 <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Vencimento</label>
                 <input
-                  type="date"
-                  value={form.vencimento}
+                  type="date" value={form.vencimento}
                   onChange={(e) => setForm((f) => ({ ...f, vencimento: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
                 />
               </div>
-
               <div>
                 <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Método de pagamento</label>
                 <select
@@ -330,19 +347,15 @@ export default function Cobrancas() {
                   onChange={(e) => setForm((f) => ({ ...f, metodo: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
                 >
-                  {METODOS.map((m) => (
-                    <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>
-                  ))}
+                  {METODOS.map((m) => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
                 </select>
               </div>
-
               <div>
                 <label className="block text-zena-text-dark text-sm font-medium mb-1.5">
                   Descrição <span className="text-zena-text-light font-normal">(opcional)</span>
                 </label>
                 <input
-                  type="text"
-                  placeholder="Ex: Consulta mensal, retorno..."
+                  type="text" placeholder="Ex: Consulta mensal, retorno..."
                   value={form.descricao}
                   onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
                   className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
@@ -350,23 +363,252 @@ export default function Cobrancas() {
               </div>
             </div>
             <div className="flex gap-3 px-6 py-5 border-t border-zena-cream">
-              <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 px-4 py-2.5 border border-zena-mint/40 text-zena-text-mid rounded-xl text-sm font-medium hover:bg-zena-cream transition-colors"
-              >
+              <button onClick={() => setShowModal(false)} className="flex-1 px-4 py-2.5 border border-zena-mint/40 text-zena-text-mid rounded-xl text-sm font-medium hover:bg-zena-cream">
                 Cancelar
               </button>
-              <button
-                onClick={criarCobranca}
-                disabled={saving}
-                className="flex-1 px-4 py-2.5 bg-zena-green-mid text-white rounded-xl text-sm font-semibold hover:bg-zena-green-dark transition-colors disabled:opacity-60"
-              >
+              <button onClick={criarCobranca} disabled={saving} className="flex-1 px-4 py-2.5 bg-zena-green-mid text-white rounded-xl text-sm font-semibold hover:bg-zena-green-dark disabled:opacity-60">
                 {saving ? "Salvando..." : "Criar cobrança"}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {showAsaasModal && (
+        <AsaasModal
+          onClose={() => setShowAsaasModal(false)}
+          onConnected={() => { setAsaasConectado(true); show("Conta Asaas conectada!"); }}
+          onError={(msg) => show(msg, "error")}
+        />
+      )}
+
+      {showSeletor && (
+        <SeletorPaciente
+          pacientes={pacientes}
+          onClose={() => setShowSeletor(false)}
+          onSelect={(p) => { setPacienteEscolhido(p); setShowSeletor(false); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Empty State ─────────────────────────────────────────────────────────────
+
+function EmptyState({
+  step1Done, step2Done, step3Enabled, pacienteEscolhido,
+  onConectarAsaas, onSelecionarPaciente, onGerarCobranca,
+}: {
+  step1Done: boolean;
+  step2Done: boolean;
+  step3Enabled: boolean;
+  pacienteEscolhido: { nome: string } | null;
+  onConectarAsaas: () => void;
+  onSelecionarPaciente: () => void;
+  onGerarCobranca: () => void;
+}) {
+  return (
+    <div className="px-6 py-14 flex flex-col items-center">
+      <div className="w-12 h-12 rounded-2xl bg-zena-green-light/20 flex items-center justify-center mb-5">
+        <DollarSign size={24} className="text-zena-green-mid" />
+      </div>
+      <h2 className="text-zena-text-dark text-xl font-bold mb-1.5">Configure suas cobranças</h2>
+      <p className="text-zena-text-light text-sm mb-10">Receba pelo Pix direto dos seus pacientes</p>
+
+      <div className="w-full max-w-sm space-y-3">
+        <Passo
+          number={1}
+          icon={Key}
+          title="Conectar conta Asaas"
+          done={step1Done}
+          action={step1Done ? undefined : { label: "Conectar Asaas", onClick: onConectarAsaas }}
+        />
+        <Passo
+          number={2}
+          icon={User}
+          title="Vincular plano a um paciente"
+          subtitle={step2Done ? pacienteEscolhido?.nome : undefined}
+          done={step2Done}
+          action={
+            !step2Done
+              ? { label: "Selecionar paciente", onClick: onSelecionarPaciente }
+              : { label: "Trocar", onClick: onSelecionarPaciente, secondary: true }
+          }
+        />
+        <Passo
+          number={3}
+          icon={QrCode}
+          title="Gerar primeira cobrança"
+          done={false}
+          disabled={!step3Enabled}
+          action={step3Enabled ? { label: "Gerar cobrança Pix", onClick: onGerarCobranca } : undefined}
+          hint={!step3Enabled ? "Disponível após os passos 1 e 2" : undefined}
+        />
+      </div>
+    </div>
+  );
+}
+
+function Passo({
+  number, icon: Icon, title, subtitle, done, disabled, action, hint,
+}: {
+  number: number;
+  icon: any;
+  title: string;
+  subtitle?: string;
+  done: boolean;
+  disabled?: boolean;
+  action?: { label: string; onClick: () => void; secondary?: boolean };
+  hint?: string;
+}) {
+  return (
+    <div className={`rounded-2xl border p-4 flex items-center gap-4 transition-all ${
+      done ? "border-zena-green-light/40 bg-zena-green-light/5" :
+      disabled ? "border-zena-mint/20 bg-zena-cream/40 opacity-60" :
+      "border-zena-mint/40 bg-white"
+    }`}>
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+        done ? "bg-zena-green-mid" : disabled ? "bg-zena-mint/30" : "bg-zena-green-light/20"
+      }`}>
+        {done
+          ? <CheckCircle2 size={18} className="text-white" />
+          : <Icon size={18} className={disabled ? "text-zena-text-light" : "text-zena-green-mid"} />
+        }
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="text-[10px] font-bold text-zena-text-light tracking-wide">PASSO {number}</span>
+          {done && <span className="text-[10px] font-bold text-zena-green-mid">CONCLUÍDO</span>}
+        </div>
+        <p className={`text-sm font-medium leading-tight ${disabled ? "text-zena-text-light" : "text-zena-text-dark"}`}>{title}</p>
+        {subtitle && <p className="text-xs text-zena-green-mid font-medium mt-0.5">{subtitle}</p>}
+        {hint && <p className="text-xs text-zena-text-light mt-0.5">{hint}</p>}
+      </div>
+      {action && (
+        <button
+          onClick={action.onClick}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-lg flex-shrink-0 transition-colors whitespace-nowrap ${
+            action.secondary
+              ? "text-zena-text-mid hover:text-zena-text-dark underline"
+              : "bg-zena-green-mid text-white hover:bg-zena-green-dark"
+          }`}
+        >
+          {action.label}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ─── Modal Asaas ─────────────────────────────────────────────────────────────
+
+function AsaasModal({ onClose, onConnected, onError }: {
+  onClose: () => void;
+  onConnected: () => void;
+  onError: (msg: string) => void;
+}) {
+  const [key, setKey] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function salvar() {
+    if (!key.trim()) return;
+    setLoading(true);
+    try {
+      await api.put("/financeiro/asaas-key", { asaasApiKey: key.trim() });
+      onConnected();
+      onClose();
+    } catch {
+      onError("Erro ao salvar chave Asaas. Verifique se está correta.");
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-zena-cream">
+          <h2 className="text-zena-text-dark font-semibold text-lg">Conectar conta Asaas</h2>
+          <button onClick={onClose} className="text-zena-text-light hover:text-zena-text-dark"><X size={20} /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-zena-cream rounded-xl p-4 text-sm text-zena-text-mid space-y-2">
+            <p className="font-medium text-zena-text-dark">Como obter sua chave Asaas:</p>
+            <ol className="list-decimal list-inside space-y-1 text-xs">
+              <li>Acesse <span className="font-medium">asaas.com</span> e faça login</li>
+              <li>Vá em <span className="font-medium">Configurações → Integrações</span></li>
+              <li>Copie sua <span className="font-medium">API Key</span> de produção</li>
+            </ol>
+          </div>
+          <div>
+            <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Chave de API Asaas</label>
+            <input
+              type="password"
+              placeholder="$aact_..."
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light font-mono"
+            />
+            <p className="text-xs text-zena-text-light mt-1.5">Sua chave é armazenada de forma segura e criptografada.</p>
+          </div>
+        </div>
+        <div className="flex gap-3 px-6 py-5 border-t border-zena-cream">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-zena-mint/40 text-zena-text-mid rounded-xl text-sm hover:bg-zena-cream">
+            Cancelar
+          </button>
+          <button
+            onClick={salvar}
+            disabled={loading || !key.trim()}
+            className="flex-1 py-2.5 bg-zena-green-mid text-white rounded-xl text-sm font-semibold hover:bg-zena-green-dark disabled:opacity-60"
+          >
+            {loading ? "Conectando..." : "Conectar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Seletor de paciente ──────────────────────────────────────────────────────
+
+function SeletorPaciente({ pacientes, onClose, onSelect }: {
+  pacientes: Paciente[];
+  onClose: () => void;
+  onSelect: (p: Paciente) => void;
+}) {
+  const [busca, setBusca] = useState("");
+  const filtrados = pacientes.filter((p) => p.nome.toLowerCase().includes(busca.toLowerCase()));
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-zena-cream">
+          <h2 className="text-zena-text-dark font-semibold text-lg">Selecionar paciente</h2>
+          <button onClick={onClose} className="text-zena-text-light hover:text-zena-text-dark"><X size={20} /></button>
+        </div>
+        <div className="px-4 pt-4">
+          <input
+            type="text"
+            placeholder="Buscar..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            autoFocus
+            className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+          />
+        </div>
+        <div className="p-4 space-y-1 max-h-72 overflow-y-auto">
+          {filtrados.length === 0 ? (
+            <p className="text-center text-zena-text-light text-sm py-4">Nenhuma paciente encontrada.</p>
+          ) : filtrados.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => onSelect(p)}
+              className="w-full text-left px-4 py-3 rounded-xl hover:bg-zena-cream transition-colors text-sm text-zena-text-dark font-medium"
+            >
+              {p.nome}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
