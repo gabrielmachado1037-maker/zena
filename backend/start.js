@@ -11,6 +11,9 @@ tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627010000_add_
 tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627020000_financial_module');
 tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627030000_asaas_subscription');
 tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627040000_foto_evolucao');
+tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627050000_fix_schema');
+tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627060000_fix_schema_v2');
+tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627070000_add_braco_coxa_medicao');
 
 // Apply only new migrations
 execSync('./node_modules/.bin/prisma migrate deploy', { stdio: 'inherit' });

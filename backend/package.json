@@ -16,7 +16,6 @@
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "@supabase/supabase-js": "^2.108.2",
     "@types/node-cron": "^3.0.11",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
