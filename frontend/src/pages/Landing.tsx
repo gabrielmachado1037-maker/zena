@@ -24,12 +24,12 @@ const FEATURES = [
   {
     icon: FileText,
     title: "Plano Alimentar em PDF",
-    desc: "Gere PDFs profissionais com identidade visual da Zena em segundos. Imprima ou envie direto pelo WhatsApp.",
+    desc: "Gere PDFs profissionais com identidade visual da Clinne em segundos. Imprima ou envie direto pelo WhatsApp.",
   },
   {
     icon: Bell,
     title: "Lembretes Automáticos",
-    desc: "Cron jobs criam lembretes de consultas, check-ins e cobranças. Você envia pelo WhatsApp com um clique.",
+    desc: "Lembretes de consultas, check-ins e cobranças. Você envia pelo WhatsApp com um clique.",
   },
   {
     icon: Calendar,
@@ -72,7 +72,7 @@ const DEPOIMENTOS = [
 const FAQ = [
   {
     p: "Preciso de cartão de crédito para o teste?",
-    r: "Não. Você tem 14 dias grátis sem precisar cadastrar cartão. Só pedimos quando você decidir assinar.",
+    r: "Não. Você tem 29 dias grátis sem precisar cadastrar cartão. Só pedimos quando você decidir assinar.",
   },
   {
     p: "Posso cancelar quando quiser?",
@@ -97,7 +97,7 @@ export default function Landing() {
       {/* Nav */}
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-2xl font-bold text-zena-green-dark tracking-tight">zena</span>
+          <span className="text-2xl font-bold text-zena-green-dark tracking-tight">clinne</span>
           <div className="flex items-center gap-4">
             <Link to="/login" className="text-sm text-zena-text-mid hover:text-zena-green-dark font-medium transition-colors">
               Entrar
@@ -117,7 +117,7 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 bg-zena-mint/30 text-zena-green-dark text-sm font-medium px-4 py-1.5 rounded-full mb-6">
             <Zap size={14} />
-            14 dias grátis · Sem cartão
+            29 dias grátis · Sem cartão
           </div>
           <h1 className="text-5xl sm:text-6xl font-bold text-zena-green-dark leading-tight mb-6">
             A plataforma que<br />
@@ -133,7 +133,7 @@ export default function Landing() {
               to="/cadastro"
               className="bg-zena-green-dark text-white font-semibold px-8 py-4 rounded-xl hover:bg-zena-green-mid transition-colors flex items-center gap-2 text-lg shadow-lg"
             >
-              Começar 14 dias grátis <ArrowRight size={20} />
+              Começar 29 dias grátis <ArrowRight size={20} />
             </Link>
             <Link
               to="/login"
@@ -155,7 +155,7 @@ export default function Landing() {
             { n: "3h", label: "economizadas\npor semana" },
             { n: "2×", label: "mais aderência\ndas pacientes" },
             { n: "100%", label: "sem papel\nnem planilha" },
-            { n: "14 dias", label: "grátis\npara testar" },
+            { n: "29 dias", label: "grátis\npara testar" },
           ].map((s) => (
             <div key={s.n}>
               <p className="text-4xl font-bold text-zena-mint">{s.n}</p>
@@ -187,7 +187,7 @@ export default function Landing() {
       </section>
 
       {/* Depoimentos */}
-      <section className="py-24 px-6 bg-zena-sand">
+      <section className="py-24 px-6 bg-zena-cream">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-4xl font-bold text-zena-green-dark text-center mb-12">O que as nutricionistas dizem</h2>
           <div className="grid sm:grid-cols-3 gap-6">
@@ -220,7 +220,7 @@ export default function Landing() {
             {/* Mensal */}
             <div className="border-2 border-gray-100 rounded-2xl p-8">
               <p className="text-zena-text-mid font-medium mb-2">Mensal</p>
-              <p className="text-4xl font-bold text-zena-green-dark mb-1">R$ 97<span className="text-lg font-normal text-zena-text-mid">/mês</span></p>
+              <p className="text-4xl font-bold text-zena-green-dark mb-1">R$ 69<span className="text-lg font-normal text-zena-text-mid">/mês</span></p>
               <p className="text-sm text-zena-text-light mb-6">Cobrado mensalmente</p>
               <ul className="space-y-2 mb-8">
                 {["Pacientes ilimitadas", "Portal da paciente", "PDF profissional", "Agendamento online", "WhatsApp integrado", "Suporte por e-mail"].map((i) => (
@@ -239,13 +239,13 @@ export default function Landing() {
             {/* Anual */}
             <div className="border-2 border-zena-green-dark rounded-2xl p-8 relative">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-zena-green-dark text-white text-xs font-bold px-4 py-1 rounded-full">
-                ECONOMIZE 21%
+                RECOMENDADO
               </div>
               <p className="text-zena-text-mid font-medium mb-2">Anual</p>
-              <p className="text-4xl font-bold text-zena-green-dark mb-1">R$ 77<span className="text-lg font-normal text-zena-text-mid">/mês</span></p>
-              <p className="text-sm text-zena-text-light mb-6">R$ 924 cobrado anualmente</p>
+              <p className="text-4xl font-bold text-zena-green-dark mb-1">R$ 59<span className="text-lg font-normal text-zena-text-mid">/mês</span></p>
+              <p className="text-sm text-zena-text-light mb-6">R$ 708 cobrado anualmente · Economize R$ 120</p>
               <ul className="space-y-2 mb-8">
-                {["Tudo do plano mensal", "Economia de R$ 240/ano", "Suporte prioritário", "Novas funcionalidades primeiro"].map((i) => (
+                {["Tudo do plano mensal", "Economia de R$ 120/ano", "Suporte prioritário", "Novas funcionalidades primeiro"].map((i) => (
                   <li key={i} className="flex items-center gap-2 text-sm text-zena-text-mid">
                     <CheckCircle size={16} className="text-zena-green-light flex-shrink-0" />{i}
                   </li>
@@ -284,7 +284,7 @@ export default function Landing() {
       <section className="bg-zena-green-dark py-24 px-6 text-center">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-4xl font-bold text-white mb-4">Pronta para transformar seu consultório?</h2>
-          <p className="text-zena-mint/80 text-lg mb-8">14 dias grátis, sem cartão, sem compromisso.</p>
+          <p className="text-zena-mint/80 text-lg mb-8">29 dias grátis, sem cartão, sem compromisso.</p>
           <Link
             to="/cadastro"
             className="inline-flex items-center gap-2 bg-zena-mint text-zena-green-dark font-bold px-8 py-4 rounded-xl hover:bg-white transition-colors text-lg shadow-lg"
@@ -297,13 +297,13 @@ export default function Landing() {
       {/* Footer */}
       <footer className="bg-zena-green-dark border-t border-white/10 py-8 px-6">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-zena-mint/60">
-          <span className="font-bold text-zena-mint text-xl tracking-tight">zena</span>
+          <span className="font-bold text-zena-mint text-xl tracking-tight">clinne</span>
           <div className="flex gap-6">
             <Link to="/privacidade" className="hover:text-zena-mint transition-colors">Privacidade</Link>
             <Link to="/termos" className="hover:text-zena-mint transition-colors">Termos de uso</Link>
-            <a href="mailto:contato@zena.app" className="hover:text-zena-mint transition-colors">Contato</a>
+            <a href="mailto:contato@clinne.com.br" className="hover:text-zena-mint transition-colors">Contato</a>
           </div>
-          <p>© {new Date().getFullYear()} Zena. Todos os direitos reservados.</p>
+          <p>© {new Date().getFullYear()} Clinne. Todos os direitos reservados.</p>
         </div>
       </footer>
     </div>
