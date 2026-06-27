@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback, type ChangeEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Copy, TrendingDown, TrendingUp, Minus, MessageCircle, Camera, Upload, ClipboardList, Pencil, Check, X } from "lucide-react";
+import { ArrowLeft, Plus, Copy, TrendingDown, TrendingUp, Minus, MessageCircle, Camera, Upload, ClipboardList, Pencil, Check, X, Images, Share2, Trash2 } from "lucide-react";
 import PdfPlano from "../components/PdfPlano";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -84,7 +84,7 @@ const templateLabel: Record<string, string> = {
   lembrete_cobranca: "💚 Lembrete de cobrança",
 };
 
-const tabs = ["Evolução", "Plano Alimentar", "Consultas", "Cobranças", "Check-ins", "Comunicação", "Anamnese"] as const;
+const tabs = ["Evolução", "Galeria", "Plano Alimentar", "Consultas", "Cobranças", "Check-ins", "Comunicação", "Anamnese"] as const;
 type Tab = typeof tabs[number];
 
 export default function PacienteDetalhe() {
@@ -347,6 +347,7 @@ export default function PacienteDetalhe() {
       </div>
 
       {tab === "Evolução" && <AbaEvolucao paciente={paciente} setPaciente={setPaciente} medicoes={medicoes} show={show} />}
+      {tab === "Galeria" && <AbaGaleria paciente={paciente} show={show} />}
       {tab === "Plano Alimentar" && <AbaPlanoAlimentar paciente={paciente} setPaciente={setPaciente} show={show} nutricionistaNome={nutricionista?.nome || ""} />}
       {tab === "Consultas" && <AbaConsultas paciente={paciente} setPaciente={setPaciente} show={show} />}
       {tab === "Cobranças" && <AbaCobranças paciente={paciente} setPaciente={setPaciente} show={show} />}
@@ -377,11 +378,21 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
     }
   }
 
-  const chartData = medicoes.map((m) => ({
-    data: format(new Date(m.data), "dd/MM"),
-    peso: m.peso,
-    gordura: m.gordura,
-  }));
+  const chartData = medicoes.map((m) => {
+    const alturaM = paciente.altura ? paciente.altura / 100 : null;
+    const imc = alturaM && m.peso ? parseFloat((m.peso / (alturaM * alturaM)).toFixed(1)) : null;
+    return {
+      data: format(new Date(m.data), "dd/MM"),
+      peso: m.peso,
+      gordura: m.gordura ?? null,
+      cintura: m.cintura ?? null,
+      quadril: m.quadril ?? null,
+      imc,
+    };
+  });
+
+  const temGordura = medicoes.some((m) => m.gordura);
+  const temMedidas = medicoes.some((m) => m.cintura || m.quadril);
 
   return (
     <div className="space-y-6">
@@ -394,12 +405,12 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
         </div>
       ) : (
         <>
+          {/* Gráfico de peso */}
           <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-zena-text-dark font-semibold">Evolução do peso</h3>
               <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 text-sm text-zena-green-mid font-medium hover:text-zena-green-dark">
-                <Plus size={16} />
-                Nova medição
+                <Plus size={16} /> Nova medição
               </button>
             </div>
             <ResponsiveContainer width="100%" height={220}>
@@ -409,10 +420,47 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
                 <YAxis tick={{ fontSize: 11, fill: "#8FA897" }} domain={["dataMin - 2", "dataMax + 2"]} />
                 <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #B7E4C7", fontSize: 12 }} />
                 <Line type="monotone" dataKey="peso" stroke="#2D6A4F" strokeWidth={2.5} dot={{ fill: "#52B788", r: 4 }} name="Peso (kg)" />
+                {paciente.pesoMeta && (
+                  <Line type="monotone" dataKey={() => paciente.pesoMeta} stroke="#B7E4C7" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="Meta (kg)" />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </div>
 
+          {/* Gráfico de gordura % */}
+          {temGordura && (
+            <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
+              <h3 className="text-zena-text-dark font-semibold mb-4">% Gordura corporal</h3>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#B7E4C7" />
+                  <XAxis dataKey="data" tick={{ fontSize: 11, fill: "#8FA897" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "#8FA897" }} domain={["dataMin - 1", "dataMax + 1"]} unit="%" />
+                  <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #B7E4C7", fontSize: 12 }} formatter={(v) => [`${v}%`]} />
+                  <Line type="monotone" dataKey="gordura" stroke="#52B788" strokeWidth={2.5} dot={{ fill: "#2D6A4F", r: 4 }} name="Gordura %" connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Gráfico de medidas */}
+          {temMedidas && (
+            <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
+              <h3 className="text-zena-text-dark font-semibold mb-4">Medidas corporais (cm)</h3>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#B7E4C7" />
+                  <XAxis dataKey="data" tick={{ fontSize: 11, fill: "#8FA897" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "#8FA897" }} unit=" cm" />
+                  <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #B7E4C7", fontSize: 12 }} formatter={(v) => [`${v} cm`]} />
+                  <Line type="monotone" dataKey="cintura" stroke="#2D6A4F" strokeWidth={2} dot={{ r: 3 }} name="Cintura" connectNulls />
+                  <Line type="monotone" dataKey="quadril" stroke="#52B788" strokeWidth={2} dot={{ r: 3 }} name="Quadril" connectNulls />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Tabela */}
           <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
             <h3 className="text-zena-text-dark font-semibold mb-4">Histórico de medições</h3>
             <div className="overflow-x-auto">
@@ -421,21 +469,29 @@ function AbaEvolucao({ paciente, setPaciente, medicoes, show }: { paciente: Paci
                   <tr className="text-zena-text-light text-left">
                     <th className="pb-3 font-medium">Data</th>
                     <th className="pb-3 font-medium">Peso</th>
-                    <th className="pb-3 font-medium">% Gordura</th>
-                    <th className="pb-3 font-medium">% Músculo</th>
+                    <th className="pb-3 font-medium">IMC</th>
+                    <th className="pb-3 font-medium">% Gord.</th>
+                    <th className="pb-3 font-medium">Cintura</th>
+                    <th className="pb-3 font-medium">Quadril</th>
                     <th className="pb-3 font-medium">Obs.</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zena-cream">
-                  {[...medicoes].reverse().map((m) => (
-                    <tr key={m.id} className="text-zena-text-dark">
-                      <td className="py-3 text-zena-text-light text-xs">{format(new Date(m.data), "dd/MM/yyyy")}</td>
-                      <td className="py-3 font-mono-data font-semibold">{m.peso} kg</td>
-                      <td className="py-3 text-zena-text-mid">{m.gordura ? `${m.gordura}%` : "—"}</td>
-                      <td className="py-3 text-zena-text-mid">{m.musculo ? `${m.musculo}%` : "—"}</td>
-                      <td className="py-3 text-zena-text-light text-xs max-w-xs truncate">{m.observacoes || "—"}</td>
-                    </tr>
-                  ))}
+                  {[...medicoes].reverse().map((m, i) => {
+                    const alturaM = paciente.altura ? paciente.altura / 100 : null;
+                    const imc = alturaM ? (m.peso / (alturaM * alturaM)).toFixed(1) : null;
+                    return (
+                      <tr key={m.id} className="text-zena-text-dark">
+                        <td className="py-3 text-zena-text-light text-xs">{format(new Date(m.data), "dd/MM/yyyy")}</td>
+                        <td className="py-3 font-mono-data font-semibold">{m.peso} kg</td>
+                        <td className="py-3 text-zena-text-mid font-mono-data">{imc ?? "—"}</td>
+                        <td className="py-3 text-zena-text-mid">{m.gordura ? `${m.gordura}%` : "—"}</td>
+                        <td className="py-3 text-zena-text-mid">{m.cintura ? `${m.cintura}cm` : "—"}</td>
+                        <td className="py-3 text-zena-text-mid">{m.quadril ? `${m.quadril}cm` : "—"}</td>
+                        <td className="py-3 text-zena-text-light text-xs max-w-xs truncate">{m.observacoes || "—"}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1098,6 +1154,282 @@ function AbaComunicacao({ paciente, setPaciente: _sp, show: _sh, nutricionista }
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------- Aba Galeria ----------
+interface FotoMeta { id: string; data: string; tipo: string; }
+interface FotoComImagem extends FotoMeta { imagem: string; }
+
+function AbaGaleria({ paciente, show }: { paciente: Paciente; show: any }) {
+  const [fotos, setFotos] = useState<FotoMeta[]>([]);
+  const [loadingFotos, setLoadingFotos] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [uploadForm, setUploadForm] = useState({ data: new Date().toISOString().split("T")[0], tipo: "frente" });
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Comparativo
+  const [modo, setModo] = useState<"galeria" | "comparar">("galeria");
+  const [dataAntes, setDataAntes] = useState("");
+  const [dataDepois, setDataDepois] = useState("");
+  const [fotoAntes, setFotoAntes] = useState<FotoComImagem | null>(null);
+  const [fotoDepois2, setFotoDepois2] = useState<FotoComImagem | null>(null);
+  const [tipoComparativo, setTipoComparativo] = useState("frente");
+  const [loadingCompar, setLoadingCompar] = useState(false);
+
+  useEffect(() => {
+    api.get(`/fotos/${paciente.id}/meta`).then(r => setFotos(r.data)).finally(() => setLoadingFotos(false));
+  }, [paciente.id]);
+
+  // Datas únicas disponíveis
+  const datasUnicas = [...new Set(fotos.map(f => f.data.split("T")[0]))].sort();
+
+  async function handleUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const imagem = await comprimirImagem(file, 800, 0.75);
+      const res = await api.post(`/fotos/${paciente.id}`, { ...uploadForm, imagem });
+      setFotos(prev => [...prev, res.data]);
+      show("Foto salva!");
+    } catch {
+      show("Erro ao salvar foto.", "error");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function deletar(fotoId: string) {
+    await api.delete(`/fotos/${fotoId}`);
+    setFotos(prev => prev.filter(f => f.id !== fotoId));
+    show("Foto removida.");
+  }
+
+  async function carregarComparativo() {
+    if (!dataAntes || !dataDepois) return;
+    setLoadingCompar(true);
+    try {
+      const fotosAntes = fotos.filter(f => f.data.startsWith(dataAntes) && f.tipo === tipoComparativo);
+      const fotosDepois = fotos.filter(f => f.data.startsWith(dataDepois) && f.tipo === tipoComparativo);
+      if (!fotosAntes[0] || !fotosDepois[0]) { show("Foto não encontrada para essa data e ângulo.", "error"); return; }
+      const [ra, rd] = await Promise.all([
+        api.get(`/fotos/${fotosAntes[0].id}/imagem`),
+        api.get(`/fotos/${fotosDepois[0].id}/imagem`),
+      ]);
+      setFotoAntes({ ...fotosAntes[0], imagem: ra.data.imagem });
+      setFotoDepois2({ ...fotosDepois[0], imagem: rd.data.imagem });
+    } catch {
+      show("Erro ao carregar fotos.", "error");
+    } finally {
+      setLoadingCompar(false);
+    }
+  }
+
+  function compartilhar() {
+    if (!fotoAntes || !fotoDepois2) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = 800; canvas.height = 500;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#f5f5f0";
+    ctx.fillRect(0, 0, 800, 500);
+
+    // Header
+    ctx.fillStyle = "#2D6A4F";
+    ctx.fillRect(0, 0, 800, 60);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 22px sans-serif";
+    ctx.fillText(`${paciente.nome} — Evolução Clinne`, 24, 38);
+
+    function drawImg(src: string, x: number, w: number, label: string, cb: () => void) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, x, 70, w, 400);
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(x, 420, w, 50);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 16px sans-serif";
+        ctx.fillText(label, x + 16, 450);
+        cb();
+      };
+      img.src = src;
+    }
+
+    drawImg(fotoAntes.imagem, 10, 385, `ANTES — ${dataAntes}`, () => {
+      drawImg(fotoDepois2.imagem, 405, 385, `DEPOIS — ${dataDepois}`, () => {
+        const link = document.createElement("a");
+        link.download = `evolucao-${paciente.nome.replace(/\s+/g, "-")}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      });
+    });
+  }
+
+  // Agrupar fotos por data para o grid
+  const fotosPorData: Record<string, FotoMeta[]> = {};
+  for (const f of fotos) {
+    const d = f.data.split("T")[0];
+    if (!fotosPorData[d]) fotosPorData[d] = [];
+    fotosPorData[d].push(f);
+  }
+
+  const TIPOS = ["frente", "perfil", "costas"];
+  const tipoLabel: Record<string, string> = { frente: "Frente", perfil: "Perfil", costas: "Costas" };
+
+  return (
+    <div className="space-y-6">
+      {/* Upload + controles */}
+      <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-zena-text-dark font-semibold flex items-center gap-2"><Images size={18} /> Galeria de fotos</h3>
+          <div className="flex gap-2">
+            <button onClick={() => setModo("galeria")} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${modo === "galeria" ? "bg-zena-green-mid text-white" : "text-zena-text-mid hover:bg-zena-cream"}`}>
+              Galeria
+            </button>
+            <button onClick={() => setModo("comparar")} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${modo === "comparar" ? "bg-zena-green-mid text-white" : "text-zena-text-mid hover:bg-zena-cream"}`}>
+              Comparar
+            </button>
+          </div>
+        </div>
+
+        {/* Upload */}
+        <div className="flex flex-wrap gap-3 items-end p-4 bg-zena-cream rounded-xl mb-4">
+          <div>
+            <label className="text-xs font-medium text-zena-text-mid mb-1 block">Data</label>
+            <input type="date" value={uploadForm.data} onChange={e => setUploadForm(f => ({ ...f, data: e.target.value }))}
+              className="px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-zena-text-mid mb-1 block">Ângulo</label>
+            <select value={uploadForm.tipo} onChange={e => setUploadForm(f => ({ ...f, tipo: e.target.value }))}
+              className="px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
+              {TIPOS.map(t => <option key={t} value={t}>{tipoLabel[t]}</option>)}
+            </select>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
+          <button onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="flex items-center gap-2 bg-zena-green-dark text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-zena-green-mid disabled:opacity-50">
+            <Camera size={15} /> {uploading ? "Enviando..." : "Adicionar foto"}
+          </button>
+        </div>
+
+        {/* Grid galeria */}
+        {modo === "galeria" && (
+          loadingFotos ? (
+            <p className="text-center text-zena-text-light text-sm py-8">Carregando...</p>
+          ) : fotos.length === 0 ? (
+            <div className="text-center py-12">
+              <Camera className="mx-auto text-zena-mint mb-3" size={40} />
+              <p className="text-zena-text-mid font-medium">Nenhuma foto ainda.</p>
+              <p className="text-zena-text-light text-sm mt-1">Adicione fotos por data para acompanhar a evolução visual.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(fotosPorData).sort(([a], [b]) => b.localeCompare(a)).map(([data, fts]) => (
+                <div key={data}>
+                  <p className="text-zena-text-mid text-sm font-semibold mb-3">
+                    {format(new Date(data + "T12:00:00"), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {TIPOS.map(tipo => {
+                      const foto = fts.find(f => f.tipo === tipo);
+                      return (
+                        <div key={tipo} className="aspect-[3/4] rounded-xl bg-zena-cream border border-zena-mint/30 overflow-hidden relative group">
+                          {foto ? (
+                            <FotoThumb fotoId={foto.id} label={tipoLabel[tipo]} onDelete={() => deletar(foto.id)} />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-zena-text-light text-xs gap-1">
+                              <Camera size={20} className="opacity-40" />
+                              <span>{tipoLabel[tipo]}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+
+        {/* Modo comparar */}
+        {modo === "comparar" && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Data ANTES</label>
+                <select value={dataAntes} onChange={e => setDataAntes(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
+                  <option value="">Selecione...</option>
+                  {datasUnicas.map(d => <option key={d} value={d}>{format(new Date(d + "T12:00:00"), "dd/MM/yyyy")}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Data DEPOIS</label>
+                <select value={dataDepois} onChange={e => setDataDepois(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
+                  <option value="">Selecione...</option>
+                  {datasUnicas.map(d => <option key={d} value={d}>{format(new Date(d + "T12:00:00"), "dd/MM/yyyy")}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Ângulo</label>
+                <select value={tipoComparativo} onChange={e => setTipoComparativo(e.target.value)}
+                  className="px-3 py-2 rounded-xl border border-zena-mint/50 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light">
+                  {TIPOS.map(t => <option key={t} value={t}>{tipoLabel[t]}</option>)}
+                </select>
+              </div>
+              <button onClick={carregarComparativo} disabled={!dataAntes || !dataDepois || loadingCompar}
+                className="bg-zena-green-dark text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-zena-green-mid disabled:opacity-50">
+                {loadingCompar ? "Carregando..." : "Comparar"}
+              </button>
+            </div>
+
+            {fotoAntes && fotoDepois2 && (
+              <div>
+                <div className="max-w-sm mx-auto">
+                  <FotoSlider antes={fotoAntes.imagem} depois={fotoDepois2.imagem} />
+                </div>
+                <div className="flex justify-center mt-4">
+                  <button onClick={compartilhar}
+                    className="flex items-center gap-2 bg-[#25D366] text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:opacity-90">
+                    <Share2 size={16} /> Baixar imagem para compartilhar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FotoThumb({ fotoId, label, onDelete }: { fotoId: string; label: string; onDelete: () => void }) {
+  const [imagem, setImagem] = useState<string | null>(null);
+  useEffect(() => {
+    api.get(`/fotos/${fotoId}/imagem`).then(r => setImagem(r.data.imagem));
+  }, [fotoId]);
+
+  return (
+    <div className="w-full h-full relative group">
+      {imagem ? (
+        <>
+          <img src={imagem} alt={label} className="w-full h-full object-cover" />
+          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs py-1 text-center">{label}</div>
+          <button onClick={onDelete}
+            className="absolute top-1 right-1 bg-black/60 text-white p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+            <Trash2 size={12} />
+          </button>
+        </>
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-zena-green-light border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
     </div>
   );
 }

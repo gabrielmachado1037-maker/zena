@@ -13,6 +13,7 @@ import horariosRouter from "./routes/horarios";
 import lembretesRouter from "./routes/lembretes";
 import billingRouter, { webhookHandler } from "./routes/billing";
 import financeiroRouter from "./routes/financeiro";
+import fotosRouter from "./routes/fotos";
 import { initCron } from "./cron";
 
 dotenv.config();
@@ -27,7 +28,7 @@ app.post("/api/billing/webhook", express.raw({ type: "application/json" }), (req
   webhookHandler(req, res);
 });
 
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "10mb" }));
 
 app.use("/api/auth", authRouter);
 app.use("/api/pacientes", pacientesRouter);
@@ -41,6 +42,7 @@ app.use("/api/horarios", horariosRouter);
 app.use("/api/lembretes", lembretesRouter);
 app.use("/api/billing", billingRouter);
 app.use("/api/financeiro", financeiroRouter);
+app.use("/api/fotos", fotosRouter);
 
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 

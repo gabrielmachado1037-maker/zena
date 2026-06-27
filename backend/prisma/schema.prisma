@@ -65,6 +65,7 @@ model Paciente {
   anamnese          Anamnese?
   lembretes         Lembrete[]
   planoCobranca     PlanoCobranca?
+  fotosEvolucao     FotoEvolucao[]
   createdAt         DateTime           @default(now())
 }
 
@@ -193,6 +194,16 @@ model Cobranca {
   pixCopiaECola   String?
   linkPagamento   String?
   createdAt       DateTime  @default(now())
+}
+
+model FotoEvolucao {
+  id         String   @id @default(cuid())
+  pacienteId String
+  paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  data       DateTime
+  tipo       String
+  imagem     String   @db.Text
+  criadoEm  DateTime @default(now())
 }
 
 model PlanoCobranca {
