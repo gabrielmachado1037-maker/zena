@@ -54,13 +54,14 @@ router.get("/", async (req: AuthRequest, res: Response) => {
 });
 
 router.post("/", async (req: AuthRequest, res: Response) => {
-  const { pacienteId, valor, vencimento, metodo } = req.body;
+  const { pacienteId, valor, vencimento, metodo, descricao } = req.body;
   const cobranca = await prisma.cobranca.create({
     data: {
       pacienteId,
       valor: parseFloat(valor),
       vencimento: new Date(vencimento),
       metodo,
+      descricao: descricao || null,
     },
   });
   res.json(cobranca);
