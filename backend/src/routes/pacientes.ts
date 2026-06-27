@@ -53,12 +53,20 @@ router.post("/", async (req: AuthRequest, res: Response) => {
 
 router.put("/:id", async (req: AuthRequest, res: Response) => {
   const id = req.params["id"] as string;
-  const { nome, email, telefone, objetivo, pesoMeta, ativo } = req.body;
-  const paciente = await prisma.paciente.updateMany({
-    where: { id, nutricionistaId: req.nutricionistaId as string },
-    data: { nome, email, telefone, objetivo, pesoMeta, ativo },
+  const { nome, email, telefone, objetivo, pesoMeta, ativo, dataNascimento, sexo, altura } = req.body;
+  const paciente = await prisma.paciente.findFirst({ where: { id, nutricionistaId: req.nutricionistaId as string } });
+  if (!paciente) return res.status(404).json({ error: "Paciente não encontrada" });
+  const updated = await prisma.paciente.update({
+    where: { id },
+    data: {
+      nome, email, telefone, objetivo, ativo,
+      pesoMeta: pesoMeta !== undefined ? (pesoMeta ? parseFloat(pesoMeta) : null) : undefined,
+      altura: altura !== undefined ? (altura ? parseFloat(altura) : null) : undefined,
+      dataNascimento: dataNascimento ? new Date(dataNascimento) : null,
+      sexo: sexo || null,
+    },
   });
-  res.json(paciente);
+  res.json(updated);
 });
 
 router.post("/:id/medicoes", async (req: AuthRequest, res: Response) => {

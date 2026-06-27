@@ -1,0 +1,3 @@
+ALTER TABLE "Paciente" ADD COLUMN "dataNascimento" TIMESTAMP(3);
+ALTER TABLE "Paciente" ADD COLUMN "sexo" TEXT;
+ALTER TABLE "Paciente" ADD COLUMN "altura" DOUBLE PRECISION;

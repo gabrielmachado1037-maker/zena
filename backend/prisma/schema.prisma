@@ -46,6 +46,9 @@ model Paciente {
   linkUnico         String             @unique @default(cuid())
   ativo             Boolean            @default(true)
   pesoMeta          Float?
+  dataNascimento    DateTime?
+  sexo              String?
+  altura            Float?
   fotoInicial       String?
   nutricionistaId   String
   nutricionista     Nutricionista      @relation(fields: [nutricionistaId], references: [id])

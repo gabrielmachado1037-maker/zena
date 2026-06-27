@@ -1,6 +1,6 @@
-import { useEffect, useState, useRef, type ChangeEvent } from "react";
+import { useEffect, useState, useRef, useCallback, type ChangeEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Copy, TrendingDown, TrendingUp, Minus, MessageCircle, Camera, Upload, ClipboardList } from "lucide-react";
+import { ArrowLeft, Plus, Copy, TrendingDown, TrendingUp, Minus, MessageCircle, Camera, Upload, ClipboardList, Pencil, Check, X } from "lucide-react";
 import PdfPlano from "../components/PdfPlano";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -61,6 +61,9 @@ interface Paciente {
   dataInicio: string;
   ativo: boolean;
   pesoMeta: number | null;
+  dataNascimento?: string | null;
+  sexo?: string | null;
+  altura?: number | null;
   fotoInicial?: string;
   linkUnico: string;
   medicoes: Array<{ id: string; data: string; peso: number; gordura?: number; musculo?: number; cintura?: number; quadril?: number; observacoes?: string }>;
@@ -93,6 +96,9 @@ export default function PacienteDetalhe() {
   const [tab, setTab] = useState<Tab>("Evolução");
   const [waTemplate, setWaTemplate] = useState<TemplateWhatsApp | null>(null);
   const { toast, show, hide } = useToast();
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState<any>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     api.get(`/pacientes/${id}`).then((res) => {
@@ -100,6 +106,43 @@ export default function PacienteDetalhe() {
       setLoading(false);
     });
   }, [id]);
+
+  const startEdit = useCallback(() => {
+    if (!paciente) return;
+    setEditForm({
+      nome: paciente.nome,
+      email: paciente.email || "",
+      telefone: paciente.telefone || "",
+      objetivo: paciente.objetivo,
+      pesoMeta: paciente.pesoMeta ?? "",
+      dataNascimento: paciente.dataNascimento ? paciente.dataNascimento.split("T")[0] : "",
+      sexo: paciente.sexo || "",
+      altura: paciente.altura ?? "",
+    });
+    setEditMode(true);
+  }, [paciente]);
+
+  const cancelEdit = useCallback(() => { setEditMode(false); }, []);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") cancelEdit(); }
+    if (editMode) window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editMode, cancelEdit]);
+
+  async function saveEdit() {
+    setSaving(true);
+    try {
+      const res = await api.put(`/pacientes/${id}`, editForm);
+      setPaciente((p: Paciente | null) => p ? { ...p, ...res.data } : p);
+      setEditMode(false);
+      show("Ficha atualizada!");
+    } catch {
+      show("Erro ao salvar.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function copiarLink() {
     const url = `${window.location.origin}/p/${paciente!.linkUnico}`;
@@ -142,74 +185,144 @@ export default function PacienteDetalhe() {
 
       {/* Header */}
       <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm mb-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className="w-14 h-14 rounded-full bg-zena-green-light flex items-center justify-center text-white font-bold text-xl">
-                {paciente.nome.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()}
+        {editMode ? (
+          <div>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-zena-text-dark font-semibold">Editar ficha</h2>
+              <div className="flex items-center gap-2">
+                <button onClick={cancelEdit} className="flex items-center gap-1.5 text-sm text-zena-text-mid border border-zena-mint/50 px-3 py-1.5 rounded-xl hover:bg-zena-cream">
+                  <X size={14} /> Cancelar
+                </button>
+                <button onClick={saveEdit} disabled={saving} className="flex items-center gap-1.5 text-sm text-white bg-zena-green-dark px-3 py-1.5 rounded-xl hover:bg-zena-green-mid disabled:opacity-50">
+                  <Check size={14} /> {saving ? "Salvando..." : "Salvar"}
+                </button>
               </div>
-              {streak > 0 && (
-                <div className="absolute -bottom-1 -right-1 bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                  🔥{streak}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                { label: "Nome *", key: "nome", type: "text" },
+                { label: "Objetivo *", key: "objetivo", type: "text" },
+                { label: "E-mail", key: "email", type: "email" },
+                { label: "Telefone / WhatsApp", key: "telefone", type: "tel" },
+                { label: "Data de nascimento", key: "dataNascimento", type: "date" },
+                { label: "Altura (cm)", key: "altura", type: "number" },
+                { label: "Meta de peso (kg)", key: "pesoMeta", type: "number" },
+              ].map(({ label, key, type }) => (
+                <div key={key}>
+                  <label className="text-xs font-medium text-zena-text-mid mb-1 block">{label}</label>
+                  <input
+                    type={type}
+                    value={editForm[key]}
+                    onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })}
+                    step="0.1"
+                    className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                  />
                 </div>
-              )}
-            </div>
-            <div>
-              <h1 className="text-zena-text-dark text-2xl font-bold">{paciente.nome}</h1>
-              <p className="text-zena-text-light text-sm">{paciente.objetivo}</p>
-              <p className="text-zena-text-light text-xs mt-0.5">
-                Desde {format(new Date(paciente.dataInicio), "MMMM 'de' yyyy", { locale: ptBR })}
-              </p>
+              ))}
+              <div>
+                <label className="text-xs font-medium text-zena-text-mid mb-1 block">Sexo</label>
+                <select
+                  value={editForm.sexo}
+                  onChange={(e) => setEditForm({ ...editForm, sexo: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                >
+                  <option value="">Não informado</option>
+                  <option value="feminino">Feminino</option>
+                  <option value="masculino">Masculino</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={() => setWaTemplate("lembrete_checkin")}
-              className="flex items-center gap-1.5 text-[#25D366] border border-[#25D366]/30 px-3 py-2 rounded-xl text-sm font-medium hover:bg-[#25D366]/5 transition-all"
-              title="WhatsApp"
-            >
-              <MessageCircle size={15} />
-              <span className="hidden sm:inline">WhatsApp</span>
-            </button>
-            <button
-              onClick={copiarLink}
-              className="flex items-center gap-2 text-zena-green-mid border border-zena-green-light/40 px-3 py-2 rounded-xl text-sm font-medium hover:bg-zena-mint/20 transition-all"
-            >
-              <Copy size={14} />
-              <span className="hidden sm:inline">Link</span>
-            </button>
-          </div>
-        </div>
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-full bg-zena-green-light flex items-center justify-center text-white font-bold text-xl">
+                    {paciente.nome.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()}
+                  </div>
+                  {streak > 0 && (
+                    <div className="absolute -bottom-1 -right-1 bg-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                      🔥{streak}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <h1 className="text-zena-text-dark text-2xl font-bold">{paciente.nome}</h1>
+                  <p className="text-zena-text-light text-sm">{paciente.objetivo}</p>
+                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                    <p className="text-zena-text-light text-xs">
+                      Desde {format(new Date(paciente.dataInicio), "MMMM 'de' yyyy", { locale: ptBR })}
+                    </p>
+                    {paciente.dataNascimento && (
+                      <p className="text-zena-text-light text-xs">· {format(new Date(paciente.dataNascimento), "dd/MM/yyyy")}</p>
+                    )}
+                    {paciente.sexo && (
+                      <p className="text-zena-text-light text-xs capitalize">· {paciente.sexo}</p>
+                    )}
+                    {paciente.altura && (
+                      <p className="text-zena-text-light text-xs">· {paciente.altura} cm</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={startEdit}
+                  className="flex items-center gap-1.5 text-zena-text-mid border border-zena-mint/50 px-3 py-2 rounded-xl text-sm font-medium hover:bg-zena-cream transition-all"
+                >
+                  <Pencil size={14} />
+                  <span className="hidden sm:inline">Editar</span>
+                </button>
+                <button
+                  onClick={() => setWaTemplate("lembrete_checkin")}
+                  className="flex items-center gap-1.5 text-[#25D366] border border-[#25D366]/30 px-3 py-2 rounded-xl text-sm font-medium hover:bg-[#25D366]/5 transition-all"
+                >
+                  <MessageCircle size={15} />
+                  <span className="hidden sm:inline">WhatsApp</span>
+                </button>
+                <button
+                  onClick={copiarLink}
+                  className="flex items-center gap-2 text-zena-green-mid border border-zena-green-light/40 px-3 py-2 rounded-xl text-sm font-medium hover:bg-zena-mint/20 transition-all"
+                >
+                  <Copy size={14} />
+                  <span className="hidden sm:inline">Link</span>
+                </button>
+              </div>
+            </div>
 
-        {/* Métricas rápidas */}
-        {medicoes.length > 0 && (
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-zena-cream">
-            <div>
-              <p className="text-zena-text-light text-xs">Peso inicial</p>
-              <p className="text-zena-text-dark font-bold font-mono-data">{pesoInicial} kg</p>
-            </div>
-            <div>
-              <p className="text-zena-text-light text-xs">Peso atual</p>
-              <p className="text-zena-text-dark font-bold font-mono-data">{pesoAtual} kg</p>
-            </div>
-            {paciente.pesoMeta && (
-              <div>
-                <p className="text-zena-text-light text-xs">Meta</p>
-                <p className="text-zena-text-dark font-bold font-mono-data">{paciente.pesoMeta} kg</p>
-              </div>
-            )}
-            {diff !== null && (
-              <div>
-                <p className="text-zena-text-light text-xs">Variação</p>
-                <div className="flex items-center gap-1">
-                  {diff < 0 ? <TrendingDown size={14} className="text-zena-green-light" /> : diff > 0 ? <TrendingUp size={14} className="text-zena-brown" /> : <Minus size={14} className="text-zena-text-light" />}
-                  <p className={`font-bold font-mono-data ${diff < 0 ? "text-zena-green-light" : diff > 0 ? "text-zena-brown" : "text-zena-text-light"}`}>
-                    {diff > 0 ? "+" : ""}{diff.toFixed(1)} kg
-                  </p>
+            {/* Métricas rápidas */}
+            {medicoes.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-zena-cream">
+                <div>
+                  <p className="text-zena-text-light text-xs">Peso inicial</p>
+                  <p className="text-zena-text-dark font-bold font-mono-data">{pesoInicial} kg</p>
                 </div>
+                <div>
+                  <p className="text-zena-text-light text-xs">Peso atual</p>
+                  <p className="text-zena-text-dark font-bold font-mono-data">{pesoAtual} kg</p>
+                </div>
+                {paciente.pesoMeta && (
+                  <div>
+                    <p className="text-zena-text-light text-xs">Meta</p>
+                    <p className="text-zena-text-dark font-bold font-mono-data">{paciente.pesoMeta} kg</p>
+                  </div>
+                )}
+                {diff !== null && (
+                  <div>
+                    <p className="text-zena-text-light text-xs">Variação</p>
+                    <div className="flex items-center gap-1">
+                      {diff < 0 ? <TrendingDown size={14} className="text-zena-green-light" /> : diff > 0 ? <TrendingUp size={14} className="text-zena-brown" /> : <Minus size={14} className="text-zena-text-light" />}
+                      <p className={`font-bold font-mono-data ${diff < 0 ? "text-zena-green-light" : diff > 0 ? "text-zena-brown" : "text-zena-text-light"}`}>
+                        {diff > 0 ? "+" : ""}{diff.toFixed(1)} kg
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
 
@@ -991,7 +1104,11 @@ function AbaComunicacao({ paciente, setPaciente: _sp, show: _sh, nutricionista }
 
 // ---------- Aba Anamnese ----------
 function AbaAnamnese({ paciente, show }: { paciente: Paciente; show: any }) {
-  const anamnese = paciente.anamnese;
+  const [anamnese, setAnamnese] = useState(paciente.anamnese || null);
+  const [editMode, setEditMode] = useState(false);
+  const [form, setForm] = useState<AnamneseItem>({});
+  const [saving, setSaving] = useState(false);
+
   const atividadeLabel: Record<string, string> = {
     sedentario: "Sedentário",
     leve: "Atividade leve (1-2x/semana)",
@@ -999,14 +1116,101 @@ function AbaAnamnese({ paciente, show }: { paciente: Paciente; show: any }) {
     intenso: "Intenso (5+x/semana)",
   };
 
-  if (!anamnese) {
+  function startEdit() {
+    setForm(anamnese || {});
+    setEditMode(true);
+  }
+
+  async function salvar() {
+    setSaving(true);
+    try {
+      const res = await api.put(`/anamnese/paciente/${paciente.id}`, form);
+      setAnamnese(res.data);
+      setEditMode(false);
+      show("Anamnese atualizada!");
+    } catch {
+      show("Erro ao salvar.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!anamnese && !editMode) {
     return (
       <div className="bg-white rounded-2xl p-12 text-center border border-zena-mint/30">
         <ClipboardList className="mx-auto text-zena-mint mb-3" size={40} />
         <p className="text-zena-text-mid font-medium">Anamnese não preenchida ainda.</p>
-        <p className="text-zena-text-light text-sm mt-2">
-          A paciente pode preencher pelo link do portal. Quando ela completar, as informações aparecerão aqui.
+        <p className="text-zena-text-light text-sm mt-2 mb-4">
+          A paciente pode preencher pelo link do portal, ou você pode preencher aqui.
         </p>
+        <button onClick={startEdit} className="bg-zena-green-mid text-white px-5 py-2.5 rounded-xl text-sm font-medium">
+          Preencher anamnese
+        </button>
+      </div>
+    );
+  }
+
+  if (editMode) {
+    const camposClinico = [
+      { label: "Queixa principal", key: "queixaPrincipal" },
+      { label: "Histórico de dietas", key: "historicoDieta" },
+      { label: "Restrições / alergias", key: "restricoes" },
+      { label: "Medicamentos em uso", key: "medicamentos" },
+      { label: "Condições de saúde / patologias", key: "condicoesSaude" },
+      { label: "Motivação", key: "motivacao" },
+      { label: "Expectativas", key: "expectativas" },
+    ];
+    return (
+      <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-zena-text-dark font-semibold">Editar anamnese</h3>
+          <div className="flex gap-2">
+            <button onClick={() => setEditMode(false)} className="flex items-center gap-1.5 text-sm text-zena-text-mid border border-zena-mint/50 px-3 py-1.5 rounded-xl hover:bg-zena-cream">
+              <X size={14} /> Cancelar
+            </button>
+            <button onClick={salvar} disabled={saving} className="flex items-center gap-1.5 text-sm text-white bg-zena-green-dark px-3 py-1.5 rounded-xl hover:bg-zena-green-mid disabled:opacity-50">
+              <Check size={14} /> {saving ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+        <div className="space-y-4">
+          {camposClinico.map(({ label, key }) => (
+            <div key={key}>
+              <label className="text-xs font-medium text-zena-text-mid mb-1 block">{label}</label>
+              <textarea
+                value={(form as any)[key] || ""}
+                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                rows={2}
+                className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light resize-none"
+              />
+            </div>
+          ))}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-medium text-zena-text-mid mb-1 block">Nível de atividade</label>
+              <select
+                value={(form as any).nivelAtividade || ""}
+                onChange={(e) => setForm({ ...form, nivelAtividade: e.target.value })}
+                className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+              >
+                <option value="">Não informado</option>
+                <option value="sedentario">Sedentário</option>
+                <option value="leve">Leve (1-2x/semana)</option>
+                <option value="moderado">Moderado (3-4x/semana)</option>
+                <option value="intenso">Intenso (5+x/semana)</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-zena-text-mid mb-1 block">Consumo de água (L/dia)</label>
+              <input
+                type="number" step="0.1"
+                value={(form as any).consumoAgua || ""}
+                onChange={(e) => setForm({ ...form, consumoAgua: parseFloat(e.target.value) || undefined })}
+                className="w-full px-3 py-2 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -1016,44 +1220,49 @@ function AbaAnamnese({ paciente, show }: { paciente: Paciente; show: any }) {
       titulo: "Queixas e histórico",
       emoji: "🩺",
       items: [
-        { label: "Queixa principal", val: anamnese.queixaPrincipal },
-        { label: "Histórico de dietas", val: anamnese.historicoDieta },
-        { label: "Restrições / alergias", val: anamnese.restricoes },
-        { label: "Medicamentos em uso", val: anamnese.medicamentos },
-        { label: "Condições de saúde", val: anamnese.condicoesSaude },
+        { label: "Queixa principal", val: anamnese!.queixaPrincipal },
+        { label: "Histórico de dietas", val: anamnese!.historicoDieta },
+        { label: "Restrições / alergias", val: anamnese!.restricoes },
+        { label: "Medicamentos em uso", val: anamnese!.medicamentos },
+        { label: "Condições de saúde", val: anamnese!.condicoesSaude },
       ],
     },
     {
       titulo: "Estilo de vida",
       emoji: "🏃",
       items: [
-        { label: "Nível de atividade", val: anamnese.nivelAtividade ? atividadeLabel[anamnese.nivelAtividade] || anamnese.nivelAtividade : null },
-        { label: "Horas de sono", val: anamnese.horasSono ? `${anamnese.horasSono}h por noite` : null },
-        { label: "Nível de estresse", val: anamnese.nivelEstresse ? `${anamnese.nivelEstresse}/5` : null },
+        { label: "Nível de atividade", val: anamnese!.nivelAtividade ? atividadeLabel[anamnese!.nivelAtividade] || anamnese!.nivelAtividade : null },
+        { label: "Horas de sono", val: anamnese!.horasSono ? `${anamnese!.horasSono}h por noite` : null },
+        { label: "Nível de estresse", val: anamnese!.nivelEstresse ? `${anamnese!.nivelEstresse}/5` : null },
       ],
     },
     {
       titulo: "Hábitos alimentares",
       emoji: "🥗",
       items: [
-        { label: "Refeições por dia", val: anamnese.refeicoesDia ? `${anamnese.refeicoesDia} refeições` : null },
-        { label: "Cozinha em casa?", val: anamnese.comeCozinha !== null && anamnese.comeCozinha !== undefined ? (anamnese.comeCozinha ? "Sim" : "Não") : null },
-        { label: "Come fora de casa", val: anamnese.comeForaCasa !== null && anamnese.comeForaCasa !== undefined ? `${anamnese.comeForaCasa}x por semana` : null },
-        { label: "Consumo de água", val: anamnese.consumoAgua ? `${anamnese.consumoAgua}L por dia` : null },
+        { label: "Refeições por dia", val: anamnese!.refeicoesDia ? `${anamnese!.refeicoesDia} refeições` : null },
+        { label: "Cozinha em casa?", val: anamnese!.comeCozinha !== null && anamnese!.comeCozinha !== undefined ? (anamnese!.comeCozinha ? "Sim" : "Não") : null },
+        { label: "Come fora de casa", val: anamnese!.comeForaCasa !== null && anamnese!.comeForaCasa !== undefined ? `${anamnese!.comeForaCasa}x por semana` : null },
+        { label: "Consumo de água", val: anamnese!.consumoAgua ? `${anamnese!.consumoAgua}L por dia` : null },
       ],
     },
     {
       titulo: "Motivação e expectativas",
       emoji: "💪",
       items: [
-        { label: "Motivação", val: anamnese.motivacao },
-        { label: "Expectativas", val: anamnese.expectativas },
+        { label: "Motivação", val: anamnese!.motivacao },
+        { label: "Expectativas", val: anamnese!.expectativas },
       ],
     },
   ];
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <button onClick={startEdit} className="flex items-center gap-1.5 text-sm text-zena-green-mid font-medium hover:text-zena-green-dark">
+          <Pencil size={14} /> Editar anamnese
+        </button>
+      </div>
       {secoes.map((secao) => {
         const itensComValor = secao.items.filter((i) => i.val);
         if (!itensComValor.length) return null;
