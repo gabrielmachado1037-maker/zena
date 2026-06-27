@@ -25,6 +25,9 @@ model Nutricionista {
   asaasCustomerId      String?
   asaasSubscriptionId  String?
   planoVencimento      DateTime?
+  nomeConsultorio      String?
+  logoConsultorio      String?
+  enderecoConsultorio  String?
   pacientes            Paciente[]
   horarios             HorarioDisponivel[]
   lembretes            Lembrete[]

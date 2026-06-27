@@ -15,6 +15,7 @@ const BENEFICIOS = [
 export default function Cadastro() {
   const [nome, setNome] = useState("");
   const [crn, setCrn] = useState("");
+  const [nomeConsultorio, setNomeConsultorio] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showSenha, setShowSenha] = useState(false);
@@ -32,7 +33,7 @@ export default function Cadastro() {
     }
     setLoading(true);
     try {
-      const res = await api.post("/auth/register", { nome, email, senha, crn });
+      const res = await api.post("/auth/register", { nome, email, senha, crn, nomeConsultorio: nomeConsultorio || undefined });
       const { token, nutricionista } = res.data;
       localStorage.setItem("zena_token", token);
       localStorage.setItem("zena_user", JSON.stringify(nutricionista));
@@ -117,6 +118,18 @@ export default function Cadastro() {
                 placeholder="CRN-3 12345"
                 className="w-full px-4 py-3 rounded-xl border border-zena-mint/50 bg-zena-cream text-zena-text-dark placeholder-zena-text-light focus:outline-none focus:ring-2 focus:ring-zena-green-light text-sm"
                 required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-zena-text-mid mb-1.5 block">
+                Nome do consultório <span className="text-zena-text-light font-normal">(opcional)</span>
+              </label>
+              <input
+                type="text"
+                value={nomeConsultorio}
+                onChange={(e) => setNomeConsultorio(e.target.value)}
+                placeholder="Clínica NutriVida ou Dra. Ana Souza"
+                className="w-full px-4 py-3 rounded-xl border border-zena-mint/50 bg-zena-cream text-zena-text-dark placeholder-zena-text-light focus:outline-none focus:ring-2 focus:ring-zena-green-light text-sm"
               />
             </div>
             <div>

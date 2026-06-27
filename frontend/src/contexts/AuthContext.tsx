@@ -6,6 +6,9 @@ interface Nutricionista {
   nome: string;
   email: string;
   crn: string;
+  nomeConsultorio?: string | null;
+  logoConsultorio?: string | null;
+  enderecoConsultorio?: string | null;
 }
 
 interface AuthContextType {

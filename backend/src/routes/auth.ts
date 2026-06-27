@@ -10,7 +10,7 @@ const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || "zena-secret-2024";
 
 router.post("/register", async (req: Request, res: Response) => {
-  const { nome, email, senha, crn } = req.body;
+  const { nome, email, senha, crn, nomeConsultorio } = req.body;
   if (!nome || !email || !senha || !crn) {
     return res.status(400).json({ error: "Campos obrigatórios faltando" });
   }
@@ -23,13 +23,13 @@ router.post("/register", async (req: Request, res: Response) => {
   trialEnd.setDate(trialEnd.getDate() + 29);
 
   const nutri = await prisma.nutricionista.create({
-    data: { nome, email, senha: hash, crn, trialEnd },
+    data: { nome, email, senha: hash, crn, trialEnd, nomeConsultorio: nomeConsultorio || null },
   });
 
   emailBoasVindas(nome, email).catch(console.error);
 
   const token = jwt.sign({ id: nutri.id }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn } });
+  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio } });
 });
 
 router.post("/login", async (req: Request, res: Response) => {
@@ -85,20 +85,26 @@ router.post("/redefinir-senha", async (req: Request, res: Response) => {
 router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
   const nutri = await prisma.nutricionista.findUnique({
     where: { id: req.nutricionistaId as string },
-    select: { id: true, nome: true, email: true, crn: true },
+    select: { id: true, nome: true, email: true, crn: true, nomeConsultorio: true, logoConsultorio: true, enderecoConsultorio: true },
   });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
   res.json(nutri);
 });
 
 router.put("/perfil", authMiddleware, async (req: AuthRequest, res: Response) => {
-  const { nome, crn, senhaAtual, novaSenha } = req.body;
+  const { nome, crn, senhaAtual, novaSenha, nomeConsultorio, logoConsultorio, enderecoConsultorio } = req.body;
   if (!nome || !crn) return res.status(400).json({ error: "Nome e CRN são obrigatórios" });
 
   const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId as string } });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
 
-  const updateData: { nome: string; crn: string; senha?: string } = { nome, crn };
+  const updateData: any = {
+    nome,
+    crn,
+    nomeConsultorio: nomeConsultorio ?? nutri.nomeConsultorio,
+    logoConsultorio: logoConsultorio !== undefined ? logoConsultorio : nutri.logoConsultorio,
+    enderecoConsultorio: enderecoConsultorio !== undefined ? enderecoConsultorio : nutri.enderecoConsultorio,
+  };
 
   if (novaSenha) {
     if (!senhaAtual) return res.status(400).json({ error: "Informe a senha atual para alterá-la" });
@@ -111,9 +117,23 @@ router.put("/perfil", authMiddleware, async (req: AuthRequest, res: Response) =>
   const atualizado = await prisma.nutricionista.update({
     where: { id: nutri.id },
     data: updateData,
-    select: { id: true, nome: true, email: true, crn: true },
+    select: { id: true, nome: true, email: true, crn: true, nomeConsultorio: true, logoConsultorio: true, enderecoConsultorio: true },
   });
 
+  res.json(atualizado);
+});
+
+router.put("/consultorio", authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { nomeConsultorio, logoConsultorio, enderecoConsultorio } = req.body;
+  const atualizado = await prisma.nutricionista.update({
+    where: { id: req.nutricionistaId as string },
+    data: {
+      nomeConsultorio: nomeConsultorio !== undefined ? nomeConsultorio : undefined,
+      logoConsultorio: logoConsultorio !== undefined ? logoConsultorio : undefined,
+      enderecoConsultorio: enderecoConsultorio !== undefined ? enderecoConsultorio : undefined,
+    },
+    select: { id: true, nome: true, email: true, crn: true, nomeConsultorio: true, logoConsultorio: true, enderecoConsultorio: true },
+  });
   res.json(atualizado);
 });
 

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, Link } from "react-router-dom";
-import { LayoutDashboard, Users, DollarSign, LogOut, Leaf, CalendarDays, CreditCard, BarChart2 } from "lucide-react";
+import { LayoutDashboard, Users, DollarSign, LogOut, Leaf, CalendarDays, CreditCard, BarChart2, ChevronRight } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 const links = [
@@ -33,7 +33,16 @@ export default function Sidebar() {
           <Leaf className="text-zena-mint" size={24} />
           <span className="text-white font-bold text-xl tracking-wide">clinne</span>
         </div>
-        <p className="text-zena-text-light text-xs mt-1 ml-8">seu consultório. simplificado.</p>
+        {nutricionista?.nomeConsultorio ? (
+          <p className="text-zena-text-light/70 text-[13px] mt-1 ml-8 truncate leading-tight">{nutricionista.nomeConsultorio}</p>
+        ) : (
+          <Link
+            to="/app/perfil"
+            className="flex items-center gap-0.5 text-zena-mint/60 hover:text-zena-mint text-[12px] mt-1 ml-8 transition-colors"
+          >
+            Configurar consultório <ChevronRight size={11} />
+          </Link>
+        )}
       </div>
 
       <nav className="flex-1 px-3">
