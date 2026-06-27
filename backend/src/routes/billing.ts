@@ -198,7 +198,7 @@ export function webhookHandler(req: Request, res: Response) {
         if (session.subscription && session.customer) {
           const sub = await stripe.subscriptions.retrieve(session.subscription as string);
           const plano = sub.items.data[0]?.price.recurring?.interval === "year" ? "anual" : "mensal";
-          const vencimento = new Date(sub.current_period_end * 1000);
+          const vencimento = new Date(((sub as any).current_period_end ?? 0) * 1000);
           await prisma.nutricionista.updateMany({
             where: { stripeCustomerId: session.customer as string },
             data: { plano, planoAtivo: true, stripeSubscriptionId: sub.id, planoVencimento: vencimento },
@@ -218,9 +218,10 @@ export function webhookHandler(req: Request, res: Response) {
       case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
         const plano = sub.items.data[0]?.price.recurring?.interval === "year" ? "anual" : "mensal";
+        const periodoFim = (sub as any).current_period_end;
         await prisma.nutricionista.updateMany({
           where: { stripeCustomerId: sub.customer as string },
-          data: { plano, planoAtivo: sub.status === "active", planoVencimento: new Date(sub.current_period_end * 1000) },
+          data: { plano, planoAtivo: sub.status === "active", planoVencimento: periodoFim ? new Date(periodoFim * 1000) : undefined },
         });
         break;
       }
