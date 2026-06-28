@@ -31,6 +31,8 @@ model Nutricionista {
   pacientes            Paciente[]
   horarios             HorarioDisponivel[]
   lembretes            Lembrete[]
+  rankingConfig        RankingConfig?
+  rankingPontuacoes    RankingPontuacao[]
   createdAt            DateTime            @default(now())
 }
 
@@ -71,6 +73,7 @@ model Paciente {
   planoCobranca     PlanoCobranca?
   fotosEvolucao     FotoEvolucao[]
   registrosFotos    RegistroFotos[]
+  rankingPontuacoes RankingPontuacao[]
   createdAt         DateTime           @default(now())
 
   @@index([nutricionistaId])
@@ -278,4 +281,56 @@ model DailyQuote {
   date      DateTime @unique
   quote     String
   createdAt DateTime @default(now())
+}
+
+// ─── Ranking ──────────────────────────────────────────────────────────────────
+
+model RankingConfig {
+  id              String        @id @default(cuid())
+  nutricionistaId String        @unique
+  nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id])
+
+  // Pesos (devem somar 100)
+  pesoPesoMeta             Int @default(40) // peso da métrica % objetivo de peso
+  pesoHabitosConsecutivos  Int @default(30) // peso da métrica hábitos consecutivos
+  pesoMetasSemanais        Int @default(30) // peso da métrica metas semanais batidas
+
+  // Thresholds de referência para pontuação máxima
+  diasConsecutivosAlvo Int @default(7)  // dias consecutivos = 100pts nessa métrica
+  metasSemanaisAlvo    Int @default(4)  // check-ins por mês = 100pts nessa métrica
+
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+}
+
+model RankingPontuacao {
+  id              String        @id @default(cuid())
+  pacienteId      String
+  paciente        Paciente      @relation(fields: [pacienteId], references: [id])
+  nutricionistaId String
+  nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id])
+
+  // Período de referência
+  periodo String @default("semanal") // "semanal" | "mensal"
+  semana  Int?   // ISO week (1–53), preenchido quando periodo = "semanal"
+  mes     Int?   // 1–12, preenchido quando periodo = "mensal"
+  ano     Int
+
+  // Scores individuais (0–100 cada)
+  pctObjetivoPeso         Float @default(0) // progresso em % em direção ao pesoMeta
+  diasConsecutivosHabitos Int   @default(0) // dias consecutivos com check-in registrado
+  metasSemanaisBatidas    Int   @default(0) // número de semanas com adesão >= 7 no período
+
+  // Score final ponderado (0–100)
+  pontuacaoTotal  Float @default(0)
+  posicaoRanking  Int?  // posição entre pacientes da nutricionista naquele período
+
+  calculadoEm DateTime @default(now())
+
+  @@unique([pacienteId, periodo, semana, mes, ano])
+  @@index([nutricionistaId])
+  @@index([nutricionistaId, ano, semana])
+  @@index([nutricionistaId, ano, mes])
+  @@index([pacienteId])
 }
