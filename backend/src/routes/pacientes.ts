@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { planoMiddleware } from "../middleware/plano";
+import { gerarFeedAutomatico } from "../lib/feedAutomatico";
 
 const router = Router();
 router.use(authMiddleware);
@@ -113,7 +114,8 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
 });
 
 router.post("/:id/medicoes", async (req: AuthRequest, res: Response) => {
-  const pacienteId = req.params["id"] as string;
+  const pacienteId      = req.params["id"] as string;
+  const nutricionistaId = req.nutricionistaId as string;
   const { data, peso, gordura, musculo, cintura, quadril, braco, coxa, laudo, observacoes } = req.body;
   const medicao = await prisma.medicao.create({
     data: {
@@ -131,6 +133,10 @@ router.post("/:id/medicoes", async (req: AuthRequest, res: Response) => {
     },
   });
   res.json(medicao);
+
+  // fire-and-forget — não atrasa a resposta
+  gerarFeedAutomatico(pacienteId, nutricionistaId, parseFloat(peso))
+    .catch(err => console.error("[feedAutomatico]", err));
 });
 
 router.post("/:id/planos", async (req: AuthRequest, res: Response) => {
