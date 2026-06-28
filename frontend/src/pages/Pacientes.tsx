@@ -1,6 +1,6 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Users, MessageCircle, CalendarPlus } from "lucide-react";
+import { Plus, Search, Users, MessageCircle, CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "../lib/api";
 
 interface Paciente {
@@ -67,24 +67,43 @@ type FiltroExtra = "sem_consulta" | "pendente" | null;
 
 export default function Pacientes() {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
+  const [debouncedBusca, setDebouncedBusca] = useState("");
   const [filtro, setFiltro] = useState<FiltroStatus>("todos");
   const [filtroExtra, setFiltroExtra] = useState<FiltroExtra>(null);
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
 
+  // Debounce search input — 350ms
   useEffect(() => {
-    api.get("/pacientes").then((res) => {
-      setPacientes(res.data);
+    const t = setTimeout(() => setDebouncedBusca(busca), 350);
+    return () => clearTimeout(t);
+  }, [busca]);
+
+  // Reset to page 1 when search or status filter changes
+  useEffect(() => { setPage(1); }, [debouncedBusca, filtro]);
+
+  // Fetch from server whenever page, search or filter changes
+  useEffect(() => {
+    setLoading(true);
+    const params = new URLSearchParams({ page: String(page) });
+    if (debouncedBusca) params.set("busca", debouncedBusca);
+    if (filtro !== "todos") params.set("status", filtro);
+
+    api.get(`/pacientes?${params}`).then((res) => {
+      setPacientes(res.data.data);
+      setTotal(res.data.total);
+      setTotalPages(res.data.totalPages);
       setLoading(false);
     });
-  }, []);
+  }, [page, debouncedBusca, filtro]);
 
+  // filtroExtra is applied client-side within the loaded page
   const filtrados = pacientes.filter((p) => {
-    if (!p.nome.toLowerCase().includes(busca.toLowerCase())) return false;
-    if (filtro === "ativo" && !p.ativo) return false;
-    if (filtro === "inativo" && p.ativo) return false;
     if (filtroExtra === "sem_consulta") {
       const semConsulta = !p.ultimaConsulta || diasDesde(p.ultimaConsulta.data) > 30;
       if (!semConsulta) return false;
@@ -104,7 +123,7 @@ export default function Pacientes() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-zena-text-dark text-3xl font-bold">Pacientes</h1>
-          <p className="text-zena-text-light text-sm mt-1">{pacientes.filter((p) => p.ativo).length} ativas</p>
+          <p className="text-zena-text-light text-sm mt-1">{total} {total === 1 ? "paciente" : "pacientes"}</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
@@ -179,85 +198,124 @@ export default function Pacientes() {
           )}
         </div>
       ) : (
-        <div className="grid gap-2.5">
-          {filtrados.map((p) => {
-            const novo = isNovo(p.dataInicio);
-            const diasSemConsulta = p.ultimaConsulta ? diasDesde(p.ultimaConsulta.data) : null;
-            const consultaAtrasada = diasSemConsulta !== null && diasSemConsulta > 30;
-            const proximaAtrasada = p.proximaConsulta && diasAte(p.proximaConsulta.data) < 0;
-            const cobranca = cobrancaCfg[p.cobrancaStatus];
+        <>
+          <div className="grid gap-2.5">
+            {filtrados.map((p) => {
+              const novo = isNovo(p.dataInicio);
+              const diasSemConsulta = p.ultimaConsulta ? diasDesde(p.ultimaConsulta.data) : null;
+              const consultaAtrasada = diasSemConsulta !== null && diasSemConsulta > 30;
+              const proximaAtrasada = p.proximaConsulta && diasAte(p.proximaConsulta.data) < 0;
+              const cobranca = cobrancaCfg[p.cobrancaStatus];
 
-            return (
-              <div
-                key={p.id}
-                onClick={() => navigate(`/app/pacientes/${p.id}`)}
-                className="group bg-white rounded-2xl px-5 py-4 border border-zena-mint/30 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex items-center gap-4"
-              >
-                {/* Avatar */}
-                <div className={`w-11 h-11 rounded-full ${getColor(p.nome)} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
-                  {getInitials(p.nome)}
-                </div>
-
-                {/* Info principal */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-zena-text-dark font-semibold text-sm">{p.nome}</p>
-                    {novo && <span className="text-[10px] font-bold bg-zena-green-light/20 text-zena-green-dark px-2 py-0.5 rounded-full">NOVO</span>}
-                    {!p.ativo && <span className="text-[10px] bg-zena-sand text-zena-text-light px-2 py-0.5 rounded-full">Inativa</span>}
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${cobranca.cls}`}>{cobranca.label}</span>
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => navigate(`/app/pacientes/${p.id}`)}
+                  className="group bg-white rounded-2xl px-5 py-4 border border-zena-mint/30 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex items-center gap-4"
+                >
+                  {/* Avatar */}
+                  <div className={`w-11 h-11 rounded-full ${getColor(p.nome)} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
+                    {getInitials(p.nome)}
                   </div>
-                  <p className="text-zena-text-light text-xs truncate mt-0.5">{p.objetivo}</p>
-                </div>
 
-                {/* Consultas */}
-                <div className="hidden md:flex flex-col items-end gap-1 text-xs min-w-[140px]">
-                  {p.ultimaConsulta ? (
-                    <span className={consultaAtrasada ? "text-orange-500 font-medium" : "text-zena-text-light"}>
-                      ↩ {tempoAtras(p.ultimaConsulta.data)}
+                  {/* Info principal */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-zena-text-dark font-semibold text-sm">{p.nome}</p>
+                      {novo && <span className="text-[10px] font-bold bg-zena-green-light/20 text-zena-green-dark px-2 py-0.5 rounded-full">NOVO</span>}
+                      {!p.ativo && <span className="text-[10px] bg-zena-sand text-zena-text-light px-2 py-0.5 rounded-full">Inativa</span>}
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${cobranca.cls}`}>{cobranca.label}</span>
+                    </div>
+                    <p className="text-zena-text-light text-xs truncate mt-0.5">{p.objetivo}</p>
+                  </div>
+
+                  {/* Consultas */}
+                  <div className="hidden md:flex flex-col items-end gap-1 text-xs min-w-[140px]">
+                    {p.ultimaConsulta ? (
+                      <span className={consultaAtrasada ? "text-orange-500 font-medium" : "text-zena-text-light"}>
+                        ↩ {tempoAtras(p.ultimaConsulta.data)}
+                      </span>
+                    ) : (
+                      <span className="text-zena-text-light/60">Sem consultas</span>
+                    )}
+                    {p.proximaConsulta ? (
+                      <span className={proximaAtrasada ? "text-red-500 font-medium" : "text-zena-green-mid font-medium"}>
+                        ↻ {tempoFuturo(p.proximaConsulta.data)}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Peso */}
+                  {p.medicoes[0] && (
+                    <span className="hidden lg:block text-xs text-zena-text-mid font-mono-data flex-shrink-0">
+                      {p.medicoes[0].peso} kg
                     </span>
-                  ) : (
-                    <span className="text-zena-text-light/60">Sem consultas</span>
                   )}
-                  {p.proximaConsulta ? (
-                    <span className={proximaAtrasada ? "text-red-500 font-medium" : "text-zena-green-mid font-medium"}>
-                      ↻ {tempoFuturo(p.proximaConsulta.data)}
-                    </span>
-                  ) : null}
-                </div>
 
-                {/* Peso */}
-                {p.medicoes[0] && (
-                  <span className="hidden lg:block text-xs text-zena-text-mid font-mono-data flex-shrink-0">
-                    {p.medicoes[0].peso} kg
-                  </span>
-                )}
-
-                {/* Ações hover */}
-                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                  {p.telefone && (
-                    <a
-                      href={waLink(p.telefone, p.nome)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors"
-                      title="Abrir WhatsApp"
+                  {/* Ações hover */}
+                  <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    {p.telefone && (
+                      <a
+                        href={waLink(p.telefone, p.nome)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors"
+                        title="Abrir WhatsApp"
+                      >
+                        <MessageCircle size={15} />
+                      </a>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); navigate(`/app/pacientes/${p.id}`); }}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-zena-green-light/20 text-zena-green-dark hover:bg-zena-green-light/40 transition-colors"
+                      title="Agendar consulta"
                     >
-                      <MessageCircle size={15} />
-                    </a>
-                  )}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); navigate(`/app/pacientes/${p.id}`); }}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-zena-green-light/20 text-zena-green-dark hover:bg-zena-green-light/40 transition-colors"
-                    title="Agendar consulta"
-                  >
-                    <CalendarPlus size={15} />
-                  </button>
+                      <CalendarPlus size={15} />
+                    </button>
+                  </div>
                 </div>
+              );
+            })}
+          </div>
+
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 mt-6 pt-4 border-t border-zena-mint/20">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="w-9 h-9 flex items-center justify-center rounded-xl border border-zena-mint/40 text-zena-text-mid hover:border-zena-green-light hover:text-zena-green-dark disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const p = totalPages <= 5 ? i + 1 : page <= 3 ? i + 1 : page >= totalPages - 2 ? totalPages - 4 + i : page - 2 + i;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`w-9 h-9 rounded-xl text-sm font-medium transition-all ${
+                        p === page ? "bg-zena-green-mid text-white" : "text-zena-text-mid hover:bg-zena-cream"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="w-9 h-9 flex items-center justify-center rounded-xl border border-zena-mint/40 text-zena-text-mid hover:border-zena-green-light hover:text-zena-green-dark disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronRight size={16} />
+              </button>
+              <span className="text-xs text-zena-text-light ml-1">{total} no total</span>
+            </div>
+          )}
+        </>
       )}
 
       {showModal && (
@@ -265,6 +323,7 @@ export default function Pacientes() {
           onClose={() => setShowModal(false)}
           onSave={(p) => {
             setPacientes([{ ...p, ultimaConsulta: null, proximaConsulta: null, cobrancaStatus: "em_dia" }, ...pacientes]);
+            setTotal((t) => t + 1);
             setShowModal(false);
           }}
         />

@@ -2,8 +2,10 @@ import cron from "node-cron";
 import prisma from "./lib/prisma";
 import { emailTrialExpirando } from "./lib/email";
 
+const TZ = { timezone: "America/Sao_Paulo" };
+
 export function initCron() {
-  // Daily at 8am: create reminders for consultations in the next 24h
+  // Daily at 8am BRT: create reminders for consultations in the next 24h
   cron.schedule("0 8 * * *", async () => {
     try {
       const now = new Date();
@@ -30,9 +32,9 @@ export function initCron() {
     } catch (e) {
       console.error("Cron consulta_24h error:", e);
     }
-  });
+  }, TZ);
 
-  // Every Monday at 8am: create weekly check-in reminders for active patients
+  // Every Monday at 8am BRT: create weekly check-in reminders for active patients
   cron.schedule("0 8 * * 1", async () => {
     try {
       const pacientes = await prisma.paciente.findMany({ where: { ativo: true } });
@@ -60,9 +62,9 @@ export function initCron() {
     } catch (e) {
       console.error("Cron checkin_semanal error:", e);
     }
-  });
+  }, TZ);
 
-  // Daily at 10am: send trial expiring email (3 days before)
+  // Daily at 10am BRT: send trial expiring email (3 days before)
   cron.schedule("0 10 * * *", async () => {
     try {
       const em3dias = new Date();
@@ -78,9 +80,9 @@ export function initCron() {
     } catch (e) {
       console.error("Cron trial_expirando error:", e);
     }
-  });
+  }, TZ);
 
-  // Daily at 8am: generate monthly charges from payment plans
+  // Daily at 8:30am BRT: generate monthly charges from payment plans
   cron.schedule("30 8 * * *", async () => {
     try {
       const hoje = new Date();
@@ -111,9 +113,9 @@ export function initCron() {
     } catch (e) {
       console.error("Cron plano_cobranca error:", e);
     }
-  });
+  }, TZ);
 
-  // Daily at 7am: block Clinne subscriptions overdue by more than 3 days
+  // Daily at 7am BRT: block Clinne subscriptions overdue by more than 3 days
   cron.schedule("0 7 * * *", async () => {
     try {
       const tresAtraso = new Date();
@@ -129,9 +131,9 @@ export function initCron() {
     } catch (e) {
       console.error("Cron assinatura_vencida error:", e);
     }
-  });
+  }, TZ);
 
-  // Daily at 9am: create reminders for overdue payments
+  // Daily at 9am BRT: create reminders for overdue payments
   cron.schedule("0 9 * * *", async () => {
     try {
       const hoje = new Date();
@@ -159,5 +161,5 @@ export function initCron() {
     } catch (e) {
       console.error("Cron cobranca_vencida error:", e);
     }
-  });
+  }, TZ);
 }

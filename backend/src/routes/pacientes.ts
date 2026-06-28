@@ -9,20 +9,35 @@ router.use(planoMiddleware);
 
 router.get("/", async (req: AuthRequest, res: Response) => {
   const now = new Date();
-  const pacientes = await prisma.paciente.findMany({
-    where: { nutricionistaId: req.nutricionistaId as string },
-    include: {
-      medicoes: { orderBy: { data: "desc" }, take: 1 },
-      consultas: { orderBy: { data: "desc" }, take: 10 },
-      cobrancas: {
-        where: { status: { not: "pago" } },
-        orderBy: { vencimento: "asc" },
-        take: 1,
-        select: { status: true, vencimento: true },
+  const page = Math.max(1, parseInt(String(req.query.page ?? "1")));
+  const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit ?? "50"))));
+  const busca = String(req.query.busca ?? "").trim();
+  const status = String(req.query.status ?? "todos");
+
+  const where: any = { nutricionistaId: req.nutricionistaId as string };
+  if (busca) where.nome = { contains: busca, mode: "insensitive" };
+  if (status === "ativo") where.ativo = true;
+  if (status === "inativo") where.ativo = false;
+
+  const [total, pacientes] = await prisma.$transaction([
+    prisma.paciente.count({ where }),
+    prisma.paciente.findMany({
+      where,
+      include: {
+        medicoes: { orderBy: { data: "desc" }, take: 1 },
+        consultas: { orderBy: { data: "desc" }, take: 10 },
+        cobrancas: {
+          where: { status: { not: "pago" } },
+          orderBy: { vencimento: "asc" },
+          take: 1,
+          select: { status: true, vencimento: true },
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+  ]);
 
   const result = pacientes.map((p) => {
     const ultimaConsulta = p.consultas.find((c) => new Date(c.data) < now) ?? null;
@@ -41,7 +56,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     };
   });
 
-  res.json(result);
+  res.json({ data: result, total, page, limit, totalPages: Math.ceil(total / limit) });
 });
 
 router.get("/:id", async (req: AuthRequest, res: Response) => {
