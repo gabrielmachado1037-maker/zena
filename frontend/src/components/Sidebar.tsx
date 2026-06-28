@@ -49,11 +49,8 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 px-3 space-y-0.5">
-        {NAV.map(({ to, icon: Icon, label, exact }) => {
-          // For items with exact:false, skip active state (they're secondary routes)
-          const isActive = exact === false
-            ? false
-            : location.pathname === to || location.pathname.startsWith(to + "/");
+        {NAV.map(({ to, icon: Icon, label }) => {
+          const isActive = location.pathname === to || location.pathname.startsWith(to + "/");
           return (
             <Link
               key={label}
