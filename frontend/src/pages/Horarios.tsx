@@ -178,14 +178,15 @@ function AbaDisponibilidade({
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-2xl p-8 border border-zena-mint/30 animate-pulse">
-          <div className="grid grid-cols-8 gap-2">
+        <div className="bg-white rounded-2xl p-4 sm:p-8 border border-zena-mint/30 animate-pulse overflow-x-auto">
+          <div className="grid grid-cols-8 gap-2 min-w-[480px]">
             {Array.from({ length: 56 }).map((_, i) => <div key={i} className="h-9 bg-zena-mint/20 rounded-lg" />)}
           </div>
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-zena-mint/30 shadow-sm overflow-hidden">
-          <div className="grid grid-cols-8 border-b border-zena-cream">
+          <div className="overflow-x-auto">
+          <div className="grid grid-cols-8 border-b border-zena-cream min-w-[480px]">
             <div className="p-4 text-zena-text-light text-xs font-medium text-center">Horário</div>
             {DIAS_SEMANA.map((d, i) => (
               <div key={i} className="p-4 text-center">
@@ -196,7 +197,7 @@ function AbaDisponibilidade({
           </div>
           <div className="max-h-[60vh] overflow-y-auto">
             {HORAS.map((hora) => (
-              <div key={hora} className="grid grid-cols-8 border-b border-zena-cream/60 hover:bg-zena-cream/30 transition-colors">
+              <div key={hora} className="grid grid-cols-8 border-b border-zena-cream/60 hover:bg-zena-cream/30 transition-colors min-w-[480px]">
                 <div className="px-4 py-2 text-zena-text-light text-xs font-mono-data flex items-center justify-center">{hora}</div>
                 {DIAS_SEMANA.map((_, diaIdx) => {
                   const ativo = isAtivo(diaIdx, hora);
@@ -223,6 +224,7 @@ function AbaDisponibilidade({
                 })}
               </div>
             ))}
+          </div>
           </div>
         </div>
       )}
@@ -387,8 +389,9 @@ function AbaCalendario({
 
       {/* Grid do calendário */}
       <div className="bg-white rounded-2xl border border-zena-mint/30 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
         {/* Header de dias */}
-        <div className="grid border-b border-zena-cream" style={{ gridTemplateColumns: "64px repeat(7, 1fr)" }}>
+        <div className="grid border-b border-zena-cream" style={{ gridTemplateColumns: "64px repeat(7, minmax(80px, 1fr))" }}>
           <div className="p-3" />
           {weekDays.map((day, i) => {
             const isToday = isSameDay(day, today);
@@ -419,7 +422,7 @@ function AbaCalendario({
               Carregando consultas...
             </div>
           ) : (
-            <div className="relative" style={{ display: "grid", gridTemplateColumns: "64px repeat(7, 1fr)" }}>
+            <div className="relative" style={{ display: "grid", gridTemplateColumns: "64px repeat(7, minmax(80px, 1fr))" }}>
               {/* Coluna de horas */}
               <div className="sticky left-0 bg-white z-10">
                 {HORAS.map((hora) => (
@@ -494,6 +497,7 @@ function AbaCalendario({
               })}
             </div>
           )}
+        </div>
         </div>
       </div>
 

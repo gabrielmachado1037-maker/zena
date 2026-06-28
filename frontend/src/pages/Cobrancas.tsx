@@ -251,15 +251,16 @@ export default function Cobrancas() {
             onGerarCobranca={() => abrirModal(pacienteEscolhido?.id)}
           />
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px]">
             <thead>
               <tr className="border-b border-zena-cream">
-                <th className="text-left text-zena-text-light text-xs font-medium px-6 py-4">Paciente</th>
-                <th className="text-left text-zena-text-light text-xs font-medium px-6 py-4">Valor</th>
-                <th className="text-left text-zena-text-light text-xs font-medium px-6 py-4">Vencimento</th>
-                <th className="text-left text-zena-text-light text-xs font-medium px-6 py-4">Método</th>
-                <th className="text-left text-zena-text-light text-xs font-medium px-6 py-4">Status</th>
-                <th className="px-6 py-4" />
+                <th className="text-left text-zena-text-light text-xs font-medium px-4 sm:px-6 py-4">Paciente</th>
+                <th className="text-left text-zena-text-light text-xs font-medium px-4 sm:px-6 py-4">Valor</th>
+                <th className="text-left text-zena-text-light text-xs font-medium px-4 sm:px-6 py-4">Vencimento</th>
+                <th className="hidden sm:table-cell text-left text-zena-text-light text-xs font-medium px-4 sm:px-6 py-4">Método</th>
+                <th className="text-left text-zena-text-light text-xs font-medium px-4 sm:px-6 py-4">Status</th>
+                <th className="px-4 sm:px-6 py-4" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zena-cream">
@@ -269,25 +270,25 @@ export default function Cobrancas() {
                 const StatusIcon = cfg.icon;
                 return (
                   <tr key={c.id} className="hover:bg-zena-cream/50 transition-colors">
-                    <td className="px-6 py-4 text-zena-text-dark text-sm font-medium">{c.paciente.nome}</td>
-                    <td className="px-6 py-4 text-zena-text-dark font-bold font-mono-data text-sm">
+                    <td className="px-4 sm:px-6 py-4 text-zena-text-dark text-sm font-medium">{c.paciente.nome}</td>
+                    <td className="px-4 sm:px-6 py-4 text-zena-text-dark font-bold font-mono-data text-sm">
                       R$ {c.valor.toFixed(2).replace(".", ",")}
                     </td>
-                    <td className="px-6 py-4 text-zena-text-mid text-sm">
+                    <td className="px-4 sm:px-6 py-4 text-zena-text-mid text-sm">
                       {format(new Date(c.vencimento), "dd 'de' MMM", { locale: ptBR })}
                     </td>
-                    <td className="px-6 py-4 text-zena-text-light text-sm capitalize">{c.metodo || "—"}</td>
-                    <td className="px-6 py-4">
+                    <td className="hidden sm:table-cell px-4 sm:px-6 py-4 text-zena-text-light text-sm capitalize">{c.metodo || "—"}</td>
+                    <td className="px-4 sm:px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${cfg.color}`}>
                         <StatusIcon size={11} />
                         {cfg.label}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 sm:px-6 py-4 text-right">
                       {status !== "pago" && (
                         <button
                           onClick={() => marcarPago(c.id)}
-                          className="text-xs text-zena-green-mid font-medium hover:underline"
+                          className="text-xs text-zena-green-mid font-medium hover:underline whitespace-nowrap"
                         >
                           Marcar como pago
                         </button>
@@ -298,6 +299,7 @@ export default function Cobrancas() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
