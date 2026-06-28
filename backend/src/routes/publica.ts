@@ -18,7 +18,7 @@ router.get("/paciente/:link", async (req: Request, res: Response) => {
   const paciente = await prisma.paciente.findUnique({
     where: { linkUnico: link },
     include: {
-      nutricionista: { select: { nome: true } },
+      nutricionista: { select: { nome: true, nomeConsultorio: true, logoConsultorio: true } },
       medicoes: { orderBy: { data: "asc" } },
       planosAlimentares: { orderBy: { dataCriacao: "desc" }, take: 1 },
       consultas: { orderBy: { data: "asc" }, take: 5 },

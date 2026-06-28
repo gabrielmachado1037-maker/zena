@@ -6,7 +6,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Leaf, Calendar, TrendingDown, TrendingUp, CheckCircle, RefreshCw, ArrowLeft, Camera, ChevronRight } from "lucide-react";
 import confetti from "canvas-confetti";
 import api from "../lib/api";
-import FotoSlider from "../components/FotoSlider";
 import { comprimirImagem, calcularStreak, jaFezCheckinEstaSemana } from "../lib/utils";
 
 // ---------- Types ----------
@@ -33,7 +32,7 @@ interface DadosPaciente {
   objetivo: string;
   pesoMeta: number | null;
   fotoInicial?: string;
-  nutricionista: { nome: string };
+  nutricionista: { nome: string; nomeConsultorio?: string | null; logoConsultorio?: string | null };
   medicoes: Array<{ id: string; data: string; peso: number; gordura?: number; musculo?: number }>;
   planosAlimentares: Array<{ cafeManha: string; lancheManha?: string; almoco: string; lancheTarde?: string; jantar: string; ceia?: string; observacoes?: string }>;
   consultas: Array<{ id: string; data: string; status: string }>;
@@ -186,10 +185,28 @@ export default function AreaPaciente() {
     <div className="min-h-screen bg-zena-cream pb-12">
       {/* Header */}
       <div className="bg-zena-green-dark px-6 pt-10 pb-10">
-        <div className="flex items-center gap-2 mb-6">
-          <Leaf className="text-zena-mint" size={20} />
-          <span className="text-white font-bold text-lg">zena</span>
+        {/* Branding do consultório */}
+        <div className="flex items-center gap-3 mb-6">
+          {dados.nutricionista.logoConsultorio ? (
+            <img
+              src={dados.nutricionista.logoConsultorio}
+              alt={dados.nutricionista.nomeConsultorio || dados.nutricionista.nome}
+              className="w-10 h-10 rounded-xl object-cover ring-2 ring-white/20"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-zena-green-mid/60 flex items-center justify-center">
+              <Leaf className="text-white" size={18} />
+            </div>
+          )}
+          <div>
+            <p className="text-white font-semibold text-sm leading-tight">
+              {dados.nutricionista.nomeConsultorio || dados.nutricionista.nome.split(" ")[0]}
+            </p>
+            <p className="text-white/40 text-[10px]">via Clinne</p>
+          </div>
         </div>
+
+        {/* Saudação ao paciente */}
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-zena-mint/70 text-sm mb-1">acompanhamento com {dados.nutricionista.nome.split(" ")[0]}</p>
@@ -318,11 +335,24 @@ export default function AreaPaciente() {
           </div>
         )}
 
-        {/* Comparativo de fotos */}
-        {dados.fotoInicial && fotoDepois && (
+        {/* Galeria de fotos de evolução */}
+        {(dados.fotoInicial || checkInsOrdenados.some(c => c.foto)) && (
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-zena-mint/20">
-            <h2 className="text-zena-text-dark font-semibold mb-3">Comparativo visual</h2>
-            <FotoSlider antes={dados.fotoInicial} depois={fotoDepois} />
+            <h2 className="text-zena-text-dark font-semibold mb-3">Fotos de evolução</h2>
+            <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {dados.fotoInicial && (
+                <div className="flex-shrink-0 text-center">
+                  <img src={dados.fotoInicial} alt="Início" className="w-24 h-32 object-cover rounded-xl" />
+                  <p className="text-[10px] text-zena-text-light mt-1">Início</p>
+                </div>
+              )}
+              {[...checkInsOrdenados].reverse().filter(c => c.foto).map(c => (
+                <div key={c.id} className="flex-shrink-0 text-center">
+                  <img src={c.foto!} alt={`Semana ${c.semana}`} className="w-24 h-32 object-cover rounded-xl" />
+                  <p className="text-[10px] text-zena-text-light mt-1">Sem. {c.semana}/{c.ano}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -440,7 +470,7 @@ export default function AreaPaciente() {
         </div>
 
         <p className="text-center text-zena-text-light text-xs pb-4">
-          Powered by <span className="font-semibold text-zena-green-mid">zena</span> · seu consultório. simplificado.
+          Powered by <span className="font-semibold text-zena-green-mid">Clinne</span> · seu consultório. simplificado.
         </p>
       </div>
     </div>
