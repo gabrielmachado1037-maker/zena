@@ -8,6 +8,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useAlertas } from "../contexts/AlertasContext";
 import StatCard from "../components/StatCard";
 import WhatsAppModal from "../components/WhatsAppModal";
+import { DailyQuoteDesktop, DailyQuoteMobile } from "../components/DailyQuoteCard";
 import api from "../lib/api";
 import { type TemplateWhatsApp } from "../lib/utils";
 
@@ -250,6 +251,9 @@ export default function Dashboard() {
           )}
         </div>
 
+        {/* Quote card mobile */}
+        <DailyQuoteMobile />
+
         {/* KPI Cards */}
         {loading ? (
           <div className="space-y-3">
@@ -442,6 +446,9 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
+        {/* Quote card desktop */}
+        <DailyQuoteDesktop />
 
         {/* ── KPI Row ── */}
         {loading ? (

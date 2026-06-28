@@ -272,3 +272,10 @@ model PlanoCobranca {
   ativo           Boolean  @default(true)
   criadoEm        DateTime @default(now())
 }
+
+model DailyQuote {
+  id        String   @id @default(cuid())
+  date      DateTime @unique
+  quote     String
+  createdAt DateTime @default(now())
+}

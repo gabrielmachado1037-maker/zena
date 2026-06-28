@@ -16,6 +16,7 @@ import financeiroRouter from "./routes/financeiro";
 import fotosRouter from "./routes/fotos";
 import registroFotosRouter from "./routes/registroFotos";
 import consultasRouter from "./routes/consultas";
+import dailyQuoteRouter from "./routes/daily-quote";
 import { initCron } from "./cron";
 
 dotenv.config();
@@ -62,6 +63,7 @@ app.use("/api/financeiro", financeiroRouter);
 app.use("/api/fotos", fotosRouter);
 app.use("/api/registro-fotos", registroFotosRouter);
 app.use("/api/consultas", consultasRouter);
+app.use("/api/daily-quote", dailyQuoteRouter);
 
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 
