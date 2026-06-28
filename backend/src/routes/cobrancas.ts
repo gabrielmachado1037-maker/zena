@@ -1,9 +1,11 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { planoMiddleware } from "../middleware/plano";
 
 const router = Router();
 router.use(authMiddleware);
+router.use(planoMiddleware);
 
 router.get("/resumo", async (req: AuthRequest, res: Response) => {
   const now = new Date();
@@ -55,6 +57,12 @@ router.get("/", async (req: AuthRequest, res: Response) => {
 
 router.post("/", async (req: AuthRequest, res: Response) => {
   const { pacienteId, valor, vencimento, metodo, descricao } = req.body;
+
+  const paciente = await prisma.paciente.findFirst({
+    where: { id: pacienteId, nutricionistaId: req.nutricionistaId! },
+  });
+  if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });
+
   const cobranca = await prisma.cobranca.create({
     data: {
       pacienteId,
@@ -68,6 +76,11 @@ router.post("/", async (req: AuthRequest, res: Response) => {
 });
 
 router.patch("/:id/pagar", async (req: AuthRequest, res: Response) => {
+  const existe = await prisma.cobranca.findFirst({
+    where: { id: req.params["id"] as string, paciente: { nutricionistaId: req.nutricionistaId! } },
+  });
+  if (!existe) return res.status(404).json({ error: "Cobrança não encontrada" });
+
   const cobranca = await prisma.cobranca.update({
     where: { id: req.params["id"] as string },
     data: { status: "pago", pagoEm: new Date() },

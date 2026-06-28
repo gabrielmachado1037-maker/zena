@@ -2,12 +2,29 @@ import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import rateLimit from "express-rate-limit";
 import prisma from "../lib/prisma";
 import { emailBoasVindas, emailRecuperacaoSenha } from "../lib/email";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || "zena-secret-2024";
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "Muitas tentativas. Tente novamente em 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const emailLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: { error: "Muitas solicitações. Tente novamente em 1 hora." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 router.post("/register", async (req: Request, res: Response) => {
   const { nome, email, senha, crn, nomeConsultorio } = req.body;
@@ -32,7 +49,7 @@ router.post("/register", async (req: Request, res: Response) => {
   res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio } });
 });
 
-router.post("/login", async (req: Request, res: Response) => {
+router.post("/login", loginLimiter, async (req: Request, res: Response) => {
   const { email, senha } = req.body;
 
   const nutri = await prisma.nutricionista.findUnique({ where: { email } });
@@ -45,7 +62,7 @@ router.post("/login", async (req: Request, res: Response) => {
   res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio } });
 });
 
-router.post("/esqueci-senha", async (req: Request, res: Response) => {
+router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) => {
   const { email } = req.body;
   const nutri = await prisma.nutricionista.findUnique({ where: { email } });
 

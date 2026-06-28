@@ -1,11 +1,31 @@
-import { Router, Response } from "express";
+import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { planoMiddleware } from "../middleware/plano";
 import { criarOuBuscarCliente, criarCobrancaPix, cancelarCobranca } from "../lib/asaas";
 import { encrypt, decrypt } from "../lib/crypto";
 
 const router = Router();
+
+// Webhook sem JWT — autenticado pelo token Asaas no header
+router.post("/asaas-webhook", async (req: Request, res: Response) => {
+  const token = req.headers["asaas-access-token"];
+  const expected = process.env.ASAAS_WEBHOOK_TOKEN;
+  if (!expected || token !== expected) {
+    return res.status(401).json({ error: "Token inválido" });
+  }
+  const { event, payment } = req.body;
+  if (event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") {
+    await prisma.cobranca.updateMany({
+      where: { asaasChargeId: payment.id },
+      data: { status: "pago", pagoEm: new Date() },
+    });
+  }
+  res.json({ ok: true });
+});
+
 router.use(authMiddleware);
+router.use(planoMiddleware);
 
 // Dashboard financeiro
 router.get("/dashboard", async (req: AuthRequest, res: Response) => {
@@ -141,18 +161,6 @@ router.put("/asaas-key", async (req: AuthRequest, res: Response) => {
 router.get("/asaas-status", async (req: AuthRequest, res: Response) => {
   const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId! } });
   res.json({ configurado: !!nutri?.asaasApiKey });
-});
-
-// Webhook Asaas (sem auth)
-router.post("/asaas-webhook", async (req: any, res: Response) => {
-  const { event, payment } = req.body;
-  if (event === 'PAYMENT_RECEIVED' || event === 'PAYMENT_CONFIRMED') {
-    await prisma.cobranca.updateMany({
-      where: { asaasChargeId: payment.id },
-      data: { status: 'pago', pagoEm: new Date() },
-    });
-  }
-  res.json({ ok: true });
 });
 
 export default router;

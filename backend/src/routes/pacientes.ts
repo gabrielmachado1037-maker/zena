@@ -1,9 +1,11 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { planoMiddleware } from "../middleware/plano";
 
 const router = Router();
 router.use(authMiddleware);
+router.use(planoMiddleware);
 
 router.get("/", async (req: AuthRequest, res: Response) => {
   const now = new Date();

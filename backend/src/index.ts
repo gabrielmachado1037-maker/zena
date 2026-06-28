@@ -20,10 +20,25 @@ import { initCron } from "./cron";
 
 dotenv.config();
 
+// Fail fast se variáveis críticas estiverem faltando
+const REQUIRED_ENV = ["JWT_SECRET", "DATABASE_URL"];
+const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
+if (missing.length > 0) {
+  console.error(`[STARTUP] Variáveis de ambiente faltando: ${missing.join(", ")}`);
+  process.exit(1);
+}
+if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length < 64) {
+  console.warn("[STARTUP] ENCRYPTION_KEY não configurada — chaves Asaas serão salvas sem criptografia.");
+}
+
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001", 10);
 
-app.use(cors());
+const allowedOrigins = process.env.FRONTEND_URL
+  ? [process.env.FRONTEND_URL, "http://localhost:5173"]
+  : ["http://localhost:5173"];
+
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 
 // Stripe webhook needs raw body — must be before express.json()
 app.post("/api/billing/webhook", express.raw({ type: "application/json" }), (req: Request, res: Response) => {
