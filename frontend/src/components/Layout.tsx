@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Outlet, useLocation, Navigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
+import MobileNav from "./MobileNav";
 import api from "../lib/api";
 
 interface BillingStatus {
@@ -38,9 +39,10 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen bg-zena-cream">
       <Sidebar />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto pb-16 md:pb-0">
         <Outlet />
       </main>
+      <MobileNav />
     </div>
   );
 }

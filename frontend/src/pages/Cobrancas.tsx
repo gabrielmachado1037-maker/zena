@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import {
   DollarSign, CheckCircle, Clock, AlertCircle, Plus, X,
   Key, User, QrCode, CheckCircle2, ChevronRight,
@@ -153,7 +153,7 @@ export default function Cobrancas() {
   const step3Enabled = step1Done && step2Done;
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hide} />}
 
       {/* Cabeçalho */}

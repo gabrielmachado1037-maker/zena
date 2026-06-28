@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { Clock, Check, ChevronLeft, ChevronRight, X, Search } from "lucide-react";
 import { format, addDays, isSameDay, startOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -69,7 +69,7 @@ export default function Horarios() {
   }, []);
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hide} />}
 
       <div className="mb-6">

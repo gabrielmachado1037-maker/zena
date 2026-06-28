@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Users, MessageCircle, CalendarPlus } from "lucide-react";
 import api from "../lib/api";
@@ -100,7 +100,7 @@ export default function Pacientes() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-zena-text-dark text-3xl font-bold">Pacientes</h1>

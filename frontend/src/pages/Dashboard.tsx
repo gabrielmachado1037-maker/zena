@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Users, DollarSign, Calendar, AlertCircle, Clock, CheckCircle, XCircle, MessageCircle, Bell, X, Zap, ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -166,7 +166,7 @@ export default function Dashboard() {
   const alertasVisiveis = alertas.filter((a) => !dispensados.has(a.id)).slice(0, 5);
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       {showOnboarding && <OnboardingGuide onDismiss={dismissOnboarding} />}
       {/* Trial banner */}
       {billing?.emTrial && (

@@ -29,7 +29,7 @@ export default function Sidebar() {
     .toUpperCase() || "Z";
 
   return (
-    <aside className="w-60 min-h-screen bg-zena-green-dark flex flex-col">
+    <aside className="hidden md:flex md:flex-col w-60 min-h-screen bg-zena-green-dark flex-shrink-0">
       <div className="px-6 py-8">
         <div className="flex items-center gap-2">
           <Leaf className="text-zena-mint" size={24} />

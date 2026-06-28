@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type ChangeEvent } from "react";
+﻿import { useRef, useState, type FormEvent, type ChangeEvent } from "react";
 import { User, Lock, CheckCircle, Building2, Upload, X } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
@@ -107,7 +107,7 @@ export default function Perfil() {
   const inputCls = "w-full px-4 py-3 rounded-xl border border-zena-mint/50 bg-zena-cream text-zena-text-dark placeholder-zena-text-light focus:outline-none focus:ring-2 focus:ring-zena-green-light text-sm";
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 p-8">
+    <div className="max-w-2xl mx-auto space-y-6 p-4 sm:p-8">
       <div>
         <h1 className="text-2xl font-bold text-zena-green-dark">Meu Perfil</h1>
         <p className="text-zena-text-mid mt-1">Atualize suas informações e configurações.</p>

@@ -175,8 +175,8 @@ export default function PacienteDetalhe() {
     show("Link copiado para a área de transferência!");
   }
 
-  if (loading) return <div className="p-8 animate-pulse"><div className="h-8 bg-zena-mint/40 rounded w-48 mb-4" /><div className="h-4 bg-zena-mint/20 rounded w-32" /></div>;
-  if (!paciente) return <div className="p-8 text-zena-text-light">Paciente não encontrada.</div>;
+  if (loading) return <div className="p-4 sm:p-8 animate-pulse"><div className="h-8 bg-zena-mint/40 rounded w-48 mb-4" /><div className="h-4 bg-zena-mint/20 rounded w-32" /></div>;
+  if (!paciente) return <div className="p-4 sm:p-8 text-zena-text-light">Paciente não encontrada.</div>;
 
   const medicoes = [...paciente.medicoes].sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
   const pesoInicial = medicoes[0]?.peso;
@@ -186,7 +186,7 @@ export default function PacienteDetalhe() {
   const streak = calcularStreak(paciente.checkIns);
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-8">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hide} />}
 
       {waTemplate && nutricionista && (
@@ -1500,7 +1500,7 @@ function AbaComunicacao({ paciente, setPaciente, show: _sh, nutricionista }: { p
             <div className="p-6 space-y-4">
               <div>
                 <p className="text-zena-text-mid text-sm font-medium mb-2">Tipo de contato</p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {(["ligacao", "presencial", "email", "outro"] as const).map((t) => {
                     const cfg = CONTATO_CFG[t];
                     return (
@@ -1551,20 +1551,20 @@ function AbaComunicacao({ paciente, setPaciente, show: _sh, nutricionista }: { p
       <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
         <h3 className="text-zena-text-dark font-semibold mb-1">Ações rápidas</h3>
         <p className="text-zena-text-light text-xs mb-4">Envie uma mensagem com template pronto pelo WhatsApp</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
           {quickTemplates.map(({ template, emoji, label, desc, disabled }) => (
             <button
               key={template}
               onClick={() => !disabled && abrirTemplate(template, template === "confirmar_consulta" ? { consultaData: proximaConsultaData } : undefined)}
               disabled={disabled}
-              className={`flex flex-col items-start gap-2 p-4 rounded-xl border-2 border-transparent text-left transition-all ${
+              className={`flex items-center sm:flex-col sm:items-start gap-3 sm:gap-2 p-3 sm:p-4 rounded-xl border-2 border-transparent text-left transition-all ${
                 disabled
                   ? "opacity-40 cursor-not-allowed bg-zena-cream/50"
                   : "hover:border-[#25D366]/30 hover:bg-[#25D366]/5 cursor-pointer"
               }`}
             >
-              <span className="text-2xl">{emoji}</span>
-              <div>
+              <span className="text-xl sm:text-2xl flex-shrink-0">{emoji}</span>
+              <div className="min-w-0">
                 <p className="text-zena-text-dark text-sm font-medium">{label}</p>
                 <p className={`text-xs mt-0.5 ${disabled ? "text-amber-500" : "text-zena-text-light"}`}>{desc}</p>
               </div>
@@ -1621,7 +1621,7 @@ function AbaComunicacao({ paciente, setPaciente, show: _sh, nutricionista }: { p
       <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
         <h3 className="text-zena-text-dark font-semibold mb-1">Documentos</h3>
         <p className="text-zena-text-light text-xs mb-4">Exporte e compartilhe arquivos com a paciente</p>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Plano em PDF */}
           <div className="border border-zena-mint/30 rounded-xl p-4 space-y-3">
             <div>

@@ -108,24 +108,24 @@ export default function WhatsAppModal({ context, template, onClose }: Props) {
           </button>
         </div>
 
-        <div className="p-6 grid md:grid-cols-2 gap-6">
+        <div className="p-4 sm:p-6 grid md:grid-cols-2 gap-4 sm:gap-6">
           {/* Esquerda: seletor de templates + telefone */}
           <div className="space-y-4">
             <div>
               <p className="text-zena-text-mid text-sm font-medium mb-2">Tipo de mensagem</p>
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
                 {templates.map((t) => (
                   <button
                     key={t}
                     onClick={() => setActiveTemplate(t)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all text-sm ${
+                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all text-sm ${
                       activeTemplate === t
                         ? "border-[#25D366] bg-[#25D366]/5 text-zena-text-dark"
                         : "border-zena-mint/30 text-zena-text-mid hover:border-zena-green-light"
                     }`}
                   >
-                    <span className="text-lg">{templateEmojis[t]}</span>
-                    {templateLabels[t]}
+                    <span className="text-base flex-shrink-0">{templateEmojis[t]}</span>
+                    <span className="text-xs sm:text-sm leading-tight">{templateLabels[t]}</span>
                   </button>
                 ))}
               </div>
@@ -146,8 +146,8 @@ export default function WhatsAppModal({ context, template, onClose }: Props) {
             )}
           </div>
 
-          {/* Direita: mockup de celular */}
-          <div className="flex flex-col items-center">
+          {/* Direita: mockup de celular (hidden on mobile) */}
+          <div className="hidden md:flex flex-col items-center">
             <p className="text-zena-text-light text-xs mb-3 self-start">Prévia da mensagem</p>
             {/* Phone frame */}
             <div className="w-[230px] bg-gray-900 rounded-[28px] p-1.5 shadow-2xl">
@@ -213,7 +213,7 @@ export default function WhatsAppModal({ context, template, onClose }: Props) {
         </div>
 
         {/* Footer actions */}
-        <div className="flex gap-3 p-6 pt-0">
+        <div className="flex gap-3 p-4 sm:p-6 pt-0">
           <button
             onClick={copiar}
             className="flex items-center gap-2 flex-1 justify-center py-3 rounded-xl border border-zena-mint/50 text-zena-text-mid text-sm font-medium hover:bg-zena-cream transition-all"

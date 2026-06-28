@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { TrendingUp, TrendingDown, AlertCircle, DollarSign, Calendar, CheckCircle, Copy, ExternalLink, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -87,7 +87,7 @@ export default function Financeiro() {
   const variacaoPct = data?.receitaMesPassado ? Math.round((variacao / data.receitaMesPassado) * 100) : 0;
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       {toast && <Toast message={toast.message} type={toast.type} onClose={hide} />}
 
       <div className="flex items-center justify-between mb-8">
