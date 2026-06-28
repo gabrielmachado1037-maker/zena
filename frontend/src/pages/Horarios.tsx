@@ -1,6 +1,6 @@
-﻿import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Clock, Check, ChevronLeft, ChevronRight, X, Search } from "lucide-react";
-import { format, addDays, isSameDay, startOfWeek } from "date-fns";
+import { format, addDays, isSameDay, isSameMonth, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import api from "../lib/api";
 import { Toast, useToast } from "../components/Toast";
@@ -51,8 +51,6 @@ const TIPO_CFG: Record<string, { label: string; bg: string; border: string; text
   online:            { label: "Online",      bg: "bg-purple-500",  border: "border-purple-600", text: "text-white" },
   consulta:          { label: "Consulta",    bg: "bg-teal-500",    border: "border-teal-600",   text: "text-white" },
 };
-
-const ROW_H = 48; // px per 30-min slot
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
@@ -243,50 +241,39 @@ function AbaDisponibilidade({
   );
 }
 
-// ─── Aba Calendário ───────────────────────────────────────────────────────────
-
-function getWeekStart(offset: number): Date {
-  const base = startOfWeek(new Date(), { weekStartsOn: 1 }); // Monday
-  return addDays(base, offset * 7);
-}
-
-function timeToSlotIdx(date: Date): number {
-  return (date.getHours() - 7) * 2 + (date.getMinutes() >= 30 ? 1 : 0);
-}
+// ─── Aba Calendário — visão mensal ───────────────────────────────────────────
 
 function AbaCalendario({
-  horarios, pacientes, show,
+  horarios: _horarios, pacientes, show,
 }: {
   horarios: Horario[];
   pacientes: Paciente[];
   show: (msg: string, type?: "error") => void;
 }) {
-  const [offset, setOffset] = useState(0);
+  const [monthOffset, setMonthOffset] = useState(0);
   const [consultas, setConsultas] = useState<Consulta[]>([]);
   const [loadingCal, setLoadingCal] = useState(true);
   const [modalAgendar, setModalAgendar] = useState<{ data: Date } | null>(null);
   const [modalConsulta, setModalConsulta] = useState<Consulta | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const hScrollRef = useRef<HTMLDivElement>(null);
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
-
-  useEffect(() => {
-    const handler = () => setIsMobile(window.innerWidth < 640);
-    window.addEventListener("resize", handler);
-    return () => window.removeEventListener("resize", handler);
-  }, []);
 
   const today = new Date();
-  const weekStart = getWeekStart(offset);
-  // Mobile: exibe 3 dias (ontem, hoje, amanhã) com navegação de 3 em 3
-  // Desktop: exibe semana completa (Seg–Dom)
-  const weekDays = isMobile
-    ? Array.from({ length: 3 }, (_, i) => addDays(today, offset * 3 - 1 + i))
-    : Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const viewDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const monthStart = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+  const monthEnd = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0);
 
-  const gridCols = isMobile ? "44px repeat(3, 1fr)" : "64px repeat(7, minmax(80px, 1fr))";
-  const inicioStr = format(weekDays[0], "yyyy-MM-dd");
-  const fimStr = format(weekDays[weekDays.length - 1], "yyyy-MM-dd");
+  // Grid começa no domingo antes (ou no) dia 1 e termina no sábado após o último dia
+  const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+
+  const gridDays: Date[] = [];
+  let cur = new Date(gridStart);
+  while (cur <= gridEnd) {
+    gridDays.push(new Date(cur));
+    cur = addDays(cur, 1);
+  }
+
+  const inicioStr = format(gridStart, "yyyy-MM-dd");
+  const fimStr = format(gridEnd, "yyyy-MM-dd");
 
   async function carregarConsultas() {
     setLoadingCal(true);
@@ -300,45 +287,16 @@ function AbaCalendario({
     }
   }
 
-  useEffect(() => {
-    carregarConsultas();
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({ top: ROW_H * 1, behavior: "smooth" });
-      // No desktop, rola horizontalmente para mostrar o dia de hoje
-      if (offset === 0 && !isMobile) {
-        const dayIdx = (today.getDay() + 6) % 7;
-        if (dayIdx > 2 && hScrollRef.current) {
-          hScrollRef.current.scrollTo({ left: (dayIdx - 2) * 90, behavior: "smooth" });
-        }
-      }
-    }, 120);
-  }, [offset, isMobile]);
+  useEffect(() => { carregarConsultas(); }, [monthOffset]);
 
-  function isSlotAvailable(dayDate: Date, hora: string): boolean {
-    return horarios.some((h) => h.diaSemana === dayDate.getDay() && h.hora === hora && h.ativo);
-  }
-
-  function consultasNoDia(dayDate: Date): Consulta[] {
-    return consultas.filter(
-      (c) => c.status !== "cancelada" && isSameDay(new Date(c.data), dayDate)
-    );
-  }
-
-  function handleCellClick(dayDate: Date, hora: string) {
-    const [h, m] = hora.split(":").map(Number);
-    const dt = new Date(dayDate);
-    dt.setHours(h, m, 0, 0);
-    setModalAgendar({ data: dt });
+  function consultasNoDia(day: Date): Consulta[] {
+    return consultas.filter(c => c.status !== "cancelada" && isSameDay(new Date(c.data), day));
   }
 
   async function agendarConsulta(pacienteId: string, data: Date, tipo: string) {
     try {
-      const res = await api.post("/consultas", {
-        pacienteId,
-        data: data.toISOString(),
-        tipo,
-      });
-      setConsultas((prev) => [...prev, res.data]);
+      const res = await api.post("/consultas", { pacienteId, data: data.toISOString(), tipo });
+      setConsultas(prev => [...prev, res.data]);
       show("Consulta agendada!");
       setModalAgendar(null);
     } catch {
@@ -349,7 +307,7 @@ function AbaCalendario({
   async function cancelarConsulta(id: string) {
     try {
       await api.patch(`/consultas/${id}`, { status: "cancelada" });
-      setConsultas((prev) => prev.map((c) => c.id === id ? { ...c, status: "cancelada" } : c));
+      setConsultas(prev => prev.map(c => c.id === id ? { ...c, status: "cancelada" } : c));
       show("Consulta cancelada.");
       setModalConsulta(null);
     } catch {
@@ -360,7 +318,7 @@ function AbaCalendario({
   async function remarcarConsulta(id: string, novaData: Date) {
     try {
       const res = await api.patch(`/consultas/${id}`, { data: novaData.toISOString() });
-      setConsultas((prev) => prev.map((c) => c.id === id ? res.data : c));
+      setConsultas(prev => prev.map(c => c.id === id ? res.data : c));
       show("Consulta remarcada!");
       setModalConsulta(null);
     } catch {
@@ -368,17 +326,7 @@ function AbaCalendario({
     }
   }
 
-  const mesesLabel = () => {
-    if (isMobile) {
-      const s = format(weekDays[0], "d MMM", { locale: ptBR });
-      const e = format(weekDays[weekDays.length - 1], "d MMM", { locale: ptBR });
-      return `${s} – ${e}`;
-    }
-    const s = format(weekDays[0], "MMM", { locale: ptBR });
-    const e = format(weekDays[6], "MMM", { locale: ptBR });
-    const ano = format(weekDays[0], "yyyy");
-    return s === e ? `${s.charAt(0).toUpperCase() + s.slice(1)} ${ano}` : `${s}–${e} ${ano}`;
-  };
+  const DIAS_HEADER = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
   return (
     <>
@@ -386,22 +334,24 @@ function AbaCalendario({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setOffset((o) => o - 1)}
+            onClick={() => setMonthOffset(o => o - 1)}
             className="w-9 h-9 flex items-center justify-center rounded-xl border border-zena-mint/40 bg-white hover:bg-zena-cream text-zena-text-mid transition-colors"
           >
             <ChevronLeft size={18} />
           </button>
-          <span className="text-zena-text-dark font-semibold text-base min-w-[160px] text-center">{mesesLabel()}</span>
+          <span className="text-zena-text-dark font-semibold text-base min-w-[160px] text-center capitalize">
+            {format(viewDate, "MMMM yyyy", { locale: ptBR })}
+          </span>
           <button
-            onClick={() => setOffset((o) => o + 1)}
+            onClick={() => setMonthOffset(o => o + 1)}
             className="w-9 h-9 flex items-center justify-center rounded-xl border border-zena-mint/40 bg-white hover:bg-zena-cream text-zena-text-mid transition-colors"
           >
             <ChevronRight size={18} />
           </button>
         </div>
-        {offset !== 0 && (
+        {monthOffset !== 0 && (
           <button
-            onClick={() => setOffset(0)}
+            onClick={() => setMonthOffset(0)}
             className="text-xs text-zena-green-mid font-medium hover:underline"
           >
             Hoje
@@ -409,139 +359,90 @@ function AbaCalendario({
         )}
       </div>
 
-      {/* Grid do calendário */}
+      {/* Calendário mensal */}
       <div className="bg-white rounded-2xl border border-zena-mint/30 shadow-sm overflow-hidden">
-        <div ref={hScrollRef} className="overflow-x-auto">
-        {/* Header de dias */}
-        <div className="grid border-b border-zena-cream" style={{ gridTemplateColumns: gridCols }}>
-          <div className="p-3" />
-          {weekDays.map((day, i) => {
-            const isToday = isSameDay(day, today);
-            return (
-              <div
-                key={i}
-                className={`p-3 text-center border-l border-zena-cream/60 ${isToday ? "bg-zena-green-dark/8" : ""}`}
-              >
-                <p className={`text-xs font-semibold ${isToday ? "text-zena-green-dark" : "text-zena-text-light"}`}>
-                  {format(day, "EEE", { locale: ptBR }).toUpperCase()}
-                </p>
-                <div className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full mt-1 ${
-                  isToday ? "bg-zena-green-dark" : ""
-                }`}>
-                  <p className={`text-base font-bold leading-none ${isToday ? "text-white" : "text-zena-text-dark"}`}>
+        {/* Cabeçalho Dom–Sáb */}
+        <div className="grid grid-cols-7 border-b border-zena-cream">
+          {DIAS_HEADER.map((d, i) => (
+            <div
+              key={d}
+              className={`py-3 text-center text-xs font-semibold ${i === 0 ? "text-red-400" : "text-zena-text-light"}`}
+            >
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Grid de dias */}
+        {loadingCal ? (
+          <div className="animate-pulse grid grid-cols-7">
+            {Array.from({ length: 35 }).map((_, i) => (
+              <div key={i} className="h-12 border-b border-r border-zena-cream/30" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-7">
+            {gridDays.map((day, i) => {
+              const isCurrentMonth = isSameMonth(day, viewDate);
+              const isToday = isSameDay(day, today);
+              const isSun = day.getDay() === 0;
+              const dayConsultas = consultasNoDia(day);
+
+              return (
+                <div
+                  key={i}
+                  onClick={() => {
+                    const dt = new Date(day);
+                    dt.setHours(9, 0, 0, 0);
+                    setModalAgendar({ data: dt });
+                  }}
+                  className={`min-h-[52px] p-1 border-b border-r border-zena-cream/50 cursor-pointer transition-colors select-none
+                    ${isToday ? "bg-zena-green-light/10" : "hover:bg-zena-cream/40"}
+                    ${!isCurrentMonth ? "opacity-30" : ""}
+                  `}
+                >
+                  <div className={`w-7 h-7 mx-auto flex items-center justify-center rounded-full text-sm font-semibold leading-none ${
+                    isToday
+                      ? "bg-zena-green-dark text-white"
+                      : isSun && isCurrentMonth
+                      ? "text-red-400"
+                      : "text-zena-text-dark"
+                  }`}>
                     {format(day, "d")}
-                  </p>
+                  </div>
+                  {/* Barrinhas coloridas por tipo de consulta */}
+                  {dayConsultas.length > 0 && (
+                    <div className="flex gap-0.5 mt-1 px-0.5 flex-wrap">
+                      {dayConsultas.slice(0, 3).map((c, idx) => {
+                        const cfg = TIPO_CFG[c.tipo] || TIPO_CFG.consulta;
+                        return (
+                          <div
+                            key={idx}
+                            onClick={e => { e.stopPropagation(); setModalConsulta(c); }}
+                            className={`h-1.5 flex-1 rounded-full min-w-[6px] max-w-[20px] cursor-pointer ${cfg.bg} hover:opacity-70`}
+                            title={`${c.paciente.nome} · ${format(new Date(c.data), "HH:mm")}`}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Corpo com scroll */}
-        <div
-          ref={scrollRef}
-          className="overflow-y-auto"
-          style={{ maxHeight: "calc(100vh - 320px)", minHeight: "400px" }}
-        >
-          {loadingCal ? (
-            <div className="flex items-center justify-center h-64 text-zena-text-light text-sm">
-              Carregando consultas...
-            </div>
-          ) : (
-            <div className="relative" style={{ display: "grid", gridTemplateColumns: "64px repeat(7, minmax(80px, 1fr))" }}>
-              {/* Coluna de horas */}
-              <div className="sticky left-0 bg-white z-10">
-                {HORAS.map((hora) => (
-                  <div
-                    key={hora}
-                    className="flex items-start justify-end pr-3 text-[10px] text-zena-text-light font-mono-data"
-                    style={{ height: `${ROW_H}px`, paddingTop: "4px" }}
-                  >
-                    {hora.endsWith(":00") ? hora : ""}
-                  </div>
-                ))}
-              </div>
-
-              {/* Colunas de dia */}
-              {weekDays.map((day, dayIdx) => {
-                const isToday = isSameDay(day, today);
-                const consultasDia = consultasNoDia(day);
-
-                return (
-                  <div
-                    key={dayIdx}
-                    className={`relative border-l border-zena-cream/60 ${isToday ? "bg-zena-green-light/5" : ""}`}
-                    style={{ height: `${HORAS.length * ROW_H}px` }}
-                  >
-                    {/* Linhas de hora e backgrounds de disponibilidade */}
-                    {HORAS.map((hora, slotIdx) => {
-                      const disponivel = isSlotAvailable(day, hora);
-                      const isOnHour = hora.endsWith(":00");
-                      return (
-                        <div
-                          key={hora}
-                          onClick={() => handleCellClick(day, hora)}
-                          title={disponivel ? `Agendar ${hora}` : undefined}
-                          className={`absolute left-0 right-0 cursor-pointer transition-colors ${
-                            disponivel
-                              ? "bg-zena-green-light/15 hover:bg-zena-green-light/30"
-                              : "hover:bg-zena-cream/40"
-                          }`}
-                          style={{
-                            top: `${slotIdx * ROW_H}px`,
-                            height: `${ROW_H}px`,
-                            borderTop: isOnHour ? "1px solid rgb(var(--color-zena-cream) / 0.8)" : "1px solid rgb(var(--color-zena-cream) / 0.3)",
-                          }}
-                        />
-                      );
-                    })}
-
-                    {/* Blocos de consulta */}
-                    {consultasDia.map((c) => {
-                      const dt = new Date(c.data);
-                      const slotIdx = timeToSlotIdx(dt);
-                      if (slotIdx < 0 || slotIdx >= HORAS.length) return null;
-                      const cfg = TIPO_CFG[c.tipo] || TIPO_CFG.consulta;
-                      const duracaoSlots = 2; // 60min = 2 slots de 30min
-                      return (
-                        <div
-                          key={c.id}
-                          onClick={(e) => { e.stopPropagation(); setModalConsulta(c); }}
-                          className={`absolute left-1 right-1 rounded-lg px-2 py-1 cursor-pointer z-10 ${cfg.bg} ${cfg.text} shadow-sm hover:opacity-90 transition-opacity overflow-hidden border-l-2 ${cfg.border}`}
-                          style={{
-                            top: `${slotIdx * ROW_H + 2}px`,
-                            height: `${duracaoSlots * ROW_H - 4}px`,
-                          }}
-                        >
-                          <p className="text-[11px] font-bold truncate leading-tight">{c.paciente.nome}</p>
-                          <p className="text-[10px] opacity-80 truncate">{cfg.label} · {format(dt, "HH:mm")}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Legenda */}
-      <div className="mt-4 flex items-center gap-5 flex-wrap text-xs text-zena-text-light">
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-4 rounded bg-zena-green-light/30 border border-zena-green-light/50" />
-          <span>Slot disponível</span>
-        </div>
+      <div className="mt-4 flex items-center gap-4 flex-wrap text-xs text-zena-text-light">
         {Object.entries(TIPO_CFG).map(([k, v]) => (
           <div key={k} className="flex items-center gap-1.5">
-            <div className={`w-4 h-4 rounded ${v.bg}`} />
+            <div className={`w-4 h-1.5 rounded-full ${v.bg}`} />
             <span>{v.label}</span>
           </div>
         ))}
       </div>
 
-      {/* Modal agendar */}
       {modalAgendar && (
         <ModalAgendar
           data={modalAgendar.data}
@@ -550,8 +451,6 @@ function AbaCalendario({
           onConfirm={agendarConsulta}
         />
       )}
-
-      {/* Modal consulta existente */}
       {modalConsulta && (
         <ModalConsulta
           consulta={modalConsulta}
