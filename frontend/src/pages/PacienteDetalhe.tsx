@@ -98,6 +98,11 @@ const templateLabel: Record<string, string> = {
 const tabs = ["Evolução", "Galeria", "Plano Alimentar", "Consultas", "Cobranças", "Check-ins", "Comunicação", "Anamnese"] as const;
 type Tab = typeof tabs[number];
 
+const TAB_SHORT: Partial<Record<Tab, string>> = {
+  "Plano Alimentar": "Plano",
+  "Comunicação": "Comunic.",
+};
+
 export default function PacienteDetalhe() {
   const { nutricionista } = useAuth();
   const { id } = useParams<{ id: string }>();
@@ -105,6 +110,7 @@ export default function PacienteDetalhe() {
   const [paciente, setPaciente] = useState<Paciente | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("Evolução");
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
   const [waTemplate, setWaTemplate] = useState<TemplateWhatsApp | null>(null);
   const { toast, show, hide } = useToast();
   const [editMode, setEditMode] = useState(false);
@@ -118,6 +124,12 @@ export default function PacienteDetalhe() {
       setLoading(false);
     });
   }, [id]);
+
+  useEffect(() => {
+    if (!tabsScrollRef.current) return;
+    const active = tabsScrollRef.current.querySelector('[data-active="true"]') as HTMLElement | null;
+    active?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+  }, [tab]);
 
   const startEdit = useCallback(() => {
     if (!paciente) return;
@@ -462,24 +474,33 @@ export default function PacienteDetalhe() {
         )}
       </div>
 
-      {/* Tabs — scroll horizontal em mobile */}
-      <div className="overflow-x-auto">
-        <div className="flex gap-1 bg-white border border-zena-mint/30 rounded-xl p-1 mb-6 shadow-sm min-w-max">
-          {tabs.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                tab === t ? "bg-zena-green-mid text-white shadow-sm" : "text-zena-text-mid hover:text-zena-text-dark"
-              }`}
-            >
-              {t}
-              {t === "Check-ins" && streak > 0 && (
-                <span className="ml-1.5 text-orange-500">🔥{streak}</span>
-              )}
-            </button>
-          ))}
+      {/* Tabs — scroll horizontal em mobile com fade direita */}
+      <div className="relative mb-6">
+        <div
+          ref={tabsScrollRef}
+          className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        >
+          <div className="flex gap-1 bg-white border border-zena-mint/30 rounded-xl p-1 shadow-sm min-w-max">
+            {tabs.map((t) => (
+              <button
+                key={t}
+                data-active={tab === t ? "true" : undefined}
+                onClick={() => setTab(t)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                  tab === t ? "bg-zena-green-mid text-white shadow-sm" : "text-zena-text-mid hover:text-zena-text-dark"
+                }`}
+              >
+                <span className="min-[430px]:hidden">{TAB_SHORT[t] ?? t}</span>
+                <span className="hidden min-[430px]:inline">{t}</span>
+                {t === "Check-ins" && streak > 0 && (
+                  <span className="ml-1.5 text-orange-500">🔥{streak}</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
+        {/* Gradiente indicando mais conteúdo à direita — só no mobile */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-zena-cream to-transparent rounded-r-xl md:hidden" />
       </div>
 
       {tab === "Evolução" && <AbaEvolucao paciente={paciente} setPaciente={setPaciente} medicoes={medicoes} show={show} />}
