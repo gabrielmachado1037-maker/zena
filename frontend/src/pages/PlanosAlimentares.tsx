@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, FileText, Plus, ChevronRight, Clock, AlertCircle } from "lucide-react";
+import { Search, FileText, ChevronRight, Clock, AlertCircle } from "lucide-react";
 import api from "../lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -120,19 +120,21 @@ export default function PlanosAlimentares() {
   const [busca, setBusca]         = useState("");
   const [filtro, setFiltro]       = useState<Filtro>("todos");
 
-  const fetch = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get<{ pacientes: PacienteComPlano[] }>(
         `/planos-alimentares?busca=${encodeURIComponent(busca)}&filtro=${filtro}`
       );
-      setPacientes(res.data.pacientes);
+      setPacientes(Array.isArray(res.data?.pacientes) ? res.data.pacientes : []);
+    } catch {
+      setPacientes([]);
     } finally {
       setLoading(false);
     }
   }, [busca, filtro]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { load(); }, [load]);
 
   const comPlano    = pacientes.filter(p => p.plano).length;
   const semPlano    = pacientes.filter(p => !p.plano).length;
