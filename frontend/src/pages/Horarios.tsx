@@ -120,13 +120,17 @@ function AbaDisponibilidade({
 }) {
   const [salvando, setSalvando] = useState<string | null>(null);
   const [duracao, setDuracao] = useState(60);
+  const [diaSelecionado, setDiaSelecionado] = useState(() => {
+    const d = new Date().getDay();
+    return d === 0 || d === 6 ? 1 : d;
+  });
 
   function isAtivo(dia: number, hora: string) {
-    return horarios.some((h) => h.diaSemana === dia && h.hora === hora && h.ativo);
+    return horarios.some(h => h.diaSemana === dia && h.hora === hora && h.ativo);
   }
 
   function getHorario(dia: number, hora: string) {
-    return horarios.find((h) => h.diaSemana === dia && h.hora === hora);
+    return horarios.find(h => h.diaSemana === dia && h.hora === hora);
   }
 
   async function toggleSlot(dia: number, hora: string) {
@@ -136,10 +140,10 @@ function AbaDisponibilidade({
     try {
       if (existente) {
         await api.delete(`/horarios/${existente.id}`);
-        setHorarios((prev) => prev.filter((h) => h.id !== existente.id));
+        setHorarios(prev => prev.filter(h => h.id !== existente.id));
       } else {
         const res = await api.post("/horarios", { diaSemana: dia, hora, duracaoMinutos: duracao });
-        setHorarios((prev) => [...prev, res.data]);
+        setHorarios(prev => [...prev, res.data]);
       }
     } catch {
       show("Erro ao atualizar horário.", "error");
@@ -148,20 +152,23 @@ function AbaDisponibilidade({
     }
   }
 
-  const totalAtivos = horarios.filter((h) => h.ativo).length;
+  const totalAtivos = horarios.filter(h => h.ativo).length;
+  const ativosDia = horarios.filter(h => h.diaSemana === diaSelecionado && h.ativo).length;
+  const fimDeSemana = diaSelecionado === 0 || diaSelecionado === 6;
 
   return (
     <>
-      <div className="bg-white rounded-2xl p-5 border border-zena-mint/30 shadow-sm mb-6 flex items-center gap-6 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Clock size={18} className="text-zena-green-mid" />
-          <span className="text-zena-text-dark font-medium text-sm">Duração da consulta:</span>
-          <div className="flex gap-2">
-            {[30, 45, 60, 90].map((min) => (
+      {/* Duração + totais */}
+      <div className="bg-white rounded-2xl p-4 border border-zena-mint/30 shadow-sm mb-4 flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Clock size={16} className="text-zena-green-mid" />
+          <span className="text-zena-text-dark font-medium text-sm">Duração:</span>
+          <div className="flex gap-1.5">
+            {[30, 45, 60, 90].map(min => (
               <button
                 key={min}
                 onClick={() => setDuracao(min)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
                   duracao === min ? "bg-zena-green-mid text-white" : "bg-zena-cream text-zena-text-mid hover:bg-zena-mint/30"
                 }`}
               >
@@ -170,71 +177,90 @@ function AbaDisponibilidade({
             ))}
           </div>
         </div>
-        <div className="ml-auto text-zena-text-light text-sm">
-          <span className="font-semibold text-zena-green-mid">{totalAtivos}</span> slots ativos
+        <div className="ml-auto text-zena-text-light text-xs">
+          <span className="font-semibold text-zena-green-mid">{totalAtivos}</span> slots ativos no total
         </div>
       </div>
 
-      {loading ? (
-        <div className="bg-white rounded-2xl p-4 sm:p-8 border border-zena-mint/30 animate-pulse overflow-x-auto">
-          <div className="grid grid-cols-8 gap-2 min-w-[480px]">
-            {Array.from({ length: 56 }).map((_, i) => <div key={i} className="h-9 bg-zena-mint/20 rounded-lg" />)}
-          </div>
+      {/* Abas de dias — todas cabem em uma linha */}
+      <div className="bg-white rounded-2xl p-2 border border-zena-mint/30 shadow-sm mb-4">
+        <div className="grid grid-cols-7 gap-1">
+          {DIAS_SEMANA.map((d, i) => {
+            const count = horarios.filter(h => h.diaSemana === i && h.ativo).length;
+            const selecionado = diaSelecionado === i;
+            return (
+              <button
+                key={i}
+                onClick={() => setDiaSelecionado(i)}
+                className={`relative flex flex-col items-center py-2 rounded-xl text-xs font-semibold transition-all ${
+                  selecionado
+                    ? "bg-zena-green-dark text-white"
+                    : "text-zena-text-mid hover:bg-zena-cream"
+                }`}
+              >
+                <span>{d}</span>
+                {count > 0 && (
+                  <div className={`mt-1 w-1.5 h-1.5 rounded-full ${selecionado ? "bg-white/70" : "bg-zena-green-mid"}`} />
+                )}
+              </button>
+            );
+          })}
         </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-zena-mint/30 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-          <div className="grid grid-cols-8 border-b border-zena-cream min-w-[480px]">
-            <div className="p-4 text-zena-text-light text-xs font-medium text-center">Horário</div>
-            {DIAS_SEMANA.map((d, i) => (
-              <div key={i} className="p-4 text-center">
-                <p className="text-zena-text-dark font-semibold text-sm">{d}</p>
-                <p className="text-zena-text-light text-xs">{i === 0 || i === 6 ? "fim de sem." : ""}</p>
-              </div>
+      </div>
+
+      {/* Slots do dia selecionado */}
+      <div className="bg-white rounded-2xl border border-zena-mint/30 shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-zena-cream flex items-center justify-between">
+          <span className="text-zena-text-dark font-semibold text-sm">
+            {DIAS_FULL[diaSelecionado]}
+            {fimDeSemana && <span className="ml-2 text-xs text-zena-text-light font-normal">fim de semana</span>}
+          </span>
+          <span className="text-xs text-zena-text-light">
+            <span className="font-semibold text-zena-green-mid">{ativosDia}</span> ativos
+          </span>
+        </div>
+        {loading ? (
+          <div className="p-3 grid grid-cols-3 sm:grid-cols-4 gap-2 animate-pulse">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="h-12 bg-zena-cream rounded-xl" />
             ))}
           </div>
-          <div className="max-h-[60vh] overflow-y-auto">
-            {HORAS.map((hora) => (
-              <div key={hora} className="grid grid-cols-8 border-b border-zena-cream/60 hover:bg-zena-cream/30 transition-colors min-w-[480px]">
-                <div className="px-4 py-2 text-zena-text-light text-xs font-mono-data flex items-center justify-center">{hora}</div>
-                {DIAS_SEMANA.map((_, diaIdx) => {
-                  const ativo = isAtivo(diaIdx, hora);
-                  const key = `${diaIdx}-${hora}`;
-                  const carregando = salvando === key;
-                  const fimDeSemana = diaIdx === 0 || diaIdx === 6;
-                  return (
-                    <div key={diaIdx} className="px-2 py-1.5 flex items-center justify-center">
-                      <button
-                        onClick={() => toggleSlot(diaIdx, hora)}
-                        disabled={carregando}
-                        className={`w-full h-8 rounded-lg text-xs font-medium transition-all ${
-                          ativo
-                            ? "bg-zena-green-mid text-white shadow-sm hover:bg-zena-green-dark"
-                            : fimDeSemana
-                            ? "bg-zena-sand text-zena-text-light hover:bg-zena-mint/30"
-                            : "bg-zena-cream text-zena-text-light hover:bg-zena-mint/30 hover:text-zena-green-mid"
-                        } ${carregando ? "opacity-50 cursor-wait" : ""}`}
-                      >
-                        {ativo && <Check size={12} className="mx-auto" />}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+        ) : (
+          <div className="p-3 grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {HORAS.map(hora => {
+              const ativo = isAtivo(diaSelecionado, hora);
+              const key = `${diaSelecionado}-${hora}`;
+              const carregando = salvando === key;
+              return (
+                <button
+                  key={hora}
+                  onClick={() => toggleSlot(diaSelecionado, hora)}
+                  disabled={carregando}
+                  className={`h-12 rounded-xl text-xs font-medium transition-all flex flex-col items-center justify-center gap-0.5 ${
+                    ativo
+                      ? "bg-zena-green-mid text-white shadow-sm hover:bg-zena-green-dark"
+                      : fimDeSemana
+                      ? "bg-zena-sand text-zena-text-light hover:bg-zena-mint/30 hover:text-zena-green-mid"
+                      : "bg-zena-cream text-zena-text-mid hover:bg-zena-mint/30 hover:text-zena-green-mid"
+                  } ${carregando ? "opacity-50 cursor-wait" : ""}`}
+                >
+                  {ativo && <Check size={12} />}
+                  <span className={ativo ? "text-[10px] opacity-90" : ""}>{hora}</span>
+                </button>
+              );
+            })}
           </div>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="mt-4 flex items-center gap-6 text-xs text-zena-text-light">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded bg-zena-green-mid" />
+          <div className="w-4 h-4 rounded-lg bg-zena-green-mid" />
           <span>Disponível</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded bg-zena-cream border border-zena-mint/30" />
-          <span>Indisponível (clique para ativar)</span>
+          <div className="w-4 h-4 rounded-lg bg-zena-cream border border-zena-mint/30" />
+          <span>Clique para ativar</span>
         </div>
       </div>
     </>
