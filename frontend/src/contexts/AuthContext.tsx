@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(saved);
       setNutricionista(JSON.parse(user));
       api.defaults.headers.Authorization = `Bearer ${saved}`;
+      api.get("/health").catch(() => {}); // Acorda backend/Neon DB antes do usuário clicar em algo
     }
     setLoading(false);
   }, []);

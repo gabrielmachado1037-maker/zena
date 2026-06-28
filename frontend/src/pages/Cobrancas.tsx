@@ -81,7 +81,7 @@ export default function Cobrancas() {
   useEffect(() => { carregar(); }, [mes, ano]);
 
   useEffect(() => {
-    api.get("/pacientes").then((r) => setPacientes(r.data));
+    api.get("/pacientes?limit=1000").then((r) => setPacientes(r.data.data));
     api.get("/financeiro/asaas-status")
       .then((r) => setAsaasConectado(r.data.configurado))
       .catch(() => setAsaasConectado(false));

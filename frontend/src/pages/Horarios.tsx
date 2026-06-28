@@ -65,7 +65,7 @@ export default function Horarios() {
 
   useEffect(() => {
     api.get("/horarios").then((r) => { setHorarios(r.data); setLoadingHorarios(false); });
-    api.get("/pacientes").then((r) => setPacientes(r.data));
+    api.get("/pacientes?limit=1000").then((r) => setPacientes(r.data.data));
   }, []);
 
   return (

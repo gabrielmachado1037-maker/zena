@@ -109,7 +109,7 @@ router.post("/cobrar/:cobrancaId/pix", async (req: AuthRequest, res: Response) =
   const apiKey = decrypt(nutri.asaasApiKey);
 
   const cobranca = await prisma.cobranca.findFirst({
-    where: { id: req.params["cobrancaId"] as string },
+    where: { id: req.params["cobrancaId"] as string, paciente: { nutricionistaId: req.nutricionistaId! } },
     include: { paciente: { select: { nome: true, email: true } } },
   });
   if (!cobranca) return res.status(404).json({ error: "Cobrança não encontrada" });
@@ -136,7 +136,9 @@ router.delete("/cobrar/:cobrancaId/pix", async (req: AuthRequest, res: Response)
   const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId! } });
   if (!nutri?.asaasApiKey) return res.status(400).json({ error: "Chave Asaas não configurada." });
 
-  const cobranca = await prisma.cobranca.findFirst({ where: { id: req.params["cobrancaId"] as string } });
+  const cobranca = await prisma.cobranca.findFirst({
+    where: { id: req.params["cobrancaId"] as string, paciente: { nutricionistaId: req.nutricionistaId! } },
+  });
   if (!cobranca?.asaasChargeId) return res.status(400).json({ error: "Cobrança sem Pix gerado." });
 
   await cancelarCobranca(decrypt(nutri.asaasApiKey), cobranca.asaasChargeId);
