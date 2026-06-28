@@ -8,7 +8,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useAlertas } from "../contexts/AlertasContext";
 import StatCard from "../components/StatCard";
 import WhatsAppModal from "../components/WhatsAppModal";
-import { DailyQuoteDesktop, DailyQuoteMobile } from "../components/DailyQuoteCard";
+import { QuoteInline } from "../components/DailyQuoteCard";
 import api from "../lib/api";
 import { type TemplateWhatsApp } from "../lib/utils";
 
@@ -237,6 +237,7 @@ export default function Dashboard() {
               Olá, {firstName}!
             </h1>
             <p className="text-[14px] text-[#999] mt-0.5">Tenha um dia incrível!</p>
+            <QuoteInline />
           </div>
           {nutricionista?.logoConsultorio ? (
             <img
@@ -250,9 +251,6 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-
-        {/* Quote card mobile */}
-        <DailyQuoteMobile />
 
         {/* KPI Cards */}
         {loading ? (
@@ -433,6 +431,7 @@ export default function Dashboard() {
           <div>
             <h1 className="text-[28px] font-semibold text-[#1C4A2E] leading-tight">Olá, {firstName}!</h1>
             <p className="text-[14px] font-normal text-[#999] mt-1">Tenha um dia incrível! 👋</p>
+            <QuoteInline />
           </div>
           {nutricionista?.logoConsultorio ? (
             <img
@@ -446,9 +445,6 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-
-        {/* Quote card desktop */}
-        <DailyQuoteDesktop />
 
         {/* ── KPI Row ── */}
         {loading ? (
