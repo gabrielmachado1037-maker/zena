@@ -304,10 +304,10 @@ function MobileAgenda({
             )}
           </div>
 
-          {/* FAB */}
+          {/* FAB — acima da bottom nav (56px) */}
           <button
             onClick={openAgendarDay}
-            className="fixed bottom-6 right-6 w-14 h-14 bg-[#1C4A2E] rounded-full flex items-center justify-center shadow-xl z-40 active:scale-95 transition-transform"
+            className="fixed bottom-20 right-5 w-14 h-14 bg-[#1C4A2E] rounded-full flex items-center justify-center shadow-xl z-30 active:scale-95 transition-transform"
           >
             <Plus size={22} className="text-white" />
           </button>
