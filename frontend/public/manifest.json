@@ -1,12 +1,14 @@
 {
-  "name": "Clinne — Nutrição",
+  "name": "Clinne",
   "short_name": "Clinne",
-  "description": "Seu acompanhamento nutricional personalizado",
-  "start_url": "/",
+  "description": "Plataforma para nutricionistas",
+  "start_url": "/app/dashboard",
   "display": "standalone",
-  "background_color": "#F8F9F4",
+  "background_color": "#1C4A2E",
   "theme_color": "#1C4A2E",
   "icons": [
-    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+    { "src": "/icon.svg",           "sizes": "any",     "type": "image/svg+xml" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
