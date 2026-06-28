@@ -1,4 +1,4 @@
-const CACHE = 'clinne-v2';
+const CACHE = 'clinne-v3';
 const STATIC = ['/', '/index.html', '/app/dashboard'];
 
 self.addEventListener('install', e => {
