@@ -268,13 +268,25 @@ function AbaCalendario({
   const [modalConsulta, setModalConsulta] = useState<Consulta | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const hScrollRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
 
-  const weekStart = getWeekStart(offset);
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+
   const today = new Date();
+  const weekStart = getWeekStart(offset);
+  // Mobile: exibe 3 dias (ontem, hoje, amanhã) com navegação de 3 em 3
+  // Desktop: exibe semana completa (Seg–Dom)
+  const weekDays = isMobile
+    ? Array.from({ length: 3 }, (_, i) => addDays(today, offset * 3 - 1 + i))
+    : Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  const inicioStr = format(weekStart, "yyyy-MM-dd");
-  const fimStr = format(weekDays[6], "yyyy-MM-dd");
+  const gridCols = isMobile ? "44px repeat(3, 1fr)" : "64px repeat(7, minmax(80px, 1fr))";
+  const inicioStr = format(weekDays[0], "yyyy-MM-dd");
+  const fimStr = format(weekDays[weekDays.length - 1], "yyyy-MM-dd");
 
   async function carregarConsultas() {
     setLoadingCal(true);
@@ -291,18 +303,16 @@ function AbaCalendario({
   useEffect(() => {
     carregarConsultas();
     setTimeout(() => {
-      // Scroll vertical para 07:30
       scrollRef.current?.scrollTo({ top: ROW_H * 1, behavior: "smooth" });
-      // Scroll horizontal para mostrar o dia de hoje (Mon=0 … Sun=6)
-      if (offset === 0) {
-        const dayIdx = (today.getDay() + 6) % 7; // domingo=6, segunda=0
+      // No desktop, rola horizontalmente para mostrar o dia de hoje
+      if (offset === 0 && !isMobile) {
+        const dayIdx = (today.getDay() + 6) % 7;
         if (dayIdx > 2 && hScrollRef.current) {
-          const colW = 90;
-          hScrollRef.current.scrollTo({ left: (dayIdx - 2) * colW, behavior: "smooth" });
+          hScrollRef.current.scrollTo({ left: (dayIdx - 2) * 90, behavior: "smooth" });
         }
       }
     }, 120);
-  }, [offset]);
+  }, [offset, isMobile]);
 
   function isSlotAvailable(dayDate: Date, hora: string): boolean {
     return horarios.some((h) => h.diaSemana === dayDate.getDay() && h.hora === hora && h.ativo);
@@ -359,9 +369,14 @@ function AbaCalendario({
   }
 
   const mesesLabel = () => {
-    const s = format(weekStart, "MMM", { locale: ptBR });
+    if (isMobile) {
+      const s = format(weekDays[0], "d MMM", { locale: ptBR });
+      const e = format(weekDays[weekDays.length - 1], "d MMM", { locale: ptBR });
+      return `${s} – ${e}`;
+    }
+    const s = format(weekDays[0], "MMM", { locale: ptBR });
     const e = format(weekDays[6], "MMM", { locale: ptBR });
-    const ano = format(weekStart, "yyyy");
+    const ano = format(weekDays[0], "yyyy");
     return s === e ? `${s.charAt(0).toUpperCase() + s.slice(1)} ${ano}` : `${s}–${e} ${ano}`;
   };
 
@@ -398,7 +413,7 @@ function AbaCalendario({
       <div className="bg-white rounded-2xl border border-zena-mint/30 shadow-sm overflow-hidden">
         <div ref={hScrollRef} className="overflow-x-auto">
         {/* Header de dias */}
-        <div className="grid border-b border-zena-cream" style={{ gridTemplateColumns: "64px repeat(7, minmax(80px, 1fr))" }}>
+        <div className="grid border-b border-zena-cream" style={{ gridTemplateColumns: gridCols }}>
           <div className="p-3" />
           {weekDays.map((day, i) => {
             const isToday = isSameDay(day, today);
