@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { NavLink, useNavigate, Link } from "react-router-dom";
-import { LayoutDashboard, Users, DollarSign, LogOut, Leaf, CalendarDays, CreditCard, BarChart2, ChevronRight } from "lucide-react";
+import { LayoutDashboard, Users, DollarSign, LogOut, Leaf, CalendarDays, CreditCard, BarChart2, ChevronRight, Download } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAlertas } from "../contexts/AlertasContext";
+import { usePWAInstall } from "../hooks/usePWAInstall";
 
 const links = [
   { to: "/app/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -15,6 +17,8 @@ export default function Sidebar() {
   const { nutricionista, logout } = useAuth();
   const { count: alertCount } = useAlertas();
   const navigate = useNavigate();
+  const { isInstallable, isIOS, install } = usePWAInstall();
+  const [iosHint, setIosHint] = useState(false);
 
   function handleLogout() {
     logout();
@@ -72,6 +76,29 @@ export default function Sidebar() {
       </nav>
 
       <div className="px-3 pb-6 space-y-1">
+        {isInstallable && (
+          <div className="mb-1">
+            <button
+              onClick={() => isIOS ? setIosHint(h => !h) : install()}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-zena-mint hover:bg-zena-green-mid/50 hover:text-white transition-all w-full"
+            >
+              <Download size={18} />
+              Instalar app
+            </button>
+            {iosHint && (
+              <div className="mx-1 mt-1 px-3 py-2.5 bg-zena-green-mid/20 rounded-xl text-[11px] text-zena-mint/90 leading-relaxed">
+                No Safari: toque em <strong>Compartilhar ↑</strong> →{" "}
+                <strong>Adicionar à Tela de Início</strong>
+                <button
+                  onClick={() => setIosHint(false)}
+                  className="block mt-1.5 text-zena-mint/50 hover:text-white text-[10px]"
+                >
+                  fechar
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         <NavLink
           to="/app/planos"
           className={({ isActive }) =>
