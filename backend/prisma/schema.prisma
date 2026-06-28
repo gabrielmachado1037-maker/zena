@@ -65,6 +65,7 @@ model Paciente {
   planosAlimentares PlanoAlimentar[]
   checkIns          CheckIn[]
   mensagens         MensagemWhatsApp[]
+  registrosContato  RegistroContato[]
   anamnese          Anamnese?
   lembretes         Lembrete[]
   planoCobranca     PlanoCobranca?
@@ -226,6 +227,16 @@ model RegistroFotos {
   criadoEm    DateTime @default(now())
 
   @@unique([pacienteId, mes, ano])
+}
+
+model RegistroContato {
+  id         String   @id @default(cuid())
+  pacienteId String
+  paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  tipo       String   @default("whatsapp")
+  resumo     String
+  data       DateTime @default(now())
+  criadoEm  DateTime @default(now())
 }
 
 model PlanoCobranca {

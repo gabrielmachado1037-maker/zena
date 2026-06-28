@@ -53,6 +53,7 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
       planosAlimentares: { orderBy: { dataCriacao: "desc" } },
       checkIns: { orderBy: { criadoEm: "desc" }, take: 20 },
       mensagens: { orderBy: { criadoEm: "desc" }, take: 30 },
+      registrosContato: { orderBy: { data: "desc" }, take: 50 },
       anamnese: true,
     },
   });
@@ -141,6 +142,25 @@ router.patch("/:id/consultas/:consultaId", async (req: AuthRequest, res: Respons
     data: { status, notas },
   });
   res.json(consulta);
+});
+
+// Registros de contato manual
+router.post("/:id/contatos", async (req: AuthRequest, res: Response) => {
+  const pacienteId = req.params["id"] as string;
+  const { tipo, resumo, data } = req.body;
+
+  const paciente = await prisma.paciente.findFirst({
+    where: { id: pacienteId, nutricionistaId: req.nutricionistaId as string },
+  });
+  if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });
+
+  const dataDate = new Date(data as string);
+  dataDate.setUTCHours(12, 0, 0, 0); // noon UTC to avoid timezone boundary issues
+
+  const registro = await prisma.registroContato.create({
+    data: { pacienteId, tipo: tipo || "outro", resumo, data: dataDate },
+  });
+  res.status(201).json(registro);
 });
 
 // Upload foto inicial (nutritionist sets the before photo)

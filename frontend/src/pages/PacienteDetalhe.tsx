@@ -35,6 +35,14 @@ interface MensagemItem {
   criadoEm: string;
 }
 
+interface RegistroContatoItem {
+  id: string;
+  tipo: string;
+  resumo: string;
+  data: string;
+  criadoEm: string;
+}
+
 interface AnamneseItem {
   queixaPrincipal?: string;
   historicoDieta?: string;
@@ -72,6 +80,7 @@ interface Paciente {
   planosAlimentares: Array<{ id: string; dataCriacao: string; cafeManha: string; lancheManha?: string; almoco: string; lancheTarde?: string; jantar: string; ceia?: string; observacoes?: string }>;
   checkIns: CheckInItem[];
   mensagens: MensagemItem[];
+  registrosContato: RegistroContatoItem[];
   anamnese?: AnamneseItem | null;
 }
 
@@ -79,9 +88,11 @@ const humoresMap: Record<number, string> = { 1: "😔", 2: "😕", 3: "😐", 4:
 const humoresLabel: Record<number, string> = { 1: "Difícil", 2: "Mais ou menos", 3: "Ok", 4: "Bem", 5: "Ótimo!" };
 const templateLabel: Record<string, string> = {
   lembrete_consulta: "📅 Lembrete de consulta",
+  confirmar_consulta: "✅ Confirmação de consulta",
   envio_plano: "🥗 Plano alimentar enviado",
   lembrete_checkin: "✨ Lembrete de check-in",
   lembrete_cobranca: "💚 Lembrete de cobrança",
+  aniversario: "🎂 Parabéns",
 };
 
 const tabs = ["Evolução", "Galeria", "Plano Alimentar", "Consultas", "Cobranças", "Check-ins", "Comunicação", "Anamnese"] as const;
@@ -1388,16 +1399,77 @@ function FotoInicialUpload({ paciente, setPaciente, show }: { paciente: Paciente
 }
 
 // ---------- Aba Comunicação ----------
-function AbaComunicacao({ paciente, setPaciente: _sp, show: _sh, nutricionista }: { paciente: Paciente; setPaciente: any; show: any; nutricionista: any }) {
+const CONTATO_CFG: Record<string, { label: string; emoji: string; color: string }> = {
+  whatsapp:   { label: "WhatsApp",   emoji: "💬", color: "text-[#25D366]" },
+  email:      { label: "E-mail",     emoji: "✉️", color: "text-blue-500" },
+  ligacao:    { label: "Ligação",    emoji: "📞", color: "text-purple-500" },
+  presencial: { label: "Presencial", emoji: "🤝", color: "text-zena-green-mid" },
+  outro:      { label: "Outro",      emoji: "📌", color: "text-zena-text-mid" },
+};
+
+function AbaComunicacao({ paciente, setPaciente, show: _sh, nutricionista }: { paciente: Paciente; setPaciente: any; show: any; nutricionista: any }) {
   const [waTemplate, setWaTemplate] = useState<TemplateWhatsApp | null>(null);
+  const [waCtx, setWaCtx] = useState<{ consultaData?: string }>({});
+  const [showRegistro, setShowRegistro] = useState(false);
+  const [regForm, setRegForm] = useState({ tipo: "ligacao", resumo: "", data: format(new Date(), "yyyy-MM-dd") });
+  const [salvando, setSalvando] = useState(false);
 
-  const mensagens = paciente.mensagens || [];
+  const proximaConsulta = [...(paciente.consultas || [])]
+    .filter((c) => c.status !== "cancelada" && new Date(c.data) > new Date())
+    .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())[0];
 
-  const templates: Array<{ template: TemplateWhatsApp; emoji: string; label: string; desc: string }> = [
-    { template: "lembrete_consulta", emoji: "📅", label: "Lembrete de consulta", desc: "Para a próxima consulta agendada" },
-    { template: "envio_plano", emoji: "🥗", label: "Enviar plano alimentar", desc: "Compartilha o link com o plano" },
-    { template: "lembrete_checkin", emoji: "✨", label: "Lembrete de check-in", desc: "Convida para o check-in semanal" },
-    { template: "lembrete_cobranca", emoji: "💚", label: "Lembrete de cobrança", desc: "Para pagamento pendente" },
+  const proximaConsultaData = proximaConsulta
+    ? format(new Date(proximaConsulta.data), "dd/MM 'às' HH:mm", { locale: ptBR })
+    : undefined;
+
+  const linkPaciente = `${window.location.origin}/p/${paciente.linkUnico}`;
+  const planoAtual = (paciente.planosAlimentares || [])[0];
+
+  type HistItem = { id: string; kind: "wa" | "manual"; tipo: string; resumo: string; sortDate: string };
+  const historico: HistItem[] = [
+    ...(paciente.mensagens || []).map((m) => ({
+      id: m.id, kind: "wa" as const, tipo: "whatsapp",
+      resumo: templateLabel[m.template] || m.template,
+      sortDate: m.criadoEm,
+    })),
+    ...(paciente.registrosContato || []).map((r) => ({
+      id: r.id, kind: "manual" as const, tipo: r.tipo,
+      resumo: r.resumo, sortDate: r.data,
+    })),
+  ].sort((a, b) => new Date(b.sortDate).getTime() - new Date(a.sortDate).getTime());
+
+  function abrirTemplate(template: TemplateWhatsApp, extra?: { consultaData?: string }) {
+    setWaCtx(extra || {});
+    setWaTemplate(template);
+  }
+
+  async function salvarRegistro() {
+    if (!regForm.resumo.trim()) return;
+    setSalvando(true);
+    try {
+      const res = await api.post(`/pacientes/${paciente.id}/contatos`, {
+        tipo: regForm.tipo, resumo: regForm.resumo, data: regForm.data,
+      });
+      setPaciente((prev: Paciente) => ({
+        ...prev,
+        registrosContato: [res.data, ...(prev.registrosContato || [])],
+      }));
+      setShowRegistro(false);
+      setRegForm({ tipo: "ligacao", resumo: "", data: format(new Date(), "yyyy-MM-dd") });
+    } catch {
+      // silent
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  const quickTemplates: Array<{ template: TemplateWhatsApp; emoji: string; label: string; desc: string; disabled?: boolean }> = [
+    { template: "confirmar_consulta", emoji: "✅", label: "Confirmar consulta", desc: proximaConsultaData ? `Próxima: ${proximaConsultaData}` : "Sem consulta agendada", disabled: !proximaConsultaData },
+    { template: "lembrete_consulta",  emoji: "📅", label: "Lembrete de consulta",  desc: "Para a próxima consulta agendada" },
+    { template: "envio_plano",        emoji: "🥗", label: "Enviar plano",           desc: "Compartilha o link do plano" },
+    { template: "lembrete_checkin",   emoji: "✨", label: "Lembrete de check-in",   desc: "Convida para o check-in semanal" },
+    { template: "lembrete_cobranca",  emoji: "💚", label: "Lembrete de cobrança",   desc: "Para pagamento pendente" },
+    { template: "aniversario",        emoji: "🎂", label: "Parabéns",               desc: "Mensagem de aniversário" },
   ];
 
   return (
@@ -1410,66 +1482,183 @@ function AbaComunicacao({ paciente, setPaciente: _sp, show: _sh, nutricionista }
             pacienteTelefone: paciente.telefone,
             pacienteLinkUnico: paciente.linkUnico,
             nutricionistaNome: nutricionista.nome,
+            consultaData: waCtx.consultaData,
           }}
           template={waTemplate}
           onClose={() => setWaTemplate(null)}
         />
       )}
 
-      {!paciente.telefone && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-700">
-          <strong>Telefone não cadastrado.</strong> Adicione o WhatsApp da paciente no cadastro para usar o botão "Abrir WhatsApp".
+      {/* Modal: registrar contato manual */}
+      {showRegistro && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowRegistro(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-zena-cream">
+              <h3 className="text-zena-text-dark font-bold">Registrar contato</h3>
+              <button onClick={() => setShowRegistro(false)} className="text-zena-text-light hover:text-zena-text-mid p-1"><X size={18} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-zena-text-mid text-sm font-medium mb-2">Tipo de contato</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {(["ligacao", "presencial", "email", "outro"] as const).map((t) => {
+                    const cfg = CONTATO_CFG[t];
+                    return (
+                      <button key={t} onClick={() => setRegForm((f) => ({ ...f, tipo: t }))}
+                        className={`py-2.5 px-1 rounded-xl border text-xs font-medium transition-all flex flex-col items-center gap-1 ${
+                          regForm.tipo === t
+                            ? "border-zena-green-mid bg-zena-green-light/10 text-zena-green-dark"
+                            : "border-zena-mint/30 text-zena-text-mid hover:border-zena-green-light"
+                        }`}>
+                        <span className="text-base">{cfg.emoji}</span>
+                        {cfg.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <p className="text-zena-text-mid text-sm font-medium mb-2">Data</p>
+                <input type="date" value={regForm.data} onChange={(e) => setRegForm((f) => ({ ...f, data: e.target.value }))}
+                  className="w-full border border-zena-mint/30 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-zena-green-mid" />
+              </div>
+              <div>
+                <p className="text-zena-text-mid text-sm font-medium mb-2">Resumo</p>
+                <textarea value={regForm.resumo} onChange={(e) => setRegForm((f) => ({ ...f, resumo: e.target.value }))} rows={3}
+                  placeholder="Ex: Liguei para tirar dúvidas sobre o plano. Paciente relatou dificuldade com o café da manhã..."
+                  className="w-full border border-zena-mint/30 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-zena-green-mid resize-none" />
+              </div>
+            </div>
+            <div className="flex gap-3 p-6 pt-0">
+              <button onClick={() => setShowRegistro(false)}
+                className="flex-1 py-3 rounded-xl border border-zena-mint/30 text-zena-text-mid text-sm font-medium hover:bg-zena-cream transition-all">Cancelar</button>
+              <button onClick={salvarRegistro} disabled={!regForm.resumo.trim() || salvando}
+                className="flex-1 py-3 rounded-xl bg-zena-green-mid hover:bg-zena-green-dark text-white text-sm font-semibold transition-all disabled:opacity-40">
+                {salvando ? "Salvando..." : "Salvar contato"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Botões de ação rápida */}
+      {!paciente.telefone && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-700">
+          <strong>Telefone não cadastrado.</strong> Adicione o número para usar "Abrir WhatsApp" diretamente.
+        </div>
+      )}
+
+      {/* SEÇÃO 1 — Ações rápidas */}
       <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
-        <h3 className="text-zena-text-dark font-semibold mb-4">Enviar mensagem</h3>
+        <h3 className="text-zena-text-dark font-semibold mb-1">Ações rápidas</h3>
+        <p className="text-zena-text-light text-xs mb-4">Envie uma mensagem com template pronto pelo WhatsApp</p>
         <div className="grid grid-cols-2 gap-3">
-          {templates.map(({ template, emoji, label, desc }) => (
+          {quickTemplates.map(({ template, emoji, label, desc, disabled }) => (
             <button
               key={template}
-              onClick={() => setWaTemplate(template)}
-              className="flex flex-col items-start gap-2 p-4 rounded-xl border-2 border-transparent hover:border-[#25D366]/30 hover:bg-[#25D366]/5 text-left transition-all"
+              onClick={() => !disabled && abrirTemplate(template, template === "confirmar_consulta" ? { consultaData: proximaConsultaData } : undefined)}
+              disabled={disabled}
+              className={`flex flex-col items-start gap-2 p-4 rounded-xl border-2 border-transparent text-left transition-all ${
+                disabled
+                  ? "opacity-40 cursor-not-allowed bg-zena-cream/50"
+                  : "hover:border-[#25D366]/30 hover:bg-[#25D366]/5 cursor-pointer"
+              }`}
             >
               <span className="text-2xl">{emoji}</span>
               <div>
                 <p className="text-zena-text-dark text-sm font-medium">{label}</p>
-                <p className="text-zena-text-light text-xs">{desc}</p>
+                <p className={`text-xs mt-0.5 ${disabled ? "text-amber-500" : "text-zena-text-light"}`}>{desc}</p>
               </div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Histórico */}
+      {/* SEÇÃO 2 — Histórico de comunicação */}
       <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
-        <h3 className="text-zena-text-dark font-semibold mb-4">Histórico de mensagens</h3>
-        {mensagens.length === 0 ? (
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-zena-text-dark font-semibold">Histórico de comunicação</h3>
+            <p className="text-zena-text-light text-xs mt-0.5">WhatsApp, ligações e contatos manuais</p>
+          </div>
+          <button onClick={() => setShowRegistro(true)}
+            className="flex items-center gap-1.5 text-xs font-medium text-zena-green-mid hover:text-zena-green-dark border border-zena-green-light/50 hover:border-zena-green-mid px-3 py-1.5 rounded-lg transition-all">
+            <Plus size={13} /> Registrar
+          </button>
+        </div>
+        {historico.length === 0 ? (
           <div className="text-center py-8">
             <MessageCircle className="mx-auto text-zena-mint mb-2" size={32} />
-            <p className="text-zena-text-light text-sm">Nenhuma mensagem enviada ainda.</p>
+            <p className="text-zena-text-light text-sm">Nenhum contato registrado ainda.</p>
+            <p className="text-zena-text-light text-xs mt-1">Envie uma mensagem acima ou clique em "Registrar" para adicionar manualmente.</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {mensagens.map((m) => (
-              <div key={m.id} className="flex gap-3 p-3 bg-zena-cream rounded-xl">
-                <div className="w-8 h-8 rounded-full bg-[#25D366]/10 flex items-center justify-center flex-shrink-0">
-                  <MessageCircle size={14} className="text-[#25D366]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-zena-text-dark text-sm font-medium">{templateLabel[m.template] || m.template}</p>
-                    <p className="text-zena-text-light text-xs flex-shrink-0">
-                      {format(new Date(m.criadoEm), "dd/MM HH:mm")}
-                    </p>
+          <div className="space-y-2">
+            {historico.map((item) => {
+              const cfg = CONTATO_CFG[item.tipo] ?? CONTATO_CFG.outro;
+              const dateLabel = item.kind === "wa"
+                ? format(new Date(item.sortDate), "dd/MM HH:mm")
+                : format(new Date(item.sortDate), "dd/MM/yyyy");
+              return (
+                <div key={item.id} className="flex gap-3 p-3 bg-zena-cream rounded-xl">
+                  <div className="w-8 h-8 rounded-full bg-white border border-zena-mint/30 flex items-center justify-center flex-shrink-0 text-sm">
+                    {cfg.emoji}
                   </div>
-                  <p className="text-zena-text-light text-xs mt-0.5 truncate">{m.textoEnviado.split("\n")[0]}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-xs font-semibold ${cfg.color}`}>{cfg.label}</p>
+                      <p className="text-zena-text-light text-xs flex-shrink-0">{dateLabel}</p>
+                    </div>
+                    <p className="text-zena-text-dark text-sm mt-0.5 leading-snug line-clamp-2">{item.resumo}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
+      </div>
+
+      {/* SEÇÃO 3 — Documentos */}
+      <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
+        <h3 className="text-zena-text-dark font-semibold mb-1">Documentos</h3>
+        <p className="text-zena-text-light text-xs mb-4">Exporte e compartilhe arquivos com a paciente</p>
+        <div className="grid grid-cols-2 gap-4">
+          {/* Plano em PDF */}
+          <div className="border border-zena-mint/30 rounded-xl p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-zena-text-dark">📄 Plano alimentar</p>
+              <p className="text-xs text-zena-text-light mt-0.5">Exportar em PDF e compartilhar</p>
+            </div>
+            {planoAtual && nutricionista ? (
+              <div className="space-y-2">
+                <PdfPlano pacienteNome={paciente.nome} nutricionistaNome={nutricionista.nome} plano={planoAtual} />
+                <button onClick={() => abrirTemplate("envio_plano")}
+                  className="flex items-center gap-1.5 text-xs text-[#25D366] font-medium hover:text-[#20BD5C] transition-colors">
+                  <MessageCircle size={13} /> Enviar por WhatsApp
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-amber-600">Nenhum plano cadastrado</p>
+            )}
+          </div>
+
+          {/* Link de acompanhamento */}
+          <div className="border border-zena-mint/30 rounded-xl p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-zena-text-dark">🔗 Área da paciente</p>
+              <p className="text-xs text-zena-text-light mt-0.5">Link personalizado com evolução</p>
+            </div>
+            <div className="space-y-2">
+              <button onClick={() => { navigator.clipboard.writeText(linkPaciente); }}
+                className="flex items-center gap-1.5 text-xs text-zena-green-mid font-medium hover:text-zena-green-dark transition-colors">
+                <Copy size={13} /> Copiar link
+              </button>
+              <button onClick={() => abrirTemplate("lembrete_checkin")}
+                className="flex items-center gap-1.5 text-xs text-[#25D366] font-medium hover:text-[#20BD5C] transition-colors">
+                <MessageCircle size={13} /> Enviar por WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

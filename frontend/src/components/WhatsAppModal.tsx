@@ -18,16 +18,20 @@ interface Props {
 
 const templateLabels: Record<TemplateWhatsApp, string> = {
   lembrete_consulta: "Lembrete de consulta",
+  confirmar_consulta: "Confirmar consulta",
   envio_plano: "Enviar plano alimentar",
   lembrete_checkin: "Lembrete de check-in",
   lembrete_cobranca: "Lembrete de cobrança",
+  aniversario: "Parabéns",
 };
 
 const templateEmojis: Record<TemplateWhatsApp, string> = {
   lembrete_consulta: "📅",
+  confirmar_consulta: "✅",
   envio_plano: "🥗",
   lembrete_checkin: "✨",
   lembrete_cobranca: "💚",
+  aniversario: "🎂",
 };
 
 export default function WhatsAppModal({ context, template, onClose }: Props) {
@@ -69,10 +73,12 @@ export default function WhatsAppModal({ context, template, onClose }: Props) {
   }
 
   const templates: TemplateWhatsApp[] = [
+    "confirmar_consulta",
     "lembrete_consulta",
     "envio_plano",
     "lembrete_checkin",
     "lembrete_cobranca",
+    "aniversario",
   ];
 
   // Format message for display (replace *bold* and newlines)
