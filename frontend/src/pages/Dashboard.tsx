@@ -7,7 +7,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { useAlertas } from "../contexts/AlertasContext";
 import StatCard from "../components/StatCard";
 import WhatsAppModal from "../components/WhatsAppModal";
-import OnboardingGuide from "../components/OnboardingGuide";
 import api from "../lib/api";
 import { type TemplateWhatsApp } from "../lib/utils";
 
@@ -27,6 +26,8 @@ interface DashboardData {
   cobrancasVencidas: number;
   pacientesSemConsulta: Array<{ id: string; nome: string; linkUnico: string; telefone?: string }>;
   totalConsultas: number;
+  asaasConectado: boolean;
+  totalCobrancas: number;
 }
 
 interface Lembrete {
@@ -98,7 +99,8 @@ export default function Dashboard() {
   const [waState, setWaState] = useState<WAState | null>(null);
   const [lembretes, setLembretes] = useState<Lembrete[]>([]);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingFading, setOnboardingFading] = useState(false);
+  const [onboardingHidden, setOnboardingHidden] = useState(false);
   const [alertas, setAlertas] = useState<Alerta[]>([]);
   const [loadingAlertas, setLoadingAlertas] = useState(true);
   const [dispensados, setDispensados] = useState<Set<string>>(new Set());
@@ -107,9 +109,6 @@ export default function Dashboard() {
     api.get("/dashboard").then((res) => {
       setData(res.data);
       setLoading(false);
-      if (!localStorage.getItem("clinne_onboarding_done") && res.data.pacientesAtivos === 0) {
-        setShowOnboarding(true);
-      }
     });
     api.get("/lembretes?status=pendente").then((res) => setLembretes(res.data));
     api.get<BillingStatus>("/billing/status").then((res) => setBilling(res.data)).catch(() => null);
@@ -139,10 +138,16 @@ export default function Dashboard() {
     setLembretes((prev) => prev.filter((l) => l.id !== id));
   }
 
-  function dismissOnboarding() {
-    localStorage.setItem("clinne_onboarding_done", "1");
-    setShowOnboarding(false);
-  }
+  useEffect(() => {
+    if (!data || onboardingHidden || onboardingFading) return;
+    const isNewUser = data.pacientesAtivos < 3 && data.totalCobrancas === 0;
+    if (!isNewUser) return;
+    if (data.pacientesAtivos >= 1 && data.asaasConectado && data.totalConsultas >= 1) {
+      setOnboardingFading(true);
+      const t = setTimeout(() => setOnboardingHidden(true), 700);
+      return () => clearTimeout(t);
+    }
+  }, [data, onboardingHidden, onboardingFading]);
 
   function dispensarAlerta(id: string) {
     const novos = new Set(dispensados).add(id);
@@ -167,7 +172,6 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 sm:p-8">
-      {showOnboarding && <OnboardingGuide onDismiss={dismissOnboarding} />}
       {/* Trial banner */}
       {billing?.emTrial && (
         <div className={`mb-6 rounded-2xl p-4 flex items-center justify-between gap-4 ${billing.diasRestantesTrial <= 3 ? "bg-red-50 border border-red-200" : "bg-amber-50 border border-amber-200"}`}>
@@ -317,40 +321,53 @@ export default function Dashboard() {
               ))}
             </div>
           ) : (() => {
+            const isNewUser = data!.pacientesAtivos < 3 && data!.totalCobrancas === 0;
             const passos = [
-              { label: "Cadastre seu primeiro paciente", done: data!.pacientesAtivos >= 1, to: "/app/pacientes", btn: "Cadastrar" },
-              { label: "Agende uma consulta", done: data!.totalConsultas >= 1, to: "/app/pacientes", btn: "Agendar" },
-              { label: "Configure sua cobrança", done: data!.faturamentoMes > 0 || data!.aReceber > 0, to: "/app/financeiro", btn: "Configurar" },
+              { label: "Cadastre seu primeiro paciente", desc: "Adicione nome, objetivo e dados de contato", done: data!.pacientesAtivos >= 1, to: "/app/pacientes", btn: "Cadastrar →" },
+              { label: "Configure sua cobrança", desc: "Conecte sua conta Asaas para receber pelo Pix", done: data!.asaasConectado, to: "/app/financeiro", btn: "Configurar →" },
+              { label: "Agende uma consulta", desc: "Defina sua disponibilidade e agende o primeiro retorno", done: data!.totalConsultas >= 1, to: "/app/horarios", btn: "Agendar →" },
             ];
             const todosConcluidos = passos.every((p) => p.done);
-            const showChecklist = !todosConcluidos && data!.consultasHoje.length === 0;
+            const showChecklist = isNewUser && !onboardingHidden && data!.consultasHoje.length === 0;
 
             if (showChecklist) {
               return (
-                <>
+                <div className={`transition-all duration-700 ${onboardingFading ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"}`}>
                   <div className="flex items-center gap-2 mb-5">
                     <div className="w-8 h-8 rounded-xl bg-zena-green-light/20 flex items-center justify-center">
                       <Zap size={16} className="text-zena-green-mid" />
                     </div>
-                    <h2 className="text-zena-text-dark font-semibold text-lg">Primeiros passos</h2>
+                    <div>
+                      <h2 className="text-zena-text-dark font-semibold text-lg leading-tight">Comece agora</h2>
+                      <p className="text-zena-text-light text-xs">3 passos rápidos para começar</p>
+                    </div>
                   </div>
-                  <p className="text-zena-text-light text-sm mb-5">Complete estas etapas para começar a usar o Clinne.</p>
                   <div className="space-y-3">
-                    {passos.map((p) => (
-                      <div key={p.label} className={`flex items-center gap-3 p-4 rounded-xl border transition-all ${p.done ? "border-zena-green-light/40 bg-zena-green-light/5" : "border-zena-mint/40 bg-zena-cream/40"}`}>
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${p.done ? "bg-zena-green-light text-white" : "border-2 border-zena-mint"}`}>
-                          {p.done && <CheckCircle size={14} />}
+                    {passos.map((p, i) => (
+                      <div key={p.label} className={`p-4 rounded-xl border transition-all ${p.done ? "border-zena-green-light/30 bg-zena-green-light/5" : "border-zena-mint/40 bg-zena-cream/40"}`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`mt-0.5 w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border-2 transition-all ${p.done ? "bg-zena-green-mid border-zena-green-mid" : "border-zena-mint"}`}>
+                            {p.done ? <CheckCircle size={11} className="text-white" /> : <span className="text-[9px] text-zena-text-light font-bold">{i + 1}</span>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold ${p.done ? "text-zena-text-light line-through" : "text-zena-text-dark"}`}>{p.label}</p>
+                            {!p.done && <p className="text-zena-text-light text-xs mt-0.5">{p.desc}</p>}
+                          </div>
+                          {!p.done && (
+                            <Link to={p.to} className="flex-shrink-0 bg-zena-green-dark hover:bg-zena-green-mid text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
+                              {p.btn}
+                            </Link>
+                          )}
                         </div>
-                        <p className={`flex-1 text-sm font-medium ${p.done ? "text-zena-text-light line-through" : "text-zena-text-dark"}`}>{p.label}</p>
-                        {!p.done && (
-                          <Link to={p.to} className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-white bg-zena-green-mid hover:bg-zena-green-dark px-3 py-1.5 rounded-lg transition-colors">
-                            {p.btn} <ChevronRight size={12} />
-                          </Link>
-                        )}
                       </div>
                     ))}
                   </div>
-                </>
+                  {todosConcluidos && (
+                    <div className="mt-5 text-center">
+                      <p className="text-zena-green-mid font-semibold text-sm">Parabéns! Tudo pronto para começar 🎉</p>
+                    </div>
+                  )}
+                </div>
               );
             }
 
