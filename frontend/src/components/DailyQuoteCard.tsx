@@ -241,7 +241,7 @@ export function DailyQuoteMobile() {
   return (
     <>
       <div
-        className="rounded-2xl mx-4 mb-4"
+        className="rounded-2xl mb-4"
         style={{
           background: "linear-gradient(135deg, #1C4A2E 0%, #2D6A4F 100%)",
           padding: "20px",
