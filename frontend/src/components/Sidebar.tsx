@@ -1,22 +1,28 @@
 import { useState } from "react";
-import { NavLink, useNavigate, Link } from "react-router-dom";
-import { LayoutDashboard, Users, DollarSign, LogOut, Leaf, CalendarDays, CreditCard, BarChart2, ChevronRight, Download } from "lucide-react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
+import { Home, Users, CalendarDays, FileText, TrendingUp, BarChart2, MessageCircle, Settings, LogOut, Download } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { useAlertas } from "../contexts/AlertasContext";
 import { usePWAInstall } from "../hooks/usePWAInstall";
 
-const links = [
-  { to: "/app/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/app/pacientes", icon: Users, label: "Pacientes" },
-  { to: "/app/cobrancas", icon: DollarSign, label: "Cobranças" },
-  { to: "/app/financeiro", icon: BarChart2, label: "Financeiro" },
-  { to: "/app/horarios", icon: CalendarDays, label: "Agenda" },
+function getInitials(nome: string) {
+  return nome.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
+}
+
+const NAV = [
+  { to: "/app/dashboard", icon: Home,          label: "Início" },
+  { to: "/app/pacientes", icon: Users,         label: "Pacientes" },
+  { to: "/app/horarios",  icon: CalendarDays,  label: "Agenda" },
+  { to: "/app/pacientes", icon: FileText,      label: "Planos",       exact: false },
+  { to: "/app/pacientes", icon: TrendingUp,    label: "Evolução",     exact: false },
+  { to: "/app/financeiro",icon: BarChart2,     label: "Financeiro" },
+  { to: "/app/cobrancas", icon: MessageCircle, label: "Comunicação" },
+  { to: "/app/perfil",    icon: Settings,      label: "Configurações" },
 ];
 
 export default function Sidebar() {
   const { nutricionista, logout } = useAuth();
-  const { count: alertCount } = useAlertas();
   const navigate = useNavigate();
+  const location = useLocation();
   const { isInstallable, isIOS, install } = usePWAInstall();
   const [iosHint, setIosHint] = useState(false);
 
@@ -25,110 +31,95 @@ export default function Sidebar() {
     navigate("/login");
   }
 
-  const initials = nutricionista?.nome
-    .split(" ")
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase() || "Z";
+  const firstName = nutricionista?.nome.split(" ")[0] ?? "";
+  const initials = getInitials(nutricionista?.nome ?? "?");
 
   return (
-    <aside className="hidden md:flex md:flex-col w-60 min-h-screen bg-zena-green-dark flex-shrink-0">
-      <div className="px-6 py-8">
-        <div className="flex items-center gap-2">
-          <Leaf className="text-zena-mint" size={24} />
-          <span className="text-white font-bold text-xl tracking-wide">clinne</span>
+    <aside className="hidden md:flex md:flex-col w-56 min-h-screen bg-zena-green-dark flex-shrink-0">
+
+      {/* Logo */}
+      <div className="px-5 pt-7 pb-6">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+            <span className="text-white font-bold text-[17px] leading-none tracking-tight">C</span>
+          </div>
+          <span className="text-white font-semibold text-[17px] tracking-wide">clinne</span>
         </div>
-        {nutricionista?.nomeConsultorio ? (
-          <p className="text-zena-text-light/70 text-[13px] mt-1 ml-8 truncate leading-tight">{nutricionista.nomeConsultorio}</p>
-        ) : (
-          <Link
-            to="/app/perfil"
-            className="flex items-center gap-0.5 text-zena-mint/60 hover:text-zena-mint text-[12px] mt-1 ml-8 transition-colors"
-          >
-            Configurar consultório <ChevronRight size={11} />
-          </Link>
-        )}
       </div>
 
-      <nav className="flex-1 px-3">
-        {links.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-xl mb-1 text-sm font-medium transition-all ${
+      {/* Nav */}
+      <nav className="flex-1 px-3 space-y-0.5">
+        {NAV.map(({ to, icon: Icon, label, exact }) => {
+          // For items with exact:false, skip active state (they're secondary routes)
+          const isActive = exact === false
+            ? false
+            : location.pathname === to || location.pathname.startsWith(to + "/");
+          return (
+            <Link
+              key={label}
+              to={to}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition-all ${
                 isActive
-                  ? "bg-zena-green-mid text-white"
-                  : "text-zena-mint hover:bg-zena-green-mid/50 hover:text-white"
-              }`
-            }
-          >
-            <Icon size={18} />
-            <span className="flex-1">{label}</span>
-            {to === "/app/dashboard" && alertCount > 0 && (
-              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-tight">
-                {alertCount > 9 ? "9+" : alertCount}
-              </span>
-            )}
-          </NavLink>
-        ))}
+                  ? "bg-white/10 text-white"
+                  : "text-white/55 hover:text-white hover:bg-white/8"
+              }`}
+            >
+              <Icon size={16} strokeWidth={isActive ? 2 : 1.5} />
+              {label}
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="px-3 pb-6 space-y-1">
-        {isInstallable && (
-          <div className="mb-1">
-            <button
-              onClick={() => isIOS ? setIosHint(h => !h) : install()}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-zena-mint hover:bg-zena-green-mid/50 hover:text-white transition-all w-full"
-            >
-              <Download size={18} />
-              Instalar app
-            </button>
-            {iosHint && (
-              <div className="mx-1 mt-1 px-3 py-2.5 bg-zena-green-mid/20 rounded-xl text-[11px] text-zena-mint/90 leading-relaxed">
-                No Safari: toque em <strong>Compartilhar ↑</strong> →{" "}
-                <strong>Adicionar à Tela de Início</strong>
-                <button
-                  onClick={() => setIosHint(false)}
-                  className="block mt-1.5 text-zena-mint/50 hover:text-white text-[10px]"
-                >
-                  fechar
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-        <NavLink
-          to="/app/planos"
-          className={({ isActive }) =>
-            `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-              isActive
-                ? "bg-zena-green-mid text-white"
-                : "text-zena-mint hover:bg-zena-green-mid/50 hover:text-white"
-            }`
-          }
-        >
-          <CreditCard size={18} />
-          Planos
-        </NavLink>
+      {/* PWA install */}
+      {isInstallable && (
+        <div className="px-3 pb-1">
+          <button
+            onClick={() => isIOS ? setIosHint(h => !h) : install()}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-white/40 hover:text-white/70 hover:bg-white/8 transition-all w-full"
+          >
+            <Download size={15} strokeWidth={1.5} />
+            Instalar app
+          </button>
+          {iosHint && (
+            <div className="mx-1 mt-1 px-3 py-2.5 bg-white/10 rounded-xl text-[11px] text-white/70 leading-relaxed">
+              No Safari: toque em <strong>Compartilhar ↑</strong> →{" "}
+              <strong>Adicionar à Tela de Início</strong>
+              <button onClick={() => setIosHint(false)} className="block mt-1.5 text-white/40 hover:text-white text-[10px]">
+                fechar
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Footer — perfil */}
+      <div className="px-3 pb-5 pt-2 border-t border-white/8 mt-2">
         <Link
           to="/app/perfil"
-          className="flex items-center gap-3 px-4 py-3 rounded-xl bg-zena-green-mid/30 hover:bg-zena-green-mid/50 transition-colors group"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 transition-colors group"
         >
-          <div className="w-8 h-8 rounded-full bg-zena-green-light flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            {initials}
-          </div>
+          {nutricionista?.logoConsultorio ? (
+            <img
+              src={nutricionista.logoConsultorio}
+              alt={firstName}
+              className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-semibold">{initials}</span>
+            </div>
+          )}
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">{nutricionista?.nome.split(" ")[0]}</p>
-            <p className="text-zena-text-light text-xs">{nutricionista?.crn}</p>
+            <p className="text-white text-[13px] font-medium leading-tight truncate">{firstName}</p>
+            <p className="text-white/40 text-[11px]">Ver meu perfil</p>
           </div>
           <button
             onClick={(e) => { e.preventDefault(); handleLogout(); }}
-            className="text-zena-text-light hover:text-white"
+            className="text-white/25 hover:text-white/70 transition-colors flex-shrink-0"
             title="Sair"
           >
-            <LogOut size={16} />
+            <LogOut size={14} />
           </button>
         </Link>
       </div>

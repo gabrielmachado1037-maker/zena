@@ -15,7 +15,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   const fimHoje = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
   const ha30dias = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const [pacientesAtivos, consultasHoje, cobrancasMes, semConsulta, totalConsultas, nutri, totalCobrancas, totalPlanos, pacientesComMedicoes] = await Promise.all([
+  const [pacientesAtivos, consultasHoje, cobrancasMes, semConsulta, totalConsultas, nutri, totalCobrancas, totalPlanos, pacientesComMedicoes, novosPacientesMes, proximosAtend, topPacientes, pacientesComPlanoCount] = await Promise.all([
     prisma.paciente.count({ where: { nutricionistaId: req.nutricionistaId, ativo: true } }),
     prisma.consulta.findMany({
       where: {
@@ -47,6 +47,20 @@ router.get("/", async (req: AuthRequest, res: Response) => {
       where: { nutricionistaId: req.nutricionistaId!, ativo: true },
       select: { medicoes: { orderBy: { data: "asc" }, select: { peso: true, data: true } } },
     }),
+    prisma.paciente.count({ where: { nutricionistaId: req.nutricionistaId!, createdAt: { gte: inicioMes } } }),
+    prisma.consulta.findMany({
+      where: { data: { gte: now }, paciente: { nutricionistaId: req.nutricionistaId! }, status: { not: "cancelada" } },
+      include: { paciente: { select: { nome: true } } },
+      orderBy: { data: "asc" },
+      take: 4,
+    }),
+    prisma.paciente.findMany({
+      where: { nutricionistaId: req.nutricionistaId!, ativo: true, planosAlimentares: { some: {} } },
+      select: { nome: true, _count: { select: { planosAlimentares: true } } },
+      orderBy: { planosAlimentares: { _count: "desc" } },
+      take: 3,
+    }),
+    prisma.paciente.count({ where: { nutricionistaId: req.nutricionistaId!, ativo: true, planosAlimentares: { some: {} } } }),
   ]);
 
   // Evolução de peso
@@ -73,6 +87,31 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     .sort()
     .map((k) => Math.round((byMonth[k].reduce((a, b) => a + b, 0) / byMonth[k].length) * 10) / 10);
 
+  // Evolução semanal para gráfico de área (last 6 months, weekly)
+  const monthPt = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  const byWeek: Record<string, number[]> = {};
+  for (const m of medicoesRecentes) {
+    const d = new Date(m.data);
+    const jan1 = new Date(d.getFullYear(), 0, 1);
+    const dayOfYear = Math.floor((d.getTime() - jan1.getTime()) / 86400000) + 1;
+    const week = Math.ceil(dayOfYear / 7);
+    const key = `${d.getFullYear()}-W${String(week).padStart(2, "0")}`;
+    if (!byWeek[key]) byWeek[key] = [];
+    byWeek[key].push(m.peso);
+  }
+  const evolucaoSemanal = Object.keys(byWeek).sort().map((k) => {
+    const [yearStr, wStr] = k.split("-W");
+    const approxDate = new Date(parseInt(yearStr), 0, (parseInt(wStr) - 1) * 7 + 1);
+    return {
+      semana: k,
+      label: monthPt[approxDate.getMonth()],
+      pesoMedio: Math.round((byWeek[k].reduce((a, b) => a + b, 0) / byWeek[k].length) * 10) / 10,
+    };
+  });
+
+  // Adesão aos planos
+  const adesaoPlanos = pacientesAtivos > 0 ? Math.round((pacientesComPlanoCount / pacientesAtivos) * 100) : 0;
+
   const faturamentoMes = cobrancasMes.reduce((s, c) => s + c.valor, 0);
   const recebidoMes = cobrancasMes.filter((c) => c.status === "pago").reduce((s, c) => s + c.valor, 0);
   const aReceber = cobrancasMes.filter((c) => c.status !== "pago").reduce((s, c) => s + c.valor, 0);
@@ -91,6 +130,16 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     totalCobrancas,
     totalPlanos,
     evolucaoPeso: { pct: pctEvolucao, sparkline, totalComMedicoes },
+    novosPacientesMes,
+    adesaoPlanos,
+    evolucaoSemanal,
+    proximosAtendimentos: proximosAtend.map((c) => ({
+      id: c.id,
+      data: c.data.toISOString(),
+      pacienteNome: c.paciente.nome,
+      status: c.status,
+    })),
+    planosMaisUsados: topPacientes.map((p) => ({ nome: p.nome, count: p._count.planosAlimentares })),
   });
 });
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { LineChart, Line, ResponsiveContainer } from "recharts";
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Users, DollarSign, Calendar, AlertCircle, Clock, CheckCircle, XCircle, MessageCircle, Bell, X, Zap, ChevronRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -31,6 +31,11 @@ interface DashboardData {
   totalCobrancas: number;
   totalPlanos: number;
   evolucaoPeso: { pct: number; sparkline: number[]; totalComMedicoes: number };
+  novosPacientesMes: number;
+  adesaoPlanos: number;
+  evolucaoSemanal: Array<{ semana: string; label: string; pesoMedio: number }>;
+  proximosAtendimentos: Array<{ id: string; data: string; pacienteNome: string; status: string }>;
+  planosMaisUsados: Array<{ nome: string; count: number }>;
 }
 
 interface Lembrete {
@@ -417,288 +422,200 @@ export default function Dashboard() {
       </div>
 
       {/* ━━━ DESKTOP LAYOUT ━━━ */}
-      <div className="hidden md:block p-8">
-        {/* Trial banner */}
-        {billing?.emTrial && (
-          <div className={`mb-6 rounded-2xl p-4 flex items-center justify-between gap-4 ${billing.diasRestantesTrial <= 3 ? "bg-red-50 border border-red-200" : "bg-amber-50 border border-amber-200"}`}>
-            <div className="flex items-center gap-3">
-              <Zap size={18} className={`flex-shrink-0 ${billing.diasRestantesTrial <= 3 ? "text-red-600" : "text-amber-600"}`} />
-              <p className={`text-sm font-medium ${billing.diasRestantesTrial <= 3 ? "text-red-700" : "text-amber-700"}`}>
-                {billing.diasRestantesTrial <= 3
-                  ? <>Seu trial expira em <strong>{billing.diasRestantesTrial} dia{billing.diasRestantesTrial !== 1 ? "s" : ""}</strong>! Assine agora para não perder o acesso.</>
-                  : <>⚡ <strong>{billing.diasRestantesTrial} dias grátis</strong> restantes — sem cartão, cancele quando quiser.</>
-                }
-              </p>
-            </div>
-            <Link
-              to="/app/planos"
-              className={`flex-shrink-0 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap ${billing.diasRestantesTrial <= 3 ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"}`}
-            >
-              {billing.diasRestantesTrial <= 3 ? "Assinar agora" : "Ver planos →"}
-            </Link>
-          </div>
-        )}
+      <div className="hidden md:block bg-[#F8F8F6] min-h-screen p-8">
 
-        {/* Header */}
-        <div className="mb-8">
-          <p className="text-zena-text-light text-sm capitalize">{hoje}</p>
-          <h1 className="text-zena-text-dark text-3xl font-bold mt-1">
-            Olá, {firstName}!
-          </h1>
-        </div>
+        {/* Page title */}
+        <h1 className="text-[22px] font-semibold text-[#111] mb-8 tracking-tight">Visão geral</h1>
 
-        {/* Stat Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <StatCard
-            title="Pacientes ativos"
-            value={loading ? "—" : data!.pacientesAtivos}
-            sub="em acompanhamento"
-            icon={<Users size={18} />}
-            accent="green"
-            loading={loading}
-          />
-          <StatCard
-            title="Faturamento do mês"
-            value={loading ? "—" : `R$ ${data!.faturamentoMes.toFixed(2).replace(".", ",")}`}
-            sub={
-              !loading && data!.faturamentoMes === 0
-                ? <button onClick={() => navigate("/app/cobrancas")} className="text-zena-green-mid hover:underline flex items-center gap-0.5">Crie sua primeira cobrança <ChevronRight size={11} /></button>
-                : `${pctRecebido}% recebido`
-            }
-            icon={<DollarSign size={18} />}
-            accent="mint"
-            loading={loading}
-          />
-          <StatCard
-            title="Consultas hoje"
-            value={loading ? "—" : data!.consultasHoje.length}
-            sub={
-              loading ? undefined
-              : data!.consultasHoje.length === 0
-                ? <button onClick={() => navigate("/app/pacientes")} className="text-zena-green-mid hover:underline flex items-center gap-0.5">Nenhuma agendada. Agendar agora <ChevronRight size={11} /></button>
-                : `Próxima: ${format(new Date(data!.consultasHoje[0].data), "HH:mm")}`
-            }
-            icon={<Calendar size={18} />}
-            accent="green"
-            loading={loading}
-          />
-          <StatCard
-            title="A receber"
-            value={loading ? "—" : `R$ ${data!.aReceber.toFixed(2).replace(".", ",")}`}
-            sub={data?.cobrancasVencidas ? `${data.cobrancasVencidas} vencida(s)` : "Em dia"}
-            icon={<AlertCircle size={18} />}
-            accent={data?.cobrancasVencidas ? "brown" : "mint"}
-            loading={loading}
-          />
-        </div>
-
-        {/* Lembretes do dia */}
-        {lembretes.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Bell size={16} className="text-amber-600" />
-              <h2 className="text-amber-800 font-semibold">Lembretes de hoje ({lembretes.length})</h2>
-            </div>
-            <div className="space-y-2">
-              {lembretes.map((l) => {
-                const cfg = lembreteCfg[l.tipo];
-                if (!cfg) return null;
-                return (
-                  <div key={l.id} className="bg-white rounded-xl px-4 py-3 flex items-center gap-3">
-                    <span className="text-xl flex-shrink-0">{cfg.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-zena-text-dark text-sm font-medium">{cfg.label}</p>
-                      <p className="text-zena-text-light text-xs truncate">{l.paciente.nome}</p>
-                    </div>
-                    <button
-                      onClick={() => abrirWA(
-                        { id: l.paciente.id, nome: l.paciente.nome, telefone: l.paciente.telefone, linkUnico: l.paciente.linkUnico },
-                        cfg.template, undefined, l.id
-                      )}
-                      className="flex items-center gap-1.5 text-xs text-[#25D366] font-medium bg-[#25D366]/10 hover:bg-[#25D366]/20 px-3 py-1.5 rounded-lg transition-colors flex-shrink-0"
-                    >
-                      <MessageCircle size={13} />
-                      WhatsApp
-                    </button>
-                    <button
-                      onClick={() => ignorarLembrete(l.id)}
-                      className="text-zena-text-light hover:text-zena-text-mid flex-shrink-0"
-                      title="Ignorar"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Agenda do dia / Primeiros passos */}
-          <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-zena-mint/30">
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="animate-pulse flex gap-4 p-3">
-                    <div className="w-10 h-10 rounded-full bg-zena-mint/40" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-zena-mint/40 rounded w-32" />
-                      <div className="h-3 bg-zena-mint/20 rounded w-20" />
-                    </div>
-                  </div>
-                ))}
+        {/* ── KPI Row ── */}
+        {loading ? (
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white rounded-xl p-6 animate-pulse">
+                <div className="h-3 w-28 bg-[#F0F0EE] rounded mb-4" />
+                <div className="h-8 w-16 bg-[#F0F0EE] rounded mb-2" />
+                <div className="h-3 w-20 bg-[#F0F0EE] rounded" />
               </div>
-            ) : (() => {
-              if (showOnboarding) {
-                return (
-                  <div className={`transition-all duration-700 ${onboardingFading ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"}`}>
-                    <div className="flex items-center gap-2 mb-5">
-                      <div className="w-8 h-8 rounded-xl bg-zena-green-light/20 flex items-center justify-center">
-                        <Zap size={16} className="text-zena-green-mid" />
-                      </div>
-                      <div>
-                        <h2 className="text-zena-text-dark font-semibold text-lg leading-tight">Comece agora</h2>
-                        <p className="text-zena-text-light text-xs">3 passos rápidos para começar</p>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      {onboardingPassos.map((p, i) => (
-                        <div key={p.label} className={`p-4 rounded-xl border transition-all ${p.done ? "border-zena-green-light/30 bg-zena-green-light/5" : "border-zena-mint/40 bg-zena-cream/40"}`}>
-                          <div className="flex items-start gap-3">
-                            <div className={`mt-0.5 w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border-2 transition-all ${p.done ? "bg-zena-green-mid border-zena-green-mid" : "border-zena-mint"}`}>
-                              {p.done ? <CheckCircle size={11} className="text-white" /> : <span className="text-[9px] text-zena-text-light font-bold">{i + 1}</span>}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-semibold ${p.done ? "text-zena-text-light line-through" : "text-zena-text-dark"}`}>{p.label}</p>
-                              {!p.done && <p className="text-zena-text-light text-xs mt-0.5">{p.desc}</p>}
-                            </div>
-                            {!p.done && (
-                              <Link to={p.to} className="flex-shrink-0 bg-zena-green-dark hover:bg-zena-green-mid text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap">
-                                {p.btn}
-                              </Link>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {onboardingTodosConcluidos && (
-                      <div className="mt-5 text-center">
-                        <p className="text-zena-green-mid font-semibold text-sm">Parabéns! Tudo pronto para começar 🎉</p>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              if (data!.consultasHoje.length === 0) {
-                return (
-                  <>
-                    <h2 className="text-zena-text-dark font-semibold text-lg mb-4">Agenda de hoje</h2>
-                    <div className="text-center py-12">
-                      <Calendar className="mx-auto text-zena-mint mb-3" size={40} />
-                      <p className="text-zena-text-light text-sm">Nenhuma consulta agendada para hoje.</p>
-                      <p className="text-zena-text-light text-xs mt-1">Aproveite para atualizar os planos das suas pacientes!</p>
-                    </div>
-                  </>
-                );
-              }
-
-              return (
-                <>
-                  <h2 className="text-zena-text-dark font-semibold text-lg mb-4">Agenda de hoje</h2>
-                  <div className="space-y-2">
-                    {data!.consultasHoje.map((consulta) => {
-                      const cfg = statusConfig[consulta.status] || statusConfig["agendada"];
-                      const StatusIcon = cfg.icon;
-                      const dataFormatada = format(new Date(consulta.data), "dd/MM 'às' HH:mm");
-                      return (
-                        <div key={consulta.id} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-zena-cream transition-colors">
-                          <div className="w-10 h-10 rounded-full bg-zena-green-light/20 flex items-center justify-center text-zena-green-dark font-bold text-sm flex-shrink-0">
-                            {getInitials(consulta.paciente.nome)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-zena-text-dark font-medium text-sm truncate">{consulta.paciente.nome}</p>
-                            <p className="text-zena-text-light text-xs">{format(new Date(consulta.data), "HH:mm")}</p>
-                          </div>
-                          <span className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full flex-shrink-0 ${cfg.color}`}>
-                            <StatusIcon size={12} />
-                            {cfg.label}
-                          </span>
-                          <button
-                            onClick={() => abrirWA(
-                              { id: consulta.paciente.id, nome: consulta.paciente.nome, telefone: consulta.paciente.telefone, linkUnico: consulta.paciente.linkUnico },
-                              "lembrete_consulta",
-                              dataFormatada
-                            )}
-                            className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-xs text-[#25D366] font-medium hover:bg-[#25D366]/10 px-2.5 py-1.5 rounded-lg"
-                          >
-                            <MessageCircle size={14} />
-                            <span className="hidden lg:inline">Lembrete</span>
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </>
-              );
-            })()}
+            ))}
           </div>
-
-          {/* Alertas — dinâmicos */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-zena-mint/30 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-zena-text-dark font-semibold text-lg">Alertas</h2>
-              {alertasVisiveis.length > 0 && (
-                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[22px] text-center">
-                  {alertasVisiveis.length}
-                </span>
+        ) : (
+          <div className="grid grid-cols-4 gap-4 mb-6">
+            {/* Pacientes ativos */}
+            <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+              <p className="text-[12px] text-[#999] font-normal mb-3">Pacientes ativos</p>
+              <p className="text-[36px] font-light text-[#111] leading-none tabular-nums mb-2">{data!.pacientesAtivos}</p>
+              {data!.novosPacientesMes > 0 && (
+                <p className="text-[12px] text-zena-green-dark">+{data!.novosPacientesMes} este mês</p>
               )}
             </div>
 
-            {loadingAlertas ? (
-              <div className="space-y-2 animate-pulse">
-                {[1, 2, 3].map((i) => <div key={i} className="h-14 bg-zena-mint/20 rounded-xl" />)}
-              </div>
-            ) : alertasVisiveis.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center py-8 text-center">
-                <CheckCircle className="text-zena-green-light mb-2" size={34} />
-                <p className="text-zena-text-mid font-medium text-sm">Tudo em ordem!</p>
-                <p className="text-zena-text-light text-xs mt-1">Nenhum alerta pendente.</p>
+            {/* Atendimentos hoje */}
+            <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+              <p className="text-[12px] text-[#999] font-normal mb-3">Atendimentos hoje</p>
+              <p className="text-[36px] font-light text-[#111] leading-none tabular-nums mb-2">
+                {String(data!.consultasHoje.length).padStart(2, "0")}
+              </p>
+              <Link to="/app/horarios" className="text-[12px] text-zena-green-dark">ver agenda →</Link>
+            </div>
+
+            {/* Novos pacientes */}
+            <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+              <p className="text-[12px] text-[#999] font-normal mb-3">Novos pacientes</p>
+              <p className="text-[36px] font-light text-[#111] leading-none tabular-nums mb-2">{data!.novosPacientesMes}</p>
+              <p className="text-[12px] text-[#bbb]">este mês</p>
+            </div>
+
+            {/* Faturamento */}
+            <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+              <p className="text-[12px] text-[#999] font-normal mb-3">Faturamento</p>
+              <p className="text-[26px] font-light text-[#111] leading-none tabular-nums mb-2">
+                {`R$ ${data!.faturamentoMes.toFixed(2).replace(".", ",")}`}
+              </p>
+              <p className="text-[12px] text-[#bbb]">este mês</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Charts Row ── */}
+        <div className="grid grid-cols-3 gap-4 mb-4">
+
+          {/* Evolução — Area chart (2/3) */}
+          <div className="col-span-2 bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+            <p className="text-[13px] font-medium text-[#333] mb-5">Evolução dos pacientes</p>
+            {loading || !data ? (
+              <div className="h-[180px] bg-[#F8F8F6] rounded-lg animate-pulse" />
+            ) : data.evolucaoSemanal.length < 2 ? (
+              <div className="h-[180px] flex items-center justify-center">
+                <p className="text-[13px] text-[#bbb]">Sem dados de medições ainda</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {alertasVisiveis.map((alerta) => {
-                  const cfg = ALERTA_CFG[alerta.tipo] ?? ALERTA_CFG.sem_consulta;
-                  return (
-                    <div key={alerta.id} className={`flex items-start gap-2.5 p-3 rounded-xl border ${cfg.ringCls}`}>
-                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${cfg.dot}`} />
-                      <p className={`flex-1 text-xs leading-snug ${cfg.textCls}`}>{alerta.texto}</p>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <button
-                          onClick={() => handleAlertaAction(alerta)}
-                          className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap transition-colors ${cfg.btnCls}`}
-                        >
-                          {alerta.acao}
-                        </button>
-                        <button
-                          onClick={() => dispensarAlerta(alerta.id)}
-                          className="text-zena-text-light hover:text-zena-text-mid p-0.5"
-                          title="Dispensar"
-                        >
-                          <X size={13} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <>
+                <ResponsiveContainer width="100%" height={180}>
+                  <AreaChart data={data.evolucaoSemanal} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                    <defs>
+                      <linearGradient id="evolGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#1C4A2E" stopOpacity={0.12} />
+                        <stop offset="95%" stopColor="#1C4A2E" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F0F0EE" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#bbb" }} tickLine={false} axisLine={false} />
+                    <YAxis domain={["auto", "auto"]} tick={{ fontSize: 11, fill: "#bbb" }} tickLine={false} axisLine={false} width={40} />
+                    <Area type="monotone" dataKey="pesoMedio" stroke="#1C4A2E" strokeWidth={1.5} fill="url(#evolGrad)" dot={{ fill: "#1C4A2E", r: 2.5, strokeWidth: 0 }} activeDot={{ r: 4, strokeWidth: 0 }} isAnimationActive={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+                <Link to="/app/pacientes" className="text-[12px] text-zena-green-dark mt-3 inline-block">
+                  ver relatórios completos →
+                </Link>
+              </>
             )}
+          </div>
 
-            {!loadingAlertas && alertasVisiveis.length > 0 && (
-              <p className="text-zena-text-light text-[10px] mt-4 text-center">
-                Clicar em "Cobrar" / "Chamar" / "Lembrar" abre o WhatsApp direto.
-              </p>
+          {/* Adesão aos planos — Donut (1/3) */}
+          <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col items-center justify-center">
+            <p className="text-[13px] font-medium text-[#333] mb-4 self-start">Adesão aos planos</p>
+            {loading || !data ? (
+              <div className="w-36 h-36 rounded-full bg-[#F8F8F6] animate-pulse" />
+            ) : (
+              <>
+                <div className="relative flex items-center justify-center" style={{ width: 160, height: 160 }}>
+                  <ResponsiveContainer width={160} height={160}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: "Com adesão", value: data.adesaoPlanos },
+                          { name: "Sem adesão", value: 100 - data.adesaoPlanos },
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={52}
+                        outerRadius={68}
+                        startAngle={90}
+                        endAngle={-270}
+                        dataKey="value"
+                        strokeWidth={0}
+                        isAnimationActive={false}
+                      >
+                        <Cell fill="#1C4A2E" />
+                        <Cell fill="#F0F0EE" />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <p className="text-[28px] font-light text-[#111] leading-none tabular-nums">{data.adesaoPlanos}%</p>
+                  </div>
+                </div>
+                <p className="text-[12px] text-[#bbb] mt-3 text-center">dos pacientes com adesão</p>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ── Bottom Row ── */}
+        <div className="grid grid-cols-2 gap-4">
+
+          {/* Próximos atendimentos */}
+          <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+            <p className="text-[13px] font-medium text-[#333] mb-4">Próximos atendimentos</p>
+            {loading || !data ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => <div key={i} className="h-10 bg-[#F8F8F6] rounded animate-pulse" />)}
+              </div>
+            ) : data.proximosAtendimentos.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-[13px] text-[#bbb]">Nenhum atendimento agendado</p>
+                <Link to="/app/horarios" className="text-[12px] text-zena-green-dark mt-2 inline-block">agendar →</Link>
+              </div>
+            ) : (
+              <>
+                <div className="divide-y divide-[#F5F5F3]">
+                  {data.proximosAtendimentos.map((c) => {
+                    const d = new Date(c.data);
+                    const hora = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+                    const dia = d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
+                    const statusLabel = statusConfig[c.status]?.label ?? c.status;
+                    return (
+                      <div key={c.id} className="flex items-center gap-3 py-3">
+                        <div className="text-right flex-shrink-0 w-14">
+                          <p className="text-[13px] font-medium text-[#111]">{hora}</p>
+                          <p className="text-[11px] text-[#bbb] capitalize">{dia}</p>
+                        </div>
+                        <p className="flex-1 text-[13px] text-[#333] truncate">{c.pacienteNome}</p>
+                        <p className="text-[12px] text-[#bbb] flex-shrink-0">{statusLabel}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <Link to="/app/horarios" className="text-[12px] text-zena-green-dark mt-3 inline-block">
+                  ver todos →
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Planos mais usados */}
+          <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+            <p className="text-[13px] font-medium text-[#333] mb-4">Planos alimentares</p>
+            {loading || !data ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => <div key={i} className="h-10 bg-[#F8F8F6] rounded animate-pulse" />)}
+              </div>
+            ) : data.planosMaisUsados.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-[13px] text-[#bbb]">Nenhum plano criado ainda</p>
+                <Link to="/app/pacientes" className="text-[12px] text-zena-green-dark mt-2 inline-block">criar plano →</Link>
+              </div>
+            ) : (
+              <div className="divide-y divide-[#F5F5F3]">
+                {data.planosMaisUsados.map((p) => (
+                  <div key={p.nome} className="flex items-center justify-between py-3">
+                    <p className="text-[13px] text-[#333] truncate flex-1 mr-4">{p.nome.split(" ").slice(0, 2).join(" ")}</p>
+                    <p className="text-[13px] text-[#bbb] flex-shrink-0 tabular-nums">
+                      {p.count} {p.count === 1 ? "plano" : "planos"}
+                    </p>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
