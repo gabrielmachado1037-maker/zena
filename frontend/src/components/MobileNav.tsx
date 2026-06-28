@@ -1,14 +1,14 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Users, FileText, Rss, CalendarDays, User } from "lucide-react";
+import { LayoutDashboard, Users, Trophy, Rss, CalendarDays, User } from "lucide-react";
 import { useAlertas } from "../contexts/AlertasContext";
 
 const links = [
-  { to: "/app/dashboard",          icon: LayoutDashboard, label: "Início" },
-  { to: "/app/pacientes",          icon: Users,           label: "Pacientes" },
-  { to: "/app/planos-alimentares", icon: FileText,        label: "Planos" },
-  { to: "/app/feed",               icon: Rss,             label: "Feed" },
-  { to: "/app/horarios",           icon: CalendarDays,    label: "Agenda" },
-  { to: "/app/perfil",             icon: User,            label: "Conta" },
+  { to: "/app/dashboard", icon: LayoutDashboard, label: "Início" },
+  { to: "/app/pacientes", icon: Users,           label: "Pacientes" },
+  { to: "/app/ranking",   icon: Trophy,          label: "Ranking" },
+  { to: "/app/feed",      icon: Rss,             label: "Feed" },
+  { to: "/app/horarios",  icon: CalendarDays,    label: "Agenda" },
+  { to: "/app/perfil",    icon: User,            label: "Conta" },
 ];
 
 export default function MobileNav() {
