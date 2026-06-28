@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { Home, Users, CalendarDays, FileText, Trophy, BarChart2, MessageCircle, Settings, LogOut, Download } from "lucide-react";
+import { Home, Users, CalendarDays, FileText, Trophy, BarChart2, Rss, Settings, LogOut, Download } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { usePWAInstall } from "../hooks/usePWAInstall";
 
@@ -15,7 +15,7 @@ const NAV = [
   { to: "/app/pacientes", icon: FileText,      label: "Planos",       exact: false },
   { to: "/app/ranking",   icon: Trophy,         label: "Ranking" },
   { to: "/app/financeiro",icon: BarChart2,     label: "Financeiro" },
-  { to: "/app/cobrancas", icon: MessageCircle, label: "Comunicação" },
+  { to: "/app/feed",      icon: Rss,           label: "Feed" },
   { to: "/app/perfil",    icon: Settings,      label: "Configurações" },
 ];
 

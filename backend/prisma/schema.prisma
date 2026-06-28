@@ -33,6 +33,7 @@ model Nutricionista {
   lembretes            Lembrete[]
   rankingConfig        RankingConfig?
   rankingPontuacoes    RankingPontuacao[]
+  feedPosts            FeedPost[]
   createdAt            DateTime            @default(now())
 }
 
@@ -74,6 +75,7 @@ model Paciente {
   fotosEvolucao     FotoEvolucao[]
   registrosFotos    RegistroFotos[]
   rankingPontuacoes RankingPontuacao[]
+  feedPosts         FeedPost[]
   createdAt         DateTime           @default(now())
 
   @@index([nutricionistaId])
@@ -281,6 +283,26 @@ model DailyQuote {
   date      DateTime @unique
   quote     String
   createdAt DateTime @default(now())
+}
+
+// ─── Ranking ──────────────────────────────────────────────────────────────────
+
+// ─── Feed ─────────────────────────────────────────────────────────────────────
+
+model FeedPost {
+  id              String        @id @default(cuid())
+  tipo            String        // META_BATIDA | PESO_ALCANCADO | CONQUISTA
+  pacienteId      String
+  paciente        Paciente      @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  nutricionistaId String
+  nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id], onDelete: Cascade)
+  mensagem        String
+  curtidas        Int           @default(0)
+  criadoEm        DateTime      @default(now())
+
+  @@index([nutricionistaId])
+  @@index([pacienteId])
+  @@index([criadoEm])
 }
 
 // ─── Ranking ──────────────────────────────────────────────────────────────────
