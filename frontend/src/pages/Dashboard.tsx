@@ -424,8 +424,24 @@ export default function Dashboard() {
       {/* ━━━ DESKTOP LAYOUT ━━━ */}
       <div className="hidden md:block bg-[#F8F8F6] min-h-screen p-8">
 
-        {/* Page title */}
-        <h1 className="text-[22px] font-semibold text-[#111] mb-8 tracking-tight">Visão geral</h1>
+        {/* Welcome header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-[28px] font-semibold text-[#1C4A2E] leading-tight">Olá, {firstName}!</h1>
+            <p className="text-[14px] font-normal text-[#999] mt-1">Tenha um dia incrível! 👋</p>
+          </div>
+          {nutricionista?.logoConsultorio ? (
+            <img
+              src={nutricionista.logoConsultorio}
+              alt={firstName}
+              className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-[#1C4A2E] flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-[13px] font-semibold">{initials}</span>
+            </div>
+          )}
+        </div>
 
         {/* ── KPI Row ── */}
         {loading ? (
