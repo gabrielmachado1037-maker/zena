@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma";
+import { uploadFoto } from "../lib/supabase";
 
 const router = Router();
 
@@ -53,9 +54,19 @@ router.post("/paciente/:link/checkin", async (req: Request, res: Response) => {
 
   const { semana, ano } = getISOWeekData(new Date());
 
+  // Upload photo to Supabase Storage; fall back to null on error (never block a check-in)
+  let fotoUrl: string | null = null;
+  if (foto) {
+    try {
+      fotoUrl = await uploadFoto(`checkins/${paciente.id}/${semana}-${ano}.jpg`, foto);
+    } catch {
+      // Supabase not configured or unreachable — skip photo, keep check-in
+    }
+  }
+
   const checkIn = await prisma.checkIn.upsert({
     where: { pacienteId_semana_ano: { pacienteId: paciente.id, semana, ano } },
-    update: { humor, adesao, peso: peso ? parseFloat(peso) : null, foto, nota },
+    update: { humor, adesao, peso: peso ? parseFloat(peso) : null, foto: fotoUrl, nota },
     create: {
       pacienteId: paciente.id,
       semana,
@@ -63,7 +74,7 @@ router.post("/paciente/:link/checkin", async (req: Request, res: Response) => {
       humor,
       adesao,
       peso: peso ? parseFloat(peso) : null,
-      foto: foto || null,
+      foto: fotoUrl,
       nota: nota || null,
     },
   });

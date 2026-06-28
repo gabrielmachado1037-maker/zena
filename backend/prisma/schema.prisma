@@ -72,6 +72,8 @@ model Paciente {
   fotosEvolucao     FotoEvolucao[]
   registrosFotos    RegistroFotos[]
   createdAt         DateTime           @default(now())
+
+  @@index([nutricionistaId])
 }
 
 model Anamnese {
@@ -119,6 +121,9 @@ model Lembrete {
   referencia      String?
   criadoEm        DateTime      @default(now())
   atualizadoEm    DateTime      @updatedAt
+
+  @@index([nutricionistaId])
+  @@index([status])
 }
 
 model CheckIn {
@@ -135,6 +140,7 @@ model CheckIn {
   criadoEm   DateTime @default(now())
 
   @@unique([pacienteId, semana, ano])
+  @@index([pacienteId])
 }
 
 model MensagemWhatsApp {
@@ -144,6 +150,8 @@ model MensagemWhatsApp {
   template     String
   textoEnviado String
   criadoEm     DateTime @default(now())
+
+  @@index([pacienteId])
 }
 
 model Medicao {
@@ -161,6 +169,8 @@ model Medicao {
   laudo       String?
   observacoes String?
   createdAt   DateTime @default(now())
+
+  @@index([pacienteId])
 }
 
 model PlanoAlimentar {
@@ -175,6 +185,8 @@ model PlanoAlimentar {
   jantar      String
   ceia        String?
   observacoes String?
+
+  @@index([pacienteId])
 }
 
 model Consulta {
@@ -186,6 +198,9 @@ model Consulta {
   tipo       String   @default("consulta")
   notas      String?
   createdAt  DateTime @default(now())
+
+  @@index([pacienteId])
+  @@index([data])
 }
 
 model Cobranca {
@@ -202,6 +217,10 @@ model Cobranca {
   pixCopiaECola   String?
   linkPagamento   String?
   createdAt       DateTime  @default(now())
+
+  @@index([pacienteId])
+  @@index([status])
+  @@index([vencimento])
 }
 
 model FotoEvolucao {
@@ -212,6 +231,8 @@ model FotoEvolucao {
   tipo       String
   imagem     String
   criadoEm  DateTime @default(now())
+
+  @@index([pacienteId])
 }
 
 model RegistroFotos {
@@ -237,6 +258,8 @@ model RegistroContato {
   resumo     String
   data       DateTime @default(now())
   criadoEm  DateTime @default(now())
+
+  @@index([pacienteId])
 }
 
 model PlanoCobranca {
