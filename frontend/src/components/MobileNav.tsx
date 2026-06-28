@@ -1,13 +1,14 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Users, FileText, CalendarDays, User } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Rss, CalendarDays, User } from "lucide-react";
 import { useAlertas } from "../contexts/AlertasContext";
 
 const links = [
-  { to: "/app/dashboard",         icon: LayoutDashboard, label: "Início" },
-  { to: "/app/pacientes",         icon: Users,           label: "Pacientes" },
-  { to: "/app/planos-alimentares",icon: FileText,        label: "Planos" },
-  { to: "/app/horarios",          icon: CalendarDays,    label: "Agenda" },
-  { to: "/app/perfil",            icon: User,            label: "Conta" },
+  { to: "/app/dashboard",          icon: LayoutDashboard, label: "Início" },
+  { to: "/app/pacientes",          icon: Users,           label: "Pacientes" },
+  { to: "/app/planos-alimentares", icon: FileText,        label: "Planos" },
+  { to: "/app/feed",               icon: Rss,             label: "Feed" },
+  { to: "/app/horarios",           icon: CalendarDays,    label: "Agenda" },
+  { to: "/app/perfil",             icon: User,            label: "Conta" },
 ];
 
 export default function MobileNav() {
@@ -26,7 +27,7 @@ export default function MobileNav() {
           }
         >
           <div className="relative">
-            <Icon size={20} />
+            <Icon size={18} />
             {to === "/app/dashboard" && alertCount > 0 && (
               <span className="absolute -top-1 -right-2 bg-red-500 text-white text-[8px] font-bold min-w-[14px] h-3.5 rounded-full flex items-center justify-center px-0.5">
                 {alertCount > 9 ? "9+" : alertCount}
