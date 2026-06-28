@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, FileText, ChevronRight, Clock, AlertCircle } from "lucide-react";
+import { Search, FileText, ChevronRight, Clock, AlertCircle, X, ExternalLink } from "lucide-react";
 import api from "../lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -42,14 +42,88 @@ function dataRelativa(iso: string) {
   return `há ${m} mês${m > 1 ? "es" : ""}`;
 }
 
-const REFEICOES: { key: keyof Plano; label: string }[] = [
-  { key: "cafeManha",   label: "Café" },
-  { key: "almoco",      label: "Almoço" },
-  { key: "jantar",      label: "Jantar" },
-  { key: "lancheManha", label: "Lanche manhã" },
-  { key: "lancheTarde", label: "Lanche tarde" },
-  { key: "ceia",        label: "Ceia" },
+const REFEICOES: { key: keyof Plano; label: string; emoji: string }[] = [
+  { key: "cafeManha",   label: "Café da manhã",  emoji: "☀️" },
+  { key: "lancheManha", label: "Lanche da manhã", emoji: "🍎" },
+  { key: "almoco",      label: "Almoço",          emoji: "🍽️" },
+  { key: "lancheTarde", label: "Lanche da tarde", emoji: "🥪" },
+  { key: "jantar",      label: "Jantar",          emoji: "🌙" },
+  { key: "ceia",        label: "Ceia",            emoji: "🫖" },
 ];
+
+// ─── Modal plano completo ─────────────────────────────────────────────────────
+
+function PlanoModal({ p, onClose, onEditar }: {
+  p: PacienteComPlano;
+  onClose: () => void;
+  onEditar: () => void;
+}) {
+  const plano = p.plano!;
+  const refeicoes = REFEICOES.filter(r => plano[r.key]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white w-full md:w-[480px] max-h-[90vh] rounded-t-3xl md:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[#F0F0EE]">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[#1C4A2E] flex items-center justify-center text-white text-[12px] font-bold">
+              {getInitials(p.nome)}
+            </div>
+            <div>
+              <p className="text-[15px] font-semibold text-[#111]">{p.nome}</p>
+              <p className="text-[11px] text-[#999]">
+                Atualizado {dataRelativa(plano.dataCriacao)}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onEditar}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#F0F7F2] text-[#1C4A2E] text-[12px] font-medium hover:bg-[#E0F0E8] transition-colors"
+            >
+              <ExternalLink size={12} />
+              Editar
+            </button>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-[#F5F5F3] flex items-center justify-center text-[#999] hover:text-[#333] transition-colors"
+            >
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Refeições */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {refeicoes.map(r => (
+            <div key={r.key}>
+              <p className="text-[11px] font-semibold text-[#999] uppercase tracking-wide mb-1.5">
+                {r.emoji} {r.label}
+              </p>
+              <p className="text-[13.5px] text-[#222] leading-relaxed whitespace-pre-wrap">
+                {plano[r.key] as string}
+              </p>
+            </div>
+          ))}
+          {plano.observacoes && (
+            <div>
+              <p className="text-[11px] font-semibold text-[#999] uppercase tracking-wide mb-1.5">
+                📝 Observações
+              </p>
+              <p className="text-[13px] text-[#666] leading-relaxed whitespace-pre-wrap">
+                {plano.observacoes}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Card do paciente ─────────────────────────────────────────────────────────
 
@@ -62,7 +136,6 @@ function PacienteCard({ p, onClick }: { p: PacienteComPlano; onClick: () => void
       className="w-full bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] p-4 text-left hover:shadow-[0_2px_8px_rgba(0,0,0,0.10)] transition-shadow"
     >
       <div className="flex items-start gap-3">
-        {/* Avatar */}
         <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-bold flex-shrink-0 ${
           temPlano ? "bg-[#1C4A2E]" : "bg-[#D1D5DB]"
         }`}>
@@ -77,24 +150,23 @@ function PacienteCard({ p, onClick }: { p: PacienteComPlano; onClick: () => void
           <p className="text-[11px] text-[#999] truncate mt-0.5">{p.objetivo}</p>
 
           {temPlano ? (
-            <div className="mt-2">
-              {/* Preview das refeições */}
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {REFEICOES.filter(r => p.plano![r.key as keyof Plano]).slice(0, 4).map(r => (
-                  <span
-                    key={r.key}
-                    className="text-[10px] font-medium px-2 py-0.5 bg-[#F0F7F2] text-[#1C4A2E] rounded-full"
-                  >
-                    {r.label}
-                  </span>
-                ))}
-                {REFEICOES.filter(r => p.plano![r.key as keyof Plano]).length > 4 && (
-                  <span className="text-[10px] text-[#bbb]">
-                    +{REFEICOES.filter(r => p.plano![r.key as keyof Plano]).length - 4}
-                  </span>
-                )}
+            <div className="mt-2 space-y-1.5">
+              {/* Café da manhã — primeiro item visível */}
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-[#999] flex-shrink-0 mt-0.5">☀️ Café</span>
+                <p className="text-[12px] text-[#444] line-clamp-1 flex-1">{p.plano!.cafeManha}</p>
               </div>
-              <div className="flex items-center gap-1 text-[10px] text-[#bbb]">
+              {/* Almoço */}
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-[#999] flex-shrink-0 mt-0.5">🍽️ Almoço</span>
+                <p className="text-[12px] text-[#444] line-clamp-1 flex-1">{p.plano!.almoco}</p>
+              </div>
+              {/* Jantar */}
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-[#999] flex-shrink-0 mt-0.5">🌙 Jantar</span>
+                <p className="text-[12px] text-[#444] line-clamp-1 flex-1">{p.plano!.jantar}</p>
+              </div>
+              <div className="flex items-center gap-1 text-[10px] text-[#bbb] pt-0.5">
                 <Clock size={9} />
                 Atualizado {dataRelativa(p.plano!.dataCriacao)}
               </div>
@@ -115,10 +187,11 @@ function PacienteCard({ p, onClick }: { p: PacienteComPlano; onClick: () => void
 
 export default function PlanosAlimentares() {
   const navigate = useNavigate();
-  const [pacientes, setPacientes] = useState<PacienteComPlano[]>([]);
-  const [loading, setLoading]     = useState(true);
-  const [busca, setBusca]         = useState("");
-  const [filtro, setFiltro]       = useState<Filtro>("todos");
+  const [pacientes, setPacientes]   = useState<PacienteComPlano[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [busca, setBusca]           = useState("");
+  const [filtro, setFiltro]         = useState<Filtro>("todos");
+  const [selected, setSelected]     = useState<PacienteComPlano | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -136,13 +209,24 @@ export default function PlanosAlimentares() {
 
   useEffect(() => { load(); }, [load]);
 
-  const comPlano    = pacientes.filter(p => p.plano).length;
-  const semPlano    = pacientes.filter(p => !p.plano).length;
+  const comPlano = pacientes.filter(p => p.plano).length;
+  const semPlano = pacientes.filter(p => !p.plano).length;
 
-  const goToPaciente = (id: string) => navigate(`/app/pacientes/${id}`);
+  const handleCard = (p: PacienteComPlano) => {
+    if (p.plano) setSelected(p);
+    else navigate(`/app/pacientes/${p.id}`);
+  };
 
   return (
     <>
+      {selected && (
+        <PlanoModal
+          p={selected}
+          onClose={() => setSelected(null)}
+          onEditar={() => { setSelected(null); navigate(`/app/pacientes/${selected.id}`); }}
+        />
+      )}
+
       {/* ── MOBILE ── */}
       <div className="md:hidden min-h-screen bg-[#F8F8F6] pb-24">
         <MobilePlanos
@@ -154,7 +238,7 @@ export default function PlanosAlimentares() {
           setFiltro={setFiltro}
           comPlano={comPlano}
           semPlano={semPlano}
-          onSelect={goToPaciente}
+          onSelect={handleCard}
         />
       </div>
 
@@ -169,7 +253,7 @@ export default function PlanosAlimentares() {
           setFiltro={setFiltro}
           comPlano={comPlano}
           semPlano={semPlano}
-          onSelect={goToPaciente}
+          onSelect={handleCard}
         />
       </div>
     </>
@@ -220,7 +304,7 @@ function Skeleton() {
   return (
     <div className="space-y-3">
       {[1, 2, 3, 4].map(i => (
-        <div key={i} className="h-24 bg-white rounded-2xl animate-pulse" />
+        <div key={i} className="h-28 bg-white rounded-2xl animate-pulse" />
       ))}
     </div>
   );
@@ -255,7 +339,7 @@ function MobilePlanos({
   setFiltro: (f: Filtro) => void;
   comPlano: number;
   semPlano: number;
-  onSelect: (id: string) => void;
+  onSelect: (p: PacienteComPlano) => void;
 }) {
   return (
     <div>
@@ -284,7 +368,7 @@ function MobilePlanos({
         {loading ? <Skeleton /> :
          pacientes.length === 0 ? <Empty filtro={filtro} /> :
          pacientes.map(p => (
-           <PacienteCard key={p.id} p={p} onClick={() => onSelect(p.id)} />
+           <PacienteCard key={p.id} p={p} onClick={() => onSelect(p)} />
          ))}
       </div>
     </div>
@@ -305,11 +389,10 @@ function DesktopPlanos({
   setFiltro: (f: Filtro) => void;
   comPlano: number;
   semPlano: number;
-  onSelect: (id: string) => void;
+  onSelect: (p: PacienteComPlano) => void;
 }) {
   return (
     <div>
-      {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
           <h1 className="text-[22px] font-semibold text-[#111] tracking-tight">Planos alimentares</h1>
@@ -319,7 +402,7 @@ function DesktopPlanos({
         </div>
       </div>
 
-      {/* Stats bar */}
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
           { label: "Total de pacientes", value: pacientes.length, color: "#1C4A2E" },
@@ -350,14 +433,14 @@ function DesktopPlanos({
       {/* Grid */}
       {loading ? (
         <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
-          {[1,2,3,4,5,6].map(i => <div key={i} className="h-32 bg-white rounded-2xl animate-pulse" />)}
+          {[1,2,3,4,5,6].map(i => <div key={i} className="h-36 bg-white rounded-2xl animate-pulse" />)}
         </div>
       ) : pacientes.length === 0 ? (
         <Empty filtro={filtro} />
       ) : (
         <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
           {pacientes.map(p => (
-            <PacienteCard key={p.id} p={p} onClick={() => onSelect(p.id)} />
+            <PacienteCard key={p.id} p={p} onClick={() => onSelect(p)} />
           ))}
         </div>
       )}
