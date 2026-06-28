@@ -15,7 +15,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   const fimHoje = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
   const ha30dias = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const [pacientesAtivos, consultasHoje, cobrancasMes, semConsulta, totalConsultas, nutri, totalCobrancas] = await Promise.all([
+  const [pacientesAtivos, consultasHoje, cobrancasMes, semConsulta, totalConsultas, nutri, totalCobrancas, totalPlanos, pacientesComMedicoes] = await Promise.all([
     prisma.paciente.count({ where: { nutricionistaId: req.nutricionistaId, ativo: true } }),
     prisma.consulta.findMany({
       where: {
@@ -42,7 +42,36 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     prisma.consulta.count({ where: { paciente: { nutricionistaId: req.nutricionistaId } } }),
     prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId! }, select: { asaasApiKey: true } }),
     prisma.cobranca.count({ where: { paciente: { nutricionistaId: req.nutricionistaId! } } }),
+    prisma.planoAlimentar.count({ where: { paciente: { nutricionistaId: req.nutricionistaId! } } }),
+    prisma.paciente.findMany({
+      where: { nutricionistaId: req.nutricionistaId!, ativo: true },
+      select: { medicoes: { orderBy: { data: "asc" }, select: { peso: true, data: true } } },
+    }),
   ]);
+
+  // Evolução de peso
+  let perderam = 0, totalComMedicoes = 0;
+  const todasMedicoes: { peso: number; data: Date }[] = [];
+  for (const p of pacientesComMedicoes) {
+    if (p.medicoes.length >= 2) {
+      totalComMedicoes++;
+      if (p.medicoes[p.medicoes.length - 1].peso < p.medicoes[0].peso) perderam++;
+    }
+    todasMedicoes.push(...p.medicoes);
+  }
+  const pctEvolucao = totalComMedicoes > 0 ? Math.round((perderam / totalComMedicoes) * 100) : 0;
+  const sixMonthsAgo = new Date(now.getTime() - 6 * 30 * 86400000);
+  const medicoesRecentes = todasMedicoes.filter((m) => new Date(m.data) >= sixMonthsAgo);
+  const byMonth: Record<string, number[]> = {};
+  for (const m of medicoesRecentes) {
+    const d = new Date(m.data);
+    const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
+    if (!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(m.peso);
+  }
+  const sparkline = Object.keys(byMonth)
+    .sort()
+    .map((k) => Math.round((byMonth[k].reduce((a, b) => a + b, 0) / byMonth[k].length) * 10) / 10);
 
   const faturamentoMes = cobrancasMes.reduce((s, c) => s + c.valor, 0);
   const recebidoMes = cobrancasMes.filter((c) => c.status === "pago").reduce((s, c) => s + c.valor, 0);
@@ -60,6 +89,8 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     totalConsultas,
     asaasConectado: !!nutri?.asaasApiKey,
     totalCobrancas,
+    totalPlanos,
+    evolucaoPeso: { pct: pctEvolucao, sparkline, totalComMedicoes },
   });
 });
 
