@@ -232,7 +232,7 @@ export default function Dashboard() {
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <div>
+          <div className="min-w-0 flex-1 mr-4">
             <h1 className="text-[28px] font-semibold text-[#111] leading-tight tracking-tight">
               Olá, {firstName}!
             </h1>
@@ -428,7 +428,7 @@ export default function Dashboard() {
 
         {/* Welcome header */}
         <div className="flex items-center justify-between mb-8">
-          <div>
+          <div className="min-w-0 flex-1 mr-6">
             <h1 className="text-[28px] font-semibold text-[#1C4A2E] leading-tight">Olá, {firstName}!</h1>
             <p className="text-[14px] font-normal text-[#999] mt-1">Tenha um dia incrível! 👋</p>
             <QuoteInline />
