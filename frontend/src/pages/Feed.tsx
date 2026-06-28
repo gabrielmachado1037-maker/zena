@@ -148,7 +148,8 @@ function ModalCriarPost({
   const [showList, setShowList] = useState(false);
   const { toast, show, hide }  = useToast();
 
-  const selectedPac = pacientes.find(p => p.id === pacienteId);
+  const listaPacientes = Array.isArray(pacientes) ? pacientes : [];
+  const selectedPac = listaPacientes.find(p => p.id === pacienteId);
 
   async function handleSubmit() {
     if (!pacienteId) { show("Selecione um paciente.", "error"); return; }
@@ -212,7 +213,7 @@ function ModalCriarPost({
           </button>
           {showList && (
             <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-[#E8E8E8] rounded-xl shadow-lg z-10 max-h-40 overflow-y-auto">
-              {pacientes.map(p => (
+              {listaPacientes.map(p => (
                 <button
                   key={p.id}
                   onClick={() => { setPId(p.id); setShowList(false); }}
@@ -280,8 +281,8 @@ export default function Feed() {
 
   useEffect(() => {
     fetchPosts(1);
-    api.get<{ pacientes: Paciente[] }>("/pacientes?limit=200")
-      .then(r => setPacientes(r.data.pacientes ?? r.data as unknown as Paciente[]))
+    api.get<{ data: Paciente[] }>("/pacientes?limit=50&status=ativo")
+      .then(r => setPacientes(Array.isArray(r.data.data) ? r.data.data : []))
       .catch(() => {});
   }, [fetchPosts]);
 
@@ -596,7 +597,8 @@ function QuickPost({
   const [showList, setShowList] = useState(false);
   const { toast, show, hide } = useToast();
 
-  const selectedPac = pacientes.find(p => p.id === pacienteId);
+  const listaPac = Array.isArray(pacientes) ? pacientes : [];
+  const selectedPac = listaPac.find(p => p.id === pacienteId);
 
   async function handleSubmit() {
     if (!pacienteId) { show("Selecione um paciente.", "error"); return; }
@@ -653,7 +655,7 @@ function QuickPost({
         </button>
         {showList && (
           <div className="absolute top-full mt-1 left-0 right-0 bg-white border border-[#E8E8E8] rounded-xl shadow-lg z-10 max-h-36 overflow-y-auto">
-            {pacientes.map(p => (
+            {listaPac.map(p => (
               <button
                 key={p.id}
                 onClick={() => { setPId(p.id); setShowList(false); }}
