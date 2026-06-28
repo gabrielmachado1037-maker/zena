@@ -23,6 +23,8 @@ export async function gerarFeedAutomatico(
   const ha7dias  = new Date(agora.getTime() -  7 * 86400_000);
 
   const criacoes: Promise<unknown>[] = [];
+  let addedPeso   = false;
+  let addedHabito = false;
 
   // ── 1. Meta de peso ────────────────────────────────────────────────────────
   if (paciente.pesoMeta !== null && novoPeso <= paciente.pesoMeta) {
@@ -32,6 +34,7 @@ export async function gerarFeedAutomatico(
     });
 
     if (!jaExistePeso) {
+      addedPeso = true;
       criacoes.push(
         prisma.feedPost.create({
           data: {
@@ -59,6 +62,7 @@ export async function gerarFeedAutomatico(
     });
 
     if (!jaExisteHabito) {
+      addedHabito = true;
       criacoes.push(
         prisma.feedPost.create({
           data: {
@@ -74,17 +78,13 @@ export async function gerarFeedAutomatico(
 
   await Promise.all(criacoes);
 
-  // Notificações push
-  if (criacoes.length > 0) {
-    const msgs: string[] = [];
-    if (paciente.pesoMeta !== null && novoPeso <= paciente.pesoMeta) {
-      msgs.push(`${paciente.nome} alcançou a meta de peso! 🎉`);
-    }
-    if (checkIn && checkIn.adesao >= 7) {
-      msgs.push(`${paciente.nome} manteve 7 dias de hábitos! 🎯`);
-    }
-    for (const msg of msgs) {
-      enviarNotificacao(nutricionistaId, "Conquista do paciente", msg, "/app/feed").catch(console.error);
-    }
+  // Notificações push — somente para posts que foram realmente criados
+  if (addedPeso) {
+    enviarNotificacao(nutricionistaId, "Conquista do paciente", `${paciente.nome} alcançou a meta de peso! 🎉`, "/app/feed")
+      .catch(console.error);
+  }
+  if (addedHabito) {
+    enviarNotificacao(nutricionistaId, "Conquista do paciente", `${paciente.nome} manteve 7 dias de hábitos! 🎯`, "/app/feed")
+      .catch(console.error);
   }
 }

@@ -74,16 +74,24 @@ export default function Ranking() {
   const [recalc, setRecalc]   = useState(false);
   const { toast, show, hide } = useToast();
 
-  const semanaAtual = getISOWeek(now) + semanaOffset;
-  const ano = now.getFullYear();
-  const mesAtual = ((now.getMonth() + mesOffset % 12) + 12) % 12 + 1;
+  // Calcula a data-alvo a partir dos offsets para que ano/semana/mês sejam sempre corretos
+  const targetSemanal = new Date(now);
+  targetSemanal.setDate(now.getDate() + semanaOffset * 7);
+  const semanaAtual = getISOWeek(targetSemanal);
+  const anoSemanal  = targetSemanal.getFullYear();
+
+  const targetMensal = new Date(now.getFullYear(), now.getMonth() + mesOffset, 1);
+  const mesAtual  = targetMensal.getMonth() + 1;
+  const anoMensal = targetMensal.getFullYear();
+
+  const ano = periodo === "semanal" ? anoSemanal : anoMensal;
 
   const fetchRanking = useCallback(async () => {
     setLoading(true);
     try {
       const params = periodo === "semanal"
-        ? `periodo=semanal&semana=${semanaAtual}&ano=${ano}`
-        : `periodo=mensal&mes=${mesAtual}&ano=${ano}`;
+        ? `periodo=semanal&semana=${semanaAtual}&ano=${anoSemanal}`
+        : `periodo=mensal&mes=${mesAtual}&ano=${anoMensal}`;
       const res = await api.get<RankingResponse>(`/ranking?${params}`);
       setData(res.data);
     } catch {
@@ -91,7 +99,7 @@ export default function Ranking() {
     } finally {
       setLoading(false);
     }
-  }, [periodo, semanaAtual, mesAtual, ano]);
+  }, [periodo, semanaAtual, anoSemanal, mesAtual, anoMensal]);
 
   useEffect(() => { fetchRanking(); }, [fetchRanking]);
 
@@ -99,8 +107,8 @@ export default function Ranking() {
     setRecalc(true);
     try {
       const body = periodo === "semanal"
-        ? { periodo, semana: semanaAtual, ano }
-        : { periodo, mes: mesAtual, ano };
+        ? { periodo, semana: semanaAtual, ano: anoSemanal }
+        : { periodo, mes: mesAtual, ano: anoMensal };
       await api.post("/ranking/atualizar", body);
       await fetchRanking();
       show("Ranking atualizado!");

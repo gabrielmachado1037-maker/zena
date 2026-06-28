@@ -73,7 +73,7 @@ router.post("/:id/curtir", async (req: AuthRequest, res: Response) => {
 
   const updated = await prisma.feedPost.update({
     where: { id },
-    data: { curtidas: { increment: delta } },
+    data: { curtidas: Math.max(0, post.curtidas + delta) },
     select: { id: true, curtidas: true },
   });
 

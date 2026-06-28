@@ -40,7 +40,7 @@ router.post("/subscribe", authMiddleware, async (req: AuthRequest, res: Response
 router.delete("/subscribe", authMiddleware, async (req: AuthRequest, res: Response) => {
   const { endpoint } = req.body as { endpoint: string };
   if (endpoint) {
-    await prisma.pushSubscription.deleteMany({ where: { endpoint } });
+    await prisma.pushSubscription.deleteMany({ where: { endpoint, nutricionistaId: req.nutricionistaId! } });
   }
   return res.json({ ok: true });
 });
