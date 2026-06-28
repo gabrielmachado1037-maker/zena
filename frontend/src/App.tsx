@@ -23,7 +23,8 @@ const Financeiro    = lazy(() => import("./pages/Financeiro"));
 const Planos        = lazy(() => import("./pages/Planos"));
 const Perfil        = lazy(() => import("./pages/Perfil"));
 const Ranking       = lazy(() => import("./pages/Ranking"));
-const Feed          = lazy(() => import("./pages/Feed"));
+const Feed               = lazy(() => import("./pages/Feed"));
+const PlanosAlimentares  = lazy(() => import("./pages/PlanosAlimentares"));
 
 function PageSpinner() {
   return (
@@ -71,6 +72,7 @@ function AppRoutes() {
           <Route path="perfil" element={<Perfil />} />
           <Route path="ranking" element={<Ranking />} />
           <Route path="feed" element={<Feed />} />
+          <Route path="planos-alimentares" element={<PlanosAlimentares />} />
         </Route>
         <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="/pacientes/*" element={<Navigate to="/app/pacientes" replace />} />

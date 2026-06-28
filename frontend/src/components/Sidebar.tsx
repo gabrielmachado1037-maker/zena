@@ -12,7 +12,7 @@ const NAV = [
   { to: "/app/dashboard", icon: Home,          label: "Início" },
   { to: "/app/pacientes", icon: Users,         label: "Pacientes" },
   { to: "/app/horarios",  icon: CalendarDays,  label: "Agenda" },
-  { to: "/app/pacientes", icon: FileText,      label: "Planos",       exact: false },
+  { to: "/app/planos-alimentares", icon: FileText, label: "Planos" },
   { to: "/app/ranking",   icon: Trophy,         label: "Ranking" },
   { to: "/app/financeiro",icon: BarChart2,     label: "Financeiro" },
   { to: "/app/feed",      icon: Rss,           label: "Feed" },
