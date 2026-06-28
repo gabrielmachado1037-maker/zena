@@ -4,6 +4,7 @@ import Sidebar from "./Sidebar";
 import MobileNav from "./MobileNav";
 import api from "../lib/api";
 import { usePWAInstall } from "../hooks/usePWAInstall";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 import { Download, X } from "lucide-react";
 
 interface BillingStatus {
@@ -16,6 +17,7 @@ export default function Layout() {
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [checked, setChecked] = useState(false);
   const { isInstallable, isIOS, install } = usePWAInstall();
+  usePushNotifications();
   const [installDismissed, setInstallDismissed] = useState(false);
   const [iosHint, setIosHint] = useState(false);
 

@@ -1,4 +1,4 @@
-const CACHE = 'clinne-v3';
+const CACHE = 'clinne-v4';
 const STATIC = ['/', '/index.html', '/app/dashboard'];
 
 self.addEventListener('install', e => {
@@ -25,5 +25,37 @@ self.addEventListener('fetch', e => {
         return res;
       })
       .catch(() => caches.match(e.request).then(r => r || caches.match('/index.html')))
+  );
+});
+
+// ── Push notifications ────────────────────────────────────────────────────────
+
+self.addEventListener('push', e => {
+  const data = e.data ? e.data.json() : {};
+  e.waitUntil(
+    self.registration.showNotification(data.title || 'Clinne', {
+      body:  data.body  || '',
+      icon:  '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data:  { url: data.url || '/app/dashboard' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = e.notification.data && e.notification.data.url
+    ? e.notification.data.url
+    : '/app/dashboard';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(all => {
+      for (const client of all) {
+        if ('focus' in client) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return clients.openWindow(url);
+    })
   );
 });

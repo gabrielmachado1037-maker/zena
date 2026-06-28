@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { enviarNotificacao } from "./notificacoes";
 
 const router = Router();
 router.use(authMiddleware);
@@ -127,6 +128,13 @@ router.post("/atualizar", async (req: AuthRequest, res: Response) => {
     ? (parseInt(req.body.mes) || now.getMonth() + 1)
     : null;
 
+  // Captura posições anteriores para detectar subidas
+  const anteriores = await prisma.rankingPontuacao.findMany({
+    where: { nutricionistaId, periodo, semana, mes, ano },
+    select: { pacienteId: true, posicaoRanking: true },
+  });
+  const posAntes = new Map(anteriores.map(r => [r.pacienteId, r.posicaoRanking ?? 999]));
+
   const ranking = await calcularRanking(nutricionistaId, periodo, semana, mes, ano);
 
   await Promise.all(ranking.map(async r => {
@@ -149,6 +157,25 @@ router.post("/atualizar", async (req: AuthRequest, res: Response) => {
       });
     }
   }));
+
+  // Notifica se algum paciente subiu de posição
+  const subidas = ranking.filter(r => {
+    const antes = posAntes.get(r.pacienteId) ?? 999;
+    return r.posicaoRanking !== null && r.posicaoRanking < antes;
+  });
+  if (subidas.length > 0) {
+    // Busca nomes dos pacientes que subiram
+    const pacientes = await prisma.paciente.findMany({
+      where: { id: { in: subidas.map(r => r.pacienteId) } },
+      select: { id: true, nome: true },
+    });
+    const nomeMap = new Map(pacientes.map(p => [p.id, p.nome]));
+    const top = subidas.find(r => r.posicaoRanking === 1);
+    const corpo = top
+      ? `${nomeMap.get(top.pacienteId) ?? "Um paciente"} assumiu o 1° lugar! 🏆`
+      : `${subidas.length} paciente${subidas.length > 1 ? "s subiram" : " subiu"} no ranking 📈`;
+    enviarNotificacao(nutricionistaId, "Ranking atualizado", corpo, "/app/ranking").catch(console.error);
+  }
 
   return res.json({ ok: true, total: ranking.length, ranking });
 });

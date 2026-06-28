@@ -1,4 +1,5 @@
 import prisma from "./prisma";
+import { enviarNotificacao } from "../routes/notificacoes";
 
 /**
  * Chamada após salvar uma nova Medicao.
@@ -72,4 +73,18 @@ export async function gerarFeedAutomatico(
   }
 
   await Promise.all(criacoes);
+
+  // Notificações push
+  if (criacoes.length > 0) {
+    const msgs: string[] = [];
+    if (paciente.pesoMeta !== null && novoPeso <= paciente.pesoMeta) {
+      msgs.push(`${paciente.nome} alcançou a meta de peso! 🎉`);
+    }
+    if (checkIn && checkIn.adesao >= 7) {
+      msgs.push(`${paciente.nome} manteve 7 dias de hábitos! 🎯`);
+    }
+    for (const msg of msgs) {
+      enviarNotificacao(nutricionistaId, "Conquista do paciente", msg, "/app/feed").catch(console.error);
+    }
+  }
 }

@@ -20,6 +20,7 @@ import dailyQuoteRouter from "./routes/daily-quote";
 import rankingRouter from "./routes/ranking";
 import feedRouter from "./routes/feed";
 import planosAlimentaresRouter from "./routes/planosAlimentares";
+import notificacoesRouter from "./routes/notificacoes";
 import { initCron } from "./cron";
 
 dotenv.config();
@@ -70,6 +71,7 @@ app.use("/api/daily-quote", dailyQuoteRouter);
 app.use("/api/ranking", rankingRouter);
 app.use("/api/feed", feedRouter);
 app.use("/api/planos-alimentares", planosAlimentaresRouter);
+app.use("/api/notificacoes", notificacoesRouter);
 
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 

@@ -18,6 +18,7 @@ tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627080000_add_
 tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627090000_add_consulta_tipo');
 tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627100000_add_consultorio_fields');
 tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627110000_add_registro_contato');
+tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260628020000_add_feed');
 
 // Apply only new migrations (idempotent SQL — safe to run on existing DBs)
 execSync('./node_modules/.bin/prisma migrate deploy', { stdio: 'inherit' });

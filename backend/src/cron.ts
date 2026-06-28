@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import prisma from "./lib/prisma";
 import { emailTrialExpirando } from "./lib/email";
+import { enviarNotificacao } from "./routes/notificacoes";
 
 const TZ = { timezone: "America/Sao_Paulo" };
 
@@ -112,6 +113,26 @@ export function initCron() {
       }
     } catch (e) {
       console.error("Cron plano_cobranca error:", e);
+    }
+  }, TZ);
+
+  // Every Monday at 9am BRT: weekly ranking push reminder
+  cron.schedule("0 9 * * 1", async () => {
+    try {
+      const nutris = await prisma.nutricionista.findMany({
+        where: { planoAtivo: true },
+        select: { id: true },
+      });
+      for (const n of nutris) {
+        enviarNotificacao(
+          n.id,
+          "Placar da semana 🏆",
+          "Veja como seus pacientes estão no ranking esta semana!",
+          "/app/ranking"
+        ).catch(console.error);
+      }
+    } catch (e) {
+      console.error("Cron ranking_push error:", e);
     }
   }, TZ);
 

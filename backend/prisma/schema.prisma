@@ -34,6 +34,7 @@ model Nutricionista {
   rankingConfig        RankingConfig?
   rankingPontuacoes    RankingPontuacao[]
   feedPosts            FeedPost[]
+  pushSubscriptions    PushSubscription[]
   createdAt            DateTime            @default(now())
 }
 
@@ -355,4 +356,16 @@ model RankingPontuacao {
   @@index([nutricionistaId, ano, semana])
   @@index([nutricionistaId, ano, mes])
   @@index([pacienteId])
+}
+
+model PushSubscription {
+  id              String        @id @default(cuid())
+  nutricionistaId String
+  nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id], onDelete: Cascade)
+  endpoint        String        @unique
+  p256dh          String
+  auth            String
+  criadoEm        DateTime      @default(now())
+
+  @@index([nutricionistaId])
 }
