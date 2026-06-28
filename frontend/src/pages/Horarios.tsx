@@ -267,6 +267,7 @@ function AbaCalendario({
   const [modalAgendar, setModalAgendar] = useState<{ data: Date } | null>(null);
   const [modalConsulta, setModalConsulta] = useState<Consulta | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const hScrollRef = useRef<HTMLDivElement>(null);
 
   const weekStart = getWeekStart(offset);
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -289,12 +290,18 @@ function AbaCalendario({
 
   useEffect(() => {
     carregarConsultas();
-    // Scroll to 07:30 (skip the first slot) on first load
-    if (offset === 0) {
-      setTimeout(() => {
-        scrollRef.current?.scrollTo({ top: ROW_H * 1, behavior: "smooth" });
-      }, 100);
-    }
+    setTimeout(() => {
+      // Scroll vertical para 07:30
+      scrollRef.current?.scrollTo({ top: ROW_H * 1, behavior: "smooth" });
+      // Scroll horizontal para mostrar o dia de hoje (Mon=0 … Sun=6)
+      if (offset === 0) {
+        const dayIdx = (today.getDay() + 6) % 7; // domingo=6, segunda=0
+        if (dayIdx > 2 && hScrollRef.current) {
+          const colW = 90;
+          hScrollRef.current.scrollTo({ left: (dayIdx - 2) * colW, behavior: "smooth" });
+        }
+      }
+    }, 120);
   }, [offset]);
 
   function isSlotAvailable(dayDate: Date, hora: string): boolean {
@@ -389,7 +396,7 @@ function AbaCalendario({
 
       {/* Grid do calendário */}
       <div className="bg-white rounded-2xl border border-zena-mint/30 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        <div ref={hScrollRef} className="overflow-x-auto">
         {/* Header de dias */}
         <div className="grid border-b border-zena-cream" style={{ gridTemplateColumns: "64px repeat(7, minmax(80px, 1fr))" }}>
           <div className="p-3" />
@@ -398,14 +405,18 @@ function AbaCalendario({
             return (
               <div
                 key={i}
-                className={`p-3 text-center border-l border-zena-cream/60 ${isToday ? "bg-zena-green-light/10" : ""}`}
+                className={`p-3 text-center border-l border-zena-cream/60 ${isToday ? "bg-zena-green-dark/8" : ""}`}
               >
-                <p className={`text-xs font-medium ${isToday ? "text-zena-green-mid" : "text-zena-text-light"}`}>
+                <p className={`text-xs font-semibold ${isToday ? "text-zena-green-dark" : "text-zena-text-light"}`}>
                   {format(day, "EEE", { locale: ptBR }).toUpperCase()}
                 </p>
-                <p className={`text-lg font-bold mt-0.5 leading-none ${isToday ? "text-zena-green-mid" : "text-zena-text-dark"}`}>
-                  {format(day, "d")}
-                </p>
+                <div className={`w-8 h-8 mx-auto flex items-center justify-center rounded-full mt-1 ${
+                  isToday ? "bg-zena-green-dark" : ""
+                }`}>
+                  <p className={`text-base font-bold leading-none ${isToday ? "text-white" : "text-zena-text-dark"}`}>
+                    {format(day, "d")}
+                  </p>
+                </div>
               </div>
             );
           })}
