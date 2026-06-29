@@ -19,6 +19,9 @@ tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627090000_add_
 tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627100000_add_consultorio_fields');
 tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260627110000_add_registro_contato');
 tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260628020000_add_feed');
+tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260628000000_add_daily_quotes');
+tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260628010000_add_ranking');
+tryRun('./node_modules/.bin/prisma migrate resolve --applied 20260628030000_add_push_subscriptions');
 
 // Apply only new migrations (idempotent SQL — safe to run on existing DBs)
 execSync('./node_modules/.bin/prisma migrate deploy', { stdio: 'inherit' });

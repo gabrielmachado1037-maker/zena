@@ -1,10 +1,14 @@
 import { useEffect, useState, useRef } from "react";
 import { Heart, Plus, X, Camera, Globe, Lock } from "lucide-react";
 import api from "../../lib/api";
+import apiPaciente from "../../lib/apiPaciente";
 import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
 import { tempoRelativo, type FeedPost } from "../Feed";
 import { ComentariosSection } from "../../components/ComentariosSection";
 import Avatar from "../../components/Avatar";
+import LobbyCard from "../../components/LobbyCard";
+import ChecklistDiario from "../../components/ChecklistDiario";
+import ResultadoChecklist from "../../components/ResultadoChecklist";
 
 type Categoria = "REFEICAO" | "TREINO" | "MOMENTO";
 
@@ -261,6 +265,11 @@ export default function FeedPaciente() {
   const [loading, setLoading]   = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [likes, setLikes]       = useState<Set<string>>(getLikes);
+  const [showChecklist, setShowChecklist] = useState(false);
+  const [resultadoChecklist, setResultadoChecklist] = useState<{
+    pontosGanhos: number; posicaoAtual?: number | null; totalParticipantes?: number | null;
+  } | null>(null);
+  const [jaFezChecklist, setJaFezChecklist] = useState(false);
 
   const authHeader = { Authorization: `Bearer ${token}` };
 
@@ -268,6 +277,12 @@ export default function FeedPaciente() {
     api.get<FeedPost[]>("/paciente-app/feed", { headers: authHeader })
       .then(r => setPosts(r.data))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    apiPaciente.get("/checklist/hoje")
+      .then(r => setJaFezChecklist(r.data.feito))
+      .catch(() => {});
   }, []);
 
   function handleLike(id: string) {
@@ -291,7 +306,29 @@ export default function FeedPaciente() {
           onCreate={p => setPosts(prev => [p, ...prev])} />
       )}
 
+      {showChecklist && (
+        <ChecklistDiario
+          onClose={() => setShowChecklist(false)}
+          onSuccess={(res) => {
+            setShowChecklist(false);
+            setJaFezChecklist(true);
+            setResultadoChecklist(res);
+          }}
+        />
+      )}
+
+      {resultadoChecklist && (
+        <ResultadoChecklist
+          pontosGanhos={resultadoChecklist.pontosGanhos}
+          posicaoAtual={resultadoChecklist.posicaoAtual}
+          totalParticipantes={resultadoChecklist.totalParticipantes}
+          onClose={() => setResultadoChecklist(null)}
+        />
+      )}
+
       <div className="pt-4 pb-4">
+        <LobbyCard />
+
         {loading ? (
           <div className="space-y-2">
             {[1, 2, 3].map(i => (
@@ -324,6 +361,16 @@ export default function FeedPaciente() {
           ))
         )}
       </div>
+
+      {/* Check-in button */}
+      {!jaFezChecklist && (
+        <button
+          onClick={() => setShowChecklist(true)}
+          className="fixed left-4 z-40 flex items-center gap-2 px-4 py-3 rounded-full text-white text-[13px] font-bold shadow-lg transition-transform active:scale-95"
+          style={{ background: "#1B4332", bottom: "84px" }}>
+          ✅ Check-in do dia
+        </button>
+      )}
 
       {/* FAB */}
       <button

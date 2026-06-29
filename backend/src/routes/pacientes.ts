@@ -2,11 +2,14 @@ import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { planoMiddleware } from "../middleware/plano";
+import { checkModulo } from "../middleware/checkModulo";
 import { gerarFeedAutomatico } from "../lib/feedAutomatico";
 
 const router = Router();
 router.use(authMiddleware);
 router.use(planoMiddleware);
+// Prontuário completo (/:id e subrotas) exige módulo 'prontuario'
+router.use("/:id", checkModulo("prontuario"));
 
 router.get("/", async (req: AuthRequest, res: Response) => {
   const now = new Date();

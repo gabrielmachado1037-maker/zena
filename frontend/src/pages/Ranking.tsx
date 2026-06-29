@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { RefreshCw, Trophy, Target, Flame, CheckCircle, Settings, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "../lib/api";
 import { Toast, useToast } from "../components/Toast";
+import CiclosPanel from "../components/CiclosPanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,7 @@ function getInitials(nome: string) {
 
 export default function Ranking() {
   const now = new Date();
+  const [aba, setAba] = useState<"ranking" | "ciclos">("ranking");
   const [periodo, setPeriodo] = useState<"semanal" | "mensal">("semanal");
   const [semanaOffset, setSemanaOffset] = useState(0);
   const [mesOffset, setMesOffset]       = useState(0);
@@ -127,6 +129,30 @@ export default function Ranking() {
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={hide} />}
 
+      {/* ── Abas ── */}
+      <div className="flex border-b border-[#E5E7EB] bg-white px-4 pt-1">
+        {(["ranking", "ciclos"] as const).map(a => (
+          <button
+            key={a}
+            onClick={() => setAba(a)}
+            className={`px-4 py-3 text-[13px] font-semibold border-b-2 transition-colors ${
+              aba === a
+                ? "border-[#1B4332] text-[#1B4332]"
+                : "border-transparent text-[#888]"
+            }`}>
+            {a === "ranking" ? "🏆 Ranking" : "🔄 Ciclos"}
+          </button>
+        ))}
+      </div>
+
+      {aba === "ciclos" && (
+        <div className="p-4">
+          <CiclosPanel />
+        </div>
+      )}
+
+      {aba === "ranking" && (
+      <>
       {/* ── MOBILE ── */}
       <div className="md:hidden min-h-screen bg-white pb-24">
         <MobileRanking
@@ -158,6 +184,8 @@ export default function Ranking() {
           show={show}
         />
       </div>
+      </>
+      )}
     </>
   );
 }

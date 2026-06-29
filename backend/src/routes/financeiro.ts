@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
-import { planoMiddleware } from "../middleware/plano";
+import { checkModulo } from "../middleware/checkModulo";
 import { criarOuBuscarCliente, criarCobrancaPix, cancelarCobranca } from "../lib/asaas";
 import { encrypt, decrypt } from "../lib/crypto";
 
@@ -25,7 +25,7 @@ router.post("/asaas-webhook", async (req: Request, res: Response) => {
 });
 
 router.use(authMiddleware);
-router.use(planoMiddleware);
+router.use(checkModulo("financeiro"));
 
 // Dashboard financeiro
 router.get("/dashboard", async (req: AuthRequest, res: Response) => {

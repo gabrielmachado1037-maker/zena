@@ -1,10 +1,12 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { checkModulo } from "../middleware/checkModulo";
 import { enviarNotificacao } from "./notificacoes";
 
 const router = Router();
 router.use(authMiddleware);
+router.use(checkModulo("ranking"));
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

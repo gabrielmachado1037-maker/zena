@@ -1,7 +1,8 @@
 import cron from "node-cron";
 import prisma from "./lib/prisma";
 import { emailTrialExpirando } from "./lib/email";
-import { enviarNotificacao } from "./routes/notificacoes";
+import { enviarNotificacao, enviarNotificacaoPaciente } from "./routes/notificacoes";
+import { calcularProgressoCiclo, encerrarCiclo, notificarAquecimento, notificarUltimasHoras } from "./services/cicloService";
 
 const TZ = { timezone: "America/Sao_Paulo" };
 
@@ -151,6 +152,65 @@ export function initCron() {
       });
     } catch (e) {
       console.error("Cron assinatura_vencida error:", e);
+    }
+  }, TZ);
+
+  // Daily at 00:01 BRT: gerenciar ciclos (status + encerramento)
+  cron.schedule("1 0 * * *", async () => {
+    try {
+      const ciclosAtivos = await prisma.ciclo.findMany({
+        where: { status: { in: ["ativo", "aquecimento"] } },
+      });
+      for (const ciclo of ciclosAtivos) {
+        const { diasRestantes } = calcularProgressoCiclo(ciclo);
+        if (diasRestantes === 3 && ciclo.status === "ativo") {
+          await prisma.ciclo.update({ where: { id: ciclo.id }, data: { status: "aquecimento" } });
+          await notificarAquecimento(ciclo);
+        }
+        if (diasRestantes === 1) {
+          await notificarUltimasHoras(ciclo);
+        }
+        if (diasRestantes <= 0) {
+          await encerrarCiclo(ciclo.id);
+        }
+      }
+    } catch (e) {
+      console.error("Cron ciclos error:", e);
+    }
+  }, TZ);
+
+  // Daily at 20:00 BRT: lembrete de checklist para quem não fez
+  cron.schedule("0 20 * * *", async () => {
+    try {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const ontem = new Date(hoje);
+      ontem.setDate(ontem.getDate() - 1);
+
+      const ciclosAtivos = await prisma.ciclo.findMany({
+        where: { status: { in: ["ativo", "aquecimento"] } },
+        include: { participantes: { select: { pacienteId: true } } },
+      });
+
+      for (const ciclo of ciclosAtivos) {
+        for (const p of ciclo.participantes) {
+          const fez = await prisma.checklistDiario.findUnique({
+            where: { pacienteId_data: { pacienteId: p.pacienteId, data: hoje } },
+          });
+          if (!fez) {
+            const temStreak = await prisma.checklistDiario.findUnique({
+              where: { pacienteId_data: { pacienteId: p.pacienteId, data: ontem } },
+            });
+            const titulo = temStreak ? "🔥 Não esqueça seu check-in!" : "📋 Check-in de hoje";
+            const corpo = temStreak
+              ? "Sua sequência está em risco. Faça o check-in antes da meia-noite."
+              : "Registre suas conquistas de hoje no Clinne!";
+            enviarNotificacaoPaciente(p.pacienteId, titulo, corpo, "/paciente/feed").catch(console.error);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Cron checklist_reminder error:", e);
     }
   }, TZ);
 

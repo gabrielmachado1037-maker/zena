@@ -25,6 +25,11 @@ model Nutricionista {
   asaasCustomerId      String?
   asaasSubscriptionId  String?
   planoVencimento      DateTime?
+  planoSlug            String?
+  subscriptionStatus   String              @default("trial")
+  subscriptionType     String?
+  subscriptionEndsAt   DateTime?
+  modulosAtivos        String[]            @default([])
   nomeConsultorio      String?
   logoConsultorio      String?
   enderecoConsultorio  String?
@@ -36,6 +41,8 @@ model Nutricionista {
   rankingPontuacoes    RankingPontuacao[]
   feedPosts            FeedPost[]
   pushSubscriptions    PushSubscription[]
+  ciclos               Ciclo[]
+  feedEncerramentos    FeedEncerramento[]
   createdAt            DateTime            @default(now())
 }
 
@@ -81,6 +88,10 @@ model Paciente {
   feedPosts                FeedPost[]
   pacienteUser             PacienteUser?
   pushSubscriptionsPaciente PushSubscriptionPaciente[]
+  checklistsDiarios     ChecklistDiario[]
+  cicloParticipantes    CicloParticipante[]
+  relatoriosCiclo       RelatorioCiclo[]
+  feedEncerramentos     FeedEncerramento[]
   createdAt                DateTime           @default(now())
 
   @@index([nutricionistaId])
@@ -416,6 +427,125 @@ model PushSubscription {
   p256dh          String
   auth            String
   criadoEm        DateTime      @default(now())
+
+  @@index([nutricionistaId])
+}
+
+// ─── Planos SaaS ──────────────────────────────────────────────────────────────
+
+model PlanoSaas {
+  id               String   @id @default(cuid())
+  nome             String
+  slug             String   @unique
+  modulos          String[]
+  precoMensal      Float
+  precoAnualTotal  Float
+  precoAnualMensal Float
+  ativo            Boolean  @default(true)
+  createdAt        DateTime @default(now())
+}
+
+// ─── Gamificação: Ciclos ──────────────────────────────────────────────────────
+
+model Ciclo {
+  id               String        @id @default(cuid())
+  nutricionistaId  String
+  nutricionista    Nutricionista @relation(fields: [nutricionistaId], references: [id])
+  numero           Int
+  titulo           String?
+  dataInicio       DateTime
+  dataFim          DateTime
+  status           String        @default("ativo")
+  premioDescricao  String?
+  premioTipo       String        @default("reconhecimento")
+  relatorioGerado  Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+
+  participantes    CicloParticipante[]
+  relatorios       RelatorioCiclo[]
+  feedEncerramento FeedEncerramento?
+  checklists       ChecklistDiario[]
+
+  @@unique([nutricionistaId, numero])
+  @@index([nutricionistaId])
+}
+
+model CicloParticipante {
+  id                     String   @id @default(cuid())
+  cicloId                String
+  ciclo                  Ciclo    @relation(fields: [cicloId], references: [id])
+  pacienteId             String
+  paciente               Paciente @relation(fields: [pacienteId], references: [id])
+  pontosCiclo            Int      @default(0)
+  posicaoAtual           Int      @default(0)
+  posicaoAnterior        Int      @default(0)
+  diasConsistente        Int      @default(0)
+  diasTotal              Int      @default(0)
+  percentualConsistencia Float    @default(0)
+  melhorCategoria        String?
+  streakNoCiclo          Int      @default(0)
+  joinedAt               DateTime @default(now())
+
+  @@unique([cicloId, pacienteId])
+  @@index([cicloId])
+  @@index([pacienteId])
+}
+
+model RelatorioCiclo {
+  id                   String   @id @default(cuid())
+  cicloId              String
+  ciclo                Ciclo    @relation(fields: [cicloId], references: [id])
+  pacienteId           String
+  paciente             Paciente @relation(fields: [pacienteId], references: [id])
+  percentualGeral      Float    @default(0)
+  percentualHidratacao Float    @default(0)
+  percentualRefeicao   Float    @default(0)
+  percentualTreino     Float    @default(0)
+  melhorSequencia      Int      @default(0)
+  pontosTotal          Int      @default(0)
+  posicaoFinal         Int      @default(0)
+  totalParticipantes   Int      @default(0)
+  destaque             String?
+  mensagemNutri        String?
+  geradoEm             DateTime @default(now())
+
+  @@unique([cicloId, pacienteId])
+  @@index([cicloId])
+  @@index([pacienteId])
+}
+
+model ChecklistDiario {
+  id             String   @id @default(cuid())
+  pacienteId     String
+  paciente       Paciente @relation(fields: [pacienteId], references: [id])
+  cicloId        String?
+  ciclo          Ciclo?   @relation(fields: [cicloId], references: [id])
+  data           DateTime
+  refeicoesOk    Boolean  @default(false)
+  aguaOk         Boolean  @default(false)
+  treinoOk       Boolean  @default(false)
+  pontosRefeicao Int      @default(0)
+  pontosAgua     Int      @default(0)
+  pontosTreino   Int      @default(0)
+  pontosTotalDia Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@unique([pacienteId, data])
+  @@index([pacienteId])
+  @@index([cicloId])
+}
+
+model FeedEncerramento {
+  id              String        @id @default(cuid())
+  cicloId         String        @unique
+  ciclo           Ciclo         @relation(fields: [cicloId], references: [id])
+  nutricionistaId String
+  nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id])
+  vencedorId      String?
+  vencedor        Paciente?     @relation(fields: [vencedorId], references: [id])
+  top3            Json?
+  mensagem        String?
+  publicadoEm     DateTime      @default(now())
 
   @@index([nutricionistaId])
 }

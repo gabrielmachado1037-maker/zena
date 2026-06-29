@@ -1,9 +1,11 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { checkModulo } from "../middleware/checkModulo";
 
 const router = Router();
 router.use(authMiddleware);
+router.use(checkModulo("gamificacao"));
 
 router.get("/paciente/:pacienteId", async (req: AuthRequest, res: Response) => {
   const pacienteId = req.params["pacienteId"] as string;

@@ -23,6 +23,8 @@ import rankingRouter from "./routes/ranking";
 import feedRouter from "./routes/feed";
 import planosAlimentaresRouter from "./routes/planosAlimentares";
 import notificacoesRouter from "./routes/notificacoes";
+import ciclosRouter from "./routes/ciclos";
+import checklistDiarioRouter from "./routes/checklistDiario";
 import { initCron } from "./cron";
 
 dotenv.config();
@@ -76,6 +78,8 @@ app.use("/api/ranking", rankingRouter);
 app.use("/api/feed", feedRouter);
 app.use("/api/planos-alimentares", planosAlimentaresRouter);
 app.use("/api/notificacoes", notificacoesRouter);
+app.use("/api/ciclos", ciclosRouter);
+app.use("/api/checklist", checklistDiarioRouter);
 
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 
