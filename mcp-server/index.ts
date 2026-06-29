@@ -39,8 +39,22 @@ async function login(): Promise<void> {
 
 let reauthenticating = false;
 
+async function loginComRetry(tentativas = 5, delayMs = 3000): Promise<void> {
+  for (let i = 1; i <= tentativas; i++) {
+    try {
+      await login();
+      return;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[clinne-mcp] Login tentativa ${i}/${tentativas} falhou: ${msg}`);
+      if (i < tentativas) await new Promise(r => setTimeout(r, delayMs * i));
+    }
+  }
+  throw new Error("Não foi possível autenticar após várias tentativas. Verifique CLINNE_EMAIL e CLINNE_PASSWORD.");
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  if (!jwtToken) await login();
+  if (!jwtToken) await loginComRetry();
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
@@ -51,7 +65,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (res.status === 401 && !reauthenticating) {
     reauthenticating = true; jwtToken = null;
-    await login(); reauthenticating = false;
+    await loginComRetry(); reauthenticating = false;
     return apiFetch<T>(path, init);
   }
   if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
@@ -567,7 +581,9 @@ async function startStdio() {
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  if (!jwtToken) { await login(); console.error("[clinne-mcp] Autenticado."); }
+  // Login é lazy — feito na primeira chamada de ferramenta.
+  // Isso evita crash quando o backend (Render free) ainda está acordando.
+  console.error("[clinne-mcp] Iniciando. Autenticação será feita na primeira chamada.");
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
   if (port) await startHttp(port);
   else      await startStdio();
