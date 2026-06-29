@@ -79,4 +79,37 @@ export async function enviarNotificacao(
   );
 }
 
+// ─── Função interna: envia push para dispositivos do paciente ─────────────────
+
+export async function enviarNotificacaoPaciente(
+  pacienteId: string,
+  titulo: string,
+  corpo: string,
+  url = "/paciente/feed"
+): Promise<void> {
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
+
+  const subs = await prisma.pushSubscriptionPaciente.findMany({
+    where: { pacienteId },
+    select: { id: true, endpoint: true, p256dh: true, auth: true },
+  });
+  if (subs.length === 0) return;
+
+  const payload = JSON.stringify({ title: titulo, body: corpo, url });
+
+  await Promise.allSettled(
+    subs.map(sub =>
+      webpush
+        .sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload)
+        .catch(async (err: any) => {
+          if (err?.statusCode === 410) {
+            await prisma.pushSubscriptionPaciente.deleteMany({ where: { id: sub.id } });
+          } else {
+            console.error("[push-paciente]", err?.message ?? err);
+          }
+        })
+    )
+  );
+}
+
 export default router;

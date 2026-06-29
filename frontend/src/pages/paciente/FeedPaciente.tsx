@@ -3,6 +3,7 @@ import { Heart, Lock, Globe, Plus, X, Camera, UtensilsCrossed, Dumbbell, Sparkle
 import api from "../../lib/api";
 import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
 import { CAT, tempoRelativo, type FeedPost } from "../Feed";
+import { ComentariosSection } from "../../components/ComentariosSection";
 
 type Categoria = "REFEICAO" | "TREINO" | "MOMENTO";
 type Privacidade = "PUBLICO" | "APENAS_NUTRI";
@@ -22,11 +23,13 @@ function getInitials(nome: string) {
 
 // ─── PostCard paciente ────────────────────────────────────────────────────────
 
-function PostCard({ post, liked, onLike, euMesmoNome }: {
+function PostCard({ post, liked, onLike, euMesmoNome, authHeader, meuPacienteId }: {
   post: FeedPost;
   liked: boolean;
   onLike: (id: string) => void;
   euMesmoNome?: string;
+  authHeader: Record<string, string>;
+  meuPacienteId?: string;
 }) {
   const cat = CAT[post.categoria as Categoria] ?? CAT.MOMENTO;
   const Icon = cat.icon;
@@ -84,6 +87,15 @@ function PostCard({ post, liked, onLike, euMesmoNome }: {
           </button>
         </div>
       </div>
+
+      <ComentariosSection
+        postId={post.id}
+        initialCount={post._count?.comentarios ?? 0}
+        apiBase="/paciente-app/feed"
+        authHeader={authHeader}
+        privacidade={post.privacidade}
+        isOwnerPaciente={post.privacidade === "APENAS_NUTRI" && meuPacienteId === (post.paciente as any).id}
+      />
     </div>
   );
 }
@@ -288,7 +300,15 @@ export default function FeedPaciente() {
         ) : (
           <div className="space-y-3">
             {posts.map(post => (
-              <PostCard key={post.id} post={post} liked={likes.has(post.id)} onLike={handleLike} euMesmoNome={paciente?.nome} />
+              <PostCard
+                key={post.id}
+                post={post}
+                liked={likes.has(post.id)}
+                onLike={handleLike}
+                euMesmoNome={paciente?.nome}
+                authHeader={authHeader}
+                meuPacienteId={paciente?.id}
+              />
             ))}
           </div>
         )}

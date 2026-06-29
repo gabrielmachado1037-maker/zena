@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Rss, Heart, Trash2, Plus, X, Lock, Camera, UtensilsCrossed, Dumbbell, Sparkles, ChevronDown, Globe } from "lucide-react";
 import api from "../lib/api";
 import { Toast, useToast } from "../components/Toast";
+import { ComentariosSection } from "../components/ComentariosSection";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ export interface FeedPost {
   curtidas: number;
   criadoEm: string;
   paciente: { id: string; nome: string };
+  _count?: { comentarios: number };
 }
 
 interface Paciente { id: string; nome: string }
@@ -163,6 +165,14 @@ export function PostCard({
           <span className="text-[11px] text-[#ccc]">{tempoRelativo(post.criadoEm)}</span>
         </div>
       </div>
+
+      <ComentariosSection
+        postId={post.id}
+        initialCount={post._count?.comentarios ?? 0}
+        apiBase="/feed"
+        privacidade={post.privacidade}
+        isOwnerPaciente={false}
+      />
     </div>
   );
 }

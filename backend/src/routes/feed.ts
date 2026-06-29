@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { uploadFeedFoto } from "../lib/supabase";
+import { enviarNotificacaoPaciente } from "./notificacoes";
 
 const router = Router();
 router.use(authMiddleware);
@@ -26,7 +27,10 @@ router.get("/", async (req: AuthRequest, res: Response) => {
       orderBy: { criadoEm: "desc" },
       skip,
       take: limit,
-      include: { paciente: { select: { id: true, nome: true } } },
+      include: {
+        paciente: { select: { id: true, nome: true } },
+        _count: { select: { comentarios: true } },
+      },
     }),
     prisma.feedPost.count({ where }),
   ]);
@@ -77,7 +81,10 @@ router.post("/", async (req: AuthRequest, res: Response) => {
       fotoUrl,
       autorNutri: true,
     },
-    include: { paciente: { select: { id: true, nome: true } } },
+    include: {
+      paciente: { select: { id: true, nome: true } },
+      _count: { select: { comentarios: true } },
+    },
   });
 
   return res.status(201).json(post);
@@ -112,6 +119,57 @@ router.delete("/:id", async (req: AuthRequest, res: Response) => {
 
   await prisma.feedPost.delete({ where: { id } });
   return res.json({ ok: true });
+});
+
+// GET /api/feed/:id/comentarios
+router.get("/:id/comentarios", async (req: AuthRequest, res: Response) => {
+  const post = await prisma.feedPost.findFirst({
+    where: { id: String(req.params.id), nutricionistaId: req.nutricionistaId! },
+  });
+  if (!post) return res.status(404).json({ error: "Post não encontrado" });
+
+  const comentarios = await prisma.feedComentario.findMany({
+    where: { feedPostId: post.id },
+    orderBy: { createdAt: "asc" },
+  });
+  return res.json(comentarios);
+});
+
+// POST /api/feed/:id/comentarios
+router.post("/:id/comentarios", async (req: AuthRequest, res: Response) => {
+  const { texto } = req.body as { texto: string };
+  if (!texto?.trim()) return res.status(400).json({ error: "Texto obrigatório" });
+  if (texto.length > 500) return res.status(400).json({ error: "Máximo 500 caracteres" });
+
+  const post = await prisma.feedPost.findFirst({
+    where: { id: String(req.params.id), nutricionistaId: req.nutricionistaId! },
+  });
+  if (!post) return res.status(404).json({ error: "Post não encontrado" });
+
+  const nutri = await prisma.nutricionista.findUnique({
+    where: { id: req.nutricionistaId! },
+    select: { nome: true },
+  });
+
+  const comentario = await prisma.feedComentario.create({
+    data: {
+      feedPostId: post.id,
+      autorId:    req.nutricionistaId!,
+      autorTipo:  "NUTRICIONISTA",
+      autorNome:  nutri!.nome,
+      texto:      texto.trim(),
+    },
+  });
+
+  // Push para o paciente dono do post (fire-and-forget)
+  enviarNotificacaoPaciente(
+    post.pacienteId,
+    "Sua nutricionista comentou 💬",
+    "Ela deixou uma mensagem no seu post!",
+    "/paciente/feed"
+  ).catch(() => null);
+
+  return res.status(201).json(comentario);
 });
 
 export default router;

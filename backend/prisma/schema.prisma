@@ -76,10 +76,11 @@ model Paciente {
   planoCobranca     PlanoCobranca?
   fotosEvolucao     FotoEvolucao[]
   registrosFotos    RegistroFotos[]
-  rankingPontuacoes RankingPontuacao[]
-  feedPosts         FeedPost[]
-  pacienteUser      PacienteUser?
-  createdAt         DateTime           @default(now())
+  rankingPontuacoes        RankingPontuacao[]
+  feedPosts                FeedPost[]
+  pacienteUser             PacienteUser?
+  pushSubscriptionsPaciente PushSubscriptionPaciente[]
+  createdAt                DateTime           @default(now())
 
   @@index([nutricionistaId])
 }
@@ -293,24 +294,39 @@ model DailyQuote {
 // ─── Feed ─────────────────────────────────────────────────────────────────────
 
 model FeedPost {
-  id              String        @id @default(cuid())
-  tipo            String        @default("CONQUISTA") // legado: META_BATIDA | PESO_ALCANCADO | CONQUISTA
-  categoria       String        @default("MOMENTO")   // REFEICAO | TREINO | MOMENTO
-  privacidade     String        @default("PUBLICO")   // PUBLICO | APENAS_NUTRI
+  id              String           @id @default(cuid())
+  tipo            String           @default("CONQUISTA") // legado: META_BATIDA | PESO_ALCANCADO | CONQUISTA
+  categoria       String           @default("MOMENTO")   // REFEICAO | TREINO | MOMENTO
+  privacidade     String           @default("PUBLICO")   // PUBLICO | APENAS_NUTRI
   pacienteId      String
-  paciente        Paciente      @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  paciente        Paciente         @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   nutricionistaId String
-  nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id], onDelete: Cascade)
+  nutricionista   Nutricionista    @relation(fields: [nutricionistaId], references: [id], onDelete: Cascade)
   mensagem        String
   fotoUrl         String?
-  curtidas        Int           @default(0)
-  privado         Boolean       @default(false)       // legado — usar privacidade
-  autorNutri      Boolean       @default(false)
-  criadoEm        DateTime      @default(now())
+  curtidas        Int              @default(0)
+  privado         Boolean          @default(false)       // legado — usar privacidade
+  autorNutri      Boolean          @default(false)
+  criadoEm        DateTime         @default(now())
+  comentarios     FeedComentario[]
 
   @@index([nutricionistaId])
   @@index([pacienteId])
   @@index([criadoEm])
+}
+
+model FeedComentario {
+  id         String   @id @default(cuid())
+  feedPostId String
+  feedPost   FeedPost @relation(fields: [feedPostId], references: [id], onDelete: Cascade)
+  autorId    String
+  autorTipo  String   // NUTRICIONISTA | PACIENTE
+  autorNome  String
+  texto      String
+  createdAt  DateTime @default(now())
+
+  @@index([feedPostId])
+  @@index([createdAt])
 }
 
 // ─── Ranking ──────────────────────────────────────────────────────────────────
@@ -374,6 +390,18 @@ model PacienteUser {
   createdAt  DateTime @default(now())
 
   @@index([email])
+}
+
+model PushSubscriptionPaciente {
+  id         String   @id @default(cuid())
+  pacienteId String
+  paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  criadoEm   DateTime @default(now())
+
+  @@index([pacienteId])
 }
 
 model PushSubscription {

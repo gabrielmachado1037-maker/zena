@@ -18,7 +18,10 @@ router.get("/feed", async (req: PacienteAuthRequest, res: Response) => {
         { pacienteId: req.pacienteId!, privacidade: "APENAS_NUTRI" },
       ],
     },
-    include: { paciente: { select: { nome: true } } },
+    include: {
+      paciente: { select: { nome: true } },
+      _count: { select: { comentarios: true } },
+    },
     orderBy: { criadoEm: "desc" },
     take: 50,
   });
@@ -52,7 +55,10 @@ router.post("/feed", async (req: PacienteAuthRequest, res: Response) => {
       nutricionistaId: req.nutricionistaId!,
       autorNutri: false,
     },
-    include: { paciente: { select: { nome: true } } },
+    include: {
+      paciente: { select: { nome: true } },
+      _count: { select: { comentarios: true } },
+    },
   });
   res.status(201).json(post);
 });
@@ -153,6 +159,81 @@ router.get("/me", async (req: PacienteAuthRequest, res: Response) => {
   });
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrado." });
   res.json(paciente);
+});
+
+// ─── Comentários ──────────────────────────────────────────────────────────────
+
+// GET /api/paciente-app/feed/:id/comentarios
+router.get("/feed/:id/comentarios", async (req: PacienteAuthRequest, res: Response) => {
+  const post = await prisma.feedPost.findFirst({
+    where: { id: String(req.params.id), nutricionistaId: req.nutricionistaId! },
+  });
+  if (!post) return res.status(404).json({ error: "Post não encontrado" });
+  if (post.privacidade === "APENAS_NUTRI" && post.pacienteId !== req.pacienteId) {
+    return res.status(403).json({ error: "Acesso negado" });
+  }
+
+  const comentarios = await prisma.feedComentario.findMany({
+    where: { feedPostId: post.id },
+    orderBy: { createdAt: "asc" },
+  });
+  return res.json(comentarios);
+});
+
+// POST /api/paciente-app/feed/:id/comentarios
+router.post("/feed/:id/comentarios", async (req: PacienteAuthRequest, res: Response) => {
+  const { texto } = req.body as { texto: string };
+  if (!texto?.trim()) return res.status(400).json({ error: "Texto obrigatório" });
+  if (texto.length > 500) return res.status(400).json({ error: "Máximo 500 caracteres" });
+
+  const post = await prisma.feedPost.findFirst({
+    where: { id: String(req.params.id), nutricionistaId: req.nutricionistaId! },
+  });
+  if (!post) return res.status(404).json({ error: "Post não encontrado" });
+  if (post.privacidade === "APENAS_NUTRI" && post.pacienteId !== req.pacienteId) {
+    return res.status(403).json({ error: "Post privado" });
+  }
+
+  const paciente = await prisma.paciente.findUnique({
+    where: { id: req.pacienteId! },
+    select: { nome: true },
+  });
+
+  const comentario = await prisma.feedComentario.create({
+    data: {
+      feedPostId: post.id,
+      autorId:    req.pacienteId!,
+      autorTipo:  "PACIENTE",
+      autorNome:  paciente!.nome,
+      texto:      texto.trim(),
+    },
+  });
+  return res.status(201).json(comentario);
+});
+
+// ─── Push notifications (paciente) ────────────────────────────────────────────
+
+// POST /api/paciente-app/push/subscribe
+router.post("/push/subscribe", async (req: PacienteAuthRequest, res: Response) => {
+  const { endpoint, keys } = req.body as { endpoint: string; keys: { p256dh: string; auth: string } };
+  if (!endpoint || !keys?.p256dh || !keys?.auth) {
+    return res.status(400).json({ error: "Subscription inválida" });
+  }
+  await prisma.pushSubscriptionPaciente.upsert({
+    where:  { endpoint },
+    create: { pacienteId: req.pacienteId!, endpoint, p256dh: keys.p256dh, auth: keys.auth },
+    update: { pacienteId: req.pacienteId!, p256dh: keys.p256dh, auth: keys.auth },
+  });
+  return res.json({ ok: true });
+});
+
+// DELETE /api/paciente-app/push/subscribe
+router.delete("/push/subscribe", async (req: PacienteAuthRequest, res: Response) => {
+  const { endpoint } = req.body as { endpoint: string };
+  if (endpoint) {
+    await prisma.pushSubscriptionPaciente.deleteMany({ where: { endpoint, pacienteId: req.pacienteId! } });
+  }
+  return res.json({ ok: true });
 });
 
 export default router;

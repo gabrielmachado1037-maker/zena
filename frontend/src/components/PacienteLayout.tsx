@@ -1,7 +1,9 @@
+import { useEffect } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { NavLink } from "react-router-dom";
 import { Rss, Trophy, Calendar, CreditCard } from "lucide-react";
 import { usePacienteAuth } from "../contexts/PacienteAuthContext";
+import api from "../lib/api";
 
 const TABS = [
   { to: "/paciente/feed",      icon: Rss,      label: "Feed" },
@@ -31,8 +33,44 @@ function PacienteNav() {
   );
 }
 
+async function subscribePush(token: string) {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  try {
+    const { data } = await api.get<{ key: string | null }>("/notificacoes/vapid-public-key");
+    if (!data.key) return;
+
+    const reg = await navigator.serviceWorker.ready;
+    const existing = await reg.pushManager.getSubscription();
+    const sub = existing ?? await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(data.key),
+    });
+
+    await api.post(
+      "/paciente-app/push/subscribe",
+      { endpoint: sub.endpoint, keys: { p256dh: arrayBufferToBase64(sub.getKey("p256dh")!), auth: arrayBufferToBase64(sub.getKey("auth")!) } },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+  } catch { /* silently — push is optional */ }
+}
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+}
+
 export default function PacienteLayout() {
   const { token, loading } = usePacienteAuth();
+
+  useEffect(() => {
+    if (token) subscribePush(token);
+  }, [token]);
 
   if (loading) {
     return (
