@@ -530,7 +530,7 @@ async function startHttp(port: number) {
       const sessionId = req.headers["mcp-session-id"] as string | undefined;
 
       if (sessionId && sessions.has(sessionId)) {
-        await sessions.get(sessionId)!.handleRequest(req, res);
+        await sessions.get(sessionId)!.handleRequest(req, res, req.body);
         return;
       }
 
