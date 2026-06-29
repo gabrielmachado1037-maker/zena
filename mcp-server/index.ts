@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
@@ -13,34 +13,28 @@ import crypto from "crypto";
 // ─── Configuração ──────────────────────────────────────────────────────────────
 
 const BASE =
-  (process.env.CLINNE_API_URL ?? "https://zena-l2jd.onrender.com").replace(/\/$/, "") +
-  "/api";
+  (process.env.CLINNE_API_URL ?? "https://zena-l2jd.onrender.com").replace(/\/$/, "") + "/api";
 
-const HOST = process.env.RENDER_EXTERNAL_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
+const HOST =
+  process.env.RENDER_EXTERNAL_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
 
 let jwtToken: string | null = process.env.CLINNE_TOKEN ?? null;
 
-// ─── Autenticação contra o backend Clinne ─────────────────────────────────────
+// ─── Auth contra o Clinne ─────────────────────────────────────────────────────
 
 async function login(): Promise<void> {
   const email = process.env.CLINNE_EMAIL;
   const senha = process.env.CLINNE_PASSWORD;
-  if (!email || !senha) {
-    throw new Error(
-      "Defina CLINNE_TOKEN ou CLINNE_EMAIL + CLINNE_PASSWORD nas variáveis de ambiente."
-    );
-  }
+  if (!email || !senha)
+    throw new Error("Defina CLINNE_TOKEN ou CLINNE_EMAIL + CLINNE_PASSWORD.");
+
   const res = await fetch(`${BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, senha }),
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Login falhou (${res.status}): ${text}`);
-  }
-  const body = (await res.json()) as { token: string };
-  jwtToken = body.token;
+  if (!res.ok) throw new Error(`Login falhou (${res.status}): ${await res.text()}`);
+  jwtToken = ((await res.json()) as { token: string }).token;
 }
 
 let reauthenticating = false;
@@ -56,10 +50,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   if (res.status === 401 && !reauthenticating) {
-    reauthenticating = true;
-    jwtToken = null;
-    await login();
-    reauthenticating = false;
+    reauthenticating = true; jwtToken = null;
+    await login(); reauthenticating = false;
     return apiFetch<T>(path, init);
   }
   if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
@@ -71,63 +63,57 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 const TOOLS: Tool[] = [
   {
     name: "listar_pacientes",
-    description:
-      "Lista todos os pacientes da nutricionista autenticada. " +
-      "Retorna nome, status, última medição, próxima consulta e situação de cobrança.",
+    description: "Lista todos os pacientes da nutricionista. Retorna nome, status, última medição, próxima consulta e situação de cobrança.",
     inputSchema: {
       type: "object",
       properties: {
-        busca:  { type: "string", description: "Busca por nome ou parte do nome." },
-        status: { type: "string", description: "'ativo', 'inativo' ou 'todos' (padrão: todos).", enum: ["todos", "ativo", "inativo"] },
-        limit:  { type: "number", description: "Máximo de resultados (padrão 50)." },
+        busca:  { type: "string",  description: "Busca por nome." },
+        status: { type: "string",  description: "'ativo', 'inativo' ou 'todos'.", enum: ["todos","ativo","inativo"] },
+        limit:  { type: "number",  description: "Máximo de resultados (padrão 50)." },
       },
     },
   },
   {
     name: "ver_paciente",
-    description:
-      "Dados completos de um paciente: medições, consultas, planos alimentares, " +
-      "check-ins de hábitos, cobranças e anamnese. Aceita ID ou nome para busca.",
+    description: "Dados completos de um paciente: medições, consultas, planos alimentares, check-ins, cobranças e anamnese.",
     inputSchema: {
       type: "object",
       properties: {
         pacienteId: { type: "string", description: "UUID do paciente." },
-        nome:       { type: "string", description: "Nome do paciente (busca automática se não souber o ID)." },
+        nome:       { type: "string", description: "Nome para busca (se não souber o ID)." },
       },
     },
   },
   {
     name: "ver_ranking",
-    description: "Ranking de pacientes por pontuação: progresso de peso, hábitos consecutivos e metas semanais.",
+    description: "Ranking de pacientes por pontuação: progresso de peso, hábitos e metas semanais.",
     inputSchema: {
       type: "object",
       properties: {
-        periodo: { type: "string", description: "'semanal' ou 'mensal' (padrão: semanal).", enum: ["semanal", "mensal"] },
-        semana:  { type: "number", description: "Semana ISO 1–53 (padrão: atual)." },
-        mes:     { type: "number", description: "Mês 1–12 (padrão: atual)." },
-        ano:     { type: "number", description: "Ano (padrão: atual)." },
+        periodo: { type: "string", enum: ["semanal","mensal"] },
+        semana:  { type: "number" },
+        mes:     { type: "number" },
+        ano:     { type: "number" },
       },
     },
   },
   {
     name: "ver_financeiro",
-    description: "Dashboard financeiro: faturamento do mês, comparativo com mês anterior, cobranças pendentes e vencidas.",
+    description: "Dashboard financeiro: faturamento do mês, cobranças pendentes e vencidas.",
     inputSchema: { type: "object", properties: {} },
   },
   {
     name: "ver_agenda",
-    description: "Consultas agendadas no período e horários disponíveis. Padrão: próximos 30 dias.",
+    description: "Consultas agendadas e horários disponíveis. Padrão: próximos 30 dias.",
     inputSchema: {
       type: "object",
       properties: {
-        inicio: { type: "string", description: "Data início YYYY-MM-DD (padrão: hoje)." },
-        fim:    { type: "string", description: "Data fim YYYY-MM-DD (padrão: +30 dias)." },
+        inicio: { type: "string", description: "YYYY-MM-DD (padrão: hoje)." },
+        fim:    { type: "string", description: "YYYY-MM-DD (padrão: +30 dias)." },
       },
     },
   },
 ];
-
-// ─── Handlers das ferramentas ─────────────────────────────────────────────────
 
 type Args = Record<string, unknown>;
 
@@ -136,56 +122,44 @@ async function runTool(name: string, args: Args): Promise<unknown> {
     case "listar_pacientes": {
       const busca  = args.busca  ? `&busca=${encodeURIComponent(String(args.busca))}` : "";
       const status = args.status ? `&status=${String(args.status)}` : "";
-      const limit  = `&limit=${Math.min(50, Number(args.limit ?? 50))}`;
-      return apiFetch<unknown>(`/pacientes?page=1${limit}${busca}${status}`);
+      return apiFetch<unknown>(`/pacientes?page=1&limit=${Math.min(50,Number(args.limit??50))}${busca}${status}`);
     }
     case "ver_paciente": {
       let id = args.pacienteId as string | undefined;
-      const nomeBusca = args.nome as string | undefined;
-      if (!id && nomeBusca) {
-        const lista = await apiFetch<{ data: Array<{ id: string; nome: string }> }>(
-          `/pacientes?busca=${encodeURIComponent(nomeBusca)}&limit=5`
-        );
-        const found = lista.data ?? [];
-        if (found.length === 0) return { erro: `Nenhum paciente encontrado com o nome "${nomeBusca}".` };
-        if (found.length > 1) return {
-          aviso: `${found.length} pacientes encontrados. Especifique o pacienteId.`,
-          pacientes: found.map(p => ({ id: p.id, nome: p.nome })),
-        };
-        id = found[0].id;
+      if (!id && args.nome) {
+        const lista = await apiFetch<{data:Array<{id:string;nome:string}>}>(
+          `/pacientes?busca=${encodeURIComponent(String(args.nome))}&limit=5`);
+        const f = lista.data ?? [];
+        if (f.length === 0) return { erro: "Nenhum paciente encontrado." };
+        if (f.length > 1)   return { aviso: "Vários encontrados. Especifique pacienteId.", pacientes: f.map(p=>({id:p.id,nome:p.nome})) };
+        id = f[0].id;
       }
-      if (!id) return { erro: "Informe pacienteId ou o nome do paciente." };
+      if (!id) return { erro: "Informe pacienteId ou nome." };
       return apiFetch<unknown>(`/pacientes/${id}`);
     }
     case "ver_ranking": {
-      const periodo = String(args.periodo ?? "semanal");
-      const qs = new URLSearchParams({ periodo });
+      const qs = new URLSearchParams({ periodo: String(args.periodo??"semanal") });
       if (args.ano)    qs.set("ano",    String(args.ano));
       if (args.semana) qs.set("semana", String(args.semana));
       if (args.mes)    qs.set("mes",    String(args.mes));
-      return apiFetch<unknown>(`/ranking?${qs.toString()}`);
+      return apiFetch<unknown>(`/ranking?${qs}`);
     }
-    case "ver_financeiro":
-      return apiFetch<unknown>("/financeiro/dashboard");
+    case "ver_financeiro": return apiFetch<unknown>("/financeiro/dashboard");
     case "ver_agenda": {
       const hoje = new Date();
-      const em30 = new Date(hoje);
-      em30.setDate(hoje.getDate() + 30);
-      const fmt = (d: Date) => d.toISOString().split("T")[0];
-      const inicio = String(args.inicio ?? fmt(hoje));
-      const fim    = String(args.fim    ?? fmt(em30));
+      const em30 = new Date(hoje); em30.setDate(hoje.getDate()+30);
+      const fmt = (d:Date) => d.toISOString().split("T")[0];
       const [consultas, horarios] = await Promise.all([
-        apiFetch<unknown>(`/consultas?inicio=${inicio}&fim=${fim}`),
+        apiFetch<unknown>(`/consultas?inicio=${args.inicio??fmt(hoje)}&fim=${args.fim??fmt(em30)}`),
         apiFetch<unknown>("/horarios"),
       ]);
       return { consultas, horarios_disponiveis: horarios };
     }
-    default:
-      throw new Error(`Ferramenta desconhecida: "${name}"`);
+    default: throw new Error(`Ferramenta desconhecida: "${name}"`);
   }
 }
 
-// ─── Servidor MCP ─────────────────────────────────────────────────────────────
+// ─── MCP Server factory ───────────────────────────────────────────────────────
 
 function createMcpServer() {
   const srv = new Server(
@@ -193,32 +167,25 @@ function createMcpServer() {
     { capabilities: { tools: {} } }
   );
   srv.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
-  srv.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args = {} } = request.params;
+  srv.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
+    const { name, arguments: args = {} } = params;
     try {
       const result = await runTool(name, args as Args);
       return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return {
-        content: [{ type: "text" as const, text: `Erro ao executar "${name}": ${message}` }],
-        isError: true,
-      };
+      return { content: [{ type: "text" as const, text: `Erro: ${err instanceof Error ? err.message : err}` }], isError: true };
     }
   });
   return srv;
 }
 
-// ─── OAuth 2.0 mínimo (exigido pelos Conectores do Claude.ai) ─────────────────
-// Fluxo: authorize → gera code → Claude troca por token → token = MCP_API_KEY
+// ─── OAuth 2.0 (exigido pelos Conectores do Claude.ai) ───────────────────────
 
-const authCodes = new Map<string, { redirectUri: string; expiresAt: number }>();
+const authCodes = new Map<string, { expiresAt: number }>();
 
-function setupOAuth(app: express.Application) {
-  const apiKey = process.env.MCP_API_KEY ?? crypto.randomBytes(32).toString("hex");
-
-  // Discovery — Claude.ai lê isso para saber onde ficam os endpoints OAuth
-  app.get("/.well-known/oauth-authorization-server", (_req: Request, res: Response) => {
+function setupOAuth(app: express.Application, apiKey: string) {
+  // Discovery
+  app.get("/.well-known/oauth-authorization-server", (_req, res: Response) => {
     res.json({
       issuer: HOST,
       authorization_endpoint:  `${HOST}/oauth/authorize`,
@@ -230,144 +197,143 @@ function setupOAuth(app: express.Application) {
     });
   });
 
-  // RFC 7591 — Registro dinâmico de cliente (Claude.ai registra-se automaticamente)
-  app.post("/oauth/register", (req: Request, res: Response) => {
-    const clientId = crypto.randomBytes(16).toString("hex");
+  // RFC 7591 — Registro dinâmico de cliente
+  app.post("/oauth/register", (_req, res: Response) => {
     res.status(201).json({
-      client_id: clientId,
+      client_id: "clinne-mcp-client",
       client_id_issued_at: Math.floor(Date.now() / 1000),
-      ...req.body,
+      grant_types: ["authorization_code"],
+      response_types: ["code"],
     });
   });
 
-  // Authorize — auto-aprova e redireciona com o code (ferramenta pessoal, 1 usuário)
+  // Authorize — auto-aprova (ferramenta pessoal, 1 usuário)
   app.get("/oauth/authorize", (req: Request, res: Response) => {
     const { redirect_uri, state } = req.query as Record<string, string>;
-    if (!redirect_uri) {
-      res.status(400).send("redirect_uri obrigatório");
-      return;
-    }
+    if (!redirect_uri) { res.status(400).send("redirect_uri obrigatório"); return; }
     const code = crypto.randomBytes(16).toString("hex");
-    authCodes.set(code, { redirectUri: redirect_uri, expiresAt: Date.now() + 5 * 60_000 });
-
+    authCodes.set(code, { expiresAt: Date.now() + 5 * 60_000 });
     const url = new URL(redirect_uri);
     url.searchParams.set("code", code);
     if (state) url.searchParams.set("state", state);
     res.redirect(url.toString());
   });
 
-  // Token — troca o code pelo access token (= MCP_API_KEY)
+  // Token
   app.post("/oauth/token", (req: Request, res: Response) => {
-    const { grant_type, code } = req.body as Record<string, string>;
-
-    if (grant_type !== "authorization_code") {
-      res.status(400).json({ error: "unsupported_grant_type" });
-      return;
-    }
-
-    const stored = authCodes.get(code);
+    const body = req.body as Record<string, string>;
+    const code = body.code;
+    const stored = authCodes.get(code ?? "");
     if (!stored || stored.expiresAt < Date.now()) {
-      res.status(400).json({ error: "invalid_grant" });
-      return;
+      res.status(400).json({ error: "invalid_grant" }); return;
     }
     authCodes.delete(code);
-
-    res.json({
-      access_token: apiKey,
-      token_type:   "Bearer",
-      expires_in:   7 * 24 * 3600,
-    });
+    res.json({ access_token: apiKey, token_type: "Bearer", expires_in: 7 * 86400 });
   });
-
-  return apiKey;
 }
 
-// ─── Modo HTTP/SSE — Render / Claude.ai ──────────────────────────────────────
+// ─── HTTP mode (Render) ───────────────────────────────────────────────────────
 
 async function startHttp(port: number) {
   const app = express();
 
-  // CORS — necessário para o Claude.ai fazer requisições cross-origin
-  app.use((req: Request, res: Response, next) => {
+  // CORS
+  app.use((_req: Request, res: Response, next) => {
     res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, MCP-Protocol-Version");
-    if (req.method === "OPTIONS") { res.sendStatus(204); return; }
+    res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, Mcp-Session-Id, MCP-Protocol-Version");
+    if (_req.method === "OPTIONS") { res.sendStatus(204); return; }
     next();
   });
 
   app.use(express.json());
   app.use(express.urlencoded({ extended: false }));
 
-  const apiKey = setupOAuth(app);
+  const apiKey = process.env.MCP_API_KEY ?? crypto.randomBytes(32).toString("hex");
+  setupOAuth(app, apiKey);
 
-  // Rotas públicas (sem auth)
   const PUBLIC = ["/health", "/.well-known/", "/oauth/"];
 
+  // Auth middleware
   app.use((req: Request, res: Response, next) => {
     if (PUBLIC.some(p => req.path.startsWith(p))) return next();
     const auth = req.headers.authorization ?? "";
     if (auth !== `Bearer ${apiKey}`) {
-      res.status(401).json({ error: "Não autorizado" });
-      return;
+      res.status(401).json({ error: "Não autorizado" }); return;
     }
     next();
   });
 
-  app.get("/health", (_req: Request, res: Response) => {
+  app.get("/health", (_req, res: Response) => {
     res.json({ ok: true, service: "clinne-mcp", autenticado: !!jwtToken });
   });
 
-  const transports: Record<string, SSEServerTransport> = {};
+  // StreamableHTTP — protocolo MCP moderno (2025-03-26)
+  const sessions = new Map<string, StreamableHTTPServerTransport>();
 
-  app.get("/sse", async (req: Request, res: Response) => {
-    const transport = new SSEServerTransport("/messages", res);
-    const srv = createMcpServer();
-    transports[transport.sessionId] = transport;
-    res.on("close", () => { delete transports[transport.sessionId]; });
-    await srv.connect(transport);
-    console.error(`[clinne-mcp] Nova conexão SSE: ${transport.sessionId}`);
+  app.all("/mcp", async (req: Request, res: Response) => {
+    try {
+      const sessionId = req.headers["mcp-session-id"] as string | undefined;
+
+      if (sessionId && sessions.has(sessionId)) {
+        await sessions.get(sessionId)!.handleRequest(req, res);
+        return;
+      }
+
+      // Nova sessão
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => crypto.randomUUID(),
+        onsessioninitialized: (id) => {
+          sessions.set(id, transport);
+          console.error(`[clinne-mcp] Sessão criada: ${id}`);
+        },
+      });
+
+      transport.onclose = () => {
+        const id = transport.sessionId;
+        if (id) { sessions.delete(id); console.error(`[clinne-mcp] Sessão encerrada: ${id}`); }
+      };
+
+      const srv = createMcpServer();
+      await srv.connect(transport);
+      await transport.handleRequest(req, res, req.body);
+
+    } catch (err) {
+      console.error("[clinne-mcp] Erro /mcp:", err);
+      if (!res.headersSent) res.status(500).json({ error: "Erro interno" });
+    }
   });
 
-  app.post("/messages", async (req: Request, res: Response) => {
-    const sessionId = req.query["sessionId"] as string;
-    const transport = transports[sessionId];
-    if (!transport) { res.status(404).json({ error: "Sessão não encontrada" }); return; }
-    await transport.handlePostMessage(req, res);
+  // Encerra sessão
+  app.delete("/mcp", async (req: Request, res: Response) => {
+    const id = req.headers["mcp-session-id"] as string | undefined;
+    if (id && sessions.has(id)) { await sessions.get(id)!.close(); sessions.delete(id); }
+    res.json({ ok: true });
   });
 
   app.listen(port, () => {
-    console.error(`[clinne-mcp] HTTP/SSE na porta ${port} | ${HOST}/sse`);
+    console.error(`[clinne-mcp] HTTP rodando na porta ${port} | ${HOST}/mcp`);
   });
 }
 
-// ─── Modo stdio — Claude Desktop ─────────────────────────────────────────────
+// ─── Stdio mode (Claude Desktop) ─────────────────────────────────────────────
 
 async function startStdio() {
   const srv = createMcpServer();
-  const transport = new StdioServerTransport();
-  await srv.connect(transport);
+  await srv.connect(new StdioServerTransport());
   console.error("[clinne-mcp] MCP ativo (stdio).");
 }
 
-// ─── Inicialização ─────────────────────────────────────────────────────────────
+// ─── Boot ─────────────────────────────────────────────────────────────────────
 
 async function main() {
-  if (!jwtToken) {
-    await login();
-    console.error("[clinne-mcp] Autenticado no Clinne.");
-  }
-
+  if (!jwtToken) { await login(); console.error("[clinne-mcp] Autenticado."); }
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
-  if (port) {
-    await startHttp(port);
-  } else {
-    await startStdio();
-  }
+  if (port) await startHttp(port);
+  else      await startStdio();
 }
 
 main().catch((err: unknown) => {
-  const msg = err instanceof Error ? err.message : String(err);
-  console.error("[clinne-mcp] Falha:", msg);
+  console.error("[clinne-mcp] Falha:", err instanceof Error ? err.message : err);
   setTimeout(() => process.exit(1), 100);
 });
