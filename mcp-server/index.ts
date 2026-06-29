@@ -58,6 +58,134 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// ─── Schema do banco (estático) ──────────────────────────────────────────────
+
+const SCHEMA_RESUMO = `
+MODELOS PRISMA — Clinne (PostgreSQL / Neon)
+
+Nutricionista         → usuário principal (1 por conta)
+  campos: id, nome, email, crn, plano, planoAtivo, trialEnd, stripeCustomerId,
+          asaasApiKey, nomeConsultorio, logoConsultorio, enderecoConsultorio
+
+Paciente              → pertence a 1 Nutricionista
+  campos: id, nome, email, telefone, objetivo, dataInicio, ativo, pesoMeta,
+          dataNascimento, sexo, altura, linkUnico (único — portal do paciente)
+  índice: nutricionistaId
+
+Medicao               → medições corporais do paciente
+  campos: id, pacienteId, data, peso, gordura, musculo, cintura, quadril, braco, coxa, laudo, observacoes
+
+Consulta              → consultas agendadas
+  campos: id, pacienteId, data, status (agendada|realizada|cancelada), tipo, notas
+  índices: pacienteId, data
+
+Cobranca              → cobranças individuais
+  campos: id, pacienteId, valor, vencimento, status (pendente|pago|vencido|cancelado),
+          metodo, pagoEm, asaasChargeId, pixCopiaECola, linkPagamento
+
+PlanoCobranca         → plano de cobrança recorrente (1 por paciente)
+  campos: id, pacienteId, valor, periodicidade (mensal|trimestral|anual), diaVencimento, ativo
+
+PlanoAlimentar        → planos alimentares do paciente
+  campos: id, pacienteId, dataCriacao, cafeManha, lancheManha, almoco, lancheTarde, jantar, ceia, observacoes
+
+CheckIn               → check-in semanal de hábitos (único por semana/ano)
+  campos: id, pacienteId, semana (ISO), ano, humor (1-5), adesao (1-10), peso, nota
+
+Anamnese              → anamnese clínica (1 por paciente)
+  campos: queixaPrincipal, restricoes, medicamentos, condicoesSaude, nivelAtividade,
+          horasSono, nivelEstresse, refeicoesDia, consumoAgua, motivacao
+
+HorarioDisponivel     → horários de atendimento configurados
+  campos: id, nutricionistaId, diaSemana (0-6), hora (HH:MM), duracaoMinutos, ativo
+
+RankingPontuacao      → pontuação calculada por período
+  campos: pacienteId, periodo (semanal|mensal), semana, mes, ano,
+          pctObjetivoPeso, diasConsecutivosHabitos, metasSemanaisBatidas, pontuacaoTotal, posicaoRanking
+
+RankingConfig         → pesos do ranking (1 por nutricionista)
+  campos: pesoPesoMeta (padrão 40), pesoHabitosConsecutivos (30), pesoMetasSemanais (30),
+          diasConsecutivosAlvo (7), metasSemanaisAlvo (4)
+
+FeedPost              → posts automáticos do feed social
+  campos: id, tipo (META_BATIDA|PESO_ALCANCADO|CONQUISTA), pacienteId, nutricionistaId,
+          mensagem, curtidas, criadoEm
+
+PushSubscription      → assinaturas Web Push
+  campos: id, nutricionistaId, endpoint, p256dh, auth
+
+FotoEvolucao / RegistroFotos → fotos de evolução do paciente
+RegistroContato       → histórico de contatos (WhatsApp etc.)
+MensagemWhatsApp      → mensagens enviadas por template
+Lembrete              → lembretes internos da nutricionista
+TokenRedefinicao      → tokens de redefinição de senha
+DailyQuote            → frase do dia (cache)
+`;
+
+// ─── Endpoints da API (estático) ─────────────────────────────────────────────
+
+const ENDPOINTS_API = [
+  // Auth
+  { metodo: "POST", rota: "/api/auth/login",                auth: false, desc: "Login — retorna JWT" },
+  { metodo: "POST", rota: "/api/auth/registro",             auth: false, desc: "Cria conta de nutricionista" },
+  { metodo: "POST", rota: "/api/auth/forgot-password",      auth: false, desc: "Envia email de redefinição" },
+  { metodo: "POST", rota: "/api/auth/reset-password",       auth: false, desc: "Redefine senha via token" },
+  // Pacientes
+  { metodo: "GET",  rota: "/api/pacientes",                 auth: true,  desc: "Lista pacientes com paginação (busca, status, limit, page)" },
+  { metodo: "POST", rota: "/api/pacientes",                 auth: true,  desc: "Cria paciente" },
+  { metodo: "GET",  rota: "/api/pacientes/:id",             auth: true,  desc: "Dados completos do paciente" },
+  { metodo: "PUT",  rota: "/api/pacientes/:id",             auth: true,  desc: "Atualiza paciente" },
+  { metodo: "DELETE",rota:"/api/pacientes/:id",             auth: true,  desc: "Remove paciente" },
+  // Medições
+  { metodo: "GET",  rota: "/api/pacientes/:id/medicoes",    auth: true,  desc: "Histórico de medições" },
+  { metodo: "POST", rota: "/api/pacientes/:id/medicoes",    auth: true,  desc: "Registra medição" },
+  // Planos alimentares
+  { metodo: "GET",  rota: "/api/pacientes/:id/planos",      auth: true,  desc: "Lista planos alimentares" },
+  { metodo: "POST", rota: "/api/pacientes/:id/planos",      auth: true,  desc: "Cria plano alimentar" },
+  // Consultas
+  { metodo: "GET",  rota: "/api/consultas",                 auth: true,  desc: "Lista consultas (inicio, fim, pacienteId)" },
+  { metodo: "POST", rota: "/api/consultas",                 auth: true,  desc: "Agenda consulta" },
+  { metodo: "PUT",  rota: "/api/consultas/:id",             auth: true,  desc: "Atualiza status/notas" },
+  { metodo: "DELETE",rota:"/api/consultas/:id",             auth: true,  desc: "Cancela consulta" },
+  // Cobranças
+  { metodo: "GET",  rota: "/api/cobrancas",                 auth: true,  desc: "Lista cobranças (status, pacienteId)" },
+  { metodo: "POST", rota: "/api/cobrancas",                 auth: true,  desc: "Cria cobrança" },
+  { metodo: "PUT",  rota: "/api/cobrancas/:id",             auth: true,  desc: "Marca como paga etc." },
+  // Financeiro
+  { metodo: "GET",  rota: "/api/financeiro/dashboard",      auth: true,  desc: "Dashboard: faturamento mês, pendentes, vencidos" },
+  // Horários
+  { metodo: "GET",  rota: "/api/horarios",                  auth: true,  desc: "Horários disponíveis configurados" },
+  { metodo: "POST", rota: "/api/horarios",                  auth: true,  desc: "Cria horário disponível" },
+  { metodo: "DELETE",rota:"/api/horarios/:id",              auth: true,  desc: "Remove horário" },
+  // Ranking
+  { metodo: "GET",  rota: "/api/ranking",                   auth: true,  desc: "Ranking (periodo, semana, mes, ano)" },
+  { metodo: "POST", rota: "/api/ranking/recalcular",        auth: true,  desc: "Força recálculo do ranking" },
+  { metodo: "GET",  rota: "/api/ranking/config",            auth: true,  desc: "Configuração dos pesos" },
+  { metodo: "PUT",  rota: "/api/ranking/config",            auth: true,  desc: "Atualiza pesos do ranking" },
+  // Feed
+  { metodo: "GET",  rota: "/api/feed",                      auth: true,  desc: "Posts do feed social" },
+  { metodo: "POST", rota: "/api/feed/:id/curtir",           auth: true,  desc: "Curte/descurte post" },
+  // Check-ins
+  { metodo: "GET",  rota: "/api/checkins/paciente/:id",     auth: true,  desc: "Check-ins de um paciente" },
+  { metodo: "POST", rota: "/api/checkins",                  auth: false, desc: "Registra check-in (portal do paciente)" },
+  // Anamnese
+  { metodo: "GET",  rota: "/api/anamnese/:pacienteId",      auth: true,  desc: "Anamnese do paciente" },
+  { metodo: "POST", rota: "/api/anamnese",                  auth: true,  desc: "Cria/atualiza anamnese" },
+  // Notificações (Web Push)
+  { metodo: "POST", rota: "/api/notificacoes/subscribe",    auth: true,  desc: "Registra subscription push" },
+  { metodo: "DELETE",rota:"/api/notificacoes/unsubscribe",  auth: true,  desc: "Remove subscription" },
+  // Dashboard
+  { metodo: "GET",  rota: "/api/dashboard",                 auth: true,  desc: "Métricas resumo do dashboard" },
+  // Perfil
+  { metodo: "GET",  rota: "/api/perfil",                    auth: true,  desc: "Dados da nutricionista logada" },
+  { metodo: "PUT",  rota: "/api/perfil",                    auth: true,  desc: "Atualiza perfil" },
+  // Portal público (paciente)
+  { metodo: "GET",  rota: "/api/publica/:linkUnico",        auth: false, desc: "Dados do paciente via link único" },
+  // Billing (Stripe/Asaas)
+  { metodo: "POST", rota: "/api/billing/checkout",          auth: true,  desc: "Cria sessão de checkout" },
+  { metodo: "POST", rota: "/api/billing/webhook",           auth: false, desc: "Webhook Stripe/Asaas" },
+];
+
 // ─── Ferramentas ──────────────────────────────────────────────────────────────
 
 const TOOLS: Tool[] = [
@@ -113,6 +241,31 @@ const TOOLS: Tool[] = [
       },
     },
   },
+  {
+    name: "ver_sistema",
+    description: "Saúde e status do sistema Clinne: latência do backend, autenticação MCP, e resumo técnico da plataforma.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "ver_metricas_gerais",
+    description: "Visão geral de negócio: total de pacientes ativos/inativos, faturamento, cobranças pendentes, consultas do mês e feed.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "ver_schema_banco",
+    description: "Estrutura completa do banco de dados PostgreSQL: modelos, campos, relacionamentos e índices.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "ver_endpoints_api",
+    description: "Lista todos os endpoints da API REST do Clinne com método HTTP, rota, autenticação e descrição.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        filtro: { type: "string", description: "Filtra por rota ou descrição (ex: 'paciente', 'financeiro')." },
+      },
+    },
+  },
 ];
 
 type Args = Record<string, unknown>;
@@ -155,6 +308,93 @@ async function runTool(name: string, args: Args): Promise<unknown> {
       ]);
       return { consultas, horarios_disponiveis: horarios };
     }
+
+    case "ver_sistema": {
+      const t0 = Date.now();
+      let backendStatus = "online";
+      let latenciaMs = 0;
+      let backendAuth = "autenticado";
+      try {
+        await fetch(BASE.replace("/api","") + "/api/auth/login", { method: "HEAD" }).catch(()=>{});
+        const ping = await fetch(BASE + "/dashboard", {
+          headers: { Authorization: `Bearer ${jwtToken}` }
+        });
+        latenciaMs = Date.now() - t0;
+        if (ping.status === 401) backendAuth = "token expirado (será renovado automaticamente)";
+        if (!ping.ok && ping.status !== 401) backendStatus = `degradado (HTTP ${ping.status})`;
+      } catch {
+        backendStatus = "offline ou inacessível";
+        latenciaMs = Date.now() - t0;
+      }
+      return {
+        sistema: "Clinne — Plataforma para Nutricionistas",
+        versao_mcp: "1.0.0",
+        mcp_autenticado: !!jwtToken,
+        backend: {
+          url: BASE,
+          status: backendStatus,
+          autenticacao: backendAuth,
+          latencia_ms: latenciaMs,
+        },
+        stack: {
+          frontend: "React 18 + TypeScript + Vite + Tailwind CSS (Vercel)",
+          backend: "Node.js 20 + Express 5 + Prisma 5 (Render — free tier)",
+          banco: "PostgreSQL 16 via Neon (serverless, sa-east-1)",
+          auth: "JWT Bearer (localStorage: zena_token + zena_user)",
+          pagamentos: "Asaas (PIX/boleto) + Stripe (cartão)",
+          push: "Web Push Notifications (VAPID)",
+        },
+        funcionalidades: [
+          "Gestão de pacientes com portal individual por link único",
+          "Medições corporais com histórico e gráficos",
+          "Planos alimentares digitais",
+          "Agenda de consultas",
+          "Check-ins semanais de hábitos",
+          "Ranking gamificado (semanal e mensal)",
+          "Feed social de conquistas",
+          "Financeiro: cobranças manuais e recorrentes",
+          "Anamnese clínica digital",
+          "Notificações Web Push",
+        ],
+        verificado_em: new Date().toISOString(),
+      };
+    }
+
+    case "ver_metricas_gerais": {
+      const [todosAtivos, todosInativos, financeiro, consultasMes, feed] = await Promise.allSettled([
+        apiFetch<{total?:number;data?:unknown[]}>("/pacientes?status=ativo&limit=1"),
+        apiFetch<{total?:number;data?:unknown[]}>("/pacientes?status=inativo&limit=1"),
+        apiFetch<unknown>("/financeiro/dashboard"),
+        apiFetch<unknown>(`/consultas?inicio=${new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().split("T")[0]}&fim=${new Date(new Date().getFullYear(),new Date().getMonth()+1,0).toISOString().split("T")[0]}`),
+        apiFetch<{posts?:unknown[]}>("/feed?limit=5"),
+      ]);
+      const ativos   = todosAtivos.status   === "fulfilled" ? todosAtivos.value?.total   ?? "?" : "erro";
+      const inativos = todosInativos.status === "fulfilled" ? todosInativos.value?.total ?? "?" : "erro";
+      return {
+        pacientes: { ativos, inativos, total: typeof ativos === "number" && typeof inativos === "number" ? ativos + inativos : "?" },
+        financeiro: financeiro.status === "fulfilled" ? financeiro.value : { erro: "indisponível" },
+        consultas_mes_atual: consultasMes.status === "fulfilled" ? consultasMes.value : { erro: "indisponível" },
+        feed_recente: feed.status === "fulfilled" ? { ultimos_posts: (feed.value?.posts ?? []).length } : { erro: "indisponível" },
+        gerado_em: new Date().toISOString(),
+      };
+    }
+
+    case "ver_schema_banco":
+      return { schema: SCHEMA_RESUMO, fonte: "prisma/schema.prisma", banco: "PostgreSQL 16 (Neon serverless)" };
+
+    case "ver_endpoints_api": {
+      const filtro = args.filtro ? String(args.filtro).toLowerCase() : null;
+      const lista = filtro
+        ? ENDPOINTS_API.filter(e => e.rota.toLowerCase().includes(filtro) || e.desc.toLowerCase().includes(filtro))
+        : ENDPOINTS_API;
+      return {
+        total: lista.length,
+        base_url: "https://zena-l2jd.onrender.com",
+        autenticacao: "Bearer JWT — header Authorization: Bearer <token>",
+        endpoints: lista,
+      };
+    }
+
     default: throw new Error(`Ferramenta desconhecida: "${name}"`);
   }
 }
