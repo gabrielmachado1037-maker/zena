@@ -54,6 +54,7 @@ router.post("/register", async (req: Request, res: Response) => {
       email: pacienteUser.email,
       nutricionistaNome: nutri.nome,
       nomeConsultorio: nutri.nomeConsultorio,
+      fotoUrl: null,
     },
   });
 });
@@ -89,6 +90,7 @@ router.post("/login", async (req: Request, res: Response) => {
       email: pacienteUser.email,
       nutricionistaNome: paciente.nutricionista.nome,
       nomeConsultorio: paciente.nutricionista.nomeConsultorio,
+      fotoUrl: pacienteUser.fotoUrl ?? null,
     },
   });
 });

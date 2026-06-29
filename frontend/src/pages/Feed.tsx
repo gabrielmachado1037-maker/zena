@@ -19,7 +19,11 @@ export interface FeedPost {
   fotoUrl: string | null;
   curtidas: number;
   criadoEm: string;
-  paciente: { id: string; nome: string };
+  paciente: {
+    id: string;
+    nome: string;
+    pacienteUser?: { fotoUrl?: string | null } | null;
+  };
   _count?: { comentarios: number };
 }
 

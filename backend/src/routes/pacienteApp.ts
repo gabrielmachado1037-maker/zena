@@ -1,7 +1,8 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
-import { uploadFeedFoto } from "../lib/supabase";
+import { uploadFeedFoto, uploadAvatarPaciente } from "../lib/supabase";
+import bcrypt from "bcryptjs";
 
 const router = Router();
 router.use(authPacienteMiddleware);
@@ -19,7 +20,13 @@ router.get("/feed", async (req: PacienteAuthRequest, res: Response) => {
       ],
     },
     include: {
-      paciente: { select: { nome: true } },
+      paciente: {
+        select: {
+          id: true,
+          nome: true,
+          pacienteUser: { select: { fotoUrl: true } },
+        },
+      },
       _count: { select: { comentarios: true } },
     },
     orderBy: { criadoEm: "desc" },
@@ -56,7 +63,13 @@ router.post("/feed", async (req: PacienteAuthRequest, res: Response) => {
       autorNutri: false,
     },
     include: {
-      paciente: { select: { nome: true } },
+      paciente: {
+        select: {
+          id: true,
+          nome: true,
+          pacienteUser: { select: { fotoUrl: true } },
+        },
+      },
       _count: { select: { comentarios: true } },
     },
   });
@@ -94,7 +107,15 @@ router.get("/ranking", async (req: PacienteAuthRequest, res: Response) => {
 
   const pontuacoes = await prisma.rankingPontuacao.findMany({
     where,
-    include: { paciente: { select: { id: true, nome: true } } },
+    include: {
+      paciente: {
+        select: {
+          id: true,
+          nome: true,
+          pacienteUser: { select: { fotoUrl: true } },
+        },
+      },
+    },
     orderBy: { pontuacaoTotal: "desc" },
   });
 
@@ -102,6 +123,7 @@ router.get("/ranking", async (req: PacienteAuthRequest, res: Response) => {
     posicao: i + 1,
     pacienteId: p.pacienteId,
     nome: p.paciente.nome,
+    fotoUrl: (p.paciente.pacienteUser as { fotoUrl?: string | null } | null)?.fotoUrl ?? null,
     pontuacaoTotal: p.pontuacaoTotal,
     pctObjetivoPeso: p.pctObjetivoPeso,
     diasConsecutivosHabitos: p.diasConsecutivosHabitos,
@@ -150,15 +172,88 @@ router.get("/pagamentos", async (req: PacienteAuthRequest, res: Response) => {
 
 // GET /api/paciente-app/me
 router.get("/me", async (req: PacienteAuthRequest, res: Response) => {
-  const paciente = await prisma.paciente.findUnique({
-    where: { id: req.pacienteId! },
-    include: {
-      nutricionista: { select: { nome: true, nomeConsultorio: true, logoConsultorio: true } },
-      medicoes: { orderBy: { data: "desc" }, take: 1 },
-    },
-  });
+  const [paciente, primeiroMedicao] = await Promise.all([
+    prisma.paciente.findUnique({
+      where: { id: req.pacienteId! },
+      include: {
+        nutricionista: { select: { nome: true, nomeConsultorio: true, logoConsultorio: true } },
+        medicoes: { orderBy: { data: "desc" }, take: 1 },
+        pacienteUser: { select: { fotoUrl: true } },
+      },
+    }),
+    prisma.medicao.findFirst({
+      where: { pacienteId: req.pacienteId! },
+      orderBy: { data: "asc" },
+    }),
+  ]);
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrado." });
-  res.json(paciente);
+  const { pacienteUser, ...rest } = paciente;
+  res.json({ ...rest, fotoUrl: pacienteUser?.fotoUrl ?? null, primeiroMedicao });
+});
+
+// PUT /api/paciente-app/foto-perfil
+router.put("/foto-perfil", async (req: PacienteAuthRequest, res: Response) => {
+  const { fotoBase64 } = req.body as { fotoBase64: string };
+  if (!fotoBase64?.startsWith("data:image/")) {
+    return res.status(400).json({ error: "Imagem inválida" });
+  }
+  const path = `${req.pacienteId!}/${Date.now()}.jpg`;
+  const fotoUrl = await uploadAvatarPaciente(path, fotoBase64);
+  await prisma.pacienteUser.updateMany({ where: { pacienteId: req.pacienteId! }, data: { fotoUrl } });
+  return res.json({ fotoUrl });
+});
+
+// GET /api/paciente-app/frase-motivacional
+router.get("/frase-motivacional", async (_req: PacienteAuthRequest, res: Response) => {
+  const fallback = "Cada escolha saudável é um passo em direção à sua melhor versão.";
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return res.json({ frase: fallback });
+  try {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 60,
+        messages: [{ role: "user", content: `Gere UMA frase motivacional curta (8 a 14 palavras) para um paciente em acompanhamento nutricional. Positiva e encorajadora. Responda APENAS JSON: {"frase": "texto"}` }],
+      }),
+    });
+    const data = await r.json() as { content?: Array<{ text?: string }> };
+    const text = data?.content?.[0]?.text ?? "";
+    const parsed = JSON.parse(text) as { frase?: string };
+    return res.json({ frase: parsed.frase ?? fallback });
+  } catch {
+    return res.json({ frase: fallback });
+  }
+});
+
+// PUT /api/paciente-app/perfil
+router.put("/perfil", async (req: PacienteAuthRequest, res: Response) => {
+  const { nome, senhaAtual, novaSenha } = req.body as { nome?: string; senhaAtual?: string; novaSenha?: string };
+  if (novaSenha) {
+    if (!senhaAtual) return res.status(400).json({ error: "Senha atual é obrigatória" });
+    if (novaSenha.length < 6) return res.status(400).json({ error: "Nova senha deve ter pelo menos 6 caracteres" });
+    const user = await prisma.pacienteUser.findUnique({ where: { pacienteId: req.pacienteId! } });
+    if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
+    const ok = await bcrypt.compare(senhaAtual, user.senha);
+    if (!ok) return res.status(400).json({ error: "Senha atual incorreta" });
+    const hash = await bcrypt.hash(novaSenha, 10);
+    await prisma.pacienteUser.update({ where: { id: user.id }, data: { senha: hash } });
+  }
+  if (nome?.trim()) {
+    await prisma.paciente.update({ where: { id: req.pacienteId! }, data: { nome: nome.trim() } });
+  }
+  return res.json({ ok: true });
+});
+
+// DELETE /api/paciente-app/conta
+router.delete("/conta", async (req: PacienteAuthRequest, res: Response) => {
+  await prisma.pacienteUser.deleteMany({ where: { pacienteId: req.pacienteId! } });
+  return res.json({ ok: true });
 });
 
 // ─── Comentários ──────────────────────────────────────────────────────────────

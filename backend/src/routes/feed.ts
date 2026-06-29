@@ -28,7 +28,13 @@ router.get("/", async (req: AuthRequest, res: Response) => {
       skip,
       take: limit,
       include: {
-        paciente: { select: { id: true, nome: true } },
+        paciente: {
+          select: {
+            id: true,
+            nome: true,
+            pacienteUser: { select: { fotoUrl: true } },
+          },
+        },
         _count: { select: { comentarios: true } },
       },
     }),
@@ -82,7 +88,13 @@ router.post("/", async (req: AuthRequest, res: Response) => {
       autorNutri: true,
     },
     include: {
-      paciente: { select: { id: true, nome: true } },
+      paciente: {
+        select: {
+          id: true,
+          nome: true,
+          pacienteUser: { select: { fotoUrl: true } },
+        },
+      },
       _count: { select: { comentarios: true } },
     },
   });

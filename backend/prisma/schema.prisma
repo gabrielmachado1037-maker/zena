@@ -385,6 +385,7 @@ model PacienteUser {
   id         String   @id @default(cuid())
   email      String   @unique
   senha      String
+  fotoUrl    String?
   pacienteId String   @unique
   paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())

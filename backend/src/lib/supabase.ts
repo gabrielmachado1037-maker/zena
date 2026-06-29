@@ -1,5 +1,6 @@
 export const BUCKET = "fotos";
 export const BUCKET_FEED = "feed-fotos";
+export const BUCKET_AVATAR_PACIENTE = "avatares-pacientes";
 
 async function uploadBuffer(bucket: string, path: string, buffer: Buffer, contentType = "image/jpeg"): Promise<string> {
   const url = `${process.env.SUPABASE_URL}/storage/v1/object/${bucket}/${path}`;
@@ -29,6 +30,13 @@ export async function uploadFeedFoto(path: string, base64: string): Promise<stri
   const contentType = match?.[1] ?? "image/jpeg";
   const data = base64.replace(/^data:image\/\w+;base64,/, "");
   return uploadBuffer(BUCKET_FEED, path, Buffer.from(data, "base64"), contentType);
+}
+
+export async function uploadAvatarPaciente(path: string, base64: string): Promise<string> {
+  const match = base64.match(/^data:(image\/\w+);base64,/);
+  const contentType = match?.[1] ?? "image/jpeg";
+  const data = base64.replace(/^data:image\/\w+;base64,/, "");
+  return uploadBuffer(BUCKET_AVATAR_PACIENTE, path, Buffer.from(data, "base64"), contentType);
 }
 
 export async function deleteFoto(path: string) {

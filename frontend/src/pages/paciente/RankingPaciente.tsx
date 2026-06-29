@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
-import { Trophy, Medal } from "lucide-react";
+import { Trophy } from "lucide-react";
 import api from "../../lib/api";
 import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
 
 interface RankingItem {
-  posicao: number; pacienteId: string; nome: string;
-  pontuacaoTotal: number; euMesmo: boolean;
+  posicao: number;
+  pacienteId: string;
+  nome: string;
+  fotoUrl?: string | null;
+  pontuacaoTotal: number;
+  euMesmo: boolean;
 }
 
 interface RankingData {
@@ -13,7 +17,39 @@ interface RankingData {
   minhaPosicao: RankingItem | null;
 }
 
-const medalColors = ["#FFB900", "#9E9E9E", "#CD7F32"];
+const BORDER = ["#FFB900", "#9E9E9E", "#CD7F32"];
+const LABEL  = ["🥇", "🥈", "🥉"];
+const SZ     = [72, 56, 56];
+
+function getInitials(nome: string) {
+  return nome.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
+}
+
+function PodiumAvatar({ nome, fotoUrl, size, border }: {
+  nome: string; fotoUrl?: string | null; size: number; border: string;
+}) {
+  const cls = "rounded-full object-cover flex-shrink-0";
+  const style: React.CSSProperties = { width: size, height: size, border: `3px solid ${border}` };
+  if (fotoUrl) return <img src={fotoUrl} alt={nome} className={cls} style={style} />;
+  return (
+    <div className={`${cls} flex items-center justify-center text-white font-bold`}
+      style={{ ...style, background: "#1B4332", fontSize: size * 0.33 }}>
+      {getInitials(nome)}
+    </div>
+  );
+}
+
+function RowAvatar({ nome, fotoUrl }: { nome: string; fotoUrl?: string | null }) {
+  if (fotoUrl) return (
+    <img src={fotoUrl} alt={nome} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
+  );
+  return (
+    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0"
+      style={{ background: "#52B788" }}>
+      {getInitials(nome)}
+    </div>
+  );
+}
 
 export default function RankingPaciente() {
   const { token } = usePacienteAuth();
@@ -26,88 +62,111 @@ export default function RankingPaciente() {
   useEffect(() => {
     setLoading(true);
     api.get<RankingData>(`/paciente-app/ranking?periodo=${periodo}`, { headers: authHeader })
-      .then((r) => setData(r.data))
+      .then(r => setData(r.data))
       .finally(() => setLoading(false));
   }, [periodo]);
 
+  const top3  = data?.ranking?.slice(0, 3) ?? [];
+  const resto = data?.ranking?.slice(3)    ?? [];
   const minha = data?.minhaPosicao;
 
-  return (
-    <div className="px-5 pt-10 pb-4">
-      <h1 className="text-[24px] font-bold text-[#111] mb-1">Ranking</h1>
-      <p className="text-[13px] text-[#999] mb-6">Sua posição no consultório</p>
+  // pódio: 2º - 1º - 3º
+  const podiumOrder = top3.length === 3 ? [top3[1], top3[0], top3[2]] : top3;
 
+  return (
+    <div className="pt-4 pb-4">
       {/* Período */}
-      <div className="flex gap-2 mb-6">
-        {(["semanal", "mensal"] as const).map((p) => (
-          <button
-            key={p}
-            onClick={() => setPeriodo(p)}
-            className={`flex-1 py-2 rounded-xl text-[13px] font-semibold transition-all ${
-              periodo === p ? "text-white" : "text-[#999] bg-[#F5F5F3]"
+      <div className="flex gap-2 px-4 mb-6">
+        {(["semanal", "mensal"] as const).map(p => (
+          <button key={p} onClick={() => setPeriodo(p)}
+            className={`flex-1 py-2.5 rounded-2xl text-[13px] font-semibold transition-all ${
+              periodo === p ? "text-white" : "text-[#999] bg-white"
             }`}
-            style={periodo === p ? { background: "#1B4332" } : {}}
-          >
+            style={periodo === p ? { background: "#1B4332" } : {}}>
             {p === "semanal" ? "Esta semana" : "Este mês"}
           </button>
         ))}
       </div>
 
-      {/* Minha posição em destaque */}
-      {minha && (
-        <div className="rounded-2xl p-4 mb-5 border border-[#B7E4C7]" style={{ background: "#E0F2E9" }}>
-          <p className="text-[12px] font-medium text-[#2D6A4F] mb-1">Sua posição</p>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-[36px] font-bold" style={{ color: "#1B4332" }}>#{minha.posicao}</span>
-              <div>
-                <p className="text-[14px] font-semibold text-[#111]">{minha.nome.split(" ")[0]}</p>
-                <p className="text-[12px] text-[#2D6A4F]">{minha.pontuacaoTotal.toFixed(0)} pts</p>
-              </div>
-            </div>
-            <Trophy size={32} style={{ color: minha.posicao <= 3 ? medalColors[minha.posicao - 1] : "#bbb" }} />
-          </div>
-        </div>
-      )}
-
-      {/* Lista */}
       {loading ? (
-        <div className="space-y-2">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white rounded-xl px-4 py-3 animate-pulse flex gap-3">
-              <div className="w-6 h-6 bg-[#F0F0EE] rounded" />
-              <div className="flex-1 h-5 bg-[#F0F0EE] rounded" />
-            </div>
-          ))}
+        <div className="space-y-2 px-4">
+          {[1,2,3,4].map(i => <div key={i} className="bg-white rounded-2xl h-16 animate-pulse" />)}
         </div>
-      ) : (data?.ranking?.length ?? 0) === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-[#bbb] text-[14px]">Ranking ainda não calculado.</p>
+      ) : top3.length === 0 ? (
+        <div className="text-center py-20 px-6">
+          <Trophy size={48} className="mx-auto mb-3 text-[#E0E0E0]" />
+          <p className="text-[16px] font-semibold text-[#333] mb-1">Ranking ainda não calculado</p>
+          <p className="text-[13px] text-[#999]">Continue registrando sua evolução!</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {data!.ranking.map((item) => (
-            <div
-              key={item.pacienteId}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${
-                item.euMesmo ? "border-[#B7E4C7] bg-white" : "border-transparent bg-white"
-              }`}
-            >
-              <div className="w-7 text-center">
-                {item.posicao <= 3 ? (
-                  <Medal size={18} style={{ color: medalColors[item.posicao - 1] }} />
-                ) : (
-                  <span className="text-[13px] font-bold text-[#bbb]">{item.posicao}</span>
-                )}
-              </div>
-              <p className={`flex-1 text-[14px] font-medium ${item.euMesmo ? "text-[#1B4332]" : "text-[#333]"}`}>
-                {item.nome.split(" ")[0]}
-                {item.euMesmo && <span className="ml-1 text-[11px] text-[#52B788] font-normal">(você)</span>}
-              </p>
-              <p className="text-[13px] text-[#999] tabular-nums">{item.pontuacaoTotal.toFixed(0)} pts</p>
+        <>
+          {/* Pódio */}
+          <div className="mx-4 mb-6 bg-white rounded-3xl pt-8 pb-6 px-4"
+            style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+            <div className="flex items-end justify-center gap-3">
+              {podiumOrder.map(item => {
+                const ri = item.posicao - 1; // 0,1,2
+                const isFirst = item.posicao === 1;
+                return (
+                  <div key={item.pacienteId} className="flex flex-col items-center gap-1.5">
+                    <span className="text-[22px]">{LABEL[ri]}</span>
+                    <PodiumAvatar nome={item.nome} fotoUrl={item.fotoUrl} size={SZ[ri]} border={BORDER[ri]} />
+                    <p className="text-[11px] font-bold text-[#111] text-center max-w-[64px] truncate">
+                      {item.nome.split(" ")[0]}
+                    </p>
+                    {item.euMesmo && <span className="text-[9px] font-semibold" style={{ color: "#52B788" }}>você</span>}
+                    <p className="text-[11px] font-semibold tabular-nums" style={{ color: BORDER[ri] }}>
+                      {item.pontuacaoTotal.toFixed(0)} pts
+                    </p>
+                    {/* pedestal */}
+                    <div className="w-16 rounded-t-xl"
+                      style={{
+                        height: isFirst ? 48 : 32,
+                        background: `${BORDER[ri]}22`,
+                        borderTop: `3px solid ${BORDER[ri]}`,
+                      }} />
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          </div>
+
+          {/* Minha posição se não no top 3 */}
+          {minha && minha.posicao > 3 && (
+            <div className="mx-4 mb-4 p-4 rounded-2xl border border-[#B7E4C7]"
+              style={{ background: "#E0F2E9" }}>
+              <p className="text-[11px] font-semibold text-[#2D6A4F] mb-2">Sua posição</p>
+              <div className="flex items-center gap-3">
+                <span className="text-[28px] font-bold" style={{ color: "#1B4332" }}>#{minha.posicao}</span>
+                <RowAvatar nome={minha.nome} fotoUrl={minha.fotoUrl} />
+                <div>
+                  <p className="text-[14px] font-bold text-[#111]">{minha.nome.split(" ")[0]}</p>
+                  <p className="text-[12px]" style={{ color: "#2D6A4F" }}>{minha.pontuacaoTotal.toFixed(0)} pts</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Lista 4+ */}
+          {resto.length > 0 && (
+            <div className="px-4 space-y-2">
+              {resto.map(item => (
+                <div key={item.pacienteId}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl bg-white ${
+                    item.euMesmo ? "ring-2 ring-[#52B788]" : ""
+                  }`}>
+                  <span className="w-5 text-center text-[13px] font-bold text-[#bbb]">{item.posicao}</span>
+                  <RowAvatar nome={item.nome} fotoUrl={item.fotoUrl} />
+                  <p className={`flex-1 text-[14px] font-medium truncate ${item.euMesmo ? "text-[#1B4332]" : "text-[#333]"}`}>
+                    {item.nome.split(" ")[0]}
+                    {item.euMesmo && <span className="ml-1 text-[11px] font-normal" style={{ color: "#52B788" }}>(você)</span>}
+                  </p>
+                  <p className="text-[13px] text-[#999] tabular-nums">{item.pontuacaoTotal.toFixed(0)} pts</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
