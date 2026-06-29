@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Leaf, Eye, EyeOff } from "lucide-react";
+import { Leaf, Eye, EyeOff, Stethoscope, User } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 
@@ -52,6 +52,7 @@ export default function Login() {
     <div className="min-h-screen bg-zena-green-dark flex">
       {/* Left panel */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16">
+
         <div className="flex items-center gap-3">
           <Leaf className="text-zena-mint" size={32} />
           <span className="text-white font-bold text-3xl tracking-wide">clinne</span>
@@ -81,9 +82,27 @@ export default function Login() {
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
-          <div className="flex lg:hidden items-center gap-2 mb-8">
+          <div className="flex lg:hidden items-center gap-2 mb-6">
             <Leaf className="text-zena-green-mid" size={24} />
             <span className="text-zena-green-dark font-bold text-xl">clinne</span>
+          </div>
+
+          {/* Seletor de perfil */}
+          <div className="mb-7">
+            <p className="text-[12px] text-zena-text-light font-medium mb-2.5">Quem é você?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2 px-3 py-3 rounded-xl border-2 border-zena-green-dark bg-zena-green-dark/5">
+                <Stethoscope size={16} className="text-zena-green-dark flex-shrink-0" />
+                <span className="text-[13px] font-semibold text-zena-green-dark">Nutricionista</span>
+              </div>
+              <Link
+                to="/login-paciente"
+                className="flex items-center gap-2 px-3 py-3 rounded-xl border-2 border-[#E8E8E8] hover:border-zena-green-light transition-colors"
+              >
+                <User size={16} className="text-[#999] flex-shrink-0" />
+                <span className="text-[13px] font-medium text-[#999]">Paciente</span>
+              </Link>
+            </div>
           </div>
 
           {/* Tabs */}

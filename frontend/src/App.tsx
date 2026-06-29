@@ -2,7 +2,9 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { AlertasProvider } from "./contexts/AlertasContext";
+import { PacienteAuthProvider } from "./contexts/PacienteAuthContext";
 import Layout from "./components/Layout";
+import PacienteLayout from "./components/PacienteLayout";
 
 // Lazy-loaded pages — each route only downloads when visited
 const Landing       = lazy(() => import("./pages/Landing"));
@@ -25,6 +27,11 @@ const Perfil        = lazy(() => import("./pages/Perfil"));
 const Ranking       = lazy(() => import("./pages/Ranking"));
 const Feed               = lazy(() => import("./pages/Feed"));
 const PlanosAlimentares  = lazy(() => import("./pages/PlanosAlimentares"));
+const LoginPaciente      = lazy(() => import("./pages/LoginPaciente"));
+const FeedPaciente       = lazy(() => import("./pages/paciente/FeedPaciente"));
+const RankingPaciente    = lazy(() => import("./pages/paciente/RankingPaciente"));
+const ConsultasPaciente  = lazy(() => import("./pages/paciente/ConsultasPaciente"));
+const PagamentosPaciente = lazy(() => import("./pages/paciente/PagamentosPaciente"));
 
 function PageSpinner() {
   return (
@@ -74,6 +81,16 @@ function AppRoutes() {
           <Route path="feed" element={<Feed />} />
           <Route path="planos-alimentares" element={<PlanosAlimentares />} />
         </Route>
+        {/* Paciente routes */}
+        <Route path="/login-paciente" element={<LoginPaciente />} />
+        <Route path="/paciente" element={<PacienteLayout />}>
+          <Route index element={<Navigate to="/paciente/feed" replace />} />
+          <Route path="feed"       element={<FeedPaciente />} />
+          <Route path="ranking"    element={<RankingPaciente />} />
+          <Route path="consultas"  element={<ConsultasPaciente />} />
+          <Route path="pagamentos" element={<PagamentosPaciente />} />
+        </Route>
+
         <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="/pacientes/*" element={<Navigate to="/app/pacientes" replace />} />
         <Route path="/cobrancas" element={<Navigate to="/app/cobrancas" replace />} />
@@ -88,11 +105,13 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <AlertasProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AlertasProvider>
+      <PacienteAuthProvider>
+        <AlertasProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </AlertasProvider>
+      </PacienteAuthProvider>
     </AuthProvider>
   );
 }

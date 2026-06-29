@@ -28,6 +28,7 @@ model Nutricionista {
   nomeConsultorio      String?
   logoConsultorio      String?
   enderecoConsultorio  String?
+  codigoVinculo        String?             @unique
   pacientes            Paciente[]
   horarios             HorarioDisponivel[]
   lembretes            Lembrete[]
@@ -77,6 +78,7 @@ model Paciente {
   registrosFotos    RegistroFotos[]
   rankingPontuacoes RankingPontuacao[]
   feedPosts         FeedPost[]
+  pacienteUser      PacienteUser?
   createdAt         DateTime           @default(now())
 
   @@index([nutricionistaId])
@@ -299,6 +301,7 @@ model FeedPost {
   nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id], onDelete: Cascade)
   mensagem        String
   curtidas        Int           @default(0)
+  privado         Boolean       @default(false)
   criadoEm        DateTime      @default(now())
 
   @@index([nutricionistaId])
@@ -356,6 +359,17 @@ model RankingPontuacao {
   @@index([nutricionistaId, ano, semana])
   @@index([nutricionistaId, ano, mes])
   @@index([pacienteId])
+}
+
+model PacienteUser {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  senha      String
+  pacienteId String   @unique
+  paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([email])
 }
 
 model PushSubscription {

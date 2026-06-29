@@ -1,5 +1,5 @@
-﻿import { useRef, useState, type FormEvent, type ChangeEvent } from "react";
-import { User, Lock, CheckCircle, Building2, Upload, X } from "lucide-react";
+﻿import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from "react";
+import { User, Lock, CheckCircle, Building2, Upload, X, Link2, RefreshCw, Copy } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 
@@ -102,6 +102,32 @@ export default function Perfil() {
     const reader = new FileReader();
     reader.onload = () => setLogoConsultorio(reader.result as string);
     reader.readAsDataURL(file);
+  }
+
+  // ─── Código de vínculo ───────────────────────────────────────────────────
+  const [codigoVinculo, setCodigoVinculo] = useState<string | null>(null);
+  const [loadingCodigo, setLoadingCodigo] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+
+  useEffect(() => {
+    api.get<{ codigoVinculo: string | null }>("/auth/paciente/codigo-vinculo")
+      .then((r) => setCodigoVinculo(r.data.codigoVinculo))
+      .catch(() => null);
+  }, []);
+
+  async function gerarCodigo() {
+    setLoadingCodigo(true);
+    try {
+      const { data } = await api.post<{ codigoVinculo: string }>("/auth/paciente/gerar-codigo");
+      setCodigoVinculo(data.codigoVinculo);
+    } finally { setLoadingCodigo(false); }
+  }
+
+  function copiarCodigo() {
+    if (!codigoVinculo) return;
+    navigator.clipboard.writeText(codigoVinculo);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2000);
   }
 
   const inputCls = "w-full px-4 py-3 rounded-xl border border-zena-mint/50 bg-zena-cream text-zena-text-dark placeholder-zena-text-light focus:outline-none focus:ring-2 focus:ring-zena-green-light text-sm";
@@ -270,6 +296,51 @@ export default function Perfil() {
             {loadingSenha ? "Alterando..." : "Alterar senha"}
           </button>
         </form>
+      </div>
+
+      {/* Código de vínculo do paciente */}
+      <div className="bg-white rounded-2xl border border-zena-mint/30 p-6">
+        <h2 className="font-semibold text-zena-text-dark mb-1 flex items-center gap-2">
+          <Link2 size={18} className="text-zena-green-mid" /> Acesso do paciente
+        </h2>
+        <p className="text-sm text-zena-text-light mb-5">
+          Compartilhe este código com seus pacientes para que eles criem conta no app.
+        </p>
+
+        {codigoVinculo ? (
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 flex items-center justify-center py-4 rounded-2xl border-2 border-dashed border-zena-mint/60 bg-zena-surface">
+              <span className="text-4xl font-bold tracking-[0.3em] text-zena-green-dark tabular-nums">
+                {codigoVinculo}
+              </span>
+            </div>
+            <button
+              onClick={copiarCodigo}
+              title="Copiar código"
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${
+                copiado ? "bg-zena-green-mid text-white" : "bg-zena-cream text-zena-text-mid hover:bg-zena-mint/20"
+              }`}
+            >
+              {copiado ? <CheckCircle size={17} /> : <Copy size={17} />}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center py-6 rounded-2xl border-2 border-dashed border-zena-mint/40 bg-zena-cream mb-4">
+            <p className="text-sm text-zena-text-light">Nenhum código gerado ainda.</p>
+          </div>
+        )}
+
+        <button
+          onClick={gerarCodigo}
+          disabled={loadingCodigo}
+          className="flex items-center gap-2 text-sm font-medium text-zena-green-dark hover:text-zena-green-mid transition-colors disabled:opacity-60"
+        >
+          <RefreshCw size={15} className={loadingCodigo ? "animate-spin" : ""} />
+          {codigoVinculo ? "Gerar novo código" : "Gerar código"}
+        </button>
+        {codigoVinculo && (
+          <p className="text-xs text-zena-text-light mt-2">Gerar um novo código invalida o anterior.</p>
+        )}
       </div>
     </div>
   );

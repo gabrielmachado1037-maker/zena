@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRouter from "./routes/auth";
+import authPacienteRouter from "./routes/authPaciente";
+import pacienteAppRouter from "./routes/pacienteApp";
 import pacientesRouter from "./routes/pacientes";
 import cobrancasRouter from "./routes/cobrancas";
 import dashboardRouter from "./routes/dashboard";
@@ -53,6 +55,8 @@ app.post("/api/billing/webhook", express.raw({ type: "application/json" }), (req
 app.use(express.json({ limit: "10mb" }));
 
 app.use("/api/auth", authRouter);
+app.use("/api/auth/paciente", authPacienteRouter);
+app.use("/api/paciente-app", pacienteAppRouter);
 app.use("/api/pacientes", pacientesRouter);
 app.use("/api/cobrancas", cobrancasRouter);
 app.use("/api/dashboard", dashboardRouter);
