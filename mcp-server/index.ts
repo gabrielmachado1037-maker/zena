@@ -221,11 +221,22 @@ function setupOAuth(app: express.Application) {
   app.get("/.well-known/oauth-authorization-server", (_req: Request, res: Response) => {
     res.json({
       issuer: HOST,
-      authorization_endpoint: `${HOST}/oauth/authorize`,
-      token_endpoint:         `${HOST}/oauth/token`,
+      authorization_endpoint:  `${HOST}/oauth/authorize`,
+      token_endpoint:          `${HOST}/oauth/token`,
+      registration_endpoint:   `${HOST}/oauth/register`,
       response_types_supported: ["code"],
       grant_types_supported:    ["authorization_code"],
       code_challenge_methods_supported: ["S256"],
+    });
+  });
+
+  // RFC 7591 — Registro dinâmico de cliente (Claude.ai registra-se automaticamente)
+  app.post("/oauth/register", (req: Request, res: Response) => {
+    const clientId = crypto.randomBytes(16).toString("hex");
+    res.status(201).json({
+      client_id: clientId,
+      client_id_issued_at: Math.floor(Date.now() / 1000),
+      ...req.body,
     });
   });
 
@@ -280,7 +291,7 @@ async function startHttp(port: number) {
   const apiKey = setupOAuth(app);
 
   // Rotas públicas (sem auth)
-  const PUBLIC = ["/health", "/.well-known/oauth-authorization-server", "/oauth/authorize", "/oauth/token"];
+  const PUBLIC = ["/health", "/.well-known/oauth-authorization-server", "/oauth/authorize", "/oauth/token", "/oauth/register"];
 
   app.use((req: Request, res: Response, next) => {
     if (PUBLIC.some(p => req.path.startsWith(p))) return next();
