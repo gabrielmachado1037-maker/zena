@@ -2,17 +2,15 @@ import { useState, useRef, useEffect } from "react";
 import { MessageCircle, Send } from "lucide-react";
 import api from "../lib/api";
 import { tempoRelativo } from "../pages/Feed";
+import Avatar from "./Avatar";
 
 export interface Comentario {
   id: string;
   autorTipo: "NUTRICIONISTA" | "PACIENTE";
   autorNome: string;
+  autorAvatarUrl?: string | null;
   texto: string;
   createdAt: string;
-}
-
-function getInitials(nome: string) {
-  return nome.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
 }
 
 export function ComentariosSection({
@@ -129,12 +127,12 @@ export function ComentariosSection({
             <div ref={listRef} className="space-y-3 mb-3 max-h-64 overflow-y-auto pr-1">
               {comments.map(c => (
                 <div key={c.id} className="flex gap-2">
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                    style={{ background: c.autorTipo === "NUTRICIONISTA" ? "#1B4332" : "#52B788" }}
-                  >
-                    {getInitials(c.autorNome)}
-                  </div>
+                  <Avatar
+                    src={c.autorAvatarUrl}
+                    nome={c.autorNome}
+                    tamanho={28}
+                    borda={c.autorTipo === "NUTRICIONISTA" ? "2px solid #1B4332" : undefined}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                       <span className="text-[12px] font-semibold text-[#111]">

@@ -1,7 +1,8 @@
 ﻿import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from "react";
-import { User, Lock, CheckCircle, Building2, Upload, X, Link2, RefreshCw, Copy } from "lucide-react";
+import { User, Lock, CheckCircle, Building2, Upload, X, Link2, RefreshCw, Copy, Camera } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
+import Avatar from "../components/Avatar";
 
 export default function Perfil() {
   const { nutricionista } = useAuth();
@@ -29,6 +30,12 @@ export default function Perfil() {
   const [sucessoConsultorio, setSucessoConsultorio] = useState(false);
   const [erroConsultorio, setErroConsultorio] = useState("");
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // ─── Avatar ──────────────────────────────────────────────────────────────────
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [loadingAvatar, setLoadingAvatar] = useState(false);
+  const [erroAvatar, setErroAvatar] = useState("");
+  const { updateAvatar } = useAuth();
 
   function persistUser(data: any) {
     const atual = JSON.parse(localStorage.getItem("zena_user") || "{}");
@@ -92,6 +99,27 @@ export default function Perfil() {
     }
   }
 
+  async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { setErroAvatar("A foto deve ter no máximo 2MB."); return; }
+    setErroAvatar("");
+    setLoadingAvatar(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const fotoBase64 = reader.result as string;
+        const { data } = await api.put<{ foto: string }>("/auth/perfil/foto", { fotoBase64 });
+        updateAvatar(data.foto);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      setErroAvatar("Erro ao enviar foto.");
+    } finally {
+      setLoadingAvatar(false);
+    }
+  }
+
   function handleLogoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -144,6 +172,29 @@ export default function Perfil() {
         <h2 className="font-semibold text-zena-text-dark mb-5 flex items-center gap-2">
           <User size={18} className="text-zena-green-mid" /> Dados pessoais
         </h2>
+
+        {/* Avatar upload */}
+        <div className="flex items-center gap-4 mb-6 pb-5 border-b border-zena-mint/20">
+          <div className="relative">
+            <Avatar src={nutricionista?.foto} nome={nutricionista?.nome || "?"} tamanho={72} />
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={loadingAvatar}
+              className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-zena-green-dark border-2 border-white flex items-center justify-center disabled:opacity-60"
+            >
+              <Camera size={12} className="text-white" />
+            </button>
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-zena-text-dark">Foto de perfil</p>
+            <p className="text-xs text-zena-text-light mt-0.5">JPG ou PNG, máx. 2MB</p>
+            {loadingAvatar && <p className="text-xs text-zena-green-mid mt-0.5">Enviando...</p>}
+            {erroAvatar && <p className="text-xs text-red-500 mt-0.5">{erroAvatar}</p>}
+          </div>
+        </div>
+
         <form onSubmit={salvarPerfil} className="space-y-4">
           <div>
             <label className="text-sm font-medium text-zena-text-mid mb-1.5 block">Nome completo</label>

@@ -4,6 +4,7 @@ import api from "../../lib/api";
 import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
 import { tempoRelativo, type FeedPost } from "../Feed";
 import { ComentariosSection } from "../../components/ComentariosSection";
+import Avatar from "../../components/Avatar";
 
 type Categoria = "REFEICAO" | "TREINO" | "MOMENTO";
 
@@ -28,25 +29,6 @@ async function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function getInitials(nome: string) {
-  return nome.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
-}
-
-function Avatar({ nome, fotoUrl, size = 40, bg = "#52B788" }: {
-  nome: string; fotoUrl?: string | null; size?: number; bg?: string;
-}) {
-  if (fotoUrl) return (
-    <img src={fotoUrl} alt={nome} className="rounded-full object-cover flex-shrink-0"
-      style={{ width: size, height: size }} />
-  );
-  return (
-    <div className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
-      style={{ width: size, height: size, background: bg, fontSize: size * 0.36 }}>
-      {getInitials(nome)}
-    </div>
-  );
-}
-
 // ─── PostCard ────────────────────────────────────────────────────────────────
 
 function PostCard({ post, liked, onLike, authHeader, meuPacienteId }: {
@@ -58,7 +40,7 @@ function PostCard({ post, liked, onLike, authHeader, meuPacienteId }: {
 }) {
   const cat = post.categoria as Categoria;
   const autorNome = post.paciente.nome;
-  const autorFoto = post.paciente.pacienteUser?.fotoUrl;
+  const autorFoto = post.autorAvatarUrl ?? post.paciente.pacienteUser?.fotoUrl;
   const isNutri = post.autorNutri;
   const isPrivate = post.privacidade === "APENAS_NUTRI";
   const euMesmo = post.paciente.id === meuPacienteId;
@@ -69,8 +51,7 @@ function PostCard({ post, liked, onLike, authHeader, meuPacienteId }: {
 
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-2">
-        <Avatar nome={autorNome} fotoUrl={isNutri ? null : autorFoto}
-          bg={isNutri ? "#1B4332" : "#52B788"} />
+        <Avatar nome={autorNome} src={isNutri ? null : autorFoto} tamanho={40} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[14px] font-bold text-[#111]">

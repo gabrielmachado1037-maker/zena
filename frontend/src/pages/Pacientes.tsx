@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Users, MessageCircle, CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
 import api from "../lib/api";
+import Avatar from "../components/Avatar";
 
 interface Paciente {
   id: string;
   nome: string;
   objetivo: string;
   dataInicio: string;
+  fotoPerfilUrl?: string | null;
   telefone?: string | null;
   ativo: boolean;
   medicoes: Array<{ peso: number }>;
@@ -216,9 +218,7 @@ export default function Pacientes() {
                     className="bg-[#F5F5F3] rounded-2xl px-4 py-4 flex items-center gap-3 active:scale-[0.99] transition-transform cursor-pointer"
                   >
                     {/* Avatar */}
-                    <div className={`w-11 h-11 rounded-full ${getColor(p.nome)} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
-                      {getInitials(p.nome)}
-                    </div>
+                    <Avatar src={p.fotoPerfilUrl} nome={p.nome} tamanho={44} />
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
@@ -382,9 +382,7 @@ export default function Pacientes() {
                     onClick={() => navigate(`/app/pacientes/${p.id}`)}
                     className="group bg-white rounded-2xl px-5 py-4 border border-zena-mint/30 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex items-center gap-4"
                   >
-                    <div className={`w-11 h-11 rounded-full ${getColor(p.nome)} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
-                      {getInitials(p.nome)}
-                    </div>
+                    <Avatar src={p.fotoPerfilUrl} nome={p.nome} tamanho={44} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-zena-text-dark font-semibold text-sm">{p.nome}</p>

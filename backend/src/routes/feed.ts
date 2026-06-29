@@ -65,9 +65,10 @@ router.post("/", async (req: AuthRequest, res: Response) => {
     return res.status(400).json({ error: "Privacidade inválida" });
   }
 
-  const paciente = await prisma.paciente.findFirst({
-    where: { id: pacienteId, nutricionistaId },
-  });
+  const [paciente, nutriSnap] = await Promise.all([
+    prisma.paciente.findFirst({ where: { id: pacienteId, nutricionistaId } }),
+    prisma.nutricionista.findUnique({ where: { id: nutricionistaId }, select: { foto: true } }),
+  ]);
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });
 
   let fotoUrl: string | null = null;
@@ -85,6 +86,7 @@ router.post("/", async (req: AuthRequest, res: Response) => {
       nutricionistaId,
       mensagem: mensagem.trim(),
       fotoUrl,
+      autorAvatarUrl: nutriSnap?.foto ?? null,
       autorNutri: true,
     },
     include: {
@@ -160,16 +162,17 @@ router.post("/:id/comentarios", async (req: AuthRequest, res: Response) => {
 
   const nutri = await prisma.nutricionista.findUnique({
     where: { id: req.nutricionistaId! },
-    select: { nome: true },
+    select: { nome: true, foto: true },
   });
 
   const comentario = await prisma.feedComentario.create({
     data: {
-      feedPostId: post.id,
-      autorId:    req.nutricionistaId!,
-      autorTipo:  "NUTRICIONISTA",
-      autorNome:  nutri!.nome,
-      texto:      texto.trim(),
+      feedPostId:    post.id,
+      autorId:       req.nutricionistaId!,
+      autorTipo:     "NUTRICIONISTA",
+      autorNome:     nutri!.nome,
+      autorAvatarUrl: nutri?.foto ?? null,
+      texto:         texto.trim(),
     },
   });
 

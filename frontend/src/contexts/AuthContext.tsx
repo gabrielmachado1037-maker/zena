@@ -6,6 +6,7 @@ interface Nutricionista {
   nome: string;
   email: string;
   crn: string;
+  foto?: string | null;
   nomeConsultorio?: string | null;
   logoConsultorio?: string | null;
   enderecoConsultorio?: string | null;
@@ -16,6 +17,7 @@ interface AuthContextType {
   token: string | null;
   login: (email: string, senha: string) => Promise<void>;
   logout: () => void;
+  updateAvatar: (foto: string) => void;
   loading: boolean;
 }
 
@@ -56,8 +58,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("zena_user");
   }
 
+  function updateAvatar(foto: string) {
+    setNutricionista((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, foto };
+      localStorage.setItem("zena_user", JSON.stringify(updated));
+      return updated;
+    });
+  }
+
   return (
-    <AuthContext.Provider value={{ nutricionista, token, login, logout, loading }}>
+    <AuthContext.Provider value={{ nutricionista, token, login, logout, updateAvatar, loading }}>
       {children}
     </AuthContext.Provider>
   );

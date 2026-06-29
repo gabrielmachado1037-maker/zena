@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, ChevronRight, LogOut, Bell, Lock, Trash2, Check, Eye, EyeOff, Globe } from "lucide-react";
 import api from "../../lib/api";
 import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
+import Avatar from "../../components/Avatar";
 
 interface MedData { peso: number; data: string; }
 interface PacienteData {
@@ -24,9 +25,6 @@ async function fileToBase64(file: File): Promise<string> {
   });
 }
 
-function getInitials(nome: string) {
-  return nome.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
-}
 
 // ─── Conquistas ──────────────────────────────────────────────────────────────
 
@@ -245,7 +243,6 @@ export default function ContaPaciente() {
 
   const fotoUrl   = data.fotoUrl ?? paciente?.fotoUrl;
   const nome      = paciente?.nome ?? data.nome;
-  const initials  = getInitials(nome);
 
   return (
     <div className="pt-4 pb-4 space-y-4 px-4">
@@ -254,15 +251,8 @@ export default function ContaPaciente() {
       <div className="bg-white rounded-2xl p-6 flex flex-col items-center"
         style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
         <div className="relative mb-4">
-          <div className="w-24 h-24 rounded-full overflow-hidden ring-4 ring-[#E0F2E9]">
-            {fotoUrl ? (
-              <img src={fotoUrl} alt={nome} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-white font-bold text-[28px]"
-                style={{ background: "#1B4332" }}>
-                {initials}
-              </div>
-            )}
+          <div className="rounded-full overflow-hidden ring-4 ring-[#E0F2E9]">
+            <Avatar src={fotoUrl} nome={nome} tamanho={96} />
           </div>
           <button
             onClick={() => fileRef.current?.click()}

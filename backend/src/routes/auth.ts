@@ -6,6 +6,7 @@ import rateLimit from "express-rate-limit";
 import prisma from "../lib/prisma";
 import { emailBoasVindas, emailRecuperacaoSenha } from "../lib/email";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { uploadFoto } from "../lib/supabase";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -46,7 +47,7 @@ router.post("/register", async (req: Request, res: Response) => {
   emailBoasVindas(nome, email).catch(console.error);
 
   const token = jwt.sign({ id: nutri.id }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio } });
+  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio } });
 });
 
 router.post("/login", loginLimiter, async (req: Request, res: Response) => {
@@ -59,7 +60,7 @@ router.post("/login", loginLimiter, async (req: Request, res: Response) => {
   if (!ok) return res.status(401).json({ error: "Credenciais inválidas" });
 
   const token = jwt.sign({ id: nutri.id }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio } });
+  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: nutri.foto ?? null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio } });
 });
 
 router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) => {
@@ -138,6 +139,17 @@ router.put("/perfil", authMiddleware, async (req: AuthRequest, res: Response) =>
   });
 
   res.json(atualizado);
+});
+
+router.put("/perfil/foto", authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { fotoBase64 } = req.body as { fotoBase64: string };
+  if (!fotoBase64?.startsWith("data:image/")) {
+    return res.status(400).json({ error: "Imagem inválida" });
+  }
+  const path = `nutri/${req.nutricionistaId!}/${Date.now()}.jpg`;
+  const foto = await uploadFoto(path, fotoBase64);
+  await prisma.nutricionista.update({ where: { id: req.nutricionistaId! }, data: { foto } });
+  return res.json({ foto });
 });
 
 router.put("/consultorio", authMiddleware, async (req: AuthRequest, res: Response) => {

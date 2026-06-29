@@ -62,6 +62,7 @@ model Paciente {
   sexo              String?
   altura            Float?
   fotoInicial       String?
+  fotoPerfilUrl     String?
   nutricionistaId   String
   nutricionista     Nutricionista      @relation(fields: [nutricionistaId], references: [id])
   medicoes          Medicao[]
@@ -304,6 +305,7 @@ model FeedPost {
   nutricionista   Nutricionista    @relation(fields: [nutricionistaId], references: [id], onDelete: Cascade)
   mensagem        String
   fotoUrl         String?
+  autorAvatarUrl  String?
   curtidas        Int              @default(0)
   privado         Boolean          @default(false)       // legado — usar privacidade
   autorNutri      Boolean          @default(false)
@@ -319,11 +321,12 @@ model FeedComentario {
   id         String   @id @default(cuid())
   feedPostId String
   feedPost   FeedPost @relation(fields: [feedPostId], references: [id], onDelete: Cascade)
-  autorId    String
-  autorTipo  String   // NUTRICIONISTA | PACIENTE
-  autorNome  String
-  texto      String
-  createdAt  DateTime @default(now())
+  autorId        String
+  autorTipo      String   // NUTRICIONISTA | PACIENTE
+  autorNome      String
+  autorAvatarUrl String?
+  texto          String
+  createdAt      DateTime @default(now())
 
   @@index([feedPostId])
   @@index([createdAt])

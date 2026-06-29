@@ -51,6 +51,11 @@ router.post("/feed", async (req: PacienteAuthRequest, res: Response) => {
     fotoUrl = await uploadFeedFoto(path, fotoBase64);
   }
 
+  const pacienteUserSnap = await prisma.pacienteUser.findUnique({
+    where: { pacienteId: req.pacienteId! },
+    select: { fotoUrl: true },
+  });
+
   const post = await prisma.feedPost.create({
     data: {
       tipo: "CONQUISTA",
@@ -58,6 +63,7 @@ router.post("/feed", async (req: PacienteAuthRequest, res: Response) => {
       privacidade,
       mensagem: mensagem.trim(),
       fotoUrl,
+      autorAvatarUrl: pacienteUserSnap?.fotoUrl ?? null,
       pacienteId: req.pacienteId!,
       nutricionistaId: req.nutricionistaId!,
       autorNutri: false,
@@ -208,7 +214,10 @@ router.put("/foto-perfil", async (req: PacienteAuthRequest, res: Response) => {
   }
   const path = `${req.pacienteId!}/${Date.now()}.jpg`;
   const fotoUrl = await uploadAvatarPaciente(path, fotoBase64);
-  await prisma.pacienteUser.updateMany({ where: { pacienteId: req.pacienteId! }, data: { fotoUrl } });
+  await Promise.all([
+    prisma.pacienteUser.updateMany({ where: { pacienteId: req.pacienteId! }, data: { fotoUrl } }),
+    prisma.paciente.update({ where: { id: req.pacienteId! }, data: { fotoPerfilUrl: fotoUrl } }),
+  ]);
   return res.json({ fotoUrl });
 });
 
@@ -298,18 +307,19 @@ router.post("/feed/:id/comentarios", async (req: PacienteAuthRequest, res: Respo
     return res.status(403).json({ error: "Post privado" });
   }
 
-  const paciente = await prisma.paciente.findUnique({
-    where: { id: req.pacienteId! },
-    select: { nome: true },
-  });
+  const [paciente, pacienteUserSnap] = await Promise.all([
+    prisma.paciente.findUnique({ where: { id: req.pacienteId! }, select: { nome: true } }),
+    prisma.pacienteUser.findUnique({ where: { pacienteId: req.pacienteId! }, select: { fotoUrl: true } }),
+  ]);
 
   const comentario = await prisma.feedComentario.create({
     data: {
-      feedPostId: post.id,
-      autorId:    req.pacienteId!,
-      autorTipo:  "PACIENTE",
-      autorNome:  paciente!.nome,
-      texto:      texto.trim(),
+      feedPostId:    post.id,
+      autorId:       req.pacienteId!,
+      autorTipo:     "PACIENTE",
+      autorNome:     paciente!.nome,
+      autorAvatarUrl: pacienteUserSnap?.fotoUrl ?? null,
+      texto:         texto.trim(),
     },
   });
   return res.status(201).json(comentario);

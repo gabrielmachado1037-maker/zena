@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Trophy } from "lucide-react";
 import api from "../../lib/api";
 import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
+import Avatar from "../../components/Avatar";
 
 interface RankingItem {
   posicao: number;
@@ -20,36 +21,6 @@ interface RankingData {
 const BORDER = ["#FFB900", "#9E9E9E", "#CD7F32"];
 const LABEL  = ["🥇", "🥈", "🥉"];
 const SZ     = [72, 56, 56];
-
-function getInitials(nome: string) {
-  return nome.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
-}
-
-function PodiumAvatar({ nome, fotoUrl, size, border }: {
-  nome: string; fotoUrl?: string | null; size: number; border: string;
-}) {
-  const cls = "rounded-full object-cover flex-shrink-0";
-  const style: React.CSSProperties = { width: size, height: size, border: `3px solid ${border}` };
-  if (fotoUrl) return <img src={fotoUrl} alt={nome} className={cls} style={style} />;
-  return (
-    <div className={`${cls} flex items-center justify-center text-white font-bold`}
-      style={{ ...style, background: "#1B4332", fontSize: size * 0.33 }}>
-      {getInitials(nome)}
-    </div>
-  );
-}
-
-function RowAvatar({ nome, fotoUrl }: { nome: string; fotoUrl?: string | null }) {
-  if (fotoUrl) return (
-    <img src={fotoUrl} alt={nome} className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
-  );
-  return (
-    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-[12px] flex-shrink-0"
-      style={{ background: "#52B788" }}>
-      {getInitials(nome)}
-    </div>
-  );
-}
 
 export default function RankingPaciente() {
   const { token } = usePacienteAuth();
@@ -110,7 +81,7 @@ export default function RankingPaciente() {
                 return (
                   <div key={item.pacienteId} className="flex flex-col items-center gap-1.5">
                     <span className="text-[22px]">{LABEL[ri]}</span>
-                    <PodiumAvatar nome={item.nome} fotoUrl={item.fotoUrl} size={SZ[ri]} border={BORDER[ri]} />
+                    <Avatar nome={item.nome} src={item.fotoUrl} tamanho={SZ[ri]} borda={`3px solid ${BORDER[ri]}`} />
                     <p className="text-[11px] font-bold text-[#111] text-center max-w-[64px] truncate">
                       {item.nome.split(" ")[0]}
                     </p>
@@ -138,7 +109,7 @@ export default function RankingPaciente() {
               <p className="text-[11px] font-semibold text-[#2D6A4F] mb-2">Sua posição</p>
               <div className="flex items-center gap-3">
                 <span className="text-[28px] font-bold" style={{ color: "#1B4332" }}>#{minha.posicao}</span>
-                <RowAvatar nome={minha.nome} fotoUrl={minha.fotoUrl} />
+                <Avatar nome={minha.nome} src={minha.fotoUrl} tamanho={36} />
                 <div>
                   <p className="text-[14px] font-bold text-[#111]">{minha.nome.split(" ")[0]}</p>
                   <p className="text-[12px]" style={{ color: "#2D6A4F" }}>{minha.pontuacaoTotal.toFixed(0)} pts</p>
@@ -156,7 +127,7 @@ export default function RankingPaciente() {
                     item.euMesmo ? "ring-2 ring-[#52B788]" : ""
                   }`}>
                   <span className="w-5 text-center text-[13px] font-bold text-[#bbb]">{item.posicao}</span>
-                  <RowAvatar nome={item.nome} fotoUrl={item.fotoUrl} />
+                  <Avatar nome={item.nome} src={item.fotoUrl} tamanho={36} />
                   <p className={`flex-1 text-[14px] font-medium truncate ${item.euMesmo ? "text-[#1B4332]" : "text-[#333]"}`}>
                     {item.nome.split(" ")[0]}
                     {item.euMesmo && <span className="ml-1 text-[11px] font-normal" style={{ color: "#52B788" }}>(você)</span>}

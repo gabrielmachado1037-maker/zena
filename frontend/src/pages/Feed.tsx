@@ -3,6 +3,7 @@ import { Rss, Heart, Trash2, Plus, X, Lock, Camera, UtensilsCrossed, Dumbbell, S
 import api from "../lib/api";
 import { Toast, useToast } from "../components/Toast";
 import { ComentariosSection } from "../components/ComentariosSection";
+import Avatar from "../components/Avatar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,6 +18,7 @@ export interface FeedPost {
   autorNutri: boolean;
   mensagem: string;
   fotoUrl: string | null;
+  autorAvatarUrl?: string | null;
   curtidas: number;
   criadoEm: string;
   paciente: {
@@ -116,12 +118,11 @@ export function PostCard({
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0"
-              style={{ backgroundColor: cat.color }}
-            >
-              {getInitials(post.paciente.nome)}
-            </div>
+            <Avatar
+              src={post.autorAvatarUrl ?? post.paciente.pacienteUser?.fotoUrl}
+              nome={post.paciente.nome}
+              tamanho={36}
+            />
             <div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <p className="text-[14px] font-semibold text-[#111] leading-tight">
