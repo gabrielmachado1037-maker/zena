@@ -77,7 +77,7 @@ router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) 
     data: { nutricionistaId: nutri.id, token, expiresAt },
   });
 
-  emailRecuperacaoSenha(email, token).catch(console.error);
+  emailRecuperacaoSenha(email, token, nutri.nome).catch(console.error);
   res.json({ ok: true });
 });
 

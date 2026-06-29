@@ -1,7 +1,10 @@
 import { Resend } from "resend";
 
 function getResend(): Resend | null {
-  if (!process.env.RESEND_API_KEY) return null;
+  if (!process.env.RESEND_API_KEY) {
+    console.warn("[email] RESEND_API_KEY não configurada — email não será enviado.");
+    return null;
+  }
   return new Resend(process.env.RESEND_API_KEY);
 }
 
@@ -59,17 +62,18 @@ export async function emailBoasVindas(nome: string, email: string) {
   });
 }
 
-export async function emailRecuperacaoSenha(email: string, token: string) {
+export async function emailRecuperacaoSenha(email: string, token: string, nome?: string) {
   const resend = getResend();
   if (!resend) return;
   const link = `${BASE_URL}/redefinir-senha?token=${token}`;
+  const saudacao = nome ? `Olá, ${nome.split(" ")[0]}!` : "Olá!";
   await resend.emails.send({
     from: FROM,
     to: email,
     subject: "Redefinição de senha — Clinne",
     html: base(
       "Redefinir sua senha",
-      `<p>Recebemos uma solicitação para redefinir a senha da sua conta Clinne.</p>
+      `<p>${saudacao} Recebemos uma solicitação para redefinir a senha da sua conta Clinne.</p>
        <p>Clique no botão abaixo para criar uma nova senha. O link é válido por <strong>1 hora</strong>.</p>
        <a href="${link}" class="btn">Redefinir senha →</a>
        <p style="margin-top:24px;font-size:14px;color:#999">Se você não solicitou isso, ignore este e-mail. Sua senha permanece a mesma.</p>`
