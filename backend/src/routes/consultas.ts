@@ -1,9 +1,11 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { checkModulo } from "../middleware/checkModulo";
 
 const router = Router();
 router.use(authMiddleware);
+router.use(checkModulo("agenda"));
 
 router.get("/", async (req: AuthRequest, res: Response) => {
   const { inicio, fim } = req.query;

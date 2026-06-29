@@ -2,7 +2,8 @@ import { Router, Response, Request } from "express";
 import Stripe from "stripe";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
-import { criarClienteCliNNe, criarAssinaturaPix, cancelarAssinatura, buscarAssinatura } from "../lib/asaas";
+import { criarClienteCliNNe, criarAssinaturaPix, cancelarAssinatura } from "../lib/asaas";
+import { MODULOS_POR_PLANO } from "../middleware/checkModulo";
 
 const router = Router();
 
@@ -11,32 +12,49 @@ function getStripe(): Stripe | null {
   return new Stripe(process.env.STRIPE_SECRET_KEY);
 }
 
-const STRIPE_PLANOS = {
-  mensal: process.env.STRIPE_PRICE_MENSAL || "",
-  anual: process.env.STRIPE_PRICE_ANUAL || "",
+// Mapa de Stripe Price IDs por plano e ciclo
+function getStripePriceId(planoSlug: string, tipo: string): string {
+  const key = `STRIPE_PRICE_${planoSlug.toUpperCase()}_${tipo.toUpperCase()}`;
+  return process.env[key] || process.env[`STRIPE_PRICE_${tipo.toUpperCase()}`] || "";
+}
+
+// Valores Pix por plano e ciclo
+const VALORES_PIX: Record<string, Record<string, number>> = {
+  hub:         { mensal: 67,   anual: 670  },
+  ecossistema: { mensal: 149,  anual: 1490 },
 };
 
-// Preços Clinne via Asaas/Pix
-const ASAAS_PLANOS = {
-  mensal: { valor: Number(process.env.PLANO_MENSAL_VALOR || "69"), ciclo: "MONTHLY" as const, label: "Plano Mensal" },
-  anual:  { valor: Number(process.env.PLANO_ANUAL_VALOR  || "708"), ciclo: "YEARLY"  as const, label: "Plano Anual" },
-};
+function getValorPix(planoSlug: string, tipo: string): number {
+  return VALORES_PIX[planoSlug]?.[tipo]
+    ?? (Number(tipo === "anual" ? process.env.PLANO_ANUAL_VALOR : process.env.PLANO_MENSAL_VALOR) || (tipo === "anual" ? 670 : 67));
+}
+
+// ── GET /billing/status ───────────────────────────────────────────────────────
 
 router.get("/status", authMiddleware, async (req: AuthRequest, res: Response) => {
   const nutri = await prisma.nutricionista.findUnique({
     where: { id: req.nutricionistaId as string },
-    select: { plano: true, planoAtivo: true, trialEnd: true, stripeSubscriptionId: true, asaasSubscriptionId: true, planoVencimento: true },
+    select: {
+      plano: true, planoAtivo: true, trialEnd: true,
+      stripeSubscriptionId: true, asaasSubscriptionId: true, planoVencimento: true,
+      planoSlug: true, subscriptionStatus: true, subscriptionType: true,
+      subscriptionEndsAt: true, modulosAtivos: true,
+    },
   });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
 
   const agora = new Date();
-  const emTrial = nutri.plano === "trial" && nutri.trialEnd && nutri.trialEnd > agora;
+  const emTrial = (nutri.subscriptionStatus === "trial" || nutri.plano === "trial")
+    && nutri.trialEnd != null && nutri.trialEnd > agora;
   const diasRestantesTrial = emTrial && nutri.trialEnd
     ? Math.ceil((nutri.trialEnd.getTime() - agora.getTime()) / (1000 * 60 * 60 * 24))
     : 0;
-  const expirado = !nutri.planoAtivo && !emTrial;
+
+  const status = nutri.subscriptionStatus ?? (nutri.planoAtivo ? "ativo" : (emTrial ? "trial" : "inativo"));
+  const expirado = !["trial", "ativo"].includes(status);
 
   res.json({
+    // Campos legados (backward compat)
     plano: nutri.plano,
     planoAtivo: nutri.planoAtivo,
     emTrial,
@@ -46,18 +64,30 @@ router.get("/status", authMiddleware, async (req: AuthRequest, res: Response) =>
     temAssinatura: !!(nutri.stripeSubscriptionId || nutri.asaasSubscriptionId),
     metodoPagamento: nutri.asaasSubscriptionId ? "pix" : nutri.stripeSubscriptionId ? "cartao" : null,
     planoVencimento: nutri.planoVencimento,
+    // Campos novos
+    planoSlug: nutri.planoSlug,
+    subscriptionStatus: status,
+    subscriptionType: nutri.subscriptionType ?? (nutri.plano !== "trial" ? nutri.plano : null),
+    subscriptionEndsAt: nutri.subscriptionEndsAt ?? nutri.planoVencimento,
+    modulosAtivos: nutri.modulosAtivos.length > 0
+      ? nutri.modulosAtivos
+      : (status === "trial" ? MODULOS_POR_PLANO.ecossistema : MODULOS_POR_PLANO[nutri.planoSlug ?? ""] ?? []),
   });
 });
 
-// ── Checkout via Stripe (cartão) ──────────────────────────────────────────────
+// ── POST /billing/checkout (Stripe) ──────────────────────────────────────────
 
 router.post("/checkout", authMiddleware, async (req: AuthRequest, res: Response) => {
   const stripe = getStripe();
   if (!stripe) return res.status(503).json({ error: "Pagamentos por cartão não configurados" });
 
-  const { periodo } = req.body as { periodo: "mensal" | "anual" };
-  const priceId = STRIPE_PLANOS[periodo];
-  if (!priceId) return res.status(400).json({ error: "Plano inválido" });
+  // Aceitar formato novo (plano_slug + tipo) e legado (periodo)
+  const body = req.body as { plano_slug?: string; tipo?: string; periodo?: string };
+  const planoSlug = body.plano_slug ?? "ecossistema";
+  const tipo = body.tipo ?? body.periodo ?? "mensal";
+
+  const priceId = getStripePriceId(planoSlug, tipo);
+  if (!priceId) return res.status(400).json({ error: "Plano/ciclo inválido ou Price ID não configurado" });
 
   const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId as string } });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
@@ -73,6 +103,7 @@ router.post("/checkout", authMiddleware, async (req: AuthRequest, res: Response)
     customer: customerId,
     mode: "subscription",
     line_items: [{ price: priceId, quantity: 1 }],
+    metadata: { plano_slug: planoSlug, tipo },
     success_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/app/billing?sucesso=1`,
     cancel_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/app/planos`,
     locale: "pt-BR",
@@ -81,38 +112,32 @@ router.post("/checkout", authMiddleware, async (req: AuthRequest, res: Response)
   res.json({ url: session.url });
 });
 
-// ── Checkout via Asaas (Pix) — usa a chave DO CLINNE ─────────────────────────
+// ── POST /billing/checkout-pix (Asaas) ───────────────────────────────────────
 
 router.post("/checkout-pix", authMiddleware, async (req: AuthRequest, res: Response) => {
   if (!process.env.CLINNE_ASAAS_API_KEY) {
     return res.status(503).json({ error: "Pagamento via Pix não configurado ainda." });
   }
 
-  const { periodo } = req.body as { periodo: "mensal" | "anual" };
-  const plano = ASAAS_PLANOS[periodo];
-  if (!plano) return res.status(400).json({ error: "Plano inválido" });
+  const body = req.body as { plano_slug?: string; tipo?: string; periodo?: string };
+  const planoSlug = body.plano_slug ?? "ecossistema";
+  const periodo = (body.tipo ?? body.periodo ?? "mensal") as "mensal" | "anual";
+  const valor = getValorPix(planoSlug, periodo);
 
   const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId as string } });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
 
-  // Cria ou busca cliente na conta Asaas DO CLINNE
   const cliente = await criarClienteCliNNe(nutri.nome, nutri.email);
-
   const { subscription, pix } = await criarAssinaturaPix(
-    cliente.id,
-    plano.valor,
-    plano.ciclo,
-    `Clinne — ${plano.label}`,
+    cliente.id, valor,
+    periodo === "anual" ? "YEARLY" : "MONTHLY",
+    `Clinne — ${planoSlug} ${periodo}`,
     nutri.id,
   );
 
-  // Calcula próximo vencimento
   const vencimento = new Date();
-  if (periodo === "anual") {
-    vencimento.setFullYear(vencimento.getFullYear() + 1);
-  } else {
-    vencimento.setMonth(vencimento.getMonth() + 1);
-  }
+  if (periodo === "anual") vencimento.setFullYear(vencimento.getFullYear() + 1);
+  else vencimento.setMonth(vencimento.getMonth() + 1);
 
   await prisma.nutricionista.update({
     where: { id: nutri.id },
@@ -121,7 +146,8 @@ router.post("/checkout-pix", authMiddleware, async (req: AuthRequest, res: Respo
       asaasSubscriptionId: subscription.id,
       planoVencimento: vencimento,
       plano: periodo,
-      // planoAtivo permanece false até o webhook confirmar o pagamento
+      planoSlug,
+      subscriptionType: periodo,
     },
   });
 
@@ -129,24 +155,64 @@ router.post("/checkout-pix", authMiddleware, async (req: AuthRequest, res: Respo
     subscriptionId: subscription.id,
     pixCopiaECola: pix?.payload,
     pixQrCode: pix?.encodedImage,
-    valor: plano.valor,
+    valor,
     periodo,
+    planoSlug,
   });
 });
 
-// Verifica status do pagamento Pix (polling do frontend)
-router.get("/pix-status", authMiddleware, async (req: AuthRequest, res: Response) => {
-  const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId as string } });
+// ── POST /billing/upgrade ─────────────────────────────────────────────────────
+
+router.post("/upgrade", authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { novo_plano_slug } = req.body as { novo_plano_slug: string };
+  if (!MODULOS_POR_PLANO[novo_plano_slug]) {
+    return res.status(400).json({ error: "Plano inválido" });
+  }
+
+  const nutri = await prisma.nutricionista.findUnique({
+    where: { id: req.nutricionistaId as string },
+    select: { stripeSubscriptionId: true, subscriptionType: true, planoSlug: true },
+  });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
 
-  res.json({
-    planoAtivo: nutri.planoAtivo,
-    plano: nutri.plano,
-    asaasSubscriptionId: nutri.asaasSubscriptionId,
+  if (nutri.stripeSubscriptionId) {
+    const stripe = getStripe();
+    if (!stripe) return res.status(503).json({ error: "Stripe não configurado" });
+
+    const tipo = nutri.subscriptionType ?? "mensal";
+    const priceId = getStripePriceId(novo_plano_slug, tipo);
+    if (!priceId) return res.status(400).json({ error: "Price ID não configurado para este plano" });
+
+    const sub = await stripe.subscriptions.retrieve(nutri.stripeSubscriptionId);
+    await stripe.subscriptions.update(nutri.stripeSubscriptionId, {
+      items: [{ id: sub.items.data[0].id, price: priceId }],
+      proration_behavior: "always_invoice",
+    });
+  }
+
+  // Atualiza imediatamente no DB (módulos liberados mesmo sem pagamento confirmado no Stripe)
+  const modulosAtivos = MODULOS_POR_PLANO[novo_plano_slug] ?? [];
+  await prisma.nutricionista.update({
+    where: { id: req.nutricionistaId as string },
+    data: { planoSlug: novo_plano_slug, modulosAtivos, subscriptionStatus: "ativo" },
   });
+
+  res.json({ ok: true, planoSlug: novo_plano_slug, modulosAtivos });
 });
 
-// Portal Stripe (gestão de cartão)
+// ── GET /billing/pix-status ───────────────────────────────────────────────────
+
+router.get("/pix-status", authMiddleware, async (req: AuthRequest, res: Response) => {
+  const nutri = await prisma.nutricionista.findUnique({
+    where: { id: req.nutricionistaId as string },
+    select: { planoAtivo: true, plano: true, asaasSubscriptionId: true, subscriptionStatus: true, planoSlug: true },
+  });
+  if (!nutri) return res.status(404).json({ error: "Não encontrado" });
+  res.json({ planoAtivo: nutri.planoAtivo, plano: nutri.plano, subscriptionStatus: nutri.subscriptionStatus, planoSlug: nutri.planoSlug, asaasSubscriptionId: nutri.asaasSubscriptionId });
+});
+
+// ── POST /billing/portal (Stripe portal) ─────────────────────────────────────
+
 router.post("/portal", authMiddleware, async (req: AuthRequest, res: Response) => {
   const stripe = getStripe();
   if (!stripe) return res.status(503).json({ error: "Não configurado" });
@@ -158,11 +224,11 @@ router.post("/portal", authMiddleware, async (req: AuthRequest, res: Response) =
     customer: nutri.stripeCustomerId,
     return_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/app/planos`,
   });
-
   res.json({ url: session.url });
 });
 
-// Cancelar assinatura Asaas
+// ── POST /billing/cancelar-pix ────────────────────────────────────────────────
+
 router.post("/cancelar-pix", authMiddleware, async (req: AuthRequest, res: Response) => {
   const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId as string } });
   if (!nutri?.asaasSubscriptionId) return res.status(400).json({ error: "Sem assinatura Pix" });
@@ -170,14 +236,18 @@ router.post("/cancelar-pix", authMiddleware, async (req: AuthRequest, res: Respo
   await cancelarAssinatura(nutri.asaasSubscriptionId);
   await prisma.nutricionista.update({
     where: { id: nutri.id },
-    data: { asaasSubscriptionId: null, planoAtivo: false, plano: "trial" },
+    data: {
+      asaasSubscriptionId: null,
+      planoAtivo: false,
+      plano: "trial",
+      subscriptionStatus: "cancelado",
+    },
   });
   res.json({ ok: true });
 });
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────
 
-// Webhook Stripe (raw body registrado no index.ts)
 export function webhookHandler(req: Request, res: Response) {
   const stripe = getStripe();
   if (!stripe) return res.status(503).json({ error: "Não configurado" });
@@ -197,32 +267,71 @@ export function webhookHandler(req: Request, res: Response) {
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.subscription && session.customer) {
           const sub = await stripe.subscriptions.retrieve(session.subscription as string);
-          const plano = sub.items.data[0]?.price.recurring?.interval === "year" ? "anual" : "mensal";
+          const tipo = sub.items.data[0]?.price.recurring?.interval === "year" ? "anual" : "mensal";
           const vencimento = new Date(((sub as any).current_period_end ?? 0) * 1000);
+          const planoSlug = (session.metadata?.plano_slug as string | undefined) ?? "ecossistema";
+          const modulosAtivos = MODULOS_POR_PLANO[planoSlug] ?? [];
           await prisma.nutricionista.updateMany({
             where: { stripeCustomerId: session.customer as string },
-            data: { plano, planoAtivo: true, stripeSubscriptionId: sub.id, planoVencimento: vencimento },
+            data: {
+              plano: tipo,
+              planoAtivo: true,
+              stripeSubscriptionId: sub.id,
+              planoVencimento: vencimento,
+              planoSlug,
+              subscriptionStatus: "ativo",
+              subscriptionType: tipo,
+              subscriptionEndsAt: vencimento,
+              modulosAtivos,
+            },
           });
         }
         break;
       }
-      case "invoice.payment_failed":
-      case "customer.subscription.deleted": {
-        const obj = event.data.object as { customer: string };
+      case "customer.subscription.updated": {
+        const sub = event.data.object as Stripe.Subscription;
+        const tipo = sub.items.data[0]?.price.recurring?.interval === "year" ? "anual" : "mensal";
+        const periodoFim = (sub as any).current_period_end;
+        const vencimento = periodoFim ? new Date(periodoFim * 1000) : undefined;
         await prisma.nutricionista.updateMany({
-          where: { stripeCustomerId: obj.customer as string },
-          data: { planoAtivo: false },
+          where: { stripeCustomerId: sub.customer as string },
+          data: {
+            plano: tipo,
+            planoAtivo: sub.status === "active",
+            planoVencimento: vencimento,
+            subscriptionStatus: sub.status === "active" ? "ativo" : "inadimplente",
+            subscriptionType: tipo,
+            subscriptionEndsAt: vencimento,
+          },
         });
         break;
       }
-      case "customer.subscription.updated": {
+      case "customer.subscription.deleted": {
         const sub = event.data.object as Stripe.Subscription;
-        const plano = sub.items.data[0]?.price.recurring?.interval === "year" ? "anual" : "mensal";
-        const periodoFim = (sub as any).current_period_end;
         await prisma.nutricionista.updateMany({
           where: { stripeCustomerId: sub.customer as string },
-          data: { plano, planoAtivo: sub.status === "active", planoVencimento: periodoFim ? new Date(periodoFim * 1000) : undefined },
+          data: { planoAtivo: false, subscriptionStatus: "cancelado" },
         });
+        break;
+      }
+      case "invoice.payment_failed": {
+        const inv = event.data.object as Stripe.Invoice;
+        if (inv.customer) {
+          await prisma.nutricionista.updateMany({
+            where: { stripeCustomerId: inv.customer as string },
+            data: { subscriptionStatus: "inadimplente" },
+          });
+        }
+        break;
+      }
+      case "invoice.payment_succeeded": {
+        const inv = event.data.object as Stripe.Invoice;
+        if (inv.customer) {
+          await prisma.nutricionista.updateMany({
+            where: { stripeCustomerId: inv.customer as string },
+            data: { planoAtivo: true, subscriptionStatus: "ativo" },
+          });
+        }
         break;
       }
     }
@@ -231,10 +340,9 @@ export function webhookHandler(req: Request, res: Response) {
   res.json({ received: true });
 }
 
-// Webhook Asaas (confirmação de pagamento da assinatura do Clinne)
+// Webhook Asaas
 router.post("/asaas-webhook", async (req: Request, res: Response) => {
   const { event, payment } = req.body as { event: string; payment?: { externalReference?: string; dueDate?: string } };
-
   if (!payment?.externalReference) return res.json({ ok: true });
 
   const nutricionistaId = payment.externalReference;
@@ -244,15 +352,22 @@ router.post("/asaas-webhook", async (req: Request, res: Response) => {
     if (!nutri) return res.json({ ok: true });
 
     const vencimento = new Date();
-    if (nutri.plano === "anual") {
-      vencimento.setFullYear(vencimento.getFullYear() + 1);
-    } else {
-      vencimento.setMonth(vencimento.getMonth() + 1);
-    }
+    if (nutri.plano === "anual") vencimento.setFullYear(vencimento.getFullYear() + 1);
+    else vencimento.setMonth(vencimento.getMonth() + 1);
+
+    const planoSlug = nutri.planoSlug ?? "ecossistema";
+    const modulosAtivos = nutri.modulosAtivos.length > 0
+      ? nutri.modulosAtivos
+      : (MODULOS_POR_PLANO[planoSlug] ?? []);
 
     await prisma.nutricionista.update({
       where: { id: nutricionistaId },
-      data: { planoAtivo: true, planoVencimento: vencimento },
+      data: {
+        planoAtivo: true,
+        planoVencimento: vencimento,
+        subscriptionStatus: "ativo",
+        modulosAtivos,
+      },
     });
   }
 
@@ -264,7 +379,7 @@ router.post("/asaas-webhook", async (req: Request, res: Response) => {
     if (diasAtraso > 3) {
       await prisma.nutricionista.update({
         where: { id: nutricionistaId },
-        data: { planoAtivo: false },
+        data: { planoAtivo: false, subscriptionStatus: "inadimplente" },
       });
     }
   }

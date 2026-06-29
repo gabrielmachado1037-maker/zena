@@ -10,6 +10,9 @@ interface Nutricionista {
   nomeConsultorio?: string | null;
   logoConsultorio?: string | null;
   enderecoConsultorio?: string | null;
+  planoSlug?: string | null;
+  subscriptionStatus?: string | null;
+  modulosAtivos?: string[];
 }
 
 interface AuthContextType {

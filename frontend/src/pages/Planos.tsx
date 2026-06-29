@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Leaf, Check, Copy, CheckCircle, Loader2, AlertCircle, ExternalLink } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Leaf, Check, Copy, CheckCircle, Loader2, AlertCircle, ExternalLink,
+  Rss, Trophy, Bell, Zap, ClipboardList, BarChart2, CalendarDays, FileText,
+} from "lucide-react";
 import api from "../lib/api";
+import { usePermissao } from "../hooks/usePermissao";
 
 interface BillingStatus {
   plano: string;
@@ -11,6 +15,9 @@ interface BillingStatus {
   temAssinatura: boolean;
   metodoPagamento: "pix" | "cartao" | null;
   planoVencimento: string | null;
+  planoSlug: string | null;
+  subscriptionStatus: string;
+  subscriptionType: string | null;
 }
 
 interface PixData {
@@ -18,30 +25,75 @@ interface PixData {
   pixQrCode: string;
   valor: number;
   periodo: "mensal" | "anual";
+  planoSlug: string;
+}
+
+const PLANOS = [
+  {
+    slug: "hub",
+    nome: "Hub de Engajamento",
+    descricao: "Foco em engajamento e resultados dos pacientes",
+    precoMensal: 67,
+    precoAnualMensal: 55.83,
+    precoAnualTotal: 670,
+    destaque: false,
+    modulos: [
+      { icon: Rss,   label: "Feed social entre pacientes" },
+      { icon: Trophy,label: "Ranking de engajamento" },
+      { icon: Zap,   label: "Gamificação e desafios" },
+      { icon: Bell,  label: "Notificações push" },
+    ],
+  },
+  {
+    slug: "ecossistema",
+    nome: "Ecossistema Completo",
+    descricao: "Tudo que você precisa para gerir sua clínica",
+    precoMensal: 149,
+    precoAnualMensal: 124.17,
+    precoAnualTotal: 1490,
+    destaque: true,
+    modulos: [
+      { icon: Rss,          label: "Feed + Ranking + Gamificação" },
+      { icon: ClipboardList,label: "Prontuário completo" },
+      { icon: BarChart2,    label: "Controle financeiro e Pix" },
+      { icon: CalendarDays, label: "Agenda e consultas" },
+      { icon: FileText,     label: "Planos alimentares" },
+      { icon: Bell,         label: "Notificações push" },
+    ],
+  },
+] as const;
+
+function fmt(v: number) {
+  return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export default function Planos() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { planoSlug: planoAtualSlug, emTrial } = usePermissao();
+
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [ciclo, setCiclo] = useState<"mensal" | "anual">("mensal");
   const [loadingPlano, setLoadingPlano] = useState<string | null>(null);
   const [pixData, setPixData] = useState<PixData | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState("");
 
+  const moduloDestaque = searchParams.get("modulo");
+
   useEffect(() => {
-    api.get("/billing/status").then(r => {
-      setStatus(r.data);
-    }).finally(() => setLoading(false));
+    api.get<BillingStatus>("/billing/status")
+      .then(r => setStatus(r.data))
+      .finally(() => setLoading(false));
   }, []);
 
-  // Polling após gerar Pix — verifica se pagamento foi confirmado
   useEffect(() => {
     if (!polling) return;
     const interval = setInterval(async () => {
       const r = await api.get("/billing/pix-status");
-      if (r.data.planoAtivo) {
+      if (r.data.planoAtivo || r.data.subscriptionStatus === "ativo") {
         setPolling(false);
         setPixData(null);
         navigate("/app/billing?sucesso=1");
@@ -50,11 +102,11 @@ export default function Planos() {
     return () => clearInterval(interval);
   }, [polling, navigate]);
 
-  async function assinarPix(periodo: "mensal" | "anual") {
+  async function assinarPix(planoSlug: string) {
     setError("");
-    setLoadingPlano(periodo);
+    setLoadingPlano(`pix-${planoSlug}`);
     try {
-      const r = await api.post("/billing/checkout-pix", { periodo });
+      const r = await api.post<PixData>("/billing/checkout-pix", { plano_slug: planoSlug, tipo: ciclo });
       setPixData(r.data);
       setPolling(true);
     } catch (e: any) {
@@ -64,21 +116,25 @@ export default function Planos() {
     }
   }
 
-  async function assinarCartao(periodo: "mensal" | "anual") {
+  async function assinarCartao(planoSlug: string) {
     setError("");
-    setLoadingPlano(`cartao-${periodo}`);
+    setLoadingPlano(`cartao-${planoSlug}`);
     try {
-      const r = await api.post("/billing/checkout", { periodo });
-      window.location.href = r.data.url;
+      const r = await api.post<{ url: string }>("/billing/checkout", { plano_slug: planoSlug, tipo: ciclo });
+      if (r.data.url) window.location.href = r.data.url;
+      else {
+        setError("Checkout por cartão não configurado. Use Pix.");
+        setLoadingPlano(null);
+      }
     } catch (e: any) {
-      setError(e.response?.data?.error || "Erro ao abrir checkout. Tente novamente.");
+      setError(e.response?.data?.error || "Erro ao abrir checkout.");
       setLoadingPlano(null);
     }
   }
 
   async function gerenciarAssinatura() {
     try {
-      const r = await api.post("/billing/portal");
+      const r = await api.post<{ url: string }>("/billing/portal");
       window.open(r.data.url, "_blank");
     } catch {
       setError("Erro ao abrir portal de assinatura.");
@@ -100,155 +156,191 @@ export default function Planos() {
     );
   }
 
-  const jaAssinou = status?.planoAtivo && !status?.emTrial;
+  const planoAtivo = status?.planoSlug ?? planoAtualSlug;
+  const jaAssinou = (status?.planoAtivo && !status?.emTrial) || (status?.subscriptionStatus === "ativo");
 
   return (
-    <div className="min-h-screen bg-zena-cream py-12 px-4">
+    <div className="min-h-screen bg-zena-cream py-10 px-4">
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <Leaf className="text-zena-green-light" size={28} />
-            <span className="text-2xl font-bold text-zena-green-dark">clinne</span>
+            <Leaf className="text-zena-green-light" size={24} />
+            <span className="text-xl font-bold text-zena-green-dark">clinne</span>
           </div>
-          <h1 className="text-3xl font-bold text-zena-green-dark mb-2">Planos e Preços</h1>
+          <h1 className="text-[28px] font-bold text-zena-green-dark mb-2">Planos e Preços</h1>
+
           {status?.emTrial && (
-            <p className="text-amber-600 font-medium">
+            <p className="text-amber-600 font-medium text-sm">
               Você está no período de teste — {status.diasRestantesTrial} dia(s) restantes.
             </p>
           )}
           {jaAssinou && (
-            <p className="text-zena-green-light font-medium">
-              ✓ Plano {status?.plano} ativo
+            <p className="text-zena-green-light font-medium text-sm">
+              ✓ Plano {planoAtivo === "hub" ? "Hub de Engajamento" : "Ecossistema Completo"} ativo
               {status?.planoVencimento && ` · renova em ${new Date(status.planoVencimento).toLocaleDateString("pt-BR")}`}
             </p>
           )}
+
+          {moduloDestaque && (
+            <div className="mt-3 inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-sm text-amber-700">
+              <AlertCircle size={15} />
+              Você precisa de um plano com este módulo para acessá-lo.
+            </div>
+          )}
+        </div>
+
+        {/* Toggle mensal/anual */}
+        <div className="flex items-center justify-center mb-8">
+          <div className="bg-white rounded-xl border border-zena-mint/30 p-1 flex gap-1">
+            <button
+              onClick={() => setCiclo("mensal")}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                ciclo === "mensal"
+                  ? "bg-zena-green-dark text-white shadow-sm"
+                  : "text-zena-text-mid hover:text-zena-green-dark"
+              }`}
+            >
+              Mensal
+            </button>
+            <button
+              onClick={() => setCiclo("anual")}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+                ciclo === "anual"
+                  ? "bg-zena-green-dark text-white shadow-sm"
+                  : "text-zena-text-mid hover:text-zena-green-dark"
+              }`}
+            >
+              Anual
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                ciclo === "anual" ? "bg-white/20 text-white" : "bg-zena-green-light/15 text-zena-green-dark"
+              }`}>
+                2 meses grátis
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Cards de plano */}
         {!pixData && (
-          <>
-            {/* Prova social */}
-            <div className="flex items-center justify-center gap-3 mb-8">
-              <div className="flex -space-x-2">
-                {["FL", "AC", "RS", "MB"].map((i, idx) => (
-                  <div key={idx} className="w-8 h-8 rounded-full bg-zena-green-mid border-2 border-zena-cream flex items-center justify-center text-white text-[10px] font-bold">{i}</div>
-                ))}
-              </div>
-              <p className="text-zena-text-mid text-sm font-medium">
-                Usado por <span className="text-zena-green-dark font-bold">+200 nutricionistas</span> em todo o Brasil
-              </p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {PLANOS.map((plano) => {
+              const isAtual = planoAtivo === plano.slug;
+              const preco = ciclo === "anual" ? plano.precoAnualMensal : plano.precoMensal;
+              const isDestaque = plano.destaque;
 
-            {/* Grid: mensal | depoimento | anual */}
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-6 mb-6 items-start">
+              return (
+                <div
+                  key={plano.slug}
+                  className={`rounded-2xl overflow-hidden relative transition-transform ${
+                    isDestaque ? "shadow-xl scale-[1.02]" : "shadow-sm"
+                  } ${moduloDestaque && isDestaque ? "ring-2 ring-zena-green-light" : ""}`}
+                  style={isDestaque
+                    ? { background: "#1B4332" }
+                    : { background: "#fff", border: "1px solid rgba(134,178,159,0.2)" }}
+                >
+                  {isDestaque && (
+                    <div className="absolute top-4 right-4 bg-zena-green-light text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+                      Mais completo
+                    </div>
+                  )}
+                  {isAtual && (
+                    <div className={`absolute top-4 left-4 text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                      isDestaque ? "bg-white/20 text-white" : "bg-zena-green-light/20 text-zena-green-dark"
+                    }`}>
+                      Plano atual
+                    </div>
+                  )}
 
-              {/* Plano Mensal */}
-              <div className="bg-white rounded-2xl shadow-sm border border-zena-sage/20 p-8">
-                <h2 className="text-lg font-bold text-zena-green-dark mb-1">Plano Mensal</h2>
-                <p className="text-4xl font-extrabold text-zena-green-light mb-0.5">R$69</p>
-                <p className="text-zena-text text-sm mb-1">por mês</p>
-                <p className="text-zena-text-mid text-xs italic mb-6">Menos que uma consulta por mês</p>
-                <ul className="space-y-2 mb-8">
-                  {["Pacientes ilimitados", "Planos alimentares", "Área do paciente", "Cobranças via Pix", "Suporte por email"].map(f => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-zena-text">
-                      <Check size={16} className="text-zena-green-light flex-shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => assinarPix("mensal")}
-                    disabled={!!loadingPlano}
-                    className="w-full bg-zena-green-light text-white rounded-xl py-3 font-semibold hover:bg-zena-green-mid transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {loadingPlano === "mensal" ? <Loader2 size={16} className="animate-spin" /> : null}
-                    Pagar com Pix — R$69/mês
-                  </button>
-                  <button
-                    onClick={() => assinarCartao("mensal")}
-                    disabled={!!loadingPlano}
-                    className="w-full border border-zena-sage text-zena-text rounded-xl py-2.5 text-sm font-medium hover:bg-zena-cream transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {loadingPlano === "cartao-mensal" ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
-                    Pagar com cartão (Stripe)
-                  </button>
-                  <Garantias />
-                </div>
-              </div>
+                  <div className="p-7">
+                    <h2 className={`text-[17px] font-bold mb-1 ${isDestaque ? "text-white" : "text-zena-green-dark"} ${isAtual || isDestaque ? "mt-6" : ""}`}>
+                      {plano.nome}
+                    </h2>
+                    <p className={`text-[12px] mb-5 ${isDestaque ? "text-white/60" : "text-zena-text-light"}`}>
+                      {plano.descricao}
+                    </p>
 
-              {/* Depoimento (centro) */}
-              <div className="hidden md:flex flex-col items-center justify-center gap-4 w-48 py-8 px-2 self-center">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-zena-green-mid to-teal-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow-md">
-                  FL
-                </div>
-                <blockquote className="text-center">
-                  <p className="text-zena-text-dark text-sm font-medium leading-snug mb-2">
-                    "Reduzi 3h de trabalho semanal com o Clinne."
-                  </p>
-                  <footer className="text-zena-text-light text-xs">
-                    <strong className="text-zena-text-mid">Dra. Fernanda Lima</strong><br />
-                    CRN-3 15890 · São Paulo
-                  </footer>
-                </blockquote>
-                <div className="flex gap-0.5">
-                  {[1,2,3,4,5].map(s => <span key={s} className="text-amber-400 text-sm">★</span>)}
-                </div>
-              </div>
+                    {/* Preço */}
+                    <div className="mb-1">
+                      <span className={`text-[38px] font-extrabold leading-none ${isDestaque ? "text-zena-mint" : "text-zena-green-light"}`}>
+                        R${ciclo === "anual"
+                          ? fmt(preco).replace(",00", "")
+                          : plano.precoMensal}
+                      </span>
+                      <span className={`text-[13px] ml-1 ${isDestaque ? "text-white/60" : "text-zena-text-light"}`}>/mês</span>
+                    </div>
+                    {ciclo === "anual" && (
+                      <p className={`text-[11px] mb-5 ${isDestaque ? "text-zena-mint/80" : "text-zena-green-mid"}`}>
+                        cobrado R${plano.precoAnualTotal}/ano — 2 meses grátis
+                      </p>
+                    )}
+                    {ciclo === "mensal" && <div className="mb-5" />}
 
-              {/* Plano Anual */}
-              <div className="bg-zena-green-dark rounded-2xl shadow-sm p-8 relative overflow-hidden">
-                <div className="absolute top-4 right-4 bg-zena-green-light text-white text-xs font-bold px-3 py-1 rounded-full">
-                  MELHOR VALOR
-                </div>
-                <h2 className="text-lg font-bold text-white mb-1">Plano Anual</h2>
-                <p className="text-4xl font-extrabold text-zena-mint mb-0.5">R$59</p>
-                <p className="text-zena-text-light text-sm mb-1">por mês · cobrado como R$708/ano</p>
-                <p className="text-zena-mint text-xs font-semibold mb-6">Você economiza R$120 — 2 meses grátis</p>
-                <ul className="space-y-2 mb-8">
-                  {["Tudo do plano mensal", "2 meses grátis", "Suporte prioritário"].map(f => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-zena-text-light">
-                      <Check size={16} className="text-zena-mint flex-shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <div className="space-y-3">
-                  <button
-                    onClick={() => assinarPix("anual")}
-                    disabled={!!loadingPlano}
-                    className="w-full bg-zena-mint text-zena-green-dark rounded-xl py-3 font-bold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {loadingPlano === "anual" ? <Loader2 size={16} className="animate-spin" /> : null}
-                    Pagar com Pix — R$708/ano
-                  </button>
-                  <button
-                    onClick={() => assinarCartao("anual")}
-                    disabled={!!loadingPlano}
-                    className="w-full border border-zena-text-light/30 text-zena-text-light rounded-xl py-2.5 text-sm font-medium hover:bg-zena-green-mid transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {loadingPlano === "cartao-anual" ? <Loader2 size={14} className="animate-spin" /> : <ExternalLink size={14} />}
-                    Pagar com cartão (Stripe)
-                  </button>
-                  <Garantias dark />
-                </div>
-              </div>
-            </div>
+                    {/* Módulos */}
+                    <ul className="space-y-2 mb-6">
+                      {plano.modulos.map(({ icon: Icon, label }) => (
+                        <li key={label} className={`flex items-center gap-2 text-[13px] ${isDestaque ? "text-white/85" : "text-zena-text"}`}>
+                          <Icon size={13} className={isDestaque ? "text-zena-mint flex-shrink-0" : "text-zena-green-light flex-shrink-0"} />
+                          {label}
+                        </li>
+                      ))}
+                    </ul>
 
-            {/* Depoimento mobile (abaixo dos cards) */}
-            <div className="md:hidden flex items-center gap-4 bg-white rounded-2xl p-5 border border-zena-sage/20 mb-6">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-zena-green-mid to-teal-600 flex items-center justify-center text-white font-bold flex-shrink-0">
-                FL
-              </div>
-              <div>
-                <p className="text-zena-text-dark text-sm font-medium">"Reduzi 3h de trabalho semanal com o Clinne."</p>
-                <p className="text-zena-text-light text-xs mt-1">Dra. Fernanda Lima · CRN-3 15890</p>
-                <div className="flex gap-0.5 mt-1">{[1,2,3,4,5].map(s => <span key={s} className="text-amber-400 text-xs">★</span>)}</div>
-              </div>
-            </div>
-          </>
+                    {/* Botões */}
+                    {isAtual ? (
+                      <div>
+                        <div className={`text-center py-3 rounded-xl text-sm font-semibold ${
+                          isDestaque ? "bg-white/15 text-white" : "bg-zena-green-light/15 text-zena-green-dark"
+                        }`}>
+                          Plano atual ✓
+                        </div>
+                        {status?.metodoPagamento === "cartao" && (
+                          <button
+                            onClick={gerenciarAssinatura}
+                            className={`mt-2 w-full text-center text-[12px] flex items-center justify-center gap-1 ${
+                              isDestaque ? "text-white/50 hover:text-white" : "text-zena-text-light hover:text-zena-green-dark"
+                            } transition-colors`}
+                          >
+                            Gerenciar assinatura <ExternalLink size={12} />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        <button
+                          onClick={() => assinarPix(plano.slug)}
+                          disabled={!!loadingPlano}
+                          className={`w-full py-3 rounded-xl font-bold text-[14px] transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
+                            isDestaque
+                              ? "bg-zena-mint text-zena-green-dark hover:opacity-90"
+                              : "bg-zena-green-light text-white hover:bg-zena-green-mid"
+                          }`}
+                        >
+                          {loadingPlano === `pix-${plano.slug}` && <Loader2 size={15} className="animate-spin" />}
+                          Pagar com Pix — R${ciclo === "anual" ? plano.precoAnualTotal : plano.precoMensal}
+                          {ciclo === "anual" ? "/ano" : "/mês"}
+                        </button>
+                        <button
+                          onClick={() => assinarCartao(plano.slug)}
+                          disabled={!!loadingPlano}
+                          className={`w-full py-2.5 rounded-xl text-[13px] font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 ${
+                            isDestaque
+                              ? "border border-white/25 text-white/80 hover:bg-white/10"
+                              : "border border-zena-sage text-zena-text hover:bg-zena-cream"
+                          }`}
+                        >
+                          {loadingPlano === `cartao-${plano.slug}` ? <Loader2 size={13} className="animate-spin" /> : <ExternalLink size={13} />}
+                          Pagar com cartão
+                        </button>
+                        <Garantias dark={isDestaque} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
 
         {/* Erro */}
@@ -259,14 +351,15 @@ export default function Planos() {
           </div>
         )}
 
-        {/* QR Code / Copia e cola Pix */}
+        {/* QR Code Pix */}
         {pixData && (
-          <div className="bg-white rounded-2xl shadow-sm border border-zena-sage/20 p-8 max-w-lg mx-auto text-center">
+          <div className="bg-white rounded-2xl shadow-sm border border-zena-sage/20 p-8 max-w-md mx-auto text-center">
             <CheckCircle size={40} className="text-zena-green-light mx-auto mb-4" />
             <h2 className="text-xl font-bold text-zena-green-dark mb-2">Pague com Pix</h2>
             <p className="text-zena-text text-sm mb-6">
-              Plano {pixData.periodo === "mensal" ? "Mensal" : "Anual"} — R${pixData.periodo === "mensal" ? "69" : "708"}<br />
-              Após o pagamento, seu acesso é liberado em segundos.
+              {pixData.planoSlug === "hub" ? "Hub de Engajamento" : "Ecossistema Completo"}
+              {" — "}R${pixData.valor}{ciclo === "anual" ? "/ano" : "/mês"}
+              <br />Após o pagamento, seu acesso é liberado em segundos.
             </p>
 
             {pixData.pixQrCode && (
@@ -292,32 +385,15 @@ export default function Planos() {
 
             <div className="flex items-center gap-2 justify-center text-zena-text text-xs">
               <Loader2 size={14} className="animate-spin text-zena-green-light" />
-              Aguardando confirmação do pagamento...
+              Aguardando confirmação...
             </div>
 
             <button
               onClick={() => { setPixData(null); setPolling(false); }}
               className="mt-4 text-xs text-zena-text hover:text-zena-green-dark"
             >
-              Voltar para os planos
+              Voltar
             </button>
-          </div>
-        )}
-
-        {/* Gestão de assinatura ativa */}
-        {jaAssinou && !pixData && (
-          <div className="bg-white rounded-xl border border-zena-sage/20 p-6 text-center">
-            <p className="text-zena-text text-sm mb-3">
-              Quer gerenciar sua assinatura por cartão ou atualizar dados de pagamento?
-            </p>
-            {status?.metodoPagamento === "cartao" && (
-              <button
-                onClick={gerenciarAssinatura}
-                className="text-zena-green-light font-medium text-sm hover:underline flex items-center gap-1 mx-auto"
-              >
-                Acessar portal de assinatura <ExternalLink size={14} />
-              </button>
-            )}
           </div>
         )}
       </div>
@@ -326,12 +402,11 @@ export default function Planos() {
 }
 
 function Garantias({ dark }: { dark?: boolean }) {
-  const cls = dark ? "text-zena-text-light/70" : "text-zena-text-light";
   return (
-    <div className={`flex flex-wrap items-center justify-center gap-x-4 gap-y-1 pt-1 ${cls} text-[11px]`}>
+    <div className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 text-[10px] ${dark ? "text-white/40" : "text-zena-text-light"}`}>
       <span>✓ Cancele quando quiser</span>
       <span>✓ Sem fidelidade</span>
-      <span>✓ Dados protegidos (LGPD)</span>
+      <span>✓ LGPD</span>
     </div>
   );
 }

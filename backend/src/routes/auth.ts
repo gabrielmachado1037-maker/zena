@@ -47,7 +47,7 @@ router.post("/register", async (req: Request, res: Response) => {
   emailBoasVindas(nome, email).catch(console.error);
 
   const token = jwt.sign({ id: nutri.id }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio } });
+  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: null, subscriptionStatus: "trial", modulosAtivos: [] } });
 });
 
 router.post("/login", loginLimiter, async (req: Request, res: Response) => {
@@ -60,7 +60,7 @@ router.post("/login", loginLimiter, async (req: Request, res: Response) => {
   if (!ok) return res.status(401).json({ error: "Credenciais inválidas" });
 
   const token = jwt.sign({ id: nutri.id }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: nutri.foto ?? null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio } });
+  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: nutri.foto ?? null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: nutri.planoSlug ?? null, subscriptionStatus: nutri.subscriptionStatus ?? "trial", modulosAtivos: nutri.modulosAtivos ?? [] } });
 });
 
 router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) => {

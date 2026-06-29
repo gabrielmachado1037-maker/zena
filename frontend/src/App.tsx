@@ -5,6 +5,7 @@ import { AlertasProvider } from "./contexts/AlertasContext";
 import { PacienteAuthProvider } from "./contexts/PacienteAuthContext";
 import Layout from "./components/Layout";
 import PacienteLayout from "./components/PacienteLayout";
+import RotaProtegida from "./components/RotaProtegida";
 
 // Lazy-loaded pages — each route only downloads when visited
 const Landing       = lazy(() => import("./pages/Landing"));
@@ -72,16 +73,16 @@ function AppRoutes() {
           <Route index element={<Navigate to="/app/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="pacientes" element={<Pacientes />} />
-          <Route path="pacientes/:id" element={<PacienteDetalhe />} />
-          <Route path="cobrancas" element={<Cobrancas />} />
-          <Route path="horarios" element={<Horarios />} />
+          <Route path="pacientes/:id" element={<RotaProtegida modulo="prontuario"><PacienteDetalhe /></RotaProtegida>} />
+          <Route path="cobrancas" element={<RotaProtegida modulo="financeiro"><Cobrancas /></RotaProtegida>} />
+          <Route path="horarios" element={<RotaProtegida modulo="agenda"><Horarios /></RotaProtegida>} />
           <Route path="billing" element={<Billing />} />
-          <Route path="financeiro" element={<Financeiro />} />
+          <Route path="financeiro" element={<RotaProtegida modulo="financeiro"><Financeiro /></RotaProtegida>} />
           <Route path="planos" element={<Planos />} />
           <Route path="perfil" element={<Perfil />} />
-          <Route path="ranking" element={<Ranking />} />
-          <Route path="feed" element={<Feed />} />
-          <Route path="planos-alimentares" element={<PlanosAlimentares />} />
+          <Route path="ranking" element={<RotaProtegida modulo="ranking"><Ranking /></RotaProtegida>} />
+          <Route path="feed" element={<RotaProtegida modulo="feed"><Feed /></RotaProtegida>} />
+          <Route path="planos-alimentares" element={<RotaProtegida modulo="plano_alimentar"><PlanosAlimentares /></RotaProtegida>} />
         </Route>
         {/* Paciente routes */}
         <Route path="/login-paciente" element={<LoginPaciente />} />
