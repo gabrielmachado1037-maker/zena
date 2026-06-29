@@ -294,14 +294,18 @@ model DailyQuote {
 
 model FeedPost {
   id              String        @id @default(cuid())
-  tipo            String        // META_BATIDA | PESO_ALCANCADO | CONQUISTA
+  tipo            String        @default("CONQUISTA") // legado: META_BATIDA | PESO_ALCANCADO | CONQUISTA
+  categoria       String        @default("MOMENTO")   // REFEICAO | TREINO | MOMENTO
+  privacidade     String        @default("PUBLICO")   // PUBLICO | APENAS_NUTRI
   pacienteId      String
   paciente        Paciente      @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   nutricionistaId String
   nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id], onDelete: Cascade)
   mensagem        String
+  fotoUrl         String?
   curtidas        Int           @default(0)
-  privado         Boolean       @default(false)
+  privado         Boolean       @default(false)       // legado — usar privacidade
+  autorNutri      Boolean       @default(false)
   criadoEm        DateTime      @default(now())
 
   @@index([nutricionistaId])

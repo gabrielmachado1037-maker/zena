@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
+import { uploadFeedFoto } from "../lib/supabase";
 
 const router = Router();
 router.use(authPacienteMiddleware);
@@ -13,8 +14,8 @@ router.get("/feed", async (req: PacienteAuthRequest, res: Response) => {
     where: {
       nutricionistaId: req.nutricionistaId!,
       OR: [
-        { privado: false },
-        { pacienteId: req.pacienteId!, privado: true },
+        { privacidade: "PUBLICO" },
+        { pacienteId: req.pacienteId!, privacidade: "APENAS_NUTRI" },
       ],
     },
     include: { paciente: { select: { nome: true } } },
@@ -26,16 +27,30 @@ router.get("/feed", async (req: PacienteAuthRequest, res: Response) => {
 
 // POST /api/paciente-app/feed
 router.post("/feed", async (req: PacienteAuthRequest, res: Response) => {
-  const { mensagem, privado } = req.body;
+  const { mensagem, categoria = "MOMENTO", privacidade = "PUBLICO", fotoBase64 } = req.body as {
+    mensagem: string;
+    categoria?: string;
+    privacidade?: string;
+    fotoBase64?: string;
+  };
   if (!mensagem?.trim()) return res.status(400).json({ error: "Mensagem é obrigatória." });
+
+  let fotoUrl: string | null = null;
+  if (fotoBase64?.startsWith("data:image/")) {
+    const path = `paciente/${req.pacienteId!}/${Date.now()}.jpg`;
+    fotoUrl = await uploadFeedFoto(path, fotoBase64);
+  }
 
   const post = await prisma.feedPost.create({
     data: {
       tipo: "CONQUISTA",
+      categoria,
+      privacidade,
       mensagem: mensagem.trim(),
+      fotoUrl,
       pacienteId: req.pacienteId!,
       nutricionistaId: req.nutricionistaId!,
-      privado: privado === true,
+      autorNutri: false,
     },
     include: { paciente: { select: { nome: true } } },
   });
