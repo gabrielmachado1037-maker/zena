@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { Users, DollarSign, Calendar, AlertCircle, Clock, CheckCircle, XCircle, MessageCircle, Bell, X, Zap, ChevronRight } from "lucide-react";
+import { Users, DollarSign, Calendar, AlertCircle, Clock, CheckCircle, XCircle, MessageCircle, Bell, X, Zap, ChevronRight, FileText, TrendingUp } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -233,10 +233,17 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="min-w-0 flex-1 mr-4">
-            <h1 className="text-[28px] font-semibold text-[#111] leading-tight tracking-tight">
-              Olá, {firstName}!
+            <h1 className="text-[28px] font-bold text-[#111] leading-tight tracking-tight">
+              Olá, {firstName}! 👋
             </h1>
-            <p className="text-[14px] text-[#999] mt-0.5">Tenha um dia incrível!</p>
+            {data?.consultasHoje[0] ? (
+              <p className="text-[13px] font-medium mt-0.5" style={{ color: "#1B4332" }}>
+                Próxima consulta: {data.consultasHoje[0].paciente.nome.split(" ")[0]} às{" "}
+                {new Date(data.consultasHoje[0].data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+              </p>
+            ) : (
+              <p className="text-[13px] text-[#999] mt-0.5">Tenha um dia incrível!</p>
+            )}
             <QuoteInline />
           </div>
           {nutricionista?.logoConsultorio ? (
@@ -265,70 +272,102 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-3">
             {/* Card 1 — Atendimentos hoje */}
-            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-5">
-              <p className="text-[13px] text-[#999] font-normal mb-2">Seus atendimentos hoje</p>
-              <div className="flex items-center justify-between">
-                <span className="text-[52px] font-light text-[#111] leading-none tabular-nums">
-                  {String(data!.consultasHoje.length).padStart(2, "0")}
-                </span>
-                <Link to="/app/horarios" className="text-[12px] text-zena-green-dark">
-                  ver agenda →
-                </Link>
+            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-4 flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#E0F2E9" }}>
+                <Calendar size={20} style={{ color: "#1B4332" }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] text-[#999] font-medium">Atendimentos hoje</p>
+                <div className="flex items-end justify-between mt-0.5">
+                  <span className="text-[46px] font-bold text-[#111] leading-none tabular-nums">
+                    {String(data!.consultasHoje.length).padStart(2, "0")}
+                  </span>
+                  <Link to="/app/horarios" className="text-[12px] font-semibold pb-1" style={{ color: "#1B4332" }}>
+                    ver agenda →
+                  </Link>
+                </div>
               </div>
             </div>
 
             {/* Card 2 — Pacientes ativos */}
-            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-5">
-              <p className="text-[13px] text-[#999] font-normal mb-2">Pacientes ativos</p>
-              <div className="flex items-center justify-between">
-                <span className="text-[52px] font-light text-[#111] leading-none tabular-nums">
-                  {data!.pacientesAtivos}
-                </span>
-                <Link to="/app/pacientes" className="text-[12px] text-zena-green-dark">
-                  ver todos →
-                </Link>
+            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-4 flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#E0F2E9" }}>
+                <Users size={20} style={{ color: "#1B4332" }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] text-[#999] font-medium">Pacientes ativos</p>
+                <div className="flex items-end justify-between mt-0.5">
+                  <span className="text-[46px] font-bold text-[#111] leading-none tabular-nums">
+                    {data!.pacientesAtivos}
+                  </span>
+                  <Link to="/app/pacientes" className="text-[12px] font-semibold pb-1" style={{ color: "#1B4332" }}>
+                    ver todos →
+                  </Link>
+                </div>
               </div>
             </div>
 
             {/* Card 3 — Faturamento */}
-            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-5">
-              <p className="text-[13px] text-[#999] font-normal mb-2">Faturamento do mês</p>
-              <div className="flex items-center justify-between">
-                <span className={`font-light text-[#111] leading-none tabular-nums ${data!.faturamentoMes >= 10000 ? "text-[38px]" : "text-[48px]"}`}>
-                  {fmtMoney(data!.faturamentoMes)}
-                </span>
-                <Link to="/app/cobrancas" className="text-[12px] text-zena-green-dark">
-                  ver cobranças →
-                </Link>
+            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-4 flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#E0F2E9" }}>
+                <DollarSign size={20} style={{ color: "#1B4332" }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-[12px] text-[#999] font-medium">Faturamento do mês</p>
+                  {pctRecebido > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#E0F2E9", color: "#1B4332" }}>
+                      {pctRecebido}% recebido
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-end justify-between mt-0.5">
+                  <span className={`font-bold text-[#111] leading-none tabular-nums ${data!.faturamentoMes >= 10000 ? "text-[34px]" : "text-[44px]"}`}>
+                    {fmtMoney(data!.faturamentoMes)}
+                  </span>
+                  <Link to="/app/financeiro" className="text-[12px] font-semibold pb-1" style={{ color: "#1B4332" }}>
+                    ver financeiro →
+                  </Link>
+                </div>
               </div>
             </div>
 
             {/* Card 4 — Planos alimentares */}
-            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-5">
-              <p className="text-[13px] text-[#999] font-normal mb-2">Planos alimentares criados</p>
-              <div className="flex items-center justify-between">
-                <span className="text-[52px] font-light text-[#111] leading-none tabular-nums">
-                  {data!.totalPlanos}
-                </span>
-                <Link to="/app/pacientes" className="text-[12px] text-zena-green-dark">
-                  ver pacientes →
-                </Link>
+            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-4 flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#E0F2E9" }}>
+                <FileText size={20} style={{ color: "#1B4332" }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] text-[#999] font-medium">Planos alimentares</p>
+                <div className="flex items-end justify-between mt-0.5">
+                  <span className="text-[46px] font-bold text-[#111] leading-none tabular-nums">
+                    {data!.totalPlanos}
+                  </span>
+                  <Link to="/app/pacientes" className="text-[12px] font-semibold pb-1" style={{ color: "#1B4332" }}>
+                    ver pacientes →
+                  </Link>
+                </div>
               </div>
             </div>
 
             {/* Card 5 — Evolução dos pacientes */}
-            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-5">
-              <p className="text-[13px] text-[#999] font-normal mb-2">Evolução dos pacientes</p>
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-[52px] font-light text-[#111] leading-none">
-                    {data!.evolucaoPeso.totalComMedicoes > 0 ? `${data!.evolucaoPeso.pct}%` : "—"}
-                  </span>
-                  {data!.evolucaoPeso.totalComMedicoes > 0 && (
-                    <p className="text-[11px] text-[#bbb] mt-1">perderam peso</p>
-                  )}
+            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-4 flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#E0F2E9" }}>
+                <TrendingUp size={20} style={{ color: "#1B4332" }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] text-[#999] font-medium">Evolução dos pacientes</p>
+                <div className="flex items-end justify-between mt-0.5">
+                  <div>
+                    <span className="text-[46px] font-bold text-[#111] leading-none">
+                      {data!.evolucaoPeso.totalComMedicoes > 0 ? `${data!.evolucaoPeso.pct}%` : "—"}
+                    </span>
+                    {data!.evolucaoPeso.totalComMedicoes > 0 && (
+                      <p className="text-[11px] text-[#bbb] mt-0.5">perderam peso</p>
+                    )}
+                  </div>
+                  <Sparkline data={data!.evolucaoPeso.sparkline} />
                 </div>
-                <Sparkline data={data!.evolucaoPeso.sparkline} />
               </div>
             </div>
           </div>
@@ -424,7 +463,7 @@ export default function Dashboard() {
       </div>
 
       {/* ━━━ DESKTOP LAYOUT ━━━ */}
-      <div className="hidden md:block bg-[#F8F8F6] min-h-screen p-8">
+      <div className="hidden md:block bg-zena-cream min-h-screen p-8">
 
         {/* Welcome header */}
         <div className="flex items-center justify-between mb-8">
@@ -460,37 +499,59 @@ export default function Dashboard() {
         ) : (
           <div className="grid grid-cols-4 gap-4 mb-6">
             {/* Pacientes ativos */}
-            <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-              <p className="text-[12px] text-[#999] font-normal mb-3">Pacientes ativos</p>
-              <p className="text-[36px] font-light text-[#111] leading-none tabular-nums mb-2">{data!.pacientesAtivos}</p>
+            <div className="bg-white rounded-xl p-6 border border-[#E8F0EC] shadow-[0_1px_4px_rgba(27,67,50,0.06)]">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#E0F2E9" }}>
+                  <Users size={14} style={{ color: "#1B4332" }} />
+                </div>
+                <p className="text-[12px] text-[#999] font-medium">Pacientes ativos</p>
+              </div>
+              <p className="text-[36px] font-bold text-[#111] leading-none tabular-nums mb-2">{data!.pacientesAtivos}</p>
               {data!.novosPacientesMes > 0 && (
-                <p className="text-[12px] text-zena-green-dark">+{data!.novosPacientesMes} este mês</p>
+                <p className="text-[12px] font-semibold" style={{ color: "#1B4332" }}>+{data!.novosPacientesMes} este mês</p>
               )}
             </div>
 
             {/* Atendimentos hoje */}
-            <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-              <p className="text-[12px] text-[#999] font-normal mb-3">Atendimentos hoje</p>
-              <p className="text-[36px] font-light text-[#111] leading-none tabular-nums mb-2">
+            <div className="bg-white rounded-xl p-6 border border-[#E8F0EC] shadow-[0_1px_4px_rgba(27,67,50,0.06)]">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#E0F2E9" }}>
+                  <Calendar size={14} style={{ color: "#1B4332" }} />
+                </div>
+                <p className="text-[12px] text-[#999] font-medium">Atendimentos hoje</p>
+              </div>
+              <p className="text-[36px] font-bold text-[#111] leading-none tabular-nums mb-2">
                 {String(data!.consultasHoje.length).padStart(2, "0")}
               </p>
-              <Link to="/app/horarios" className="text-[12px] text-zena-green-dark">ver agenda →</Link>
+              <Link to="/app/horarios" className="text-[12px] font-semibold" style={{ color: "#1B4332" }}>ver agenda →</Link>
             </div>
 
             {/* Novos pacientes */}
-            <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-              <p className="text-[12px] text-[#999] font-normal mb-3">Novos pacientes</p>
-              <p className="text-[36px] font-light text-[#111] leading-none tabular-nums mb-2">{data!.novosPacientesMes}</p>
+            <div className="bg-white rounded-xl p-6 border border-[#E8F0EC] shadow-[0_1px_4px_rgba(27,67,50,0.06)]">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#E0F2E9" }}>
+                  <TrendingUp size={14} style={{ color: "#1B4332" }} />
+                </div>
+                <p className="text-[12px] text-[#999] font-medium">Novos pacientes</p>
+              </div>
+              <p className="text-[36px] font-bold text-[#111] leading-none tabular-nums mb-2">{data!.novosPacientesMes}</p>
               <p className="text-[12px] text-[#bbb]">este mês</p>
             </div>
 
             {/* Faturamento */}
-            <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-              <p className="text-[12px] text-[#999] font-normal mb-3">Faturamento</p>
-              <p className="text-[26px] font-light text-[#111] leading-none tabular-nums mb-2">
+            <div className="rounded-xl p-6 border shadow-[0_1px_4px_rgba(27,67,50,0.08)]" style={{ background: "#1B4332", borderColor: "#1B4332" }}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,0.15)" }}>
+                  <DollarSign size={14} className="text-white" />
+                </div>
+                <p className="text-[12px] text-white/60 font-medium">Faturamento</p>
+              </div>
+              <p className="text-[26px] font-bold text-white leading-none tabular-nums mb-2">
                 {`R$ ${data!.faturamentoMes.toFixed(2).replace(".", ",")}`}
               </p>
-              <p className="text-[12px] text-[#bbb]">este mês</p>
+              {pctRecebido > 0 && (
+                <p className="text-[12px] font-semibold text-zena-mint">{pctRecebido}% recebido este mês</p>
+              )}
             </div>
           </div>
         )}

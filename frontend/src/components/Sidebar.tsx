@@ -40,10 +40,10 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-5 pt-7 pb-6">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-[17px] leading-none tracking-tight">C</span>
+          <div className="w-8 h-8 rounded-lg bg-zena-green-mid flex items-center justify-center flex-shrink-0">
+            <span className="text-zena-mint font-bold text-[17px] leading-none tracking-tight">C</span>
           </div>
-          <span className="text-white font-semibold text-[17px] tracking-wide">clinne</span>
+          <span className="text-white font-bold text-[17px] tracking-wide">clinne</span>
         </div>
       </div>
 
@@ -57,11 +57,11 @@ export default function Sidebar() {
               to={to}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] font-medium transition-all ${
                 isActive
-                  ? "bg-white/10 text-white"
-                  : "text-white/55 hover:text-white hover:bg-white/8"
+                  ? "bg-zena-green-mid text-white"
+                  : "text-white/55 hover:text-white/90 hover:bg-white/8"
               }`}
             >
-              <Icon size={16} strokeWidth={isActive ? 2 : 1.5} />
+              <Icon size={16} strokeWidth={isActive ? 2.5 : 1.5} className={isActive ? "text-zena-mint" : ""} />
               {label}
             </Link>
           );
