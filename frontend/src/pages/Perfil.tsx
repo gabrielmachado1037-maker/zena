@@ -1,11 +1,12 @@
 ﻿import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from "react";
-import { User, Lock, CheckCircle, Building2, Upload, X, Link2, RefreshCw, Copy, Camera } from "lucide-react";
+import { User, Lock, CheckCircle, Building2, Upload, X, Link2, RefreshCw, Copy, Camera, LogOut } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
 
 export default function Perfil() {
-  const { nutricionista } = useAuth();
+  const { nutricionista, logout } = useAuth();
+  const [modalLogout, setModalLogout] = useState(false);
 
   // ─── Dados pessoais ──────────────────────────────────────────────────────
   const [nome, setNome] = useState(nutricionista?.nome || "");
@@ -393,6 +394,46 @@ export default function Perfil() {
           <p className="text-xs text-zena-text-light mt-2">Gerar um novo código invalida o anterior.</p>
         )}
       </div>
+
+      {/* Sair da conta */}
+      <button
+        onClick={() => setModalLogout(true)}
+        className="md:hidden w-full flex items-center justify-center gap-2 py-[14px] rounded-lg border border-red-600 bg-white text-red-600 font-medium text-sm transition-colors hover:bg-red-50 mt-6"
+      >
+        <LogOut size={16} />
+        Sair da conta
+      </button>
+
+      {/* Modal de confirmação de logout */}
+      {modalLogout && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.45)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) setModalLogout(false); }}
+        >
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mx-auto mb-4">
+              <LogOut size={22} className="text-red-600" />
+            </div>
+            <h2 className="text-[17px] font-bold text-center text-zena-text-dark mb-1">Sair da conta?</h2>
+            <p className="text-sm text-center text-zena-text-light mb-6">Você precisará fazer login novamente.</p>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={() => logout()}
+                className="w-full py-3.5 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors"
+              >
+                Sair
+              </button>
+              <button
+                onClick={() => setModalLogout(false)}
+                className="w-full py-3.5 rounded-xl bg-gray-100 text-gray-600 font-medium text-sm hover:bg-gray-200 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

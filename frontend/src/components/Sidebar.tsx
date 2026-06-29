@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Home, Users, CalendarDays, FileText, Trophy, BarChart2, Rss, Settings, LogOut, Download, Lock } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { usePWAInstall } from "../hooks/usePWAInstall";
@@ -25,7 +25,6 @@ const NAV = [
 export default function Sidebar() {
   const { nutricionista, logout } = useAuth();
   const { temAcesso } = usePermissao();
-  const navigate = useNavigate();
   const location = useLocation();
   const { isInstallable, isIOS, install } = usePWAInstall();
   const [iosHint, setIosHint] = useState(false);
@@ -33,7 +32,6 @@ export default function Sidebar() {
 
   function handleLogout() {
     logout();
-    navigate("/login");
   }
 
   const firstName = nutricionista?.nome.split(" ")[0] ?? "";
@@ -129,7 +127,7 @@ export default function Sidebar() {
           <button
             onClick={(e) => { e.preventDefault(); handleLogout(); }}
             className="text-white/25 hover:text-white/70 transition-colors flex-shrink-0"
-            title="Sair"
+            title="Sair da conta"
           >
             <LogOut size={14} />
           </button>

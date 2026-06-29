@@ -59,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     delete api.defaults.headers.Authorization;
     localStorage.removeItem("zena_token");
     localStorage.removeItem("zena_user");
+    sessionStorage.clear();
+    window.location.href = "/login";
   }
 
   function updateAvatar(foto: string) {
