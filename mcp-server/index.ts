@@ -257,7 +257,7 @@ function setupOAuth(app: express.Application) {
   });
 
   // Token — troca o code pelo access token (= MCP_API_KEY)
-  app.post("/oauth/token", express.urlencoded({ extended: false }), (req: Request, res: Response) => {
+  app.post("/oauth/token", (req: Request, res: Response) => {
     const { grant_type, code } = req.body as Record<string, string>;
 
     if (grant_type !== "authorization_code") {
@@ -286,12 +286,23 @@ function setupOAuth(app: express.Application) {
 
 async function startHttp(port: number) {
   const app = express();
+
+  // CORS — necessário para o Claude.ai fazer requisições cross-origin
+  app.use((req: Request, res: Response, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, MCP-Protocol-Version");
+    if (req.method === "OPTIONS") { res.sendStatus(204); return; }
+    next();
+  });
+
   app.use(express.json());
+  app.use(express.urlencoded({ extended: false }));
 
   const apiKey = setupOAuth(app);
 
   // Rotas públicas (sem auth)
-  const PUBLIC = ["/health", "/.well-known/oauth-authorization-server", "/oauth/authorize", "/oauth/token", "/oauth/register"];
+  const PUBLIC = ["/health", "/.well-known/", "/oauth/"];
 
   app.use((req: Request, res: Response, next) => {
     if (PUBLIC.some(p => req.path.startsWith(p))) return next();
