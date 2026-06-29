@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { NavLink } from "react-router-dom";
-import { Rss, Trophy, Calendar, CreditCard, User } from "lucide-react";
+import { LayoutDashboard, Rss, Trophy, Calendar, CreditCard, User } from "lucide-react";
 import { usePacienteAuth } from "../contexts/PacienteAuthContext";
 import api from "../lib/api";
 
 const TABS = [
-  { to: "/paciente/feed",       icon: Rss,        label: "Feed" },
-  { to: "/paciente/ranking",    icon: Trophy,      label: "Ranking" },
-  { to: "/paciente/consultas",  icon: Calendar,    label: "Consultas" },
-  { to: "/paciente/pagamentos", icon: CreditCard,  label: "Pagamentos" },
-  { to: "/paciente/conta",      icon: User,        label: "Conta" },
+  { to: "/paciente/dashboard",  icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/paciente/feed",        icon: Rss,             label: "Feed" },
+  { to: "/paciente/ranking",     icon: Trophy,          label: "Ranking" },
+  { to: "/paciente/consultas",   icon: Calendar,        label: "Consultas" },
+  { to: "/paciente/pagamentos",  icon: CreditCard,      label: "Pagamentos" },
+  { to: "/paciente/conta",       icon: User,            label: "Conta" },
 ];
 
 const FRASE_KEY = "pac_frase_v1";
@@ -31,22 +32,36 @@ function PacienteHeader({ frase }: { frase: string }) {
   const { paciente } = usePacienteAuth();
   if (!paciente) return null;
   return (
-    <div className="bg-white border-b border-[#F0F0EE] px-5 pb-4"
-      style={{ paddingTop: "max(env(safe-area-inset-top), 44px)" }}>
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-[#E0F2E9]">
+    <div
+      className="px-5 pb-4"
+      style={{
+        background: "#1B4332",
+        paddingTop: "max(env(safe-area-inset-top), 44px)",
+      }}
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-[17px] font-bold text-white leading-tight">
+            {saudacaoDinamica(paciente.nome)}
+          </p>
+          {frase && (
+            <p className="text-[12px] mt-0.5 line-clamp-1"
+              style={{ color: "rgba(255,255,255,0.70)" }}>
+              {frase}
+            </p>
+          )}
+        </div>
+        <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/30 flex-shrink-0">
           {paciente.fotoUrl ? (
             <img src={paciente.fotoUrl} alt={paciente.nome} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-white font-bold text-[16px]"
-              style={{ background: "#1B4332" }}>
+            <div
+              className="w-full h-full flex items-center justify-center text-white font-bold text-[15px]"
+              style={{ background: "#2D6A4F" }}
+            >
               {getInitials(paciente.nome)}
             </div>
           )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[16px] font-semibold text-[#111]">{saudacaoDinamica(paciente.nome)}</p>
-          {frase && <p className="text-[12px] text-[#888] leading-snug line-clamp-1">{frase}</p>}
         </div>
       </div>
     </div>
@@ -55,20 +70,30 @@ function PacienteHeader({ frase }: { frase: string }) {
 
 function PacienteNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 flex border-t border-white/10 pb-safe"
-      style={{ background: "#1B4332" }}>
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-40 flex pb-safe border-t border-white/10"
+      style={{ background: "#1B4332" }}
+    >
       {TABS.map(({ to, icon: Icon, label }) => (
         <NavLink
           key={to}
           to={to}
           className={({ isActive }) =>
-            `flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 transition-colors ${
-              isActive ? "text-white" : "text-white/45 hover:text-white/70"
+            `flex-1 flex flex-col items-center justify-center pt-2.5 pb-1.5 gap-0.5 transition-colors ${
+              isActive ? "text-white" : "text-white/45"
             }`
           }
         >
-          <Icon size={20} />
-          <span className="text-[9px] font-medium">{label}</span>
+          {({ isActive }) => (
+            <>
+              <Icon size={18} />
+              <span className="text-[8px] font-medium">{label}</span>
+              {isActive && (
+                <div className="w-1 h-1 bg-white rounded-full" />
+              )}
+              {!isActive && <div className="w-1 h-1" />}
+            </>
+          )}
         </NavLink>
       ))}
     </nav>
@@ -88,7 +113,13 @@ async function subscribePush(token: string) {
     });
     await api.post(
       "/paciente-app/push/subscribe",
-      { endpoint: sub.endpoint, keys: { p256dh: arrayBufferToBase64(sub.getKey("p256dh")!), auth: arrayBufferToBase64(sub.getKey("auth")!) } },
+      {
+        endpoint: sub.endpoint,
+        keys: {
+          p256dh: arrayBufferToBase64(sub.getKey("p256dh")!),
+          auth: arrayBufferToBase64(sub.getKey("auth")!),
+        },
+      },
       { headers: { Authorization: `Bearer ${token}` } }
     );
   } catch { /* push is optional */ }
@@ -112,8 +143,14 @@ export default function PacienteLayout() {
     if (!token) return;
     const cached = sessionStorage.getItem(FRASE_KEY);
     if (cached) { setFrase(cached); return; }
-    api.get<{ frase: string }>("/paciente-app/frase-motivacional", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => { setFrase(r.data.frase); sessionStorage.setItem(FRASE_KEY, r.data.frase); })
+    api
+      .get<{ frase: string }>("/paciente-app/frase-motivacional", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      .then(r => {
+        setFrase(r.data.frase);
+        sessionStorage.setItem(FRASE_KEY, r.data.frase);
+      })
       .catch(() => setFrase("Pequenas escolhas fazem grandes transformações."));
   }, [token]);
 
@@ -124,8 +161,10 @@ export default function PacienteLayout() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#F9FAF8" }}>
-        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
-          style={{ borderColor: "#52B788", borderTopColor: "transparent" }} />
+        <div
+          className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
+          style={{ borderColor: "#52B788", borderTopColor: "transparent" }}
+        />
       </div>
     );
   }
@@ -133,7 +172,7 @@ export default function PacienteLayout() {
   if (!token) return <Navigate to="/login-paciente" replace />;
 
   return (
-    <div className="min-h-screen pb-20" style={{ background: "#F9FAF8" }}>
+    <div className="min-h-screen pb-20" style={{ background: "#F5F5F0" }}>
       <PacienteHeader frase={frase} />
       <Outlet />
       <PacienteNav />

@@ -170,6 +170,15 @@ router.get("/pagamentos", async (req: PacienteAuthRequest, res: Response) => {
 
 // ─── Perfil do paciente ───────────────────────────────────────────────────────
 
+// GET /api/paciente-app/plano-alimentar
+router.get("/plano-alimentar", async (req: PacienteAuthRequest, res: Response) => {
+  const plano = await prisma.planoAlimentar.findFirst({
+    where: { pacienteId: req.pacienteId! },
+    orderBy: { dataCriacao: "desc" },
+  });
+  res.json({ plano });
+});
+
 // GET /api/paciente-app/me
 router.get("/me", async (req: PacienteAuthRequest, res: Response) => {
   const [paciente, primeiroMedicao] = await Promise.all([

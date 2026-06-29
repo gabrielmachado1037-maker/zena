@@ -32,7 +32,8 @@ const FeedPaciente       = lazy(() => import("./pages/paciente/FeedPaciente"));
 const RankingPaciente    = lazy(() => import("./pages/paciente/RankingPaciente"));
 const ConsultasPaciente  = lazy(() => import("./pages/paciente/ConsultasPaciente"));
 const PagamentosPaciente = lazy(() => import("./pages/paciente/PagamentosPaciente"));
-const ContaPaciente      = lazy(() => import("./pages/paciente/ContaPaciente"));
+const ContaPaciente        = lazy(() => import("./pages/paciente/ContaPaciente"));
+const DashboardPaciente    = lazy(() => import("./pages/paciente/DashboardPaciente"));
 
 function PageSpinner() {
   return (
@@ -85,7 +86,8 @@ function AppRoutes() {
         {/* Paciente routes */}
         <Route path="/login-paciente" element={<LoginPaciente />} />
         <Route path="/paciente" element={<PacienteLayout />}>
-          <Route index element={<Navigate to="/paciente/feed" replace />} />
+          <Route index element={<Navigate to="/paciente/dashboard" replace />} />
+          <Route path="dashboard"  element={<DashboardPaciente />} />
           <Route path="feed"       element={<FeedPaciente />} />
           <Route path="ranking"    element={<RankingPaciente />} />
           <Route path="consultas"  element={<ConsultasPaciente />} />
