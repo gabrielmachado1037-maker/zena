@@ -8,12 +8,15 @@ import {
   type Tool,
 } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response } from "express";
+import crypto from "crypto";
 
 // ─── Configuração ──────────────────────────────────────────────────────────────
 
 const BASE =
   (process.env.CLINNE_API_URL ?? "https://zena-l2jd.onrender.com").replace(/\/$/, "") +
   "/api";
+
+const HOST = process.env.RENDER_EXTERNAL_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
 
 let jwtToken: string | null = process.env.CLINNE_TOKEN ?? null;
 
@@ -27,18 +30,15 @@ async function login(): Promise<void> {
       "Defina CLINNE_TOKEN ou CLINNE_EMAIL + CLINNE_PASSWORD nas variáveis de ambiente."
     );
   }
-
   const res = await fetch(`${BASE}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, senha }),
   });
-
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Login falhou (${res.status}): ${text}`);
   }
-
   const body = (await res.json()) as { token: string };
   jwtToken = body.token;
 }
@@ -47,7 +47,6 @@ let reauthenticating = false;
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!jwtToken) await login();
-
   const res = await fetch(`${BASE}${path}`, {
     ...init,
     headers: {
@@ -56,7 +55,6 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
   });
-
   if (res.status === 401 && !reauthenticating) {
     reauthenticating = true;
     jwtToken = null;
@@ -64,11 +62,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     reauthenticating = false;
     return apiFetch<T>(path, init);
   }
-
-  if (!res.ok) {
-    throw new Error(`API ${res.status} ${res.statusText}: ${await res.text()}`);
-  }
-
+  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
   return res.json() as Promise<T>;
 }
 
@@ -104,8 +98,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: "ver_ranking",
-    description:
-      "Ranking de pacientes por pontuação: progresso de peso, hábitos consecutivos e metas semanais.",
+    description: "Ranking de pacientes por pontuação: progresso de peso, hábitos consecutivos e metas semanais.",
     inputSchema: {
       type: "object",
       properties: {
@@ -118,14 +111,12 @@ const TOOLS: Tool[] = [
   },
   {
     name: "ver_financeiro",
-    description:
-      "Dashboard financeiro: faturamento do mês, comparativo com mês anterior, cobranças pendentes e vencidas.",
+    description: "Dashboard financeiro: faturamento do mês, comparativo com mês anterior, cobranças pendentes e vencidas.",
     inputSchema: { type: "object", properties: {} },
   },
   {
     name: "ver_agenda",
-    description:
-      "Consultas agendadas no período e horários disponíveis configurados. Padrão: próximos 30 dias.",
+    description: "Consultas agendadas no período e horários disponíveis. Padrão: próximos 30 dias.",
     inputSchema: {
       type: "object",
       properties: {
@@ -136,24 +127,21 @@ const TOOLS: Tool[] = [
   },
 ];
 
-// ─── Handlers ─────────────────────────────────────────────────────────────────
+// ─── Handlers das ferramentas ─────────────────────────────────────────────────
 
 type Args = Record<string, unknown>;
 
 async function runTool(name: string, args: Args): Promise<unknown> {
   switch (name) {
-
     case "listar_pacientes": {
       const busca  = args.busca  ? `&busca=${encodeURIComponent(String(args.busca))}` : "";
       const status = args.status ? `&status=${String(args.status)}` : "";
       const limit  = `&limit=${Math.min(50, Number(args.limit ?? 50))}`;
       return apiFetch<unknown>(`/pacientes?page=1${limit}${busca}${status}`);
     }
-
     case "ver_paciente": {
       let id = args.pacienteId as string | undefined;
       const nomeBusca = args.nome as string | undefined;
-
       if (!id && nomeBusca) {
         const lista = await apiFetch<{ data: Array<{ id: string; nome: string }> }>(
           `/pacientes?busca=${encodeURIComponent(nomeBusca)}&limit=5`
@@ -166,11 +154,9 @@ async function runTool(name: string, args: Args): Promise<unknown> {
         };
         id = found[0].id;
       }
-
       if (!id) return { erro: "Informe pacienteId ou o nome do paciente." };
       return apiFetch<unknown>(`/pacientes/${id}`);
     }
-
     case "ver_ranking": {
       const periodo = String(args.periodo ?? "semanal");
       const qs = new URLSearchParams({ periodo });
@@ -179,10 +165,8 @@ async function runTool(name: string, args: Args): Promise<unknown> {
       if (args.mes)    qs.set("mes",    String(args.mes));
       return apiFetch<unknown>(`/ranking?${qs.toString()}`);
     }
-
     case "ver_financeiro":
       return apiFetch<unknown>("/financeiro/dashboard");
-
     case "ver_agenda": {
       const hoje = new Date();
       const em30 = new Date(hoje);
@@ -196,7 +180,6 @@ async function runTool(name: string, args: Args): Promise<unknown> {
       ]);
       return { consultas, horarios_disponiveis: horarios };
     }
-
     default:
       throw new Error(`Ferramenta desconhecida: "${name}"`);
   }
@@ -204,14 +187,12 @@ async function runTool(name: string, args: Args): Promise<unknown> {
 
 // ─── Servidor MCP ─────────────────────────────────────────────────────────────
 
-function createServer() {
+function createMcpServer() {
   const srv = new Server(
     { name: "clinne-mcp", version: "1.0.0" },
     { capabilities: { tools: {} } }
   );
-
   srv.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
-
   srv.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args = {} } = request.params;
     try {
@@ -225,42 +206,101 @@ function createServer() {
       };
     }
   });
-
   return srv;
 }
 
-// ─── Modo HTTP/SSE — Render / Claude.ai Connectors ───────────────────────────
+// ─── OAuth 2.0 mínimo (exigido pelos Conectores do Claude.ai) ─────────────────
+// Fluxo: authorize → gera code → Claude troca por token → token = MCP_API_KEY
+
+const authCodes = new Map<string, { redirectUri: string; expiresAt: number }>();
+
+function setupOAuth(app: express.Application) {
+  const apiKey = process.env.MCP_API_KEY ?? crypto.randomBytes(32).toString("hex");
+
+  // Discovery — Claude.ai lê isso para saber onde ficam os endpoints OAuth
+  app.get("/.well-known/oauth-authorization-server", (_req: Request, res: Response) => {
+    res.json({
+      issuer: HOST,
+      authorization_endpoint: `${HOST}/oauth/authorize`,
+      token_endpoint:         `${HOST}/oauth/token`,
+      response_types_supported: ["code"],
+      grant_types_supported:    ["authorization_code"],
+      code_challenge_methods_supported: ["S256"],
+    });
+  });
+
+  // Authorize — auto-aprova e redireciona com o code (ferramenta pessoal, 1 usuário)
+  app.get("/oauth/authorize", (req: Request, res: Response) => {
+    const { redirect_uri, state } = req.query as Record<string, string>;
+    if (!redirect_uri) {
+      res.status(400).send("redirect_uri obrigatório");
+      return;
+    }
+    const code = crypto.randomBytes(16).toString("hex");
+    authCodes.set(code, { redirectUri: redirect_uri, expiresAt: Date.now() + 5 * 60_000 });
+
+    const url = new URL(redirect_uri);
+    url.searchParams.set("code", code);
+    if (state) url.searchParams.set("state", state);
+    res.redirect(url.toString());
+  });
+
+  // Token — troca o code pelo access token (= MCP_API_KEY)
+  app.post("/oauth/token", express.urlencoded({ extended: false }), (req: Request, res: Response) => {
+    const { grant_type, code } = req.body as Record<string, string>;
+
+    if (grant_type !== "authorization_code") {
+      res.status(400).json({ error: "unsupported_grant_type" });
+      return;
+    }
+
+    const stored = authCodes.get(code);
+    if (!stored || stored.expiresAt < Date.now()) {
+      res.status(400).json({ error: "invalid_grant" });
+      return;
+    }
+    authCodes.delete(code);
+
+    res.json({
+      access_token: apiKey,
+      token_type:   "Bearer",
+      expires_in:   7 * 24 * 3600,
+    });
+  });
+
+  return apiKey;
+}
+
+// ─── Modo HTTP/SSE — Render / Claude.ai ──────────────────────────────────────
 
 async function startHttp(port: number) {
   const app = express();
   app.use(express.json());
 
-  // Chave de acesso opcional: protege o MCP de uso não autorizado
-  const apiKey = process.env.MCP_API_KEY;
+  const apiKey = setupOAuth(app);
+
+  // Rotas públicas (sem auth)
+  const PUBLIC = ["/health", "/.well-known/oauth-authorization-server", "/oauth/authorize", "/oauth/token"];
 
   app.use((req: Request, res: Response, next) => {
-    if (req.path === "/health") return next();
-    if (apiKey) {
-      const auth = req.headers.authorization ?? "";
-      if (auth !== `Bearer ${apiKey}`) {
-        res.status(401).json({ error: "MCP_API_KEY inválida" });
-        return;
-      }
+    if (PUBLIC.some(p => req.path.startsWith(p))) return next();
+    const auth = req.headers.authorization ?? "";
+    if (auth !== `Bearer ${apiKey}`) {
+      res.status(401).json({ error: "Não autorizado" });
+      return;
     }
     next();
   });
 
-  // Health check — Render usa isso para saber se o serviço está vivo
   app.get("/health", (_req: Request, res: Response) => {
     res.json({ ok: true, service: "clinne-mcp", autenticado: !!jwtToken });
   });
 
-  // Cada cliente SSE recebe sua própria instância do Server
   const transports: Record<string, SSEServerTransport> = {};
 
   app.get("/sse", async (req: Request, res: Response) => {
     const transport = new SSEServerTransport("/messages", res);
-    const srv = createServer();
+    const srv = createMcpServer();
     transports[transport.sessionId] = transport;
     res.on("close", () => { delete transports[transport.sessionId]; });
     await srv.connect(transport);
@@ -270,26 +310,22 @@ async function startHttp(port: number) {
   app.post("/messages", async (req: Request, res: Response) => {
     const sessionId = req.query["sessionId"] as string;
     const transport = transports[sessionId];
-    if (!transport) {
-      res.status(404).json({ error: "Sessão SSE não encontrada" });
-      return;
-    }
+    if (!transport) { res.status(404).json({ error: "Sessão não encontrada" }); return; }
     await transport.handlePostMessage(req, res);
   });
 
   app.listen(port, () => {
-    console.error(`[clinne-mcp] HTTP/SSE rodando na porta ${port}`);
-    console.error(`[clinne-mcp] SSE endpoint: http://localhost:${port}/sse`);
+    console.error(`[clinne-mcp] HTTP/SSE na porta ${port} | ${HOST}/sse`);
   });
 }
 
-// ─── Modo stdio — Claude Desktop local ───────────────────────────────────────
+// ─── Modo stdio — Claude Desktop ─────────────────────────────────────────────
 
 async function startStdio() {
-  const srv = createServer();
+  const srv = createMcpServer();
   const transport = new StdioServerTransport();
   await srv.connect(transport);
-  console.error("[clinne-mcp] Servidor MCP ativo (stdio).");
+  console.error("[clinne-mcp] MCP ativo (stdio).");
 }
 
 // ─── Inicialização ─────────────────────────────────────────────────────────────
@@ -297,11 +333,10 @@ async function startStdio() {
 async function main() {
   if (!jwtToken) {
     await login();
-    console.error("[clinne-mcp] Autenticado com sucesso.");
+    console.error("[clinne-mcp] Autenticado no Clinne.");
   }
 
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
-
   if (port) {
     await startHttp(port);
   } else {
@@ -311,6 +346,6 @@ async function main() {
 
 main().catch((err: unknown) => {
   const msg = err instanceof Error ? err.message : String(err);
-  console.error("[clinne-mcp] Falha na inicialização:", msg);
+  console.error("[clinne-mcp] Falha:", msg);
   setTimeout(() => process.exit(1), 100);
 });
