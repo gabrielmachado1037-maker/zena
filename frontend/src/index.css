@@ -45,3 +45,23 @@ body {
   background: #B7E4C7;
   border-radius: 3px;
 }
+
+/* PWA: safe areas para notch do iPhone */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 8px);
+}
+
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top), 0px);
+}
+
+/* Modo standalone (app instalado): fundo verde evita flash branco */
+@media (display-mode: standalone) {
+  body {
+    background-color: #1C4A2E;
+  }
+
+  .install-banner {
+    display: none;
+  }
+}

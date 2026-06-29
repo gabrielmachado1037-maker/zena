@@ -3,7 +3,9 @@
   "short_name": "Clinne",
   "description": "Plataforma para nutricionistas",
   "start_url": "/app/dashboard",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#1C4A2E",
   "theme_color": "#1C4A2E",
   "icons": [

@@ -198,14 +198,20 @@ function CardPlano({ plano, navigate }: { plano: PlanoAlimentar | null; navigate
 
 // ─── Card Pagamento ───────────────────────────────────────────────────────────
 
-function CardPagamento({ pag }: { pag: Pagamento | null }) {
+function CardPagamento({ pag, navigate }: { pag: Pagamento | null; navigate: ReturnType<typeof useNavigate> }) {
   const plano = pag?.planoCobranca;
   const pendente = pag?.cobrancas.find(c => c.status === "pendente");
   const vencido  = pag?.cobrancas.find(c => c.status === "vencido");
 
   if (!plano) return (
     <div className={CARD} style={{ boxShadow: SHADOW }}>
-      <p className="text-[14px] font-bold text-[#111] mb-1">Pagamento</p>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[14px] font-bold text-[#111]">Pagamento</p>
+        <button onClick={() => navigate("/paciente/pagamentos")}
+          className="text-[12px] font-medium" style={{ color: "#1B4332" }}>
+          Ver histórico →
+        </button>
+      </div>
       <p className="text-[13px] text-[#999]">Nenhum plano configurado.</p>
     </div>
   );
@@ -254,9 +260,16 @@ function CardPagamento({ pag }: { pag: Pagamento | null }) {
           <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.6)" }}>Vencimento</p>
           <p className="text-[14px] font-bold">Todo dia {plano.diaVencimento}</p>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-          style={{ background: "#52B788" }}>
-          <span className="text-[13px] font-bold text-white">em {dias}d</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+            style={{ background: "#52B788" }}>
+            <span className="text-[13px] font-bold text-white">em {dias}d</span>
+          </div>
+          <button onClick={() => navigate("/paciente/pagamentos")}
+            className="text-[12px] font-semibold"
+            style={{ color: "rgba(255,255,255,0.75)" }}>
+            Ver histórico →
+          </button>
         </div>
       </div>
     </div>
@@ -357,7 +370,7 @@ export default function DashboardPaciente() {
       {me    && <CardMeta me={me} />}
       <CardStats rankingData={ranking} />
       <CardPlano plano={plano} navigate={navigate} />
-      <CardPagamento pag={pag} />
+      <CardPagamento pag={pag} navigate={navigate} />
       <CardFeed posts={feed} navigate={navigate} />
       <div className="h-1" />
     </div>

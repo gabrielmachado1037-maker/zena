@@ -6,6 +6,7 @@ import { PacienteAuthProvider } from "./contexts/PacienteAuthContext";
 import Layout from "./components/Layout";
 import PacienteLayout from "./components/PacienteLayout";
 import RotaProtegida from "./components/RotaProtegida";
+import BannerInstalacao from "./components/BannerInstalacao";
 
 // Lazy-loaded pages — each route only downloads when visited
 const Landing       = lazy(() => import("./pages/Landing"));
@@ -116,6 +117,7 @@ export default function App() {
         <AlertasProvider>
           <BrowserRouter>
             <AppRoutes />
+            <BannerInstalacao />
           </BrowserRouter>
         </AlertasProvider>
       </PacienteAuthProvider>

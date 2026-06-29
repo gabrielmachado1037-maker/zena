@@ -1,18 +1,18 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, Rss, Trophy, Calendar, CreditCard, User } from "lucide-react";
+import { LayoutDashboard, Rss, Trophy, Calendar, User } from "lucide-react";
 import { usePacienteAuth } from "../contexts/PacienteAuthContext";
 import api from "../lib/api";
 
 const TABS = [
-  { to: "/paciente/dashboard",  icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/paciente/feed",        icon: Rss,             label: "Feed" },
-  { to: "/paciente/ranking",     icon: Trophy,          label: "Ranking" },
-  { to: "/paciente/consultas",   icon: Calendar,        label: "Consultas" },
-  { to: "/paciente/pagamentos",  icon: CreditCard,      label: "Pagamentos" },
-  { to: "/paciente/conta",       icon: User,            label: "Conta" },
+  { to: "/paciente/dashboard", icon: LayoutDashboard, label: "Início" },
+  { to: "/paciente/feed",      icon: Rss,             label: "Feed" },
+  { to: "/paciente/ranking",   icon: Trophy,          label: "Ranking" },
+  { to: "/paciente/consultas", icon: Calendar,        label: "Consultas" },
+  { to: "/paciente/conta",     icon: User,            label: "Conta" },
 ];
+
 
 const FRASE_KEY = "pac_frase_v1";
 
