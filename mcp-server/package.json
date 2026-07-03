@@ -1,7 +1,7 @@
 {
-  "name": "clinne-mcp",
+  "name": "nexvel-mcp",
   "version": "1.0.0",
-  "description": "MCP Server para o Clinne — acesso ao backend via Claude",
+  "description": "MCP Server para o Nexvel — acesso ao backend via Claude",
   "type": "module",
   "scripts": {
     "build": "tsc",

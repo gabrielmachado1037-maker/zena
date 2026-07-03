@@ -1,15 +1,17 @@
 services:
   - type: web
-    name: clinne-mcp
+    name: nexvel-mcp
     runtime: node
     rootDir: mcp-server
     buildCommand: npm install && npm run build
     startCommand: node dist/index.js
     plan: free
     envVars:
-      - key: CLINNE_EMAIL
+      - key: NEXVEL_API_URL
+        value: https://zena-l2jd.onrender.com
+      - key: NEXVEL_EMAIL
         sync: false
-      - key: CLINNE_PASSWORD
+      - key: NEXVEL_PASSWORD
         sync: false
       - key: MCP_API_KEY
         generateValue: true

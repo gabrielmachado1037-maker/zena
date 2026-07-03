@@ -13,20 +13,20 @@ import crypto from "crypto";
 // ─── Configuração ──────────────────────────────────────────────────────────────
 
 const BASE =
-  (process.env.CLINNE_API_URL ?? "https://zena-l2jd.onrender.com").replace(/\/$/, "") + "/api";
+  (process.env.NEXVEL_API_URL ?? "https://zena-l2jd.onrender.com").replace(/\/$/, "") + "/api";
 
 const HOST =
   process.env.RENDER_EXTERNAL_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
 
-let jwtToken: string | null = process.env.CLINNE_TOKEN ?? null;
+let jwtToken: string | null = process.env.NEXVEL_TOKEN ?? null;
 
-// ─── Auth contra o Clinne ─────────────────────────────────────────────────────
+// ─── Auth contra o Nexvel ─────────────────────────────────────────────────────
 
 async function login(): Promise<void> {
-  const email = process.env.CLINNE_EMAIL;
-  const senha = process.env.CLINNE_PASSWORD;
+  const email = process.env.NEXVEL_EMAIL;
+  const senha = process.env.NEXVEL_PASSWORD;
   if (!email || !senha)
-    throw new Error("Defina CLINNE_TOKEN ou CLINNE_EMAIL + CLINNE_PASSWORD.");
+    throw new Error("Defina NEXVEL_TOKEN ou NEXVEL_EMAIL + NEXVEL_PASSWORD.");
 
   const res = await fetch(`${BASE}/auth/login`, {
     method: "POST",
@@ -46,11 +46,11 @@ async function loginComRetry(tentativas = 5, delayMs = 3000): Promise<void> {
       return;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[clinne-mcp] Login tentativa ${i}/${tentativas} falhou: ${msg}`);
+      console.error(`[nexvel-mcp] Login tentativa ${i}/${tentativas} falhou: ${msg}`);
       if (i < tentativas) await new Promise(r => setTimeout(r, delayMs * i));
     }
   }
-  throw new Error("Não foi possível autenticar após várias tentativas. Verifique CLINNE_EMAIL e CLINNE_PASSWORD.");
+  throw new Error("Não foi possível autenticar após várias tentativas. Verifique NEXVEL_EMAIL e NEXVEL_PASSWORD.");
 }
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -75,7 +75,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 // ─── Schema do banco (estático) ──────────────────────────────────────────────
 
 const SCHEMA_RESUMO = `
-MODELOS PRISMA — Clinne (PostgreSQL / Neon)
+MODELOS PRISMA — Nexvel (PostgreSQL / Neon)
 
 Nutricionista         → usuário principal (1 por conta)
   campos: id, nome, email, crn, plano, planoAtivo, trialEnd, stripeCustomerId,
@@ -257,7 +257,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: "ver_sistema",
-    description: "Saúde e status do sistema Clinne: latência do backend, autenticação MCP, e resumo técnico da plataforma.",
+    description: "Saúde e status do sistema Nexvel: latência do backend, autenticação MCP, e resumo técnico da plataforma.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -272,7 +272,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: "ver_endpoints_api",
-    description: "Lista todos os endpoints da API REST do Clinne com método HTTP, rota, autenticação e descrição.",
+    description: "Lista todos os endpoints da API REST do Nexvel com método HTTP, rota, autenticação e descrição.",
     inputSchema: {
       type: "object",
       properties: {
@@ -341,7 +341,7 @@ async function runTool(name: string, args: Args): Promise<unknown> {
         latenciaMs = Date.now() - t0;
       }
       return {
-        sistema: "Clinne — Plataforma para Nutricionistas",
+        sistema: "Nexvel — Plataforma para Nutricionistas",
         versao_mcp: "1.0.0",
         mcp_autenticado: !!jwtToken,
         backend: {
@@ -417,7 +417,7 @@ async function runTool(name: string, args: Args): Promise<unknown> {
 
 function createMcpServer() {
   const srv = new Server(
-    { name: "clinne-mcp", version: "1.0.0" },
+    { name: "nexvel-mcp", version: "1.0.0" },
     { capabilities: { tools: {} } }
   );
   srv.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
@@ -454,7 +454,7 @@ function setupOAuth(app: express.Application, apiKey: string) {
   // RFC 7591 — Registro dinâmico de cliente
   app.post("/oauth/register", (_req, res: Response) => {
     res.status(201).json({
-      client_id: "clinne-mcp-client",
+      client_id: "nexvel-mcp-client",
       client_id_issued_at: Math.floor(Date.now() / 1000),
       grant_types: ["authorization_code"],
       response_types: ["code"],
@@ -519,7 +519,7 @@ async function startHttp(port: number) {
   });
 
   app.get("/health", (_req, res: Response) => {
-    res.json({ ok: true, service: "clinne-mcp", autenticado: !!jwtToken });
+    res.json({ ok: true, service: "nexvel-mcp", autenticado: !!jwtToken });
   });
 
   // StreamableHTTP — protocolo MCP moderno (2025-03-26)
@@ -539,13 +539,13 @@ async function startHttp(port: number) {
         sessionIdGenerator: () => crypto.randomUUID(),
         onsessioninitialized: (id) => {
           sessions.set(id, transport);
-          console.error(`[clinne-mcp] Sessão criada: ${id}`);
+          console.error(`[nexvel-mcp] Sessão criada: ${id}`);
         },
       });
 
       transport.onclose = () => {
         const id = transport.sessionId;
-        if (id) { sessions.delete(id); console.error(`[clinne-mcp] Sessão encerrada: ${id}`); }
+        if (id) { sessions.delete(id); console.error(`[nexvel-mcp] Sessão encerrada: ${id}`); }
       };
 
       const srv = createMcpServer();
@@ -553,7 +553,7 @@ async function startHttp(port: number) {
       await transport.handleRequest(req, res, req.body);
 
     } catch (err) {
-      console.error("[clinne-mcp] Erro /mcp:", err);
+      console.error("[nexvel-mcp] Erro /mcp:", err);
       if (!res.headersSent) res.status(500).json({ error: "Erro interno" });
     }
   });
@@ -566,7 +566,7 @@ async function startHttp(port: number) {
   });
 
   app.listen(port, () => {
-    console.error(`[clinne-mcp] HTTP rodando na porta ${port} | ${HOST}/mcp`);
+    console.error(`[nexvel-mcp] HTTP rodando na porta ${port} | ${HOST}/mcp`);
   });
 }
 
@@ -575,7 +575,7 @@ async function startHttp(port: number) {
 async function startStdio() {
   const srv = createMcpServer();
   await srv.connect(new StdioServerTransport());
-  console.error("[clinne-mcp] MCP ativo (stdio).");
+  console.error("[nexvel-mcp] MCP ativo (stdio).");
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
@@ -583,13 +583,13 @@ async function startStdio() {
 async function main() {
   // Login é lazy — feito na primeira chamada de ferramenta.
   // Isso evita crash quando o backend (Render free) ainda está acordando.
-  console.error("[clinne-mcp] Iniciando. Autenticação será feita na primeira chamada.");
+  console.error("[nexvel-mcp] Iniciando. Autenticação será feita na primeira chamada.");
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : null;
   if (port) await startHttp(port);
   else      await startStdio();
 }
 
 main().catch((err: unknown) => {
-  console.error("[clinne-mcp] Falha:", err instanceof Error ? err.message : err);
+  console.error("[nexvel-mcp] Falha:", err instanceof Error ? err.message : err);
   setTimeout(() => process.exit(1), 100);
 });
