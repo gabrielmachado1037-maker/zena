@@ -14,6 +14,7 @@ router.get("/feed", async (req: PacienteAuthRequest, res: Response) => {
   const posts = await prisma.feedPost.findMany({
     where: {
       nutricionistaId: req.nutricionistaId!,
+      pacienteId: { not: null }, // exclui posts do Mural da nutri (sem paciente-alvo)
       OR: [
         { privacidade: "PUBLICO" },
         { pacienteId: req.pacienteId!, privacidade: "APENAS_NUTRI" },

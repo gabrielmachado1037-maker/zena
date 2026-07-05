@@ -1,311 +1,347 @@
-import { Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { Navigate } from "react-router-dom";
-import {
-  CheckCircle,
-  Leaf,
-  Calendar,
-  FileText,
-  Bell,
-  MessageCircle,
-  ClipboardList,
-  ArrowRight,
-  Star,
-  Shield,
-  Zap,
-} from "lucide-react";
-
-const FEATURES = [
-  {
-    icon: Leaf,
-    title: "Portal da Paciente",
-    desc: "Suas pacientes acompanham evolução, fazem check-in semanal e acessam o plano alimentar pelo celular — sem instalar nenhum app.",
-  },
-  {
-    icon: FileText,
-    title: "Plano Alimentar em PDF",
-    desc: "Gere PDFs profissionais com identidade visual da Clinne em segundos. Imprima ou envie direto pelo WhatsApp.",
-  },
-  {
-    icon: Bell,
-    title: "Lembretes Automáticos",
-    desc: "Lembretes de consultas, check-ins e cobranças. Você envia pelo WhatsApp com um clique.",
-  },
-  {
-    icon: Calendar,
-    title: "Agendamento Online",
-    desc: "Suas pacientes escolhem horário disponível pelo portal. Você confirma ou recusa em segundos.",
-  },
-  {
-    icon: ClipboardList,
-    title: "Anamnese Digital",
-    desc: "A paciente preenche o histórico de saúde completo antes da primeira consulta. Você acessa tudo organizado.",
-  },
-  {
-    icon: MessageCircle,
-    title: "WhatsApp Integrado",
-    desc: "Mensagens personalizadas com templates prontos. Sem custo extra — usa o WhatsApp que você já tem.",
-  },
-];
-
-const DEPOIMENTOS = [
-  {
-    nome: "Dra. Ana Lima",
-    crn: "CRN-3 12345",
-    texto: "Economizo 3 horas por semana que usava para enviar planos e cobrar pacientes. Minhas pacientes adoram o portal.",
-    nota: 5,
-  },
-  {
-    nome: "Dra. Carol Santos",
-    crn: "CRN-6 67890",
-    texto: "A aderência ao plano das minhas pacientes aumentou muito desde que elas começaram a fazer check-in semanal.",
-    nota: 5,
-  },
-  {
-    nome: "Dra. Marina Oliveira",
-    crn: "CRN-1 54321",
-    texto: "O PDF profissional impressionou meus pacientes. Parece de consultório grande com preço acessível.",
-    nota: 5,
-  },
-];
-
-const FAQ = [
-  {
-    p: "Preciso de cartão de crédito para o teste?",
-    r: "Não. Você tem 29 dias grátis sem precisar cadastrar cartão. Só pedimos quando você decidir assinar.",
-  },
-  {
-    p: "Posso cancelar quando quiser?",
-    r: "Sim, sem fidelidade e sem multa. O acesso fica ativo até o fim do período pago.",
-  },
-  {
-    p: "Meus dados de pacientes estão seguros?",
-    r: "Sim. Todos os dados são criptografados e armazenados em servidores seguros em conformidade com a LGPD.",
-  },
-  {
-    p: "Quantas pacientes posso cadastrar?",
-    r: "Ilimitadas. Não cobramos por número de pacientes ou de consultas.",
-  },
-];
+import { useNavigate } from 'react-router-dom'
 
 export default function Landing() {
-  const { token } = useAuth();
-  if (token) return <Navigate to="/dashboard" replace />;
+  const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-white font-sans">
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-2xl font-bold text-zena-green-dark tracking-tight">clinne</span>
-          <div className="flex items-center gap-4">
-            <Link to="/login" className="text-sm text-zena-text-mid hover:text-zena-green-dark font-medium transition-colors">
-              Entrar
-            </Link>
-            <Link
-              to="/cadastro"
-              className="bg-zena-green-dark text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-zena-green-mid transition-colors"
-            >
-              Começar grátis
-            </Link>
-          </div>
+    <div style={{
+      minHeight: '100vh',
+      background: '#08080F',
+      color: '#E2E8F0',
+      fontFamily: "'Inter', system-ui, sans-serif",
+      overflowX: 'hidden',
+      position: 'relative',
+    }}>
+
+      {/* GLOW de fundo no hero */}
+      <div style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0,
+        height: '600px',
+        background: 'radial-gradient(ellipse at 60% 0%, rgba(124,58,237,0.30) 0%, transparent 65%)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* NAVBAR */}
+      <nav style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 48px',
+        height: '72px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        background: 'rgba(8,8,15,0.85)',
+        backdropFilter: 'blur(12px)',
+      }}>
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            width: '28px', height: '28px',
+            background: 'linear-gradient(135deg, #6D28D9, #8B5CF6)',
+            borderRadius: '8px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 800, fontSize: '15px', color: 'white',
+          }}>N</div>
+          <span style={{ fontWeight: 700, fontSize: '16px', color: 'white', letterSpacing: '-0.3px' }}>
+            NEXVEL
+          </span>
+        </div>
+
+        {/* Links */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+          {['Recursos', 'Para nutricionistas', 'Para pacientes', 'Planos', 'Blog'].map(link => (
+            <a key={link} href="#" style={{
+              color: '#94A3B8', fontSize: '14px', textDecoration: 'none', transition: 'color 0.2s',
+            }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#FFFFFF')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#94A3B8')}
+            >{link}</a>
+          ))}
+        </div>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <button onClick={() => navigate('/login')} style={{
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.25)',
+            color: 'white', padding: '9px 20px',
+            borderRadius: '8px', fontSize: '14px', fontWeight: 600,
+            cursor: 'pointer', transition: 'all 0.2s',
+          }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)')}
+          >Entrar</button>
+          <button onClick={() => navigate('/cadastro')} style={{
+            background: 'linear-gradient(135deg, #7C3AED, #8B5CF6)',
+            border: 'none', color: 'white',
+            padding: '9px 20px', borderRadius: '8px',
+            fontSize: '14px', fontWeight: 600, cursor: 'pointer',
+            boxShadow: '0 0 16px rgba(124,58,237,0.4)',
+          }}>Criar conta</button>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="bg-gradient-to-br from-zena-cream to-white pt-20 pb-24 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 bg-zena-mint/30 text-zena-green-dark text-sm font-medium px-4 py-1.5 rounded-full mb-6">
-            <Zap size={14} />
-            29 dias grátis · Sem cartão
+      {/* HERO */}
+      <section style={{
+        padding: '70px 48px 70px',
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '60px',
+        alignItems: 'center',
+        maxWidth: '1280px',
+        margin: '0 auto',
+        position: 'relative',
+        zIndex: 1,
+      }}>
+        {/* Left — Copy */}
+        <div style={{ maxWidth: '520px' }}>
+          {/* Badge */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center',
+            background: 'rgba(124,58,237,0.15)',
+            border: '1px solid rgba(124,58,237,0.45)',
+            borderRadius: '999px', padding: '5px 14px',
+            fontSize: '11px', fontWeight: 700,
+            color: '#A78BFA', letterSpacing: '0.1em',
+            marginBottom: '24px', textTransform: 'uppercase',
+          }}>
+            BEM-VINDO AO NEXVEL
           </div>
-          <h1 className="text-5xl sm:text-6xl font-bold text-zena-green-dark leading-tight mb-6">
-            A plataforma que<br />
-            <span className="text-zena-green-light">transforma pacientes</span><br />
-            em resultados
+
+          {/* H1 — 2 linhas */}
+          <h1 style={{
+            fontSize: '48px', fontWeight: 700,
+            lineHeight: 1.12, letterSpacing: '-1px',
+            color: 'white', margin: '0 0 20px',
+          }}>
+            Transforme sua rotina em{' '}
+            <span style={{ color: '#8B5CF6' }}>resultados reais.</span>
           </h1>
-          <p className="text-xl text-zena-text-mid max-w-2xl mx-auto mb-10 leading-relaxed">
-            Gerencie consultas, planos alimentares e acompanhe a evolução das suas pacientes
-            em um só lugar. Profissional, simples e feito para nutricionistas brasileiras.
+
+          {/* Subtitle */}
+          <p style={{
+            fontSize: '16px', color: '#94A3B8', fontWeight: 400,
+            lineHeight: 1.6, margin: '0 0 36px', maxWidth: '440px',
+          }}>
+            Gamificação, acompanhamento e motivação para você evoluir com consistência.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              to="/cadastro"
-              className="bg-zena-green-dark text-white font-semibold px-8 py-4 rounded-xl hover:bg-zena-green-mid transition-colors flex items-center gap-2 text-lg shadow-lg"
-            >
-              Começar 29 dias grátis <ArrowRight size={20} />
-            </Link>
-            <Link
-              to="/login"
-              className="text-zena-green-dark font-semibold px-8 py-4 rounded-xl border-2 border-zena-green-dark hover:bg-zena-cream transition-colors text-lg"
-            >
-              Já tenho conta
-            </Link>
+
+          {/* CTAs */}
+          <div style={{ display: 'flex', gap: '14px', marginBottom: '48px' }}>
+            <button onClick={() => navigate('/cadastro')} style={{
+              background: 'linear-gradient(135deg, #7C3AED, #8B5CF6)',
+              border: 'none', color: 'white',
+              padding: '14px 28px', borderRadius: '10px',
+              fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+              boxShadow: '0 0 24px rgba(124,58,237,0.5)', transition: 'all 0.2s',
+            }}>Sou nutricionista</button>
+            <button onClick={() => navigate('/login?tipo=paciente')} style={{
+              background: 'transparent',
+              border: '1px solid rgba(255,255,255,0.25)',
+              color: 'white', padding: '14px 28px',
+              borderRadius: '10px', fontSize: '15px',
+              fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+            }}>Sou paciente</button>
           </div>
-          <p className="text-sm text-zena-text-light mt-4">
-            Sem cartão · Cancele quando quiser · Dados protegidos pela LGPD
-          </p>
+
+          {/* Stats */}
+          <div style={{ display: 'flex', gap: '40px' }}>
+            {[
+              { val: '+25K', label: 'Usuários ativos' },
+              { val: '+2M', label: 'Registros realizados' },
+              { val: '+90%', label: 'Mais adesão' },
+              { val: '+200', label: 'Ligas criadas' },
+            ].map(stat => (
+              <div key={stat.val}>
+                <div style={{ fontSize: '22px', fontWeight: 700, color: '#A78BFA' }}>{stat.val}</div>
+                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right — Mockup (tablet + celular) */}
+        <div style={{ position: 'relative' }}>
+          {/* TABLET */}
+          <div style={{
+            width: '580px', maxWidth: '100%',
+            background: '#13131F',
+            border: '1px solid rgba(124,58,237,0.4)',
+            borderRadius: '16px', padding: '20px',
+            boxShadow: '0 0 60px rgba(124,58,237,0.2), 0 24px 48px rgba(0,0,0,0.5)',
+          }}>
+            {/* header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <div style={{
+                width: '24px', height: '24px',
+                background: 'linear-gradient(135deg, #6D28D9, #8B5CF6)',
+                borderRadius: '6px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '12px', fontWeight: 800, color: 'white',
+              }}>N</div>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'white' }}>Dashboard</span>
+            </div>
+
+            {/* KPI cards (2x2) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+              {[
+                { label: 'Pacientes ativos', val: '128', sub: '+15% vs mês' },
+                { label: 'Retenção (30 dias)', val: '87%', sub: '+5% no mês' },
+                { label: 'Check-ins hoje', val: '32', sub: '+8% na semana' },
+                { label: 'Evolução média', val: '+24%', sub: 'esta semana' },
+              ].map(kpi => (
+                <div key={kpi.label} style={{
+                  background: '#0F0F1C',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '10px', padding: '12px 14px',
+                }}>
+                  <div style={{ fontSize: '10px', color: '#94A3B8', marginBottom: '6px' }}>{kpi.label}</div>
+                  <div style={{ fontSize: '22px', fontWeight: 700, color: '#FFFFFF', lineHeight: 1 }}>{kpi.val}</div>
+                  <div style={{ fontSize: '10px', color: '#10B981', marginTop: '6px' }}>{kpi.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Duas colunas: Ligas + Desafios */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              {/* Ligas em destaque */}
+              <div style={{
+                background: '#0F0F1C',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '10px', padding: '12px 14px',
+              }}>
+                <div style={{ fontSize: '10px', color: '#94A3B8', marginBottom: '10px' }}>Ligas em destaque</div>
+                {[
+                  { name: 'Elite Nexvel', pts: '1.250 pts', cor: '#F59E0B' },
+                  { name: 'Foco e Disciplina', pts: '980 pts', cor: '#F97316' },
+                  { name: 'Imbaríveis', pts: '870 pts', cor: '#A855F7' },
+                ].map(l => (
+                  <div key={l.name} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '9px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: l.cor }} />
+                      <span style={{ fontSize: '11px', color: '#CBD5E1' }}>{l.name}</span>
+                    </div>
+                    <span style={{ fontSize: '10px', color: '#64748B' }}>{l.pts}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desafios ativos */}
+              <div style={{
+                background: '#0F0F1C',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '10px', padding: '12px 14px',
+              }}>
+                <div style={{ fontSize: '10px', color: '#94A3B8', marginBottom: '10px' }}>Desafios ativos</div>
+                {[
+                  { name: 'Desafio 7 dias', pct: 28 },
+                  { name: 'Desafio Treino', pct: 55 },
+                  { name: 'Desafio Água', pct: 71 },
+                ].map(d => (
+                  <div key={d.name} style={{ marginBottom: '9px' }}>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      fontSize: '11px', color: '#CBD5E1', marginBottom: '4px',
+                    }}>
+                      <span>{d.name}</span>
+                      <span style={{ color: '#64748B' }}>{d.pct}%</span>
+                    </div>
+                    <div style={{ height: '3px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px' }}>
+                      <div style={{
+                        height: '100%', width: `${d.pct}%`,
+                        background: 'linear-gradient(90deg, #7C3AED, #8B5CF6)', borderRadius: '2px',
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* CELULAR sobreposto */}
+          <div style={{
+            position: 'absolute', bottom: '-20px', right: '-30px', zIndex: 10,
+            width: '160px',
+            background: '#0F0F1C',
+            border: '2px solid rgba(124,58,237,0.5)',
+            borderRadius: '24px', padding: '14px 12px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+          }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'white', marginBottom: '10px' }}>Ligas</div>
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(124,58,237,0.25), rgba(168,85,247,0.12))',
+              borderRadius: '12px', padding: '12px', textAlign: 'center', marginBottom: '10px',
+            }}>
+              <div style={{ fontSize: '30px', lineHeight: 1 }}>🏆</div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'white', marginTop: '6px' }}>Elite Nexvel</div>
+            </div>
+            {[
+              { n: 'Lucas A.', p: '2.360' },
+              { n: 'Fernanda C.', p: '2.342' },
+              { n: 'Rafael L.', p: '1.960' },
+            ].map(j => (
+              <div key={j.n} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' }}>
+                <span style={{ fontSize: '10px', color: '#CBD5E1' }}>{j.n}</span>
+                <span style={{ fontSize: '10px', fontWeight: 600, color: '#A78BFA' }}>{j.p}</span>
+              </div>
+            ))}
+            <button style={{
+              width: '100%', marginTop: '4px',
+              background: 'linear-gradient(135deg, #7C3AED, #8B5CF6)',
+              border: 'none', color: 'white', fontSize: '10px', fontWeight: 600,
+              padding: '8px', borderRadius: '8px', cursor: 'pointer',
+            }}>Ver ranking completo</button>
+          </div>
+
+          {/* Glow embaixo do mockup */}
+          <div style={{
+            position: 'absolute', bottom: '-30px', left: '50%',
+            transform: 'translateX(-50%)', width: '60%', height: '40px',
+            background: 'rgba(124,58,237,0.3)', filter: 'blur(24px)', borderRadius: '50%',
+          }} />
         </div>
       </section>
 
-      {/* Stats */}
-      <section className="bg-zena-green-dark py-12 px-6">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-8 text-center">
+      {/* FEATURES STRIP */}
+      <section style={{
+        background: '#0F0F1C',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        padding: '28px 48px',
+        position: 'relative', zIndex: 1,
+      }}>
+        <div style={{
+          maxWidth: '1280px', margin: '0 auto',
+          display: 'grid',
+          gridTemplateColumns: '220px 1fr 1fr 1fr 1fr 1fr',
+          gap: '28px', alignItems: 'center',
+        }}>
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#8B5CF6', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>
+              FUNCIONALIDADES
+            </div>
+            <div style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              QUE FAZEM A DIFERENÇA
+            </div>
+          </div>
           {[
-            { n: "3h", label: "economizadas\npor semana" },
-            { n: "2×", label: "mais aderência\ndas pacientes" },
-            { n: "100%", label: "sem papel\nnem planilha" },
-            { n: "29 dias", label: "grátis\npara testar" },
-          ].map((s) => (
-            <div key={s.n}>
-              <p className="text-4xl font-bold text-zena-mint">{s.n}</p>
-              <p className="text-zena-mint/70 text-sm mt-1 whitespace-pre-line">{s.label}</p>
+            { icon: '🏆', label: 'Ligas e Ranking' },
+            { icon: '📋', label: 'Diário de Bordo' },
+            { icon: '🎯', label: 'Sistema de Radar' },
+            { icon: '📈', label: 'Relatórios Inteligentes' },
+            { icon: '🏅', label: 'Gamificação Completa' },
+          ].map(f => (
+            <div key={f.label} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '20px' }}>{f.icon}</span>
+              <span style={{ fontSize: '13px', color: '#CBD5E1', fontWeight: 500 }}>{f.label}</span>
             </div>
           ))}
         </div>
       </section>
-
-      {/* Features */}
-      <section className="py-24 px-6 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-zena-green-dark mb-4">Tudo que você precisa, em um só lugar</h2>
-            <p className="text-lg text-zena-text-mid">Sem trocar de app. Sem planilha. Sem WhatsApp manual.</p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="bg-zena-cream rounded-2xl p-6 hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 bg-zena-green-dark rounded-xl flex items-center justify-center mb-4">
-                  <f.icon size={22} className="text-zena-mint" />
-                </div>
-                <h3 className="font-bold text-zena-green-dark text-lg mb-2">{f.title}</h3>
-                <p className="text-zena-text-mid text-sm leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Depoimentos */}
-      <section className="py-24 px-6 bg-zena-cream">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-4xl font-bold text-zena-green-dark text-center mb-12">O que as nutricionistas dizem</h2>
-          <div className="grid sm:grid-cols-3 gap-6">
-            {DEPOIMENTOS.map((d) => (
-              <div key={d.nome} className="bg-white rounded-2xl p-6 shadow-sm">
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: d.nota }).map((_, i) => (
-                    <Star key={i} size={16} fill="#52B788" className="text-zena-green-light" />
-                  ))}
-                </div>
-                <p className="text-zena-text-mid text-sm leading-relaxed mb-4">"{d.texto}"</p>
-                <div>
-                  <p className="font-semibold text-zena-green-dark text-sm">{d.nome}</p>
-                  <p className="text-zena-text-light text-xs">{d.crn}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section className="py-24 px-6 bg-white" id="precos">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-zena-green-dark mb-4">Preço justo, sem surpresa</h2>
-            <p className="text-lg text-zena-text-mid">Comece grátis. Assine só quando estiver convencida.</p>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-            {/* Mensal */}
-            <div className="border-2 border-gray-100 rounded-2xl p-8">
-              <p className="text-zena-text-mid font-medium mb-2">Mensal</p>
-              <p className="text-4xl font-bold text-zena-green-dark mb-1">R$ 69<span className="text-lg font-normal text-zena-text-mid">/mês</span></p>
-              <p className="text-sm text-zena-text-light mb-6">Cobrado mensalmente</p>
-              <ul className="space-y-2 mb-8">
-                {["Pacientes ilimitadas", "Portal da paciente", "PDF profissional", "Agendamento online", "WhatsApp integrado", "Suporte por e-mail"].map((i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-zena-text-mid">
-                    <CheckCircle size={16} className="text-zena-green-light flex-shrink-0" />{i}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                to="/cadastro"
-                className="block text-center border-2 border-zena-green-dark text-zena-green-dark font-semibold py-3 rounded-xl hover:bg-zena-cream transition-colors"
-              >
-                Começar grátis
-              </Link>
-            </div>
-            {/* Anual */}
-            <div className="border-2 border-zena-green-dark rounded-2xl p-8 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-zena-green-dark text-white text-xs font-bold px-4 py-1 rounded-full">
-                RECOMENDADO
-              </div>
-              <p className="text-zena-text-mid font-medium mb-2">Anual</p>
-              <p className="text-4xl font-bold text-zena-green-dark mb-1">R$ 59<span className="text-lg font-normal text-zena-text-mid">/mês</span></p>
-              <p className="text-sm text-zena-text-light mb-6">R$ 708 cobrado anualmente · Economize R$ 120</p>
-              <ul className="space-y-2 mb-8">
-                {["Tudo do plano mensal", "Economia de R$ 120/ano", "Suporte prioritário", "Novas funcionalidades primeiro"].map((i) => (
-                  <li key={i} className="flex items-center gap-2 text-sm text-zena-text-mid">
-                    <CheckCircle size={16} className="text-zena-green-light flex-shrink-0" />{i}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                to="/cadastro"
-                className="block text-center bg-zena-green-dark text-white font-semibold py-3 rounded-xl hover:bg-zena-green-mid transition-colors"
-              >
-                Começar grátis
-              </Link>
-            </div>
-          </div>
-          <p className="text-center text-sm text-zena-text-light mt-6 flex items-center justify-center gap-2">
-            <Shield size={14} /> Pagamento seguro · Cancele quando quiser · Sem fidelidade
-          </p>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="py-24 px-6 bg-zena-cream">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-4xl font-bold text-zena-green-dark text-center mb-12">Perguntas frequentes</h2>
-          <div className="space-y-4">
-            {FAQ.map((f) => (
-              <div key={f.p} className="bg-white rounded-2xl p-6">
-                <h3 className="font-semibold text-zena-green-dark mb-2">{f.p}</h3>
-                <p className="text-zena-text-mid text-sm leading-relaxed">{f.r}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Final */}
-      <section className="bg-zena-green-dark py-24 px-6 text-center">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-4xl font-bold text-white mb-4">Pronta para transformar seu consultório?</h2>
-          <p className="text-zena-mint/80 text-lg mb-8">29 dias grátis, sem cartão, sem compromisso.</p>
-          <Link
-            to="/cadastro"
-            className="inline-flex items-center gap-2 bg-zena-mint text-zena-green-dark font-bold px-8 py-4 rounded-xl hover:bg-white transition-colors text-lg shadow-lg"
-          >
-            Criar minha conta grátis <ArrowRight size={20} />
-          </Link>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-zena-green-dark border-t border-white/10 py-8 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-zena-mint/60">
-          <span className="font-bold text-zena-mint text-xl tracking-tight">clinne</span>
-          <div className="flex gap-6">
-            <Link to="/privacidade" className="hover:text-zena-mint transition-colors">Privacidade</Link>
-            <Link to="/termos" className="hover:text-zena-mint transition-colors">Termos de uso</Link>
-            <a href="mailto:contato@clinne.com.br" className="hover:text-zena-mint transition-colors">Contato</a>
-          </div>
-          <p>© {new Date().getFullYear()} Clinne. Todos os direitos reservados.</p>
-        </div>
-      </footer>
     </div>
-  );
+  )
 }

@@ -1,4 +1,4 @@
-const CACHE = 'clinne-v4';
+const CACHE = 'nexvel-v4';
 const STATIC = ['/', '/index.html', '/app/dashboard'];
 
 self.addEventListener('install', e => {
@@ -33,7 +33,7 @@ self.addEventListener('fetch', e => {
 self.addEventListener('push', e => {
   const data = e.data ? e.data.json() : {};
   e.waitUntil(
-    self.registration.showNotification(data.title || 'Clinne', {
+    self.registration.showNotification(data.title || 'Nexvel', {
       body:  data.body  || '',
       icon:  '/icons/icon-192.png',
       badge: '/icons/icon-192.png',

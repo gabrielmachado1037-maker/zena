@@ -13,10 +13,10 @@ interface ConsultasData {
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  agendada:    { label: "Agendada",    color: "#2D6A4F", icon: Clock },
-  confirmada:  { label: "Confirmada",  color: "#1B4332", icon: CheckCircle },
+  agendada:    { label: "Agendada",    color: "#A855F7", icon: Clock },
+  confirmada:  { label: "Confirmada",  color: "#7C3AED", icon: CheckCircle },
   cancelada:   { label: "Cancelada",   color: "#999",    icon: XCircle },
-  realizada:   { label: "Realizada",   color: "#52B788", icon: CheckCircle },
+  realizada:   { label: "Realizada",   color: "#A855F7", icon: CheckCircle },
 };
 
 function ConsultaCard({ consulta, passada = false }: { consulta: Consulta; passada?: boolean }) {
@@ -29,10 +29,10 @@ function ConsultaCard({ consulta, passada = false }: { consulta: Consulta; passa
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-shrink-0" style={{ background: passada ? "#F5F5F3" : "#E0F2E9" }}>
-            <span className="text-[14px] font-bold leading-none" style={{ color: passada ? "#999" : "#1B4332" }}>
+            <span className="text-[14px] font-bold leading-none" style={{ color: passada ? "#999" : "#7C3AED" }}>
               {d.getDate().toString().padStart(2, "0")}
             </span>
-            <span className="text-[9px] font-medium uppercase" style={{ color: passada ? "#bbb" : "#2D6A4F" }}>
+            <span className="text-[9px] font-medium uppercase" style={{ color: passada ? "#bbb" : "#A855F7" }}>
               {d.toLocaleDateString("pt-BR", { month: "short" })}
             </span>
           </div>
@@ -72,7 +72,7 @@ export default function ConsultasPaciente() {
   return (
     <div className="px-5 pt-10 pb-4">
       <div className="flex items-center gap-3 mb-1">
-        <Calendar size={20} style={{ color: "#1B4332" }} />
+        <Calendar size={20} style={{ color: "#7C3AED" }} />
         <h1 className="text-[24px] font-bold text-[#111]">Consultas</h1>
       </div>
       <p className="text-[13px] text-[#999] mb-6">Suas consultas com a nutricionista</p>
@@ -85,7 +85,7 @@ export default function ConsultasPaciente() {
             className={`flex-1 py-2 rounded-xl text-[13px] font-semibold transition-all ${
               aba === a ? "text-white" : "text-[#999] bg-[#F5F5F3]"
             }`}
-            style={aba === a ? { background: "#1B4332" } : {}}
+            style={aba === a ? { background: "#7C3AED" } : {}}
           >
             {a === "proximas" ? "Próximas" : "Histórico"}
           </button>

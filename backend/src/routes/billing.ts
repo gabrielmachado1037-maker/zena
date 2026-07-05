@@ -2,7 +2,7 @@ import { Router, Response, Request } from "express";
 import Stripe from "stripe";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
-import { criarClienteCliNNe, criarAssinaturaPix, cancelarAssinatura } from "../lib/asaas";
+import { criarClienteNexvel, criarAssinaturaPix, cancelarAssinatura } from "../lib/asaas";
 import { MODULOS_POR_PLANO } from "../middleware/checkModulo";
 
 const router = Router();
@@ -115,7 +115,7 @@ router.post("/checkout", authMiddleware, async (req: AuthRequest, res: Response)
 // ── POST /billing/checkout-pix (Asaas) ───────────────────────────────────────
 
 router.post("/checkout-pix", authMiddleware, async (req: AuthRequest, res: Response) => {
-  if (!process.env.CLINNE_ASAAS_API_KEY) {
+  if (!process.env.NEXVEL_ASAAS_API_KEY) {
     return res.status(503).json({ error: "Pagamento via Pix não configurado ainda." });
   }
 
@@ -127,11 +127,11 @@ router.post("/checkout-pix", authMiddleware, async (req: AuthRequest, res: Respo
   const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId as string } });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
 
-  const cliente = await criarClienteCliNNe(nutri.nome, nutri.email);
+  const cliente = await criarClienteNexvel(nutri.nome, nutri.email);
   const { subscription, pix } = await criarAssinaturaPix(
     cliente.id, valor,
     periodo === "anual" ? "YEARLY" : "MONTHLY",
-    `Clinne — ${planoSlug} ${periodo}`,
+    `Nexvel — ${planoSlug} ${periodo}`,
     nutri.id,
   );
 

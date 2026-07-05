@@ -37,33 +37,33 @@ export default function LoginPaciente() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#1B4332" }}>
+    <div className="min-h-screen flex" style={{ background: "#7C3AED" }}>
       {/* Left panel — visible on lg+ */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16">
         <div className="flex items-center gap-3">
-          <Leaf className="text-[#B7E4C7]" size={32} />
-          <span className="text-white font-bold text-3xl tracking-wide">clinne</span>
+          <Leaf className="text-[#A855F7]" size={32} />
+          <span className="text-white font-bold text-3xl tracking-wide">nexvel</span>
         </div>
         <div>
           <h1 className="text-white text-5xl font-bold leading-tight mb-6">
             seu espaço.<br />
-            <span className="text-[#52B788]">sua evolução.</span>
+            <span className="text-[#A855F7]">sua evolução.</span>
           </h1>
           <p className="text-white/60 text-lg leading-relaxed">
             Acompanhe suas consultas, metas e evolução junto com sua nutricionista.
           </p>
           <div className="mt-12 space-y-4">
             {["Veja sua posição no ranking", "Acompanhe suas consultas", "Acesse seu histórico de cobranças"].map((item) => (
-              <div key={item} className="flex items-center gap-3 text-[#B7E4C7] text-sm">
+              <div key={item} className="flex items-center gap-3 text-[#A855F7] text-sm">
                 <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "rgba(82,183,136,0.3)" }}>
-                  <div className="w-2 h-2 rounded-full bg-[#52B788]" />
+                  <div className="w-2 h-2 rounded-full bg-[#A855F7]" />
                 </div>
                 {item}
               </div>
             ))}
           </div>
         </div>
-        <p className="text-white/30 text-xs">© 2024 Clinne. Todos os direitos reservados.</p>
+        <p className="text-white/30 text-xs">© 2024 Nexvel. Todos os direitos reservados.</p>
       </div>
 
       {/* Right panel */}
@@ -71,12 +71,12 @@ export default function LoginPaciente() {
         <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-2 mb-6">
-            <Leaf size={22} style={{ color: "#2D6A4F" }} />
-            <span className="font-bold text-xl" style={{ color: "#1B4332" }}>clinne</span>
+            <Leaf size={22} style={{ color: "#A855F7" }} />
+            <span className="font-bold text-xl" style={{ color: "#7C3AED" }}>nexvel</span>
           </div>
 
           {/* Back to nutricionista login */}
-          <Link to="/login" className="flex items-center gap-1.5 text-xs text-[#999] hover:text-[#1B4332] mb-6 transition-colors">
+          <Link to="/login" className="flex items-center gap-1.5 text-xs text-[#999] hover:text-[#7C3AED] mb-6 transition-colors">
             <ArrowLeft size={13} />
             Área da nutricionista
           </Link>
@@ -88,7 +88,7 @@ export default function LoginPaciente() {
                 key={t}
                 onClick={() => { setTab(t); setError(""); }}
                 className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                  tab === t ? "bg-white text-[#1B4332] shadow-sm" : "text-[#999]"
+                  tab === t ? "bg-white text-[#7C3AED] shadow-sm" : "text-[#999]"
                 }`}
               >
                 {t === "login" ? "Entrar" : "Criar conta"}
@@ -108,7 +108,7 @@ export default function LoginPaciente() {
               <button
                 type="submit" disabled={loading}
                 className="w-full text-white py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-60"
-                style={{ background: "#2D6A4F" }}
+                style={{ background: "#A855F7" }}
               >
                 {loading ? "Entrando..." : "Entrar"}
               </button>
@@ -130,7 +130,7 @@ export default function LoginPaciente() {
                   placeholder="123456"
                   maxLength={6}
                   className="w-full px-4 py-3 rounded-xl border text-[#111] text-center text-2xl font-bold tracking-widest focus:outline-none focus:ring-2"
-                  style={{ borderColor: "#B7E4C7", background: "#F9FAF8" }}
+                  style={{ borderColor: "#A855F7", background: "#F9FAF8" }}
                   required
                 />
                 <p className="text-xs text-[#999] mt-1.5">Código de 6 dígitos fornecido pela sua nutricionista.</p>
@@ -139,7 +139,7 @@ export default function LoginPaciente() {
               <button
                 type="submit" disabled={loading}
                 className="w-full text-white py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-60"
-                style={{ background: "#2D6A4F" }}
+                style={{ background: "#A855F7" }}
               >
                 {loading ? "Criando conta..." : "Criar conta"}
               </button>
@@ -162,7 +162,7 @@ function Field({ label, type, value, onChange, placeholder }: {
         type={type} value={value} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} required
         className="w-full px-4 py-3 rounded-xl border text-[#111] placeholder-[#bbb] focus:outline-none focus:ring-2"
-        style={{ borderColor: "#B7E4C7", background: "#F9FAF8" }}
+        style={{ borderColor: "#A855F7", background: "#F9FAF8" }}
       />
     </div>
   );
@@ -180,7 +180,7 @@ function PasswordField({ label, value, onChange, show, onToggle }: {
           onChange={(e) => onChange(e.target.value)}
           placeholder="••••••••" required minLength={6}
           className="w-full px-4 py-3 rounded-xl border text-[#111] placeholder-[#bbb] focus:outline-none focus:ring-2"
-          style={{ borderColor: "#B7E4C7", background: "#F9FAF8" }}
+          style={{ borderColor: "#A855F7", background: "#F9FAF8" }}
         />
         <button type="button" onClick={onToggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999]">
           {show ? <EyeOff size={16} /> : <Eye size={16} />}

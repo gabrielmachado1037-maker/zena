@@ -62,7 +62,7 @@ export default function RelatorioCiclo() {
         <div className="text-[40px] mb-3">📊</div>
         <p className="text-[15px] text-[#555] text-center mb-6">Relatório ainda não disponível.</p>
         <button onClick={() => navigate(-1)}
-          className="px-6 py-3 rounded-xl bg-[#1B4332] text-white text-[14px] font-semibold">
+          className="px-6 py-3 rounded-xl bg-[#7C3AED] text-white text-[14px] font-semibold">
           Voltar
         </button>
       </div>
@@ -74,7 +74,7 @@ export default function RelatorioCiclo() {
 
   return (
     <div className="min-h-screen bg-[#F9F9F7] pb-10">
-      <div className="bg-[#1B4332] px-6 pt-12 pb-8 text-white text-center">
+      <div className="bg-[#7C3AED] px-6 pt-12 pb-8 text-white text-center">
         <div className="text-[28px] mb-1">🏆</div>
         <h1 className="text-[20px] font-bold mb-0.5">Ciclo {nrStr} encerrado!</h1>
         {rel.ciclo.titulo && <p className="text-[13px] text-white/70">{rel.ciclo.titulo}</p>}
@@ -107,7 +107,7 @@ export default function RelatorioCiclo() {
             ))}
           </div>
           {rel.destaque && (
-            <p className="text-[12px] text-[#1B4332] font-medium mt-4 bg-[#F0FDF4] rounded-xl p-3">
+            <p className="text-[12px] text-[#7C3AED] font-medium mt-4 bg-[#F0FDF4] rounded-xl p-3">
               {rel.destaque}
             </p>
           )}
@@ -145,13 +145,13 @@ export default function RelatorioCiclo() {
 
         {rel.mensagemNutri && (
           <div className="bg-[#F0FDF4] rounded-2xl p-5 shadow-sm">
-            <p className="text-[13px] text-[#1B4332] leading-relaxed">💚 {rel.mensagemNutri}</p>
+            <p className="text-[13px] text-[#7C3AED] leading-relaxed">💚 {rel.mensagemNutri}</p>
           </div>
         )}
 
         <button
           onClick={() => navigate("/paciente/feed")}
-          className="w-full py-4 rounded-2xl bg-[#1B4332] text-white text-[14px] font-bold">
+          className="w-full py-4 rounded-2xl bg-[#7C3AED] text-white text-[14px] font-bold">
           Voltar ao feed
         </button>
       </div>

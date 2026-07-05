@@ -8,7 +8,7 @@ const router = Router();
 // Configure VAPID (noop if keys not set — notifications silently disabled)
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
-    "mailto:noreply@clinne.com.br",
+    "mailto:noreply@nexvel.com.br",
     process.env.VAPID_PUBLIC_KEY,
     process.env.VAPID_PRIVATE_KEY
   );

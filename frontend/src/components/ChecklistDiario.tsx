@@ -20,7 +20,7 @@ function OpcaoBtn({ val, atual, onSelect, pts }: {
       className={`flex-1 py-3 rounded-xl text-[13px] font-semibold transition-all border-2 ${
         ativo
           ? val
-            ? "bg-[#1B4332] text-white border-[#1B4332]"
+            ? "bg-[#7C3AED] text-white border-[#7C3AED]"
             : "bg-[#F3F4F6] text-[#888] border-[#E5E7EB]"
           : "bg-white text-[#333] border-[#E5E7EB]"
       }`}>
@@ -108,8 +108,8 @@ export default function ChecklistDiario({ onClose, onSuccess }: Props) {
 
         {pronto && (
           <div className="bg-[#F0FDF4] rounded-xl p-3 mb-4 flex items-center justify-between">
-            <span className="text-[12px] text-[#1B4332]">Pontos estimados</span>
-            <span className="text-[15px] font-bold text-[#1B4332]">+{pontosEstimados()} pts</span>
+            <span className="text-[12px] text-[#7C3AED]">Pontos estimados</span>
+            <span className="text-[15px] font-bold text-[#7C3AED]">+{pontosEstimados()} pts</span>
           </div>
         )}
 
@@ -119,7 +119,7 @@ export default function ChecklistDiario({ onClose, onSuccess }: Props) {
           onClick={enviar}
           disabled={!pronto || enviando}
           className="w-full py-4 rounded-2xl text-[15px] font-bold text-white transition-all"
-          style={{ background: pronto ? "#1B4332" : "#D1D5DB" }}>
+          style={{ background: pronto ? "#7C3AED" : "#D1D5DB" }}>
           {enviando ? "Enviando..." : "Enviar check-in →"}
         </button>
       </div>

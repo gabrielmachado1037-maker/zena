@@ -72,7 +72,7 @@ export default function ModalUpsell({ modulo, onClose, onSuccess }: Props) {
     >
       <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
         {/* Header verde */}
-        <div className="relative px-6 pt-8 pb-6 text-center" style={{ background: "linear-gradient(135deg,#1B4332,#2D6A4F)" }}>
+        <div className="relative px-6 pt-8 pb-6 text-center" style={{ background: "linear-gradient(135deg,#7C3AED,#A855F7)" }}>
           <button
             onClick={onClose}
             className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors"
@@ -95,7 +95,7 @@ export default function ModalUpsell({ modulo, onClose, onSuccess }: Props) {
           <ul className="space-y-2.5 mb-5">
             {BENEFICIOS.map((b) => (
               <li key={b} className="flex items-center gap-2.5 text-[13px] text-[#333]">
-                <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#1B4332" }}>
+                <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "#7C3AED" }}>
                   <span className="text-white text-[9px] font-bold">✓</span>
                 </div>
                 {b}
@@ -109,7 +109,7 @@ export default function ModalUpsell({ modulo, onClose, onSuccess }: Props) {
               Por apenas
             </p>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-[28px] font-extrabold text-[#1B4332]">R$82</span>
+              <span className="text-[28px] font-extrabold text-[#7C3AED]">R$82</span>
               <span className="text-[13px] text-[#666]">/mês a mais</span>
             </div>
             <p className="text-[11px] text-[#999] mt-1">ou R$124,17/mês no anual (2 meses grátis)</p>
@@ -123,7 +123,7 @@ export default function ModalUpsell({ modulo, onClose, onSuccess }: Props) {
             onClick={handleUpgrade}
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-white text-[15px] disabled:opacity-60 transition-opacity"
-            style={{ background: "#1B4332" }}
+            style={{ background: "#7C3AED" }}
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Zap size={16} />}
             {loading ? "Processando..." : "Fazer upgrade agora"}

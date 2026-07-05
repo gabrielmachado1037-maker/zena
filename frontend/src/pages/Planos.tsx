@@ -150,8 +150,8 @@ export default function Planos() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zena-cream flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-zena-green-light animate-spin" />
+      <div className="min-h-screen bg-nexvel-cream flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-nexvel-green-light animate-spin" />
       </div>
     );
   }
@@ -160,16 +160,16 @@ export default function Planos() {
   const jaAssinou = (status?.planoAtivo && !status?.emTrial) || (status?.subscriptionStatus === "ativo");
 
   return (
-    <div className="min-h-screen bg-zena-cream py-10 px-4">
+    <div className="min-h-screen bg-nexvel-cream py-10 px-4">
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <Leaf className="text-zena-green-light" size={24} />
-            <span className="text-xl font-bold text-zena-green-dark">clinne</span>
+            <Leaf className="text-nexvel-green-light" size={24} />
+            <span className="text-xl font-bold text-nexvel-green-dark">nexvel</span>
           </div>
-          <h1 className="text-[28px] font-bold text-zena-green-dark mb-2">Planos e Preços</h1>
+          <h1 className="text-[28px] font-bold text-nexvel-green-dark mb-2">Planos e Preços</h1>
 
           {status?.emTrial && (
             <p className="text-amber-600 font-medium text-sm">
@@ -177,7 +177,7 @@ export default function Planos() {
             </p>
           )}
           {jaAssinou && (
-            <p className="text-zena-green-light font-medium text-sm">
+            <p className="text-nexvel-green-light font-medium text-sm">
               ✓ Plano {planoAtivo === "hub" ? "Hub de Engajamento" : "Ecossistema Completo"} ativo
               {status?.planoVencimento && ` · renova em ${new Date(status.planoVencimento).toLocaleDateString("pt-BR")}`}
             </p>
@@ -193,13 +193,13 @@ export default function Planos() {
 
         {/* Toggle mensal/anual */}
         <div className="flex items-center justify-center mb-8">
-          <div className="bg-white rounded-xl border border-zena-mint/30 p-1 flex gap-1">
+          <div className="bg-white rounded-xl border border-nexvel-mint/30 p-1 flex gap-1">
             <button
               onClick={() => setCiclo("mensal")}
               className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
                 ciclo === "mensal"
-                  ? "bg-zena-green-dark text-white shadow-sm"
-                  : "text-zena-text-mid hover:text-zena-green-dark"
+                  ? "bg-nexvel-green-dark text-white shadow-sm"
+                  : "text-nexvel-text-mid hover:text-nexvel-green-dark"
               }`}
             >
               Mensal
@@ -208,13 +208,13 @@ export default function Planos() {
               onClick={() => setCiclo("anual")}
               className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
                 ciclo === "anual"
-                  ? "bg-zena-green-dark text-white shadow-sm"
-                  : "text-zena-text-mid hover:text-zena-green-dark"
+                  ? "bg-nexvel-green-dark text-white shadow-sm"
+                  : "text-nexvel-text-mid hover:text-nexvel-green-dark"
               }`}
             >
               Anual
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                ciclo === "anual" ? "bg-white/20 text-white" : "bg-zena-green-light/15 text-zena-green-dark"
+                ciclo === "anual" ? "bg-white/20 text-white" : "bg-nexvel-green-light/15 text-nexvel-green-dark"
               }`}>
                 2 meses grátis
               </span>
@@ -235,43 +235,43 @@ export default function Planos() {
                   key={plano.slug}
                   className={`rounded-2xl overflow-hidden relative transition-transform ${
                     isDestaque ? "shadow-xl scale-[1.02]" : "shadow-sm"
-                  } ${moduloDestaque && isDestaque ? "ring-2 ring-zena-green-light" : ""}`}
+                  } ${moduloDestaque && isDestaque ? "ring-2 ring-nexvel-green-light" : ""}`}
                   style={isDestaque
-                    ? { background: "#1B4332" }
+                    ? { background: "#7C3AED" }
                     : { background: "#fff", border: "1px solid rgba(134,178,159,0.2)" }}
                 >
                   {isDestaque && (
-                    <div className="absolute top-4 right-4 bg-zena-green-light text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">
+                    <div className="absolute top-4 right-4 bg-nexvel-green-light text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">
                       Mais completo
                     </div>
                   )}
                   {isAtual && (
                     <div className={`absolute top-4 left-4 text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                      isDestaque ? "bg-white/20 text-white" : "bg-zena-green-light/20 text-zena-green-dark"
+                      isDestaque ? "bg-white/20 text-white" : "bg-nexvel-green-light/20 text-nexvel-green-dark"
                     }`}>
                       Plano atual
                     </div>
                   )}
 
                   <div className="p-7">
-                    <h2 className={`text-[17px] font-bold mb-1 ${isDestaque ? "text-white" : "text-zena-green-dark"} ${isAtual || isDestaque ? "mt-6" : ""}`}>
+                    <h2 className={`text-[17px] font-bold mb-1 ${isDestaque ? "text-white" : "text-nexvel-green-dark"} ${isAtual || isDestaque ? "mt-6" : ""}`}>
                       {plano.nome}
                     </h2>
-                    <p className={`text-[12px] mb-5 ${isDestaque ? "text-white/60" : "text-zena-text-light"}`}>
+                    <p className={`text-[12px] mb-5 ${isDestaque ? "text-white/60" : "text-nexvel-text-light"}`}>
                       {plano.descricao}
                     </p>
 
                     {/* Preço */}
                     <div className="mb-1">
-                      <span className={`text-[38px] font-extrabold leading-none ${isDestaque ? "text-zena-mint" : "text-zena-green-light"}`}>
+                      <span className={`text-[38px] font-extrabold leading-none ${isDestaque ? "text-nexvel-mint" : "text-nexvel-green-light"}`}>
                         R${ciclo === "anual"
                           ? fmt(preco).replace(",00", "")
                           : plano.precoMensal}
                       </span>
-                      <span className={`text-[13px] ml-1 ${isDestaque ? "text-white/60" : "text-zena-text-light"}`}>/mês</span>
+                      <span className={`text-[13px] ml-1 ${isDestaque ? "text-white/60" : "text-nexvel-text-light"}`}>/mês</span>
                     </div>
                     {ciclo === "anual" && (
-                      <p className={`text-[11px] mb-5 ${isDestaque ? "text-zena-mint/80" : "text-zena-green-mid"}`}>
+                      <p className={`text-[11px] mb-5 ${isDestaque ? "text-nexvel-mint/80" : "text-nexvel-green-mid"}`}>
                         cobrado R${plano.precoAnualTotal}/ano — 2 meses grátis
                       </p>
                     )}
@@ -280,8 +280,8 @@ export default function Planos() {
                     {/* Módulos */}
                     <ul className="space-y-2 mb-6">
                       {plano.modulos.map(({ icon: Icon, label }) => (
-                        <li key={label} className={`flex items-center gap-2 text-[13px] ${isDestaque ? "text-white/85" : "text-zena-text"}`}>
-                          <Icon size={13} className={isDestaque ? "text-zena-mint flex-shrink-0" : "text-zena-green-light flex-shrink-0"} />
+                        <li key={label} className={`flex items-center gap-2 text-[13px] ${isDestaque ? "text-white/85" : "text-nexvel-text"}`}>
+                          <Icon size={13} className={isDestaque ? "text-nexvel-mint flex-shrink-0" : "text-nexvel-green-light flex-shrink-0"} />
                           {label}
                         </li>
                       ))}
@@ -291,7 +291,7 @@ export default function Planos() {
                     {isAtual ? (
                       <div>
                         <div className={`text-center py-3 rounded-xl text-sm font-semibold ${
-                          isDestaque ? "bg-white/15 text-white" : "bg-zena-green-light/15 text-zena-green-dark"
+                          isDestaque ? "bg-white/15 text-white" : "bg-nexvel-green-light/15 text-nexvel-green-dark"
                         }`}>
                           Plano atual ✓
                         </div>
@@ -299,7 +299,7 @@ export default function Planos() {
                           <button
                             onClick={gerenciarAssinatura}
                             className={`mt-2 w-full text-center text-[12px] flex items-center justify-center gap-1 ${
-                              isDestaque ? "text-white/50 hover:text-white" : "text-zena-text-light hover:text-zena-green-dark"
+                              isDestaque ? "text-white/50 hover:text-white" : "text-nexvel-text-light hover:text-nexvel-green-dark"
                             } transition-colors`}
                           >
                             Gerenciar assinatura <ExternalLink size={12} />
@@ -313,8 +313,8 @@ export default function Planos() {
                           disabled={!!loadingPlano}
                           className={`w-full py-3 rounded-xl font-bold text-[14px] transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
                             isDestaque
-                              ? "bg-zena-mint text-zena-green-dark hover:opacity-90"
-                              : "bg-zena-green-light text-white hover:bg-zena-green-mid"
+                              ? "bg-nexvel-mint text-nexvel-green-dark hover:opacity-90"
+                              : "bg-nexvel-green-light text-white hover:bg-nexvel-green-mid"
                           }`}
                         >
                           {loadingPlano === `pix-${plano.slug}` && <Loader2 size={15} className="animate-spin" />}
@@ -327,7 +327,7 @@ export default function Planos() {
                           className={`w-full py-2.5 rounded-xl text-[13px] font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 ${
                             isDestaque
                               ? "border border-white/25 text-white/80 hover:bg-white/10"
-                              : "border border-zena-sage text-zena-text hover:bg-zena-cream"
+                              : "border border-nexvel-sage text-nexvel-text hover:bg-nexvel-cream"
                           }`}
                         >
                           {loadingPlano === `cartao-${plano.slug}` ? <Loader2 size={13} className="animate-spin" /> : <ExternalLink size={13} />}
@@ -353,10 +353,10 @@ export default function Planos() {
 
         {/* QR Code Pix */}
         {pixData && (
-          <div className="bg-white rounded-2xl shadow-sm border border-zena-sage/20 p-8 max-w-md mx-auto text-center">
-            <CheckCircle size={40} className="text-zena-green-light mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-zena-green-dark mb-2">Pague com Pix</h2>
-            <p className="text-zena-text text-sm mb-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-nexvel-sage/20 p-8 max-w-md mx-auto text-center">
+            <CheckCircle size={40} className="text-nexvel-green-light mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-nexvel-green-dark mb-2">Pague com Pix</h2>
+            <p className="text-nexvel-text text-sm mb-6">
               {pixData.planoSlug === "hub" ? "Hub de Engajamento" : "Ecossistema Completo"}
               {" — "}R${pixData.valor}{ciclo === "anual" ? "/ano" : "/mês"}
               <br />Após o pagamento, seu acesso é liberado em segundos.
@@ -366,31 +366,31 @@ export default function Planos() {
               <img
                 src={`data:image/png;base64,${pixData.pixQrCode}`}
                 alt="QR Code Pix"
-                className="w-48 h-48 mx-auto mb-6 border border-zena-sage/20 rounded-xl"
+                className="w-48 h-48 mx-auto mb-6 border border-nexvel-sage/20 rounded-xl"
               />
             )}
 
-            <div className="bg-zena-cream rounded-xl p-4 mb-4">
-              <p className="text-xs text-zena-text mb-2 font-medium">Pix Copia e Cola</p>
-              <p className="font-mono text-xs text-zena-green-dark break-all leading-relaxed">{pixData.pixCopiaECola}</p>
+            <div className="bg-nexvel-cream rounded-xl p-4 mb-4">
+              <p className="text-xs text-nexvel-text mb-2 font-medium">Pix Copia e Cola</p>
+              <p className="font-mono text-xs text-nexvel-green-dark break-all leading-relaxed">{pixData.pixCopiaECola}</p>
             </div>
 
             <button
               onClick={copiarPix}
-              className="w-full bg-zena-green-light text-white rounded-xl py-3 font-semibold hover:bg-zena-green-mid transition-colors flex items-center justify-center gap-2 mb-4"
+              className="w-full bg-nexvel-green-light text-white rounded-xl py-3 font-semibold hover:bg-nexvel-green-mid transition-colors flex items-center justify-center gap-2 mb-4"
             >
               {copiado ? <CheckCircle size={18} /> : <Copy size={18} />}
               {copiado ? "Copiado!" : "Copiar código Pix"}
             </button>
 
-            <div className="flex items-center gap-2 justify-center text-zena-text text-xs">
-              <Loader2 size={14} className="animate-spin text-zena-green-light" />
+            <div className="flex items-center gap-2 justify-center text-nexvel-text text-xs">
+              <Loader2 size={14} className="animate-spin text-nexvel-green-light" />
               Aguardando confirmação...
             </div>
 
             <button
               onClick={() => { setPixData(null); setPolling(false); }}
-              className="mt-4 text-xs text-zena-text hover:text-zena-green-dark"
+              className="mt-4 text-xs text-nexvel-text hover:text-nexvel-green-dark"
             >
               Voltar
             </button>
@@ -403,7 +403,7 @@ export default function Planos() {
 
 function Garantias({ dark }: { dark?: boolean }) {
   return (
-    <div className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 text-[10px] ${dark ? "text-white/40" : "text-zena-text-light"}`}>
+    <div className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 text-[10px] ${dark ? "text-white/40" : "text-nexvel-text-light"}`}>
       <span>✓ Cancele quando quiser</span>
       <span>✓ Sem fidelidade</span>
       <span>✓ LGPD</span>

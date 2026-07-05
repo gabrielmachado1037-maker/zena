@@ -21,6 +21,7 @@ interface AuthContextType {
   login: (email: string, senha: string) => Promise<void>;
   logout: () => void;
   updateAvatar: (foto: string) => void;
+  updateNutricionista: (patch: Partial<Nutricionista>) => void;
   loading: boolean;
 }
 
@@ -72,8 +73,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }
 
+  function updateNutricionista(patch: Partial<Nutricionista>) {
+    setNutricionista((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...patch };
+      localStorage.setItem("zena_user", JSON.stringify(updated));
+      return updated;
+    });
+  }
+
   return (
-    <AuthContext.Provider value={{ nutricionista, token, login, logout, updateAvatar, loading }}>
+    <AuthContext.Provider value={{ nutricionista, token, login, logout, updateAvatar, updateNutricionista, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -22,6 +22,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
 
   const where: Record<string, unknown> = { nutricionistaId };
   if (categoria && CATEGORIAS_VALIDAS.includes(categoria)) where.categoria = categoria;
+  if (req.query.semana) where.criadoEm = { gte: new Date(Date.now() - 7 * 86_400_000) };
 
   const [posts, total] = await Promise.all([
     prisma.feedPost.findMany({
@@ -44,6 +45,67 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   ]);
 
   return res.json({ posts, total, page, pages: Math.ceil(total / limit) });
+});
+
+const INCLUDE_POST = {
+  paciente: { select: { id: true, nome: true, pacienteUser: { select: { fotoUrl: true } } } },
+  _count: { select: { comentarios: true } },
+} as const;
+
+// POST /api/feed/mural — publica um aviso da nutri no Mural (sem paciente-alvo).
+router.post("/mural", async (req: AuthRequest, res: Response) => {
+  const nutricionistaId = req.nutricionistaId!;
+  const { mensagem } = req.body as { mensagem: string };
+  if (!mensagem?.trim()) return res.status(400).json({ error: "Mensagem é obrigatória" });
+
+  const nutriSnap = await prisma.nutricionista.findUnique({ where: { id: nutricionistaId }, select: { foto: true } });
+  const post = await prisma.feedPost.create({
+    data: {
+      tipo: "MURAL",
+      categoria: "MOMENTO",
+      privacidade: "PUBLICO",
+      pacienteId: null,
+      nutricionistaId,
+      mensagem: mensagem.trim(),
+      autorAvatarUrl: nutriSnap?.foto ?? null,
+      autorNutri: true,
+    },
+    include: INCLUDE_POST,
+  });
+  return res.status(201).json(post);
+});
+
+// GET /api/feed/engajadores — top pacientes por curtidas recebidas (dados reais).
+router.get("/engajadores", async (req: AuthRequest, res: Response) => {
+  const nutricionistaId = req.nutricionistaId!;
+  const grupos = await prisma.feedPost.groupBy({
+    by: ["pacienteId"],
+    where: { nutricionistaId, pacienteId: { not: null } },
+    _sum: { curtidas: true },
+    _count: { _all: true },
+  });
+  const ordenado = grupos
+    .map((g) => ({ pacienteId: g.pacienteId as string, curtidas: g._sum.curtidas ?? 0, posts: g._count._all }))
+    .sort((a, b) => b.curtidas - a.curtidas || b.posts - a.posts)
+    .slice(0, 5);
+
+  const pacs = await prisma.paciente.findMany({
+    where: { id: { in: ordenado.map((o) => o.pacienteId) }, nutricionistaId },
+    select: { id: true, nome: true, pacienteUser: { select: { fotoUrl: true } } },
+  });
+  const byId = new Map(pacs.map((p) => [p.id, p]));
+
+  return res.json(
+    ordenado
+      .filter((o) => byId.has(o.pacienteId))
+      .map((o) => ({
+        pacienteId: o.pacienteId,
+        nome: byId.get(o.pacienteId)!.nome,
+        foto: byId.get(o.pacienteId)!.pacienteUser?.fotoUrl ?? null,
+        curtidas: o.curtidas,
+        posts: o.posts,
+      }))
+  );
 });
 
 // POST /api/feed — body: { pacienteId, mensagem, categoria?, privacidade?, fotoBase64? }

@@ -19,7 +19,7 @@ const Termos        = lazy(() => import("./pages/Termos"));
 const AreaPaciente  = lazy(() => import("./pages/AreaPaciente"));
 const Dashboard     = lazy(() => import("./pages/Dashboard"));
 const Pacientes     = lazy(() => import("./pages/Pacientes"));
-const PacienteDetalhe = lazy(() => import("./pages/PacienteDetalhe"));
+const DiarioBordo   = lazy(() => import("./pages/DiarioBordo"));
 const Cobrancas     = lazy(() => import("./pages/Cobrancas"));
 const Horarios      = lazy(() => import("./pages/Horarios"));
 const Billing       = lazy(() => import("./pages/Billing"));
@@ -27,21 +27,31 @@ const Financeiro    = lazy(() => import("./pages/Financeiro"));
 const Planos        = lazy(() => import("./pages/Planos"));
 const Perfil        = lazy(() => import("./pages/Perfil"));
 const Ranking       = lazy(() => import("./pages/Ranking"));
+const Ligas         = lazy(() => import("./pages/Ligas"));
+const Relatorios    = lazy(() => import("./pages/Relatorios"));
+const Desafios      = lazy(() => import("./pages/Desafios"));
+const Comunidade    = lazy(() => import("./pages/Comunidade"));
+const Mensagens     = lazy(() => import("./pages/Mensagens"));
+const EmBreve       = lazy(() => import("./pages/EmBreve"));
 const Feed               = lazy(() => import("./pages/Feed"));
-const PlanosAlimentares  = lazy(() => import("./pages/PlanosAlimentares"));
 const LoginPaciente      = lazy(() => import("./pages/LoginPaciente"));
-const FeedPaciente       = lazy(() => import("./pages/paciente/FeedPaciente"));
 const RankingPaciente    = lazy(() => import("./pages/paciente/RankingPaciente"));
+const LigasPaciente      = lazy(() => import("./pages/paciente/LigasPaciente"));
 const ConsultasPaciente  = lazy(() => import("./pages/paciente/ConsultasPaciente"));
 const PagamentosPaciente = lazy(() => import("./pages/paciente/PagamentosPaciente"));
 const ContaPaciente        = lazy(() => import("./pages/paciente/ContaPaciente"));
-const DashboardPaciente    = lazy(() => import("./pages/paciente/DashboardPaciente"));
+const InicioPaciente       = lazy(() => import("./pages/paciente/InicioPaciente"));
+const RegistroPaciente     = lazy(() => import("./pages/paciente/RegistroPaciente"));
+const ProgressoPaciente    = lazy(() => import("./pages/paciente/ProgressoPaciente"));
+const EvolucaoPaciente     = lazy(() => import("./pages/paciente/EvolucaoPaciente"));
+const DesafiosPaciente     = lazy(() => import("./pages/paciente/DesafiosPaciente"));
+const PerfilPaciente       = lazy(() => import("./pages/paciente/PerfilPaciente"));
 const RelatorioCiclo       = lazy(() => import("./pages/paciente/RelatorioCiclo"));
 
 function PageSpinner() {
   return (
-    <div className="min-h-screen bg-zena-cream flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-zena-green-light border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-nexvel-bg-primary flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-nexvel-purple-light border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }
@@ -75,27 +85,38 @@ function AppRoutes() {
           <Route index element={<Navigate to="/app/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="pacientes" element={<Pacientes />} />
-          <Route path="pacientes/:id" element={<RotaProtegida modulo="prontuario"><PacienteDetalhe /></RotaProtegida>} />
+          <Route path="pacientes/:id" element={<DiarioBordo />} />
+          <Route path="pacientes/:id/diario" element={<DiarioBordo />} />
           <Route path="cobrancas" element={<RotaProtegida modulo="financeiro"><Cobrancas /></RotaProtegida>} />
           <Route path="horarios" element={<RotaProtegida modulo="agenda"><Horarios /></RotaProtegida>} />
           <Route path="billing" element={<Billing />} />
           <Route path="financeiro" element={<RotaProtegida modulo="financeiro"><Financeiro /></RotaProtegida>} />
           <Route path="planos" element={<Planos />} />
           <Route path="perfil" element={<Perfil />} />
-          <Route path="ranking" element={<RotaProtegida modulo="ranking"><Ranking /></RotaProtegida>} />
+          <Route path="ligas" element={<RotaProtegida modulo="ranking"><Ligas /></RotaProtegida>} />
+          <Route path="ranking" element={<Navigate to="/app/ligas" replace />} />
           <Route path="feed" element={<RotaProtegida modulo="feed"><Feed /></RotaProtegida>} />
-          <Route path="planos-alimentares" element={<RotaProtegida modulo="plano_alimentar"><PlanosAlimentares /></RotaProtegida>} />
+          <Route path="desafios" element={<Desafios />} />
+          <Route path="comunidade" element={<RotaProtegida modulo="feed"><Comunidade /></RotaProtegida>} />
+          <Route path="mensagens" element={<Mensagens />} />
+          <Route path="relatorios" element={<Relatorios />} />
         </Route>
         {/* Paciente routes */}
         <Route path="/login-paciente" element={<LoginPaciente />} />
         <Route path="/paciente" element={<PacienteLayout />}>
           <Route index element={<Navigate to="/paciente/dashboard" replace />} />
-          <Route path="dashboard"  element={<DashboardPaciente />} />
-          <Route path="feed"       element={<FeedPaciente />} />
+          <Route path="dashboard"  element={<InicioPaciente />} />
+          <Route path="registro"   element={<RegistroPaciente />} />
+          <Route path="progresso"  element={<ProgressoPaciente />} />
+          <Route path="evolucao"   element={<EvolucaoPaciente />} />
+          <Route path="desafios"   element={<DesafiosPaciente />} />
+          <Route path="feed"       element={<Navigate to="/paciente/registro" replace />} />
           <Route path="ranking"    element={<RankingPaciente />} />
+          <Route path="ligas"      element={<LigasPaciente />} />
           <Route path="consultas"  element={<ConsultasPaciente />} />
           <Route path="pagamentos" element={<PagamentosPaciente />} />
-          <Route path="conta"      element={<ContaPaciente />} />
+          <Route path="conta"          element={<PerfilPaciente />} />
+          <Route path="configuracoes"  element={<ContaPaciente />} />
           <Route path="relatorio/:cicloId" element={<RelatorioCiclo />} />
         </Route>
 

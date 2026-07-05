@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { MessageCircle, Send } from "lucide-react";
 import api from "../lib/api";
-import { tempoRelativo } from "../pages/Feed";
+import { tempoRelativo } from "../lib/feed";
 import Avatar from "./Avatar";
 
 export interface Comentario {
@@ -100,8 +100,8 @@ export function ComentariosSection({
         onClick={toggle}
         className="flex items-center gap-1.5 px-4 py-2.5 w-full text-left hover:bg-[#FAFAF8] transition-colors"
       >
-        <MessageCircle size={14} className={expanded ? "text-[#1B4332]" : "text-[#bbb]"} />
-        <span className={`text-[12px] font-medium ${expanded ? "text-[#1B4332]" : "text-[#bbb]"}`}>
+        <MessageCircle size={14} className={expanded ? "text-[#7C3AED]" : "text-[#bbb]"} />
+        <span className={`text-[12px] font-medium ${expanded ? "text-[#7C3AED]" : "text-[#bbb]"}`}>
           {count > 0 ? `${count} comentário${count !== 1 ? "s" : ""}` : "Comentar"}
         </span>
       </button>
@@ -131,7 +131,7 @@ export function ComentariosSection({
                     src={c.autorAvatarUrl}
                     nome={c.autorNome}
                     tamanho={28}
-                    borda={c.autorTipo === "NUTRICIONISTA" ? "2px solid #1B4332" : undefined}
+                    borda={c.autorTipo === "NUTRICIONISTA" ? "2px solid #7C3AED" : undefined}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
@@ -139,7 +139,7 @@ export function ComentariosSection({
                         {c.autorNome.split(" ")[0]}
                       </span>
                       {c.autorTipo === "NUTRICIONISTA" && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide text-white" style={{ background: "#1B4332" }}>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide text-white" style={{ background: "#7C3AED" }}>
                           Nutricionista
                         </span>
                       )}
@@ -164,7 +164,7 @@ export function ComentariosSection({
                   placeholder="Escreva um comentário…"
                   rows={1}
                   maxLength={500}
-                  className="w-full px-3 py-2 border border-[#E8E8E8] rounded-xl text-[13px] text-[#333] placeholder-[#ccc] resize-none focus:outline-none focus:border-[#1B4332] leading-snug"
+                  className="w-full px-3 py-2 border border-[#E8E8E8] rounded-xl text-[13px] text-[#333] placeholder-[#ccc] resize-none focus:outline-none focus:border-[#7C3AED] leading-snug"
                   style={{ minHeight: 36 }}
                 />
                 {texto.length > 400 && (
@@ -177,7 +177,7 @@ export function ComentariosSection({
                 onClick={handleSend}
                 disabled={sending || !texto.trim()}
                 className="w-9 h-9 flex items-center justify-center rounded-xl text-white disabled:opacity-40 transition-colors flex-shrink-0"
-                style={{ background: "#1B4332" }}
+                style={{ background: "#7C3AED" }}
               >
                 <Send size={15} />
               </button>

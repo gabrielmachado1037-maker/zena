@@ -12,14 +12,14 @@ export default function ResultadoChecklist({ pontosGanhos, posicaoAtual, totalPa
         <div className="text-[40px] mb-2">✨</div>
         <h2 className="text-[18px] font-bold text-[#111] mb-1">Check-in enviado!</h2>
 
-        <div className="text-[52px] font-light text-[#1B4332] leading-none mb-1 tabular-nums">
+        <div className="text-[52px] font-light text-[#7C3AED] leading-none mb-1 tabular-nums">
           +{pontosGanhos}
         </div>
         <p className="text-[13px] text-[#888] mb-4">pontos ganhos hoje</p>
 
         {posicaoAtual != null && totalParticipantes != null && (
           <div className="bg-[#F0FDF4] rounded-xl p-3 mb-5">
-            <p className="text-[13px] text-[#1B4332] font-medium">
+            <p className="text-[13px] text-[#7C3AED] font-medium">
               📊 Você está em <strong>{posicaoAtual}º lugar</strong> de {totalParticipantes} participantes
             </p>
           </div>
@@ -27,7 +27,7 @@ export default function ResultadoChecklist({ pontosGanhos, posicaoAtual, totalPa
 
         <button
           onClick={onClose}
-          className="w-full py-3 rounded-xl bg-[#1B4332] text-white text-[14px] font-semibold">
+          className="w-full py-3 rounded-xl bg-[#7C3AED] text-white text-[14px] font-semibold">
           Fechar
         </button>
       </div>

@@ -35,9 +35,10 @@ const TIPOS = [
 
 const TIPO_CFG: Record<string, { label: string; color: string }> = {
   primeira_consulta: { label: "1ª Consulta", color: "#3B82F6" },
-  retorno:           { label: "Retorno",     color: "#1C4A2E" },
+  retorno:           { label: "Retorno",     color: "#7C3AED" },
   online:            { label: "Online",      color: "#8B5CF6" },
   consulta:          { label: "Consulta",    color: "#14B8A6" },
+  presencial:        { label: "Presencial",  color: "#7C3AED" },
 };
 
 function cfg(tipo: string) { return TIPO_CFG[tipo] ?? TIPO_CFG.consulta; }
@@ -85,10 +86,15 @@ export default function Horarios() {
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const weekDays  = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  async function agendarConsulta(pacienteId: string, data: Date, tipo: string) {
-    const res = await api.post("/consultas", { pacienteId, data: data.toISOString(), tipo });
+  async function agendarConsulta(pacienteId: string, data: Date, tipo: string, notas?: string) {
+    const res = await api.post("/consultas", {
+      pacienteId,
+      data: data.toISOString(),
+      tipo,
+      ...(notas ? { notas } : {}),
+    });
     setConsultas(prev => [...prev, res.data]);
-    show("Consulta agendada!");
+    show("✓ Consulta agendada!");
     setModalAgendar(null);
   }
 
@@ -151,7 +157,7 @@ export default function Horarios() {
           data={modalAgendar.data}
           pacientes={pacientes}
           onClose={() => setModalAgendar(null)}
-          onConfirm={agendarConsulta}
+          onConfirm={(pacienteId, dt, tipo, notas) => agendarConsulta(pacienteId, dt, tipo, notas)}
         />
       )}
       {modalConsulta && (
@@ -186,8 +192,33 @@ function MobileAgenda({
 }) {
   const [tab, setTab] = useState<"agenda" | "horarios">("agenda");
   const today = new Date();
+
+  const diaSemana = selectedDate.getDay();
+  const slotsDisponiveis = horarios
+    .filter(h => h.diaSemana === diaSemana && h.ativo)
+    .sort((a, b) => a.hora.localeCompare(b.hora));
+
   const dayConsultas = consultasNoDia(selectedDate)
     .sort((a, b) => a.data.localeCompare(b.data));
+
+  function horaDeConsulta(c: Consulta) {
+    const dt = new Date(c.data);
+    return `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+  }
+
+  function consultaNoSlot(hora: string): Consulta | undefined {
+    return dayConsultas.find(c => horaDeConsulta(c) === hora);
+  }
+
+  const horasComSlot = new Set(slotsDisponiveis.map(h => h.hora));
+  const consultasExtras = dayConsultas.filter(c => !horasComSlot.has(horaDeConsulta(c)));
+
+  function agendarNoSlot(hora: string) {
+    const [h, m] = hora.split(":").map(Number);
+    const dt = new Date(selectedDate);
+    dt.setHours(h, m, 0, 0);
+    onAgendar(dt);
+  }
 
   function openAgendarDay() {
     const dt = new Date(selectedDate);
@@ -198,7 +229,7 @@ function MobileAgenda({
   return (
     <div>
       {/* Header */}
-      <div className="px-5 pt-10 pb-4 flex items-center justify-between">
+      <div className="px-5 pb-4 flex items-center justify-between pt-page-header">
         <h1 className="text-[26px] font-semibold text-[#111] tracking-tight">Agenda</h1>
         <div className="flex gap-0.5 bg-[#F5F5F3] rounded-xl p-1">
           {(["agenda", "horarios"] as const).map(t => (
@@ -241,19 +272,19 @@ function MobileAgenda({
                     key={i}
                     onClick={() => setSelectedDate(day)}
                     className={`flex flex-col items-center py-2.5 rounded-2xl transition-all ${
-                      isSelected ? "bg-[#1C4A2E]" : isToday ? "bg-[#1C4A2E]/10" : ""
+                      isSelected ? "bg-[#7C3AED]" : isToday ? "bg-[#7C3AED]/10" : ""
                     }`}
                   >
                     <span className={`text-[10px] font-medium ${isSelected ? "text-white/70" : "text-[#bbb]"}`}>
                       {DIAS_SEMANA[day.getDay()]}
                     </span>
                     <span className={`text-[16px] font-semibold leading-tight ${
-                      isSelected ? "text-white" : isToday ? "text-[#1C4A2E]" : "text-[#333]"
+                      isSelected ? "text-white" : isToday ? "text-[#7C3AED]" : "text-[#333]"
                     }`}>
                       {format(day, "d")}
                     </span>
                     <div className={`w-1 h-1 rounded-full mt-0.5 ${
-                      hasCons ? (isSelected ? "bg-white/60" : "bg-[#1C4A2E]") : "bg-transparent"
+                      hasCons ? (isSelected ? "bg-white/60" : "bg-[#7C3AED]") : "bg-transparent"
                     }`} />
                   </button>
                 );
@@ -268,46 +299,89 @@ function MobileAgenda({
             </p>
           </div>
 
-          {/* Appointment list */}
-          <div className="px-5 space-y-2">
-            {dayConsultas.length === 0 ? (
+          {/* Timeline de slots */}
+          <div className="px-5 space-y-2 pb-4">
+            {slotsDisponiveis.length === 0 && dayConsultas.length === 0 ? (
               <div className="bg-[#F5F5F3] rounded-2xl px-5 py-10 text-center">
                 <Calendar className="mx-auto text-[#ddd] mb-3" size={32} />
                 <p className="text-[14px] text-[#999] font-normal">Nenhuma consulta neste dia</p>
-                <button onClick={openAgendarDay} className="mt-3 text-[13px] text-[#1C4A2E] font-medium">
+                <button onClick={openAgendarDay} className="mt-3 text-[13px] text-[#7C3AED] font-medium">
                   + Agendar consulta
                 </button>
               </div>
             ) : (
-              dayConsultas.map(c => {
-                const t = cfg(c.tipo);
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => onSelectConsulta(c)}
-                    className="w-full bg-[#F5F5F3] rounded-2xl px-4 py-4 flex items-center gap-3 text-left active:scale-[0.98] transition-transform"
-                  >
-                    <div className="text-right w-12 flex-shrink-0">
-                      <p className="text-[15px] font-semibold text-[#111] tabular-nums">
-                        {format(new Date(c.data), "HH:mm")}
-                      </p>
-                    </div>
-                    <div className="w-0.5 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[15px] font-medium text-[#111] truncate">{c.paciente.nome}</p>
-                      <p className="text-[12px] mt-0.5" style={{ color: t.color }}>{t.label}</p>
-                    </div>
-                    <ChevronRight size={16} className="text-[#ccc] flex-shrink-0" />
-                  </button>
-                );
-              })
+              <>
+                {/* Slots configurados */}
+                {slotsDisponiveis.map(slot => {
+                  const consulta = consultaNoSlot(slot.hora);
+                  if (consulta) {
+                    return (
+                      <button
+                        key={slot.hora}
+                        onClick={() => onSelectConsulta(consulta)}
+                        className="w-full rounded-2xl px-4 py-3 text-left active:scale-[0.98] transition-transform border"
+                        style={{ backgroundColor: "#E8F5E9", borderColor: "#7C3AED" }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-[12px] font-semibold" style={{ color: "#7C3AED" }}>
+                              ✓ {slot.hora}
+                            </p>
+                            <p className="text-[11px] font-medium mt-0.5" style={{ color: "#7C3AED" }}>
+                              {consulta.paciente.nome}
+                            </p>
+                            <p className="text-[10px] mt-0.5" style={{ color: "#A855F7" }}>
+                              {cfg(consulta.tipo).label}
+                            </p>
+                          </div>
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#7C3AED" }} />
+                        </div>
+                      </button>
+                    );
+                  }
+                  return (
+                    <button
+                      key={slot.hora}
+                      onClick={() => agendarNoSlot(slot.hora)}
+                      className="w-full bg-[#F5F5F3] rounded-2xl px-4 py-3 flex items-center justify-between text-left active:scale-[0.98] transition-transform hover:bg-[#EAEAE8]"
+                    >
+                      <span className="text-[14px] font-medium text-[#bbb]">{slot.hora}</span>
+                      <span className="text-[22px] text-[#ddd] leading-none">+</span>
+                    </button>
+                  );
+                })}
+
+                {/* Consultas fora dos slots configurados */}
+                {consultasExtras.map(c => {
+                  const t = cfg(c.tipo);
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => onSelectConsulta(c)}
+                      className="w-full bg-[#F5F5F3] rounded-2xl px-4 py-4 flex items-center gap-3 text-left active:scale-[0.98] transition-transform"
+                    >
+                      <div className="text-right w-12 flex-shrink-0">
+                        <p className="text-[15px] font-semibold text-[#111] tabular-nums">
+                          {format(new Date(c.data), "HH:mm")}
+                        </p>
+                      </div>
+                      <div className="w-0.5 h-10 rounded-full flex-shrink-0" style={{ backgroundColor: t.color }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-medium text-[#111] truncate">{c.paciente.nome}</p>
+                        <p className="text-[12px] mt-0.5" style={{ color: t.color }}>{t.label}</p>
+                      </div>
+                      <ChevronRight size={16} className="text-[#ccc] flex-shrink-0" />
+                    </button>
+                  );
+                })}
+              </>
             )}
           </div>
 
           {/* FAB — acima da bottom nav (56px) */}
           <button
             onClick={openAgendarDay}
-            className="fixed bottom-20 right-5 w-14 h-14 bg-[#1C4A2E] rounded-full flex items-center justify-center shadow-xl z-30 active:scale-95 transition-transform"
+            className="fixed bottom-20 right-5 w-14 h-14 bg-[#7C3AED] rounded-full flex items-center justify-center shadow-xl z-30 active:scale-95 transition-transform"
           >
             <Plus size={22} className="text-white" />
           </button>
@@ -370,7 +444,7 @@ function MobileDisponibilidade({
               key={m}
               onClick={() => setDuracao(m)}
               className={`px-3 py-1.5 rounded-xl text-[12px] font-medium transition-all ${
-                duracao === m ? "bg-[#1C4A2E] text-white" : "bg-[#F5F5F3] text-[#999]"
+                duracao === m ? "bg-[#7C3AED] text-white" : "bg-[#F5F5F3] text-[#999]"
               }`}
             >
               {m}min
@@ -388,11 +462,11 @@ function MobileDisponibilidade({
               key={i}
               onClick={() => setDiaSelecionado(i)}
               className={`flex flex-col items-center py-2 rounded-xl text-[11px] font-semibold transition-all ${
-                sel ? "bg-[#1C4A2E] text-white" : "text-[#999]"
+                sel ? "bg-[#7C3AED] text-white" : "text-[#999]"
               }`}
             >
               {d}
-              <div className={`mt-1 w-1 h-1 rounded-full ${count > 0 ? (sel ? "bg-white/60" : "bg-[#1C4A2E]") : "bg-transparent"}`} />
+              <div className={`mt-1 w-1 h-1 rounded-full ${count > 0 ? (sel ? "bg-white/60" : "bg-[#7C3AED]") : "bg-transparent"}`} />
             </button>
           );
         })}
@@ -411,7 +485,7 @@ function MobileDisponibilidade({
               onClick={() => toggleSlot(diaSelecionado, hora)}
               disabled={carregando}
               className={`h-12 rounded-2xl text-[13px] font-medium flex flex-col items-center justify-center gap-0.5 transition-all ${
-                ativo ? "bg-[#1C4A2E] text-white" : "bg-[#F5F5F3] text-[#999]"
+                ativo ? "bg-[#7C3AED] text-white" : "bg-[#F5F5F3] text-[#999]"
               } ${carregando ? "opacity-40" : ""}`}
             >
               {ativo && <Check size={11} />}
@@ -497,7 +571,7 @@ function DesktopAgenda({
         <h1 className="text-[22px] font-semibold text-[#111] tracking-tight">Agenda</h1>
         <button
           onClick={() => { const dt = new Date(today); dt.setHours(9, 0, 0, 0); onAgendar(dt); }}
-          className="flex items-center gap-2 bg-[#1C4A2E] text-white text-[13px] font-medium px-4 py-2.5 rounded-xl hover:bg-[#2D6A4F] transition-colors"
+          className="flex items-center gap-2 bg-[#7C3AED] text-white text-[13px] font-medium px-4 py-2.5 rounded-xl hover:bg-[#A855F7] transition-colors"
         >
           <Plus size={15} />
           Agendar consulta
@@ -529,7 +603,7 @@ function DesktopAgenda({
               </button>
             </div>
             {monthOffset !== 0 && (
-              <button onClick={() => setMonthOffset(0)} className="text-[12px] text-[#1C4A2E] font-medium">
+              <button onClick={() => setMonthOffset(0)} className="text-[12px] text-[#7C3AED] font-medium">
                 Hoje
               </button>
             )}
@@ -569,13 +643,13 @@ function DesktopAgenda({
                     key={i}
                     onClick={() => { const dt = new Date(day); dt.setHours(9, 0, 0, 0); onAgendar(dt); }}
                     className={`min-h-[90px] p-2 border-b border-r border-[#F8F8F6] cursor-pointer transition-colors select-none
-                      ${isToday ? "bg-[#1C4A2E]/[0.03]" : "hover:bg-[#F8F8F6]"}
+                      ${isToday ? "bg-[#7C3AED]/[0.03]" : "hover:bg-[#F8F8F6]"}
                       ${!isCurrentMonth ? "opacity-25" : ""}
                     `}
                   >
                     <div className={`w-6 h-6 flex items-center justify-center rounded-full text-[12px] font-semibold mb-1.5 ${
                       isToday
-                        ? "bg-[#1C4A2E] text-white"
+                        ? "bg-[#7C3AED] text-white"
                         : isSun && isCurrentMonth
                         ? "text-red-400"
                         : "text-[#333]"
@@ -661,7 +735,7 @@ function DesktopAgenda({
                     key={m}
                     onClick={() => setDuracao(m)}
                     className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
-                      duracao === m ? "bg-[#1C4A2E] text-white" : "bg-[#F5F5F3] text-[#999]"
+                      duracao === m ? "bg-[#7C3AED] text-white" : "bg-[#F5F5F3] text-[#999]"
                     }`}
                   >
                     {m}min
@@ -680,11 +754,11 @@ function DesktopAgenda({
                     key={i}
                     onClick={() => setDiaSelecionado(i)}
                     className={`py-1.5 rounded-lg text-[10px] font-semibold transition-all flex flex-col items-center gap-0.5 ${
-                      sel ? "bg-[#1C4A2E] text-white" : "text-[#bbb] hover:bg-[#F5F5F3]"
+                      sel ? "bg-[#7C3AED] text-white" : "text-[#bbb] hover:bg-[#F5F5F3]"
                     }`}
                   >
                     {d}
-                    <div className={`w-1 h-1 rounded-full ${count > 0 ? (sel ? "bg-white/50" : "bg-[#1C4A2E]") : "bg-transparent"}`} />
+                    <div className={`w-1 h-1 rounded-full ${count > 0 ? (sel ? "bg-white/50" : "bg-[#7C3AED]") : "bg-transparent"}`} />
                   </button>
                 );
               })}
@@ -702,7 +776,7 @@ function DesktopAgenda({
                     onClick={() => toggleSlot(diaSelecionado, hora)}
                     disabled={carregando}
                     className={`h-8 rounded-lg text-[11px] font-medium transition-all ${
-                      ativo ? "bg-[#1C4A2E] text-white" : "bg-[#F5F5F3] text-[#999] hover:bg-[#EAEAE8]"
+                      ativo ? "bg-[#7C3AED] text-white" : "bg-[#F5F5F3] text-[#999] hover:bg-[#EAEAE8]"
                     } ${carregando ? "opacity-40" : ""}`}
                   >
                     {hora}
@@ -717,7 +791,7 @@ function DesktopAgenda({
   );
 }
 
-// ─── Modal: Agendar ───────────────────────────────────────────────────────────
+// ─── Modal: Agendar (2 passos) ────────────────────────────────────────────────
 
 function ModalAgendar({
   data, pacientes, onClose, onConfirm,
@@ -725,124 +799,168 @@ function ModalAgendar({
   data: Date;
   pacientes: Paciente[];
   onClose: () => void;
-  onConfirm: (pacienteId: string, data: Date, tipo: string) => void;
+  onConfirm: (pacienteId: string, data: Date, tipo: string, notas?: string) => void;
 }) {
-  const [busca, setBusca]         = useState("");
+  const [step, setStep]             = useState<1 | 2>(1);
+  const [busca, setBusca]           = useState("");
   const [pacienteId, setPacienteId] = useState("");
   const [pacienteNome, setPacienteNome] = useState("");
-  const [tipo, setTipo]           = useState("retorno");
-  const [hora, setHora]           = useState(format(data, "HH:mm"));
-  const [saving, setSaving]       = useState(false);
-  const [showList, setShowList]   = useState(false);
+  const [tipo, setTipo]             = useState<"presencial" | "online">("presencial");
+  const [notas, setNotas]           = useState("");
+  const [saving, setSaving]         = useState(false);
 
-  const filtrados = pacientes.filter(p => p.nome.toLowerCase().includes(busca.toLowerCase()));
+  const filtrados = busca
+    ? pacientes.filter(p => p.nome.toLowerCase().includes(busca.toLowerCase()))
+    : pacientes.slice(0, 12);
+
+  const diaNome = format(data, "EEEE", { locale: ptBR });
+  const horaStr = format(data, "HH:mm");
+
+  function selecionarPaciente(id: string, nome: string) {
+    setPacienteId(id);
+    setPacienteNome(nome);
+    setStep(2);
+  }
 
   async function confirmar() {
     if (!pacienteId) return;
     setSaving(true);
     try {
-      const [h, m] = hora.split(":").map(Number);
-      const dt = new Date(data);
-      dt.setHours(h, m, 0, 0);
-      await onConfirm(pacienteId, dt, tipo);
+      await onConfirm(pacienteId, data, tipo, notas.trim() || undefined);
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-[#F5F5F3]">
+    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-sm shadow-2xl max-h-[90vh] flex flex-col">
+        {/* Handle bar mobile */}
+        <div className="w-10 h-1 bg-[#E0E0DE] rounded-full mx-auto mt-3 sm:hidden flex-shrink-0" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-[#F5F5F3] flex-shrink-0">
           <div>
-            <h2 className="text-[16px] font-semibold text-[#111]">Agendar consulta</h2>
+            <h2 className="text-[16px] font-semibold text-[#111]">
+              {step === 1 ? "Agendar consulta" : "Confirmar agendamento"}
+            </h2>
             <p className="text-[12px] text-[#999] mt-0.5 capitalize">
-              {format(data, "EEEE, d 'de' MMMM", { locale: ptBR })}
+              {diaNome}, {horaStr}
             </p>
           </div>
           <button onClick={onClose} className="text-[#ccc] hover:text-[#999]"><X size={20} /></button>
         </div>
 
-        <div className="p-6 space-y-4">
-          {/* Hora */}
-          <div>
-            <label className="block text-[12px] font-medium text-[#666] mb-1.5">Horário</label>
-            <select
-              value={hora}
-              onChange={e => setHora(e.target.value)}
-              className="w-full px-3 py-2.5 border border-[#E8E8E8] rounded-xl text-[14px] text-[#111] focus:outline-none focus:ring-2 focus:ring-[#1C4A2E]/30"
-            >
-              {HORAS.map(h => <option key={h} value={h}>{h}</option>)}
-            </select>
-          </div>
-
-          {/* Paciente */}
-          <div>
-            <label className="block text-[12px] font-medium text-[#666] mb-1.5">Paciente</label>
-            <div className="relative">
+        {step === 1 ? (
+          /* ── PASSO 1: selecionar paciente ── */
+          <div className="p-5 flex flex-col gap-3 overflow-hidden">
+            <div className="relative flex-shrink-0">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#bbb]" />
               <input
                 type="text"
                 placeholder="Buscar paciente..."
-                value={busca || pacienteNome}
-                onChange={e => { setBusca(e.target.value); setPacienteNome(""); setPacienteId(""); setShowList(true); }}
-                onFocus={() => setShowList(true)}
-                className="w-full pl-8 pr-3 py-2.5 border border-[#E8E8E8] rounded-xl text-[14px] text-[#111] focus:outline-none focus:ring-2 focus:ring-[#1C4A2E]/30"
+                value={busca}
+                onChange={e => setBusca(e.target.value)}
+                autoFocus
+                className="w-full pl-8 pr-3 py-2.5 border border-[#E8E8E8] rounded-xl text-[14px] text-[#111] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30"
               />
             </div>
-            {showList && busca && (
-              <div className="mt-1 max-h-36 overflow-y-auto border border-[#E8E8E8] rounded-xl divide-y divide-[#F8F8F6] shadow-sm">
-                {filtrados.length === 0 ? (
-                  <p className="text-center text-[12px] text-[#bbb] py-3">Nenhuma encontrada</p>
-                ) : filtrados.slice(0, 8).map(p => (
+            <div className="overflow-y-auto divide-y divide-[#F8F8F6]" style={{ maxHeight: 300 }}>
+              {filtrados.length === 0 ? (
+                <p className="text-center text-[12px] text-[#bbb] py-6">Nenhum paciente encontrado</p>
+              ) : filtrados.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => selecionarPaciente(p.id, p.nome)}
+                  className="w-full flex items-center gap-3 py-3 px-2 text-left hover:bg-[#F8F8F6] rounded-xl transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-[#7C3AED]/10 flex items-center justify-center text-[11px] font-bold text-[#7C3AED] flex-shrink-0">
+                    {getInitials(p.nome)}
+                  </div>
+                  <span className="text-[14px] text-[#111]">{p.nome}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* ── PASSO 2: confirmar ── */
+          <div className="p-5 space-y-4 overflow-y-auto">
+            {/* Paciente selecionado */}
+            <div className="flex items-center gap-3 p-3 bg-[#F8F8F6] rounded-xl">
+              <div className="w-9 h-9 rounded-full bg-[#7C3AED] flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0">
+                {getInitials(pacienteNome)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-semibold text-[#111] truncate">{pacienteNome}</p>
+              </div>
+              <button onClick={() => setStep(1)} className="text-[11px] text-[#7C3AED] font-medium flex-shrink-0">
+                Trocar
+              </button>
+            </div>
+
+            {/* Detalhes */}
+            <div className="space-y-2 text-[13px] bg-[#F8F8F6] rounded-xl p-3">
+              <div className="flex justify-between">
+                <span className="text-[#bbb]">📅 Data</span>
+                <span className="text-[#111] font-medium capitalize">
+                  {format(data, "EEEE, d 'de' MMMM", { locale: ptBR })}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#bbb]">🕐 Horário</span>
+                <span className="text-[#111] font-medium">{horaStr}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[#bbb]">⏱️ Duração</span>
+                <span className="text-[#111] font-medium">60 minutos</span>
+              </div>
+            </div>
+
+            {/* Modalidade */}
+            <div>
+              <p className="text-[12px] font-medium text-[#666] mb-2">📍 Modalidade</p>
+              <div className="flex gap-2">
+                {(["presencial", "online"] as const).map(t => (
                   <button
-                    key={p.id}
-                    onClick={() => { setPacienteId(p.id); setPacienteNome(p.nome); setBusca(""); setShowList(false); }}
-                    className={`w-full text-left px-4 py-2.5 text-[13px] transition-colors ${
-                      pacienteId === p.id ? "bg-[#1C4A2E]/8 text-[#1C4A2E] font-medium" : "hover:bg-[#F8F8F6] text-[#333]"
-                    }`}
+                    key={t}
+                    onClick={() => setTipo(t)}
+                    className="flex-1 py-2.5 rounded-xl text-[13px] font-medium transition-all border"
+                    style={tipo === t
+                      ? { backgroundColor: "#7C3AED", color: "white", borderColor: "#7C3AED" }
+                      : { borderColor: "#E8E8E8", color: "#999" }}
                   >
-                    {p.nome}
+                    {t === "presencial" ? "Presencial" : "Online"}
                   </button>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Tipo */}
-          <div>
-            <label className="block text-[12px] font-medium text-[#666] mb-1.5">Tipo</label>
-            <div className="flex gap-2">
-              {TIPOS.map(t => {
-                const c = cfg(t.value);
-                const sel = tipo === t.value;
-                return (
-                  <button
-                    key={t.value}
-                    onClick={() => setTipo(t.value)}
-                    className="flex-1 py-2 rounded-xl text-[12px] font-medium transition-all border"
-                    style={sel ? { backgroundColor: c.color, color: "white", borderColor: c.color } : { borderColor: "#E8E8E8", color: "#999" }}
-                  >
-                    {t.label}
-                  </button>
-                );
-              })}
+            {/* Observação */}
+            <div>
+              <p className="text-[12px] font-medium text-[#666] mb-1.5">Observação (opcional)</p>
+              <textarea
+                value={notas}
+                onChange={e => setNotas(e.target.value)}
+                placeholder="Ex: trazer exames, retorno sobre dieta..."
+                rows={2}
+                className="w-full px-3 py-2.5 border border-[#E8E8E8] rounded-xl text-[13px] text-[#333] placeholder-[#ccc] resize-none focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30"
+              />
             </div>
           </div>
-        </div>
+        )}
 
-        <div className="flex gap-3 px-6 py-4 border-t border-[#F5F5F3]">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-[#E8E8E8] text-[#999] rounded-xl text-[13px] hover:bg-[#F8F8F6]">
-            Cancelar
-          </button>
-          <button
-            onClick={confirmar}
-            disabled={!pacienteId || saving}
-            className="flex-1 py-2.5 bg-[#1C4A2E] text-white rounded-xl text-[13px] font-semibold hover:bg-[#2D6A4F] disabled:opacity-40 transition-colors"
-          >
-            {saving ? "Agendando..." : "Confirmar"}
-          </button>
-        </div>
+        {/* Footer — só aparece no passo 2 */}
+        {step === 2 && (
+          <div className="px-5 py-4 border-t border-[#F5F5F3] flex-shrink-0">
+            <button
+              onClick={confirmar}
+              disabled={saving}
+              className="w-full py-3 bg-[#7C3AED] text-white rounded-xl text-[14px] font-semibold hover:bg-[#A855F7] disabled:opacity-40 transition-colors"
+            >
+              {saving ? "Agendando..." : "Confirmar agendamento"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -909,7 +1027,7 @@ function ModalConsulta({
             </div>
             <div className="flex justify-between">
               <span className="text-[#bbb]">Status</span>
-              <span className={`font-medium ${consulta.status === "cancelada" ? "text-red-500" : "text-[#1C4A2E]"}`}>
+              <span className={`font-medium ${consulta.status === "cancelada" ? "text-red-500" : "text-[#7C3AED]"}`}>
                 {consulta.status.charAt(0).toUpperCase() + consulta.status.slice(1)}
               </span>
             </div>
@@ -924,12 +1042,12 @@ function ModalConsulta({
                   type="date"
                   value={novaData}
                   onChange={e => setNovaData(e.target.value)}
-                  className="flex-1 px-3 py-2 border border-[#E8E8E8] rounded-xl text-[13px] text-[#111] focus:outline-none focus:ring-2 focus:ring-[#1C4A2E]/30"
+                  className="flex-1 px-3 py-2 border border-[#E8E8E8] rounded-xl text-[13px] text-[#111] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30"
                 />
                 <select
                   value={novaHora}
                   onChange={e => setNovaHora(e.target.value)}
-                  className="px-3 py-2 border border-[#E8E8E8] rounded-xl text-[13px] text-[#111] focus:outline-none focus:ring-2 focus:ring-[#1C4A2E]/30"
+                  className="px-3 py-2 border border-[#E8E8E8] rounded-xl text-[13px] text-[#111] focus:outline-none focus:ring-2 focus:ring-[#7C3AED]/30"
                 >
                   {HORAS.map(h => <option key={h} value={h}>{h}</option>)}
                 </select>
@@ -938,7 +1056,7 @@ function ModalConsulta({
                 <button onClick={() => setRemarcar(false)} className="flex-1 py-2 border border-[#E8E8E8] text-[#999] rounded-xl text-[13px] hover:bg-[#F8F8F6]">
                   Voltar
                 </button>
-                <button onClick={confirmarReagendar} className="flex-1 py-2 bg-[#1C4A2E] text-white rounded-xl text-[13px] font-semibold hover:bg-[#2D6A4F]">
+                <button onClick={confirmarReagendar} className="flex-1 py-2 bg-[#7C3AED] text-white rounded-xl text-[13px] font-semibold hover:bg-[#A855F7]">
                   Salvar
                 </button>
               </div>
@@ -971,7 +1089,7 @@ function ModalConsulta({
             </button>
             <button
               onClick={() => setRemarcar(true)}
-              className="flex-1 py-2.5 bg-[#1C4A2E] text-white rounded-xl text-[13px] font-semibold hover:bg-[#2D6A4F]"
+              className="flex-1 py-2.5 bg-[#7C3AED] text-white rounded-xl text-[13px] font-semibold hover:bg-[#A855F7]"
             >
               Remarcar
             </button>

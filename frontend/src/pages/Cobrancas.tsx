@@ -140,9 +140,9 @@ export default function Cobrancas() {
   };
 
   const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-    pago: { label: "Pago", color: "text-zena-green-dark bg-zena-green-light/15", icon: CheckCircle },
-    pendente: { label: "Pendente", color: "text-zena-text-mid bg-zena-sand", icon: Clock },
-    vencido: { label: "Vencido", color: "text-zena-brown bg-zena-brown/10", icon: AlertCircle },
+    pago: { label: "Pago", color: "text-nexvel-green-dark bg-nexvel-green-light/15", icon: CheckCircle },
+    pendente: { label: "Pendente", color: "text-nexvel-text-mid bg-nexvel-sand", icon: Clock },
+    vencido: { label: "Vencido", color: "text-nexvel-brown bg-nexvel-brown/10", icon: AlertCircle },
   };
 
   const pctRecebido = resumo ? Math.round((resumo.totalRecebido / (resumo.totalFaturado || 1)) * 100) : 0;
@@ -159,12 +159,12 @@ export default function Cobrancas() {
       {/* Cabeçalho */}
       <div className="mb-8 flex items-start justify-between">
         <div>
-          <h1 className="text-zena-text-dark text-3xl font-bold">Cobranças</h1>
-          <p className="text-zena-text-light text-sm mt-1">Controle financeiro do consultório</p>
+          <h1 className="text-nexvel-text-dark text-3xl font-bold">Cobranças</h1>
+          <p className="text-nexvel-text-light text-sm mt-1">Controle financeiro do consultório</p>
         </div>
         <button
           onClick={() => abrirModal()}
-          className="flex items-center gap-2 px-5 py-3 bg-zena-green-mid text-white rounded-xl text-sm font-semibold hover:bg-zena-green-dark transition-colors shadow-sm"
+          className="flex items-center gap-2 px-5 py-3 bg-nexvel-green-mid text-white rounded-xl text-sm font-semibold hover:bg-nexvel-green-dark transition-colors shadow-sm"
         >
           <Plus size={16} />
           Nova cobrança
@@ -173,41 +173,41 @@ export default function Cobrancas() {
 
       {/* Resumo financeiro */}
       {resumo && (
-        <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm mb-8">
-          <h2 className="text-zena-text-dark font-semibold mb-4">Resumo do mês atual</h2>
+        <div className="bg-white rounded-2xl p-6 border border-nexvel-mint/30 shadow-sm mb-8">
+          <h2 className="text-nexvel-text-dark font-semibold mb-4">Resumo do mês atual</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-5">
             <div>
-              <p className="text-zena-text-light text-xs mb-1">Total faturado</p>
-              <p className="text-2xl font-bold font-mono-data text-zena-text-dark">{fmt(resumo.totalFaturado)}</p>
+              <p className="text-nexvel-text-light text-xs mb-1">Total faturado</p>
+              <p className="text-2xl font-bold font-mono-data text-nexvel-text-dark">{fmt(resumo.totalFaturado)}</p>
             </div>
             <div>
-              <p className="text-zena-text-light text-xs mb-1">Recebido</p>
-              <p className="text-2xl font-bold font-mono-data text-zena-green-mid">{fmt(resumo.totalRecebido)}</p>
+              <p className="text-nexvel-text-light text-xs mb-1">Recebido</p>
+              <p className="text-2xl font-bold font-mono-data text-nexvel-green-mid">{fmt(resumo.totalRecebido)}</p>
             </div>
             <div>
-              <p className="text-zena-text-light text-xs mb-1">Pendente</p>
-              <p className="text-2xl font-bold font-mono-data text-zena-text-mid">{fmt(resumo.totalPendente)}</p>
+              <p className="text-nexvel-text-light text-xs mb-1">Pendente</p>
+              <p className="text-2xl font-bold font-mono-data text-nexvel-text-mid">{fmt(resumo.totalPendente)}</p>
             </div>
             <div>
-              <p className="text-zena-text-light text-xs mb-1">Vencidas</p>
-              <p className={`text-2xl font-bold font-mono-data ${resumo.vencidas > 0 ? "text-zena-brown" : "text-zena-text-light"}`}>{resumo.vencidas}</p>
+              <p className="text-nexvel-text-light text-xs mb-1">Vencidas</p>
+              <p className={`text-2xl font-bold font-mono-data ${resumo.vencidas > 0 ? "text-nexvel-brown" : "text-nexvel-text-light"}`}>{resumo.vencidas}</p>
             </div>
           </div>
           <div className="space-y-1">
-            <div className="flex justify-between text-xs text-zena-text-light">
+            <div className="flex justify-between text-xs text-nexvel-text-light">
               <span>Taxa de recebimento</span>
-              <span className="font-medium text-zena-green-mid">{pctRecebido}%</span>
+              <span className="font-medium text-nexvel-green-mid">{pctRecebido}%</span>
             </div>
-            <div className="h-2 bg-zena-cream rounded-full overflow-hidden">
-              <div className="h-full bg-zena-green-light rounded-full transition-all" style={{ width: `${pctRecebido}%` }} />
+            <div className="h-2 bg-nexvel-cream rounded-full overflow-hidden">
+              <div className="h-full bg-nexvel-green-light rounded-full transition-all" style={{ width: `${pctRecebido}%` }} />
             </div>
           </div>
           {resumoZerado && (
-            <div className="mt-4 pt-4 border-t border-zena-cream flex items-center justify-between">
-              <p className="text-zena-text-light text-sm">Nenhuma cobrança gerada este mês.</p>
+            <div className="mt-4 pt-4 border-t border-nexvel-cream flex items-center justify-between">
+              <p className="text-nexvel-text-light text-sm">Nenhuma cobrança gerada este mês.</p>
               <button
                 onClick={() => abrirModal()}
-                className="flex items-center gap-1 text-zena-green-mid text-sm font-medium hover:underline"
+                className="flex items-center gap-1 text-nexvel-green-mid text-sm font-medium hover:underline"
               >
                 Gerar cobrança <ChevronRight size={14} />
               </button>
@@ -221,24 +221,24 @@ export default function Cobrancas() {
         <select
           value={mes}
           onChange={(e) => setMes(Number(e.target.value))}
-          className="px-4 py-2.5 bg-white border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+          className="px-4 py-2.5 bg-white border border-nexvel-mint/40 rounded-xl text-sm text-nexvel-text-dark focus:outline-none focus:ring-2 focus:ring-nexvel-green-light"
         >
           {meses.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
         </select>
         <select
           value={ano}
           onChange={(e) => setAno(Number(e.target.value))}
-          className="px-4 py-2.5 bg-white border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+          className="px-4 py-2.5 bg-white border border-nexvel-mint/40 rounded-xl text-sm text-nexvel-text-dark focus:outline-none focus:ring-2 focus:ring-nexvel-green-light"
         >
           {[2023, 2024, 2025, 2026].map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
       </div>
 
       {/* Lista / Empty state */}
-      <div className="bg-white rounded-2xl border border-zena-mint/30 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-nexvel-mint/30 shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-6 space-y-3 animate-pulse">
-            {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-zena-cream rounded-xl" />)}
+            {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-nexvel-cream rounded-xl" />)}
           </div>
         ) : cobrancas.length === 0 ? (
           <EmptyState
@@ -254,30 +254,30 @@ export default function Cobrancas() {
           <div className="overflow-x-auto">
           <table className="w-full min-w-[560px]">
             <thead>
-              <tr className="border-b border-zena-cream">
-                <th className="text-left text-zena-text-light text-xs font-medium px-4 sm:px-6 py-4">Paciente</th>
-                <th className="text-left text-zena-text-light text-xs font-medium px-4 sm:px-6 py-4">Valor</th>
-                <th className="text-left text-zena-text-light text-xs font-medium px-4 sm:px-6 py-4">Vencimento</th>
-                <th className="hidden sm:table-cell text-left text-zena-text-light text-xs font-medium px-4 sm:px-6 py-4">Método</th>
-                <th className="text-left text-zena-text-light text-xs font-medium px-4 sm:px-6 py-4">Status</th>
+              <tr className="border-b border-nexvel-cream">
+                <th className="text-left text-nexvel-text-light text-xs font-medium px-4 sm:px-6 py-4">Paciente</th>
+                <th className="text-left text-nexvel-text-light text-xs font-medium px-4 sm:px-6 py-4">Valor</th>
+                <th className="text-left text-nexvel-text-light text-xs font-medium px-4 sm:px-6 py-4">Vencimento</th>
+                <th className="hidden sm:table-cell text-left text-nexvel-text-light text-xs font-medium px-4 sm:px-6 py-4">Método</th>
+                <th className="text-left text-nexvel-text-light text-xs font-medium px-4 sm:px-6 py-4">Status</th>
                 <th className="px-4 sm:px-6 py-4" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-zena-cream">
+            <tbody className="divide-y divide-nexvel-cream">
               {cobrancas.map((c) => {
                 const status = getStatus(c);
                 const cfg = statusConfig[status];
                 const StatusIcon = cfg.icon;
                 return (
-                  <tr key={c.id} className="hover:bg-zena-cream/50 transition-colors">
-                    <td className="px-4 sm:px-6 py-4 text-zena-text-dark text-sm font-medium">{c.paciente.nome}</td>
-                    <td className="px-4 sm:px-6 py-4 text-zena-text-dark font-bold font-mono-data text-sm">
+                  <tr key={c.id} className="hover:bg-nexvel-cream/50 transition-colors">
+                    <td className="px-4 sm:px-6 py-4 text-nexvel-text-dark text-sm font-medium">{c.paciente.nome}</td>
+                    <td className="px-4 sm:px-6 py-4 text-nexvel-text-dark font-bold font-mono-data text-sm">
                       R$ {c.valor.toFixed(2).replace(".", ",")}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 text-zena-text-mid text-sm">
+                    <td className="px-4 sm:px-6 py-4 text-nexvel-text-mid text-sm">
                       {format(new Date(c.vencimento), "dd 'de' MMM", { locale: ptBR })}
                     </td>
-                    <td className="hidden sm:table-cell px-4 sm:px-6 py-4 text-zena-text-light text-sm capitalize">{c.metodo || "—"}</td>
+                    <td className="hidden sm:table-cell px-4 sm:px-6 py-4 text-nexvel-text-light text-sm capitalize">{c.metodo || "—"}</td>
                     <td className="px-4 sm:px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium ${cfg.color}`}>
                         <StatusIcon size={11} />
@@ -288,7 +288,7 @@ export default function Cobrancas() {
                       {status !== "pago" && (
                         <button
                           onClick={() => marcarPago(c.id)}
-                          className="text-xs text-zena-green-mid font-medium hover:underline whitespace-nowrap"
+                          className="text-xs text-nexvel-green-mid font-medium hover:underline whitespace-nowrap"
                         >
                           Marcar como pago
                         </button>
@@ -307,68 +307,68 @@ export default function Cobrancas() {
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
-            <div className="flex items-center justify-between px-6 py-5 border-b border-zena-cream">
-              <h2 className="text-zena-text-dark font-semibold text-lg">Nova cobrança</h2>
-              <button onClick={() => setShowModal(false)} className="text-zena-text-light hover:text-zena-text-dark">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-nexvel-cream">
+              <h2 className="text-nexvel-text-dark font-semibold text-lg">Nova cobrança</h2>
+              <button onClick={() => setShowModal(false)} className="text-nexvel-text-light hover:text-nexvel-text-dark">
                 <X size={20} />
               </button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Paciente</label>
+                <label className="block text-nexvel-text-dark text-sm font-medium mb-1.5">Paciente</label>
                 <select
                   value={form.pacienteId}
                   onChange={(e) => setForm((f) => ({ ...f, pacienteId: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                  className="w-full px-3 py-2.5 border border-nexvel-mint/40 rounded-xl text-sm text-nexvel-text-dark focus:outline-none focus:ring-2 focus:ring-nexvel-green-light"
                 >
                   <option value="">Selecione...</option>
                   {pacientes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Valor (R$)</label>
+                <label className="block text-nexvel-text-dark text-sm font-medium mb-1.5">Valor (R$)</label>
                 <input
                   type="number" min="0" step="0.01" placeholder="0,00"
                   value={form.valor}
                   onChange={(e) => setForm((f) => ({ ...f, valor: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                  className="w-full px-3 py-2.5 border border-nexvel-mint/40 rounded-xl text-sm text-nexvel-text-dark focus:outline-none focus:ring-2 focus:ring-nexvel-green-light"
                 />
               </div>
               <div>
-                <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Vencimento</label>
+                <label className="block text-nexvel-text-dark text-sm font-medium mb-1.5">Vencimento</label>
                 <input
                   type="date" value={form.vencimento}
                   onChange={(e) => setForm((f) => ({ ...f, vencimento: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                  className="w-full px-3 py-2.5 border border-nexvel-mint/40 rounded-xl text-sm text-nexvel-text-dark focus:outline-none focus:ring-2 focus:ring-nexvel-green-light"
                 />
               </div>
               <div>
-                <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Método de pagamento</label>
+                <label className="block text-nexvel-text-dark text-sm font-medium mb-1.5">Método de pagamento</label>
                 <select
                   value={form.metodo}
                   onChange={(e) => setForm((f) => ({ ...f, metodo: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                  className="w-full px-3 py-2.5 border border-nexvel-mint/40 rounded-xl text-sm text-nexvel-text-dark focus:outline-none focus:ring-2 focus:ring-nexvel-green-light"
                 >
                   {METODOS.map((m) => <option key={m} value={m}>{m.charAt(0).toUpperCase() + m.slice(1)}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-zena-text-dark text-sm font-medium mb-1.5">
-                  Descrição <span className="text-zena-text-light font-normal">(opcional)</span>
+                <label className="block text-nexvel-text-dark text-sm font-medium mb-1.5">
+                  Descrição <span className="text-nexvel-text-light font-normal">(opcional)</span>
                 </label>
                 <input
                   type="text" placeholder="Ex: Consulta mensal, retorno..."
                   value={form.descricao}
                   onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+                  className="w-full px-3 py-2.5 border border-nexvel-mint/40 rounded-xl text-sm text-nexvel-text-dark focus:outline-none focus:ring-2 focus:ring-nexvel-green-light"
                 />
               </div>
             </div>
-            <div className="flex gap-3 px-6 py-5 border-t border-zena-cream">
-              <button onClick={() => setShowModal(false)} className="flex-1 px-4 py-2.5 border border-zena-mint/40 text-zena-text-mid rounded-xl text-sm font-medium hover:bg-zena-cream">
+            <div className="flex gap-3 px-6 py-5 border-t border-nexvel-cream">
+              <button onClick={() => setShowModal(false)} className="flex-1 px-4 py-2.5 border border-nexvel-mint/40 text-nexvel-text-mid rounded-xl text-sm font-medium hover:bg-nexvel-cream">
                 Cancelar
               </button>
-              <button onClick={criarCobranca} disabled={saving} className="flex-1 px-4 py-2.5 bg-zena-green-mid text-white rounded-xl text-sm font-semibold hover:bg-zena-green-dark disabled:opacity-60">
+              <button onClick={criarCobranca} disabled={saving} className="flex-1 px-4 py-2.5 bg-nexvel-green-mid text-white rounded-xl text-sm font-semibold hover:bg-nexvel-green-dark disabled:opacity-60">
                 {saving ? "Salvando..." : "Criar cobrança"}
               </button>
             </div>
@@ -411,11 +411,11 @@ function EmptyState({
 }) {
   return (
     <div className="px-6 py-14 flex flex-col items-center">
-      <div className="w-12 h-12 rounded-2xl bg-zena-green-light/20 flex items-center justify-center mb-5">
-        <DollarSign size={24} className="text-zena-green-mid" />
+      <div className="w-12 h-12 rounded-2xl bg-nexvel-green-light/20 flex items-center justify-center mb-5">
+        <DollarSign size={24} className="text-nexvel-green-mid" />
       </div>
-      <h2 className="text-zena-text-dark text-xl font-bold mb-1.5">Configure suas cobranças</h2>
-      <p className="text-zena-text-light text-sm mb-10">Receba pelo Pix direto dos seus pacientes</p>
+      <h2 className="text-nexvel-text-dark text-xl font-bold mb-1.5">Configure suas cobranças</h2>
+      <p className="text-nexvel-text-light text-sm mb-10">Receba pelo Pix direto dos seus pacientes</p>
 
       <div className="w-full max-w-sm space-y-3">
         <Passo
@@ -465,34 +465,34 @@ function Passo({
 }) {
   return (
     <div className={`rounded-2xl border p-4 flex items-center gap-4 transition-all ${
-      done ? "border-zena-green-light/40 bg-zena-green-light/5" :
-      disabled ? "border-zena-mint/20 bg-zena-cream/40 opacity-60" :
-      "border-zena-mint/40 bg-white"
+      done ? "border-nexvel-green-light/40 bg-nexvel-green-light/5" :
+      disabled ? "border-nexvel-mint/20 bg-nexvel-cream/40 opacity-60" :
+      "border-nexvel-mint/40 bg-white"
     }`}>
       <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-        done ? "bg-zena-green-mid" : disabled ? "bg-zena-mint/30" : "bg-zena-green-light/20"
+        done ? "bg-nexvel-green-mid" : disabled ? "bg-nexvel-mint/30" : "bg-nexvel-green-light/20"
       }`}>
         {done
           ? <CheckCircle2 size={18} className="text-white" />
-          : <Icon size={18} className={disabled ? "text-zena-text-light" : "text-zena-green-mid"} />
+          : <Icon size={18} className={disabled ? "text-nexvel-text-light" : "text-nexvel-green-mid"} />
         }
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-[10px] font-bold text-zena-text-light tracking-wide">PASSO {number}</span>
-          {done && <span className="text-[10px] font-bold text-zena-green-mid">CONCLUÍDO</span>}
+          <span className="text-[10px] font-bold text-nexvel-text-light tracking-wide">PASSO {number}</span>
+          {done && <span className="text-[10px] font-bold text-nexvel-green-mid">CONCLUÍDO</span>}
         </div>
-        <p className={`text-sm font-medium leading-tight ${disabled ? "text-zena-text-light" : "text-zena-text-dark"}`}>{title}</p>
-        {subtitle && <p className="text-xs text-zena-green-mid font-medium mt-0.5">{subtitle}</p>}
-        {hint && <p className="text-xs text-zena-text-light mt-0.5">{hint}</p>}
+        <p className={`text-sm font-medium leading-tight ${disabled ? "text-nexvel-text-light" : "text-nexvel-text-dark"}`}>{title}</p>
+        {subtitle && <p className="text-xs text-nexvel-green-mid font-medium mt-0.5">{subtitle}</p>}
+        {hint && <p className="text-xs text-nexvel-text-light mt-0.5">{hint}</p>}
       </div>
       {action && (
         <button
           onClick={action.onClick}
           className={`text-xs font-semibold px-3 py-1.5 rounded-lg flex-shrink-0 transition-colors whitespace-nowrap ${
             action.secondary
-              ? "text-zena-text-mid hover:text-zena-text-dark underline"
-              : "bg-zena-green-mid text-white hover:bg-zena-green-dark"
+              ? "text-nexvel-text-mid hover:text-nexvel-text-dark underline"
+              : "bg-nexvel-green-mid text-white hover:bg-nexvel-green-dark"
           }`}
         >
           {action.label}
@@ -528,13 +528,13 @@ function AsaasModal({ onClose, onConnected, onError }: {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-zena-cream">
-          <h2 className="text-zena-text-dark font-semibold text-lg">Conectar conta Asaas</h2>
-          <button onClick={onClose} className="text-zena-text-light hover:text-zena-text-dark"><X size={20} /></button>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-nexvel-cream">
+          <h2 className="text-nexvel-text-dark font-semibold text-lg">Conectar conta Asaas</h2>
+          <button onClick={onClose} className="text-nexvel-text-light hover:text-nexvel-text-dark"><X size={20} /></button>
         </div>
         <div className="p-6 space-y-4">
-          <div className="bg-zena-cream rounded-xl p-4 text-sm text-zena-text-mid space-y-2">
-            <p className="font-medium text-zena-text-dark">Como obter sua chave Asaas:</p>
+          <div className="bg-nexvel-cream rounded-xl p-4 text-sm text-nexvel-text-mid space-y-2">
+            <p className="font-medium text-nexvel-text-dark">Como obter sua chave Asaas:</p>
             <ol className="list-decimal list-inside space-y-1 text-xs">
               <li>Acesse <span className="font-medium">asaas.com</span> e faça login</li>
               <li>Vá em <span className="font-medium">Configurações → Integrações</span></li>
@@ -542,25 +542,25 @@ function AsaasModal({ onClose, onConnected, onError }: {
             </ol>
           </div>
           <div>
-            <label className="block text-zena-text-dark text-sm font-medium mb-1.5">Chave de API Asaas</label>
+            <label className="block text-nexvel-text-dark text-sm font-medium mb-1.5">Chave de API Asaas</label>
             <input
               type="password"
               placeholder="$aact_..."
               value={key}
               onChange={(e) => setKey(e.target.value)}
-              className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light font-mono"
+              className="w-full px-3 py-2.5 border border-nexvel-mint/40 rounded-xl text-sm text-nexvel-text-dark focus:outline-none focus:ring-2 focus:ring-nexvel-green-light font-mono"
             />
-            <p className="text-xs text-zena-text-light mt-1.5">Sua chave é armazenada de forma segura e criptografada.</p>
+            <p className="text-xs text-nexvel-text-light mt-1.5">Sua chave é armazenada de forma segura e criptografada.</p>
           </div>
         </div>
-        <div className="flex gap-3 px-6 py-5 border-t border-zena-cream">
-          <button onClick={onClose} className="flex-1 py-2.5 border border-zena-mint/40 text-zena-text-mid rounded-xl text-sm hover:bg-zena-cream">
+        <div className="flex gap-3 px-6 py-5 border-t border-nexvel-cream">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-nexvel-mint/40 text-nexvel-text-mid rounded-xl text-sm hover:bg-nexvel-cream">
             Cancelar
           </button>
           <button
             onClick={salvar}
             disabled={loading || !key.trim()}
-            className="flex-1 py-2.5 bg-zena-green-mid text-white rounded-xl text-sm font-semibold hover:bg-zena-green-dark disabled:opacity-60"
+            className="flex-1 py-2.5 bg-nexvel-green-mid text-white rounded-xl text-sm font-semibold hover:bg-nexvel-green-dark disabled:opacity-60"
           >
             {loading ? "Conectando..." : "Conectar"}
           </button>
@@ -583,9 +583,9 @@ function SeletorPaciente({ pacientes, onClose, onSelect }: {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl">
-        <div className="flex items-center justify-between px-6 py-5 border-b border-zena-cream">
-          <h2 className="text-zena-text-dark font-semibold text-lg">Selecionar paciente</h2>
-          <button onClick={onClose} className="text-zena-text-light hover:text-zena-text-dark"><X size={20} /></button>
+        <div className="flex items-center justify-between px-6 py-5 border-b border-nexvel-cream">
+          <h2 className="text-nexvel-text-dark font-semibold text-lg">Selecionar paciente</h2>
+          <button onClick={onClose} className="text-nexvel-text-light hover:text-nexvel-text-dark"><X size={20} /></button>
         </div>
         <div className="px-4 pt-4">
           <input
@@ -594,17 +594,17 @@ function SeletorPaciente({ pacientes, onClose, onSelect }: {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             autoFocus
-            className="w-full px-3 py-2.5 border border-zena-mint/40 rounded-xl text-sm text-zena-text-dark focus:outline-none focus:ring-2 focus:ring-zena-green-light"
+            className="w-full px-3 py-2.5 border border-nexvel-mint/40 rounded-xl text-sm text-nexvel-text-dark focus:outline-none focus:ring-2 focus:ring-nexvel-green-light"
           />
         </div>
         <div className="p-4 space-y-1 max-h-72 overflow-y-auto">
           {filtrados.length === 0 ? (
-            <p className="text-center text-zena-text-light text-sm py-4">Nenhuma paciente encontrada.</p>
+            <p className="text-center text-nexvel-text-light text-sm py-4">Nenhuma paciente encontrada.</p>
           ) : filtrados.map((p) => (
             <button
               key={p.id}
               onClick={() => onSelect(p)}
-              className="w-full text-left px-4 py-3 rounded-xl hover:bg-zena-cream transition-colors text-sm text-zena-text-dark font-medium"
+              className="w-full text-left px-4 py-3 rounded-xl hover:bg-nexvel-cream transition-colors text-sm text-nexvel-text-dark font-medium"
             >
               {p.nome}
             </button>

@@ -24,7 +24,7 @@ interface Participante {
 function ProgressBar({ pct }: { pct: number }) {
   return (
     <div className="h-1.5 bg-black/10 rounded-full overflow-hidden">
-      <div className="h-full rounded-full bg-[#1B4332]" style={{ width: `${pct}%` }} />
+      <div className="h-full rounded-full bg-[#7C3AED]" style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -115,20 +115,20 @@ export default function CiclosPanel() {
         <h2 className="text-[16px] font-bold text-[#111]">Ciclos de desafio</h2>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-1 px-3 py-2 rounded-xl bg-[#1B4332] text-white text-[12px] font-semibold">
+          className="flex items-center gap-1 px-3 py-2 rounded-xl bg-[#7C3AED] text-white text-[12px] font-semibold">
           <Plus size={14} /> Criar ciclo
         </button>
       </div>
 
       {cicloAtivo ? (
-        <div className="bg-[#F0FDF4] rounded-2xl p-5 border-2 border-[#1C4A2E]">
+        <div className="bg-[#F0FDF4] rounded-2xl p-5 border-2 border-[#7C3AED]">
           <div className="flex items-center gap-2 mb-2">
-            <Trophy size={15} color="#1B4332" />
-            <span className="text-[14px] font-bold text-[#1B4332]">
+            <Trophy size={15} color="#7C3AED" />
+            <span className="text-[14px] font-bold text-[#7C3AED]">
               Ciclo {String(cicloAtivo.numero).padStart(2, "0")}
               {cicloAtivo.titulo ? ` — ${cicloAtivo.titulo}` : ""}
             </span>
-            <span className="ml-auto text-[11px] text-white bg-[#1B4332] px-2 py-0.5 rounded-full">
+            <span className="ml-auto text-[11px] text-white bg-[#7C3AED] px-2 py-0.5 rounded-full">
               {cicloAtivo.status === "aquecimento" ? "🔥 Aquecimento" : "✅ Ativo"}
             </span>
           </div>
@@ -145,7 +145,7 @@ export default function CiclosPanel() {
           <div className="mt-4">
             <button
               onClick={() => setRankingCicloId(rankingCicloId === cicloAtivo.id ? null : cicloAtivo.id)}
-              className="flex items-center gap-1 text-[12px] font-semibold text-[#1B4332] mb-2">
+              className="flex items-center gap-1 text-[12px] font-semibold text-[#7C3AED] mb-2">
               Ver ranking completo <ChevronRight size={13} />
             </button>
 
@@ -212,7 +212,7 @@ export default function CiclosPanel() {
                   value={titulo}
                   onChange={e => setTitulo(e.target.value)}
                   placeholder="ex: Desafio de Julho"
-                  className="w-full border border-[#E5E7EB] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#1B4332]" />
+                  className="w-full border border-[#E5E7EB] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#7C3AED]" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -222,7 +222,7 @@ export default function CiclosPanel() {
                     type="date"
                     value={dataInicio}
                     onChange={e => setDataInicio(e.target.value)}
-                    className="w-full border border-[#E5E7EB] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#1B4332]" />
+                    className="w-full border border-[#E5E7EB] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#7C3AED]" />
                 </div>
                 <div>
                   <label className="block text-[12px] text-[#666] mb-1">Fim</label>
@@ -230,7 +230,7 @@ export default function CiclosPanel() {
                     type="date"
                     value={dataFim}
                     onChange={e => setDataFim(e.target.value)}
-                    className="w-full border border-[#E5E7EB] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#1B4332]" />
+                    className="w-full border border-[#E5E7EB] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#7C3AED]" />
                 </div>
               </div>
 
@@ -248,7 +248,7 @@ export default function CiclosPanel() {
                       onClick={() => setPremioTipo(v)}
                       className={`py-2 rounded-xl text-[12px] font-medium border-2 ${
                         premioTipo === v
-                          ? "border-[#1B4332] bg-[#F0FDF4] text-[#1B4332]"
+                          ? "border-[#7C3AED] bg-[#F0FDF4] text-[#7C3AED]"
                           : "border-[#E5E7EB] text-[#666]"
                       }`}>
                       {l}
@@ -264,7 +264,7 @@ export default function CiclosPanel() {
                     value={premioDescricao}
                     onChange={e => setPremioDescricao(e.target.value)}
                     placeholder="ex: Consulta de retorno grátis"
-                    className="w-full border border-[#E5E7EB] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#1B4332]" />
+                    className="w-full border border-[#E5E7EB] rounded-xl px-3 py-2.5 text-[13px] outline-none focus:border-[#7C3AED]" />
                 </div>
               )}
             </div>
@@ -278,7 +278,7 @@ export default function CiclosPanel() {
               <button
                 onClick={criar}
                 disabled={criando || !dataInicio || !dataFim}
-                className="flex-1 py-3 rounded-xl bg-[#1B4332] text-white text-[13px] font-bold disabled:opacity-50">
+                className="flex-1 py-3 rounded-xl bg-[#7C3AED] text-white text-[13px] font-bold disabled:opacity-50">
                 {criando ? "Criando..." : "Criar e ativar"}
               </button>
             </div>

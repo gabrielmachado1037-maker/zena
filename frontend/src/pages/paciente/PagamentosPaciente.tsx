@@ -18,7 +18,7 @@ interface PagamentosData {
 }
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  pago:      { label: "Pago",      color: "#1B4332", bg: "#D1FAE5", icon: CheckCircle },
+  pago:      { label: "Pago",      color: "#7C3AED", bg: "#D1FAE5", icon: CheckCircle },
   pendente:  { label: "Pendente",  color: "#B45309", bg: "#FEF3C7", icon: Clock },
   vencido:   { label: "Vencido",   color: "#DC2626", bg: "#FEE2E2", icon: AlertCircle },
   cancelado: { label: "Cancelado", color: "#9CA3AF", bg: "#F3F4F6", icon: AlertCircle },
@@ -47,7 +47,7 @@ function planoStatus(cobrancas: Cobranca[], diaVenc: number) {
   const temVencido  = cobrancas.some(c => c.status === "vencido");
   if (temVencido)           return { label: "Vencido",  color: "#DC2626", bg: "#FEE2E2" };
   if (temPendente && dias <= 5) return { label: "Vencendo", color: "#B45309", bg: "#FEF3C7" };
-  return                         { label: "Em dia",   color: "#1B4332", bg: "#D1FAE5" };
+  return                         { label: "Em dia",   color: "#7C3AED", bg: "#D1FAE5" };
 }
 
 function Grafico({ cobrancas }: { cobrancas: Cobranca[] }) {
@@ -70,7 +70,7 @@ function Grafico({ cobrancas }: { cobrancas: Cobranca[] }) {
   });
 
   const barColor = (s: string) =>
-    s === "pago" ? "#1B4332" : s === "vencido" ? "#DC2626" : s === "pendente" ? "#D97706" : "#E5E7EB";
+    s === "pago" ? "#7C3AED" : s === "vencido" ? "#DC2626" : s === "pendente" ? "#D97706" : "#E5E7EB";
 
   return (
     <div className="bg-white rounded-2xl p-5"
@@ -86,7 +86,7 @@ function Grafico({ cobrancas }: { cobrancas: Cobranca[] }) {
         ))}
       </div>
       <div className="flex gap-4 mt-3">
-        {[["#1B4332","Pago"],["#D97706","Pendente"],["#DC2626","Vencido"]].map(([c,l]) => (
+        {[["#7C3AED","Pago"],["#D97706","Pendente"],["#DC2626","Vencido"]].map(([c,l]) => (
           <div key={l} className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-sm" style={{ background: c }} />
             <span className="text-[10px] text-[#999]">{l}</span>
@@ -115,7 +115,7 @@ export default function PagamentosPaciente() {
     <div className="pt-4 pb-4">
       {loading ? (
         <div className="space-y-4 px-4">
-          <div className="rounded-2xl animate-pulse h-44" style={{ background: "#1B4332" }} />
+          <div className="rounded-2xl animate-pulse h-44" style={{ background: "#7C3AED" }} />
           <div className="bg-white rounded-2xl animate-pulse h-24" />
           <div className="bg-white rounded-2xl animate-pulse h-48" />
         </div>
@@ -127,7 +127,7 @@ export default function PagamentosPaciente() {
             const dias = diasParaProximoVenc(plano.diaVencimento);
             const st   = planoStatus(cobrancas, plano.diaVencimento);
             return (
-              <div className="rounded-2xl p-6 text-white" style={{ background: "#1B4332" }}>
+              <div className="rounded-2xl p-6 text-white" style={{ background: "#7C3AED" }}>
                 <div className="flex items-start justify-between mb-5">
                   <div>
                     <p className="text-[11px] text-white/60 font-semibold uppercase tracking-wide mb-1">Meu plano</p>
@@ -193,7 +193,7 @@ export default function PagamentosPaciente() {
                         {c.linkPagamento && (c.status === "pendente" || c.status === "vencido") && (
                           <a href={c.linkPagamento} target="_blank" rel="noopener noreferrer"
                             className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-white text-[10px] font-bold"
-                            style={{ background: "#1B4332" }}>
+                            style={{ background: "#7C3AED" }}>
                             Pagar <ExternalLink size={9} />
                           </a>
                         )}

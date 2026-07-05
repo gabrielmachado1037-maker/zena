@@ -2,21 +2,21 @@ import { Link } from "react-router-dom";
 
 export default function Privacidade() {
   return (
-    <div className="min-h-screen bg-zena-cream">
+    <div className="min-h-screen bg-nexvel-cream">
       <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-        <Link to="/" className="text-2xl font-bold text-zena-green-dark tracking-tight">clinne</Link>
-        <Link to="/login" className="text-sm text-zena-green-mid font-medium hover:text-zena-green-dark">Entrar</Link>
+        <Link to="/" className="text-2xl font-bold text-nexvel-green-dark tracking-tight">nexvel</Link>
+        <Link to="/login" className="text-sm text-nexvel-green-mid font-medium hover:text-nexvel-green-dark">Entrar</Link>
       </nav>
       <div className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-bold text-zena-green-dark mb-2">Política de Privacidade</h1>
-        <p className="text-zena-text-light text-sm mb-10">Última atualização: junho de 2026</p>
+        <h1 className="text-4xl font-bold text-nexvel-green-dark mb-2">Política de Privacidade</h1>
+        <p className="text-nexvel-text-light text-sm mb-10">Última atualização: junho de 2026</p>
 
-        <div className="bg-white rounded-2xl p-8 space-y-8 text-zena-text-mid leading-relaxed">
+        <div className="bg-white rounded-2xl p-8 space-y-8 text-nexvel-text-mid leading-relaxed">
           <Section titulo="1. Quem somos">
-            A Clinne é uma plataforma SaaS destinada a nutricionistas autônomos. Operamos em conformidade com a
+            A Nexvel é uma plataforma SaaS destinada a nutricionistas autônomos. Operamos em conformidade com a
             Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018) e demais normas aplicáveis.
             Para dúvidas sobre privacidade, entre em contato pelo e-mail{" "}
-            <a href="mailto:privacidade@clinne.com.br" className="text-zena-green-mid underline">privacidade@clinne.com.br</a>.
+            <a href="mailto:privacidade@nexvel.com.br" className="text-nexvel-green-mid underline">privacidade@nexvel.com.br</a>.
           </Section>
 
           <Section titulo="2. Dados que coletamos">
@@ -59,7 +59,7 @@ export default function Privacidade() {
             Mantemos os dados enquanto a conta estiver ativa. Após o cancelamento, os dados são mantidos por
             90 dias para fins de auditoria e, em seguida, excluídos permanentemente.
             Para solicitar a exclusão antecipada, envie um e-mail para{" "}
-            <a href="mailto:privacidade@clinne.com.br" className="text-zena-green-mid underline">privacidade@clinne.com.br</a>.
+            <a href="mailto:privacidade@nexvel.com.br" className="text-nexvel-green-mid underline">privacidade@nexvel.com.br</a>.
           </Section>
 
           <Section titulo="7. Seus direitos">
@@ -79,7 +79,7 @@ export default function Privacidade() {
 
           <Section titulo="10. Contato">
             Dúvidas, solicitações ou reclamações sobre privacidade:{" "}
-            <a href="mailto:privacidade@clinne.com.br" className="text-zena-green-mid underline">privacidade@clinne.com.br</a>.
+            <a href="mailto:privacidade@nexvel.com.br" className="text-nexvel-green-mid underline">privacidade@nexvel.com.br</a>.
           </Section>
         </div>
       </div>
@@ -90,7 +90,7 @@ export default function Privacidade() {
 function Section({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <div>
-      <h2 className="text-lg font-bold text-zena-green-dark mb-3">{titulo}</h2>
+      <h2 className="text-lg font-bold text-nexvel-green-dark mb-3">{titulo}</h2>
       <div className="text-sm">{children}</div>
     </div>
   );

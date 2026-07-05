@@ -1,439 +1,514 @@
-﻿import { useEffect, useRef, useState, type FormEvent, type ChangeEvent } from "react";
-import { User, Lock, CheckCircle, Building2, Upload, X, Link2, RefreshCw, Copy, Camera, LogOut } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Bell, UserCircle2, Pencil, BadgeCheck, MapPin, Camera, X, Loader2,
+  IdCard, Lock, ShieldCheck, ChevronRight, Eye, EyeOff, LifeBuoy,
+  FileText, ShieldQuestion, Activity, MessageCircle,
+} from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
 
+/* GET /api/auth/me */
+interface Me {
+  id: string; nome: string; email: string; crn: string;
+  nomeConsultorio?: string | null; enderecoConsultorio?: string | null;
+}
+
+const SUPORTE_EMAIL = "suporte@nexvel.com.br";
+
+/* glass-panel sem linhas brancas (border-subtle = rgba(124,58,237,.1)) */
+const GLASS = "bg-nx-surface/80 backdrop-blur-md border border-nx-primary-container/10 rounded-2xl transition-shadow hover:shadow-[0_0_20px_rgba(124,58,237,0.15)]";
+
 export default function Perfil() {
-  const { nutricionista, logout } = useAuth();
-  const [modalLogout, setModalLogout] = useState(false);
+  const { nutricionista, updateAvatar, updateNutricionista } = useAuth();
+  const [me, setMe] = useState<Me | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [fotoLoading, setFotoLoading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  // ─── Dados pessoais ──────────────────────────────────────────────────────
-  const [nome, setNome] = useState(nutricionista?.nome || "");
-  const [crn, setCrn] = useState(nutricionista?.crn || "");
-  const [loadingPerfil, setLoadingPerfil] = useState(false);
-  const [sucessoPerfil, setSucessoPerfil] = useState(false);
-  const [erroPerfil, setErroPerfil] = useState("");
-
-  // ─── Senha ───────────────────────────────────────────────────────────────
-  const [senhaAtual, setSenhaAtual] = useState("");
-  const [novaSenha, setNovaSenha] = useState("");
-  const [confirmarSenha, setConfirmarSenha] = useState("");
-  const [loadingSenha, setLoadingSenha] = useState(false);
-  const [sucessoSenha, setSucessoSenha] = useState(false);
-  const [erroSenha, setErroSenha] = useState("");
-
-  // ─── Consultório ─────────────────────────────────────────────────────────
-  const [nomeConsultorio, setNomeConsultorio] = useState(nutricionista?.nomeConsultorio || "");
-  const [enderecoConsultorio, setEnderecoConsultorio] = useState(nutricionista?.enderecoConsultorio || "");
-  const [logoConsultorio, setLogoConsultorio] = useState<string | null>(nutricionista?.logoConsultorio || null);
-  const [loadingConsultorio, setLoadingConsultorio] = useState(false);
-  const [sucessoConsultorio, setSucessoConsultorio] = useState(false);
-  const [erroConsultorio, setErroConsultorio] = useState("");
-  const logoInputRef = useRef<HTMLInputElement>(null);
-
-  // ─── Avatar ──────────────────────────────────────────────────────────────────
-  const avatarInputRef = useRef<HTMLInputElement>(null);
-  const [loadingAvatar, setLoadingAvatar] = useState(false);
-  const [erroAvatar, setErroAvatar] = useState("");
-  const { updateAvatar } = useAuth();
-
-  function persistUser(data: any) {
-    const atual = JSON.parse(localStorage.getItem("zena_user") || "{}");
-    localStorage.setItem("zena_user", JSON.stringify({ ...atual, ...data }));
+  function carregar() {
+    setLoading(true); setError(null);
+    api.get<Me>("/auth/me")
+      .then((r) => setMe(r.data))
+      .catch((e) => setError(e?.response?.data?.error ?? "Não foi possível carregar o perfil"))
+      .finally(() => setLoading(false));
   }
+  useEffect(carregar, []);
 
-  async function salvarPerfil(e: FormEvent) {
-    e.preventDefault();
-    setErroPerfil("");
-    setSucessoPerfil(false);
-    setLoadingPerfil(true);
-    try {
-      const { data } = await api.put("/auth/perfil", { nome, crn });
-      persistUser(data);
-      setSucessoPerfil(true);
-      setTimeout(() => setSucessoPerfil(false), 3000);
-    } catch (err: any) {
-      setErroPerfil(err.response?.data?.error || "Erro ao salvar. Tente novamente.");
-    } finally {
-      setLoadingPerfil(false);
-    }
-  }
-
-  async function alterarSenha(e: FormEvent) {
-    e.preventDefault();
-    setErroSenha("");
-    setSucessoSenha(false);
-    if (novaSenha !== confirmarSenha) { setErroSenha("As senhas não coincidem."); return; }
-    if (novaSenha.length < 6) { setErroSenha("A nova senha deve ter pelo menos 6 caracteres."); return; }
-    setLoadingSenha(true);
-    try {
-      await api.put("/auth/perfil", { nome, crn, senhaAtual, novaSenha });
-      setSucessoSenha(true);
-      setSenhaAtual(""); setNovaSenha(""); setConfirmarSenha("");
-      setTimeout(() => setSucessoSenha(false), 3000);
-    } catch (err: any) {
-      setErroSenha(err.response?.data?.error || "Erro ao alterar senha.");
-    } finally {
-      setLoadingSenha(false);
-    }
-  }
-
-  async function salvarConsultorio(e: FormEvent) {
-    e.preventDefault();
-    setErroConsultorio("");
-    setSucessoConsultorio(false);
-    setLoadingConsultorio(true);
-    try {
-      const { data } = await api.put("/auth/consultorio", {
-        nomeConsultorio: nomeConsultorio || null,
-        logoConsultorio: logoConsultorio || null,
-        enderecoConsultorio: enderecoConsultorio || null,
-      });
-      persistUser(data);
-      setSucessoConsultorio(true);
-      setTimeout(() => setSucessoConsultorio(false), 3000);
-    } catch (err: any) {
-      setErroConsultorio(err.response?.data?.error || "Erro ao salvar.");
-    } finally {
-      setLoadingConsultorio(false);
-    }
-  }
-
-  async function handleAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+  function escolherFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { setErroAvatar("A foto deve ter no máximo 2MB."); return; }
-    setErroAvatar("");
-    setLoadingAvatar(true);
-    try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const fotoBase64 = reader.result as string;
-        const { data } = await api.put<{ foto: string }>("/auth/perfil/foto", { fotoBase64 });
-        updateAvatar(data.foto);
-      };
-      reader.readAsDataURL(file);
-    } catch {
-      setErroAvatar("Erro ao enviar foto.");
-    } finally {
-      setLoadingAvatar(false);
-    }
-  }
-
-  function handleLogoChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 500 * 1024) {
-      setErroConsultorio("A logo deve ter no máximo 500KB.");
-      return;
-    }
+    setFotoLoading(true);
     const reader = new FileReader();
-    reader.onload = () => setLogoConsultorio(reader.result as string);
+    reader.onload = async () => {
+      try {
+        const { data } = await api.put<{ foto: string }>("/auth/perfil/foto", { fotoBase64: reader.result });
+        updateAvatar(data.foto);
+      } catch { /* ignora */ } finally { setFotoLoading(false); }
+    };
     reader.readAsDataURL(file);
   }
 
-  // ─── Código de vínculo ───────────────────────────────────────────────────
-  const [codigoVinculo, setCodigoVinculo] = useState<string | null>(null);
-  const [loadingCodigo, setLoadingCodigo] = useState(false);
-  const [copiado, setCopiado] = useState(false);
-
-  useEffect(() => {
-    api.get<{ codigoVinculo: string | null }>("/auth/paciente/codigo-vinculo")
-      .then((r) => setCodigoVinculo(r.data.codigoVinculo))
-      .catch(() => null);
-  }, []);
-
-  async function gerarCodigo() {
-    setLoadingCodigo(true);
-    try {
-      const { data } = await api.post<{ codigoVinculo: string }>("/auth/paciente/gerar-codigo");
-      setCodigoVinculo(data.codigoVinculo);
-    } finally { setLoadingCodigo(false); }
-  }
-
-  function copiarCodigo() {
-    if (!codigoVinculo) return;
-    navigator.clipboard.writeText(codigoVinculo);
-    setCopiado(true);
-    setTimeout(() => setCopiado(false), 2000);
-  }
-
-  const inputCls = "w-full px-4 py-3 rounded-xl border border-zena-mint/50 bg-zena-cream text-zena-text-dark placeholder-zena-text-light focus:outline-none focus:ring-2 focus:ring-zena-green-light text-sm";
+  const nome = me?.nome ?? nutricionista?.nome ?? "";
+  const subtitulo = me?.nomeConsultorio?.trim() || "Nutricionista";
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 p-4 sm:p-8">
-      <div>
-        <h1 className="text-2xl font-bold text-zena-green-dark">Meu Perfil</h1>
-        <p className="text-zena-text-mid mt-1">Atualize suas informações e configurações.</p>
-      </div>
-
-      {/* Dados pessoais */}
-      <div className="bg-white rounded-2xl border border-zena-mint/30 p-6">
-        <h2 className="font-semibold text-zena-text-dark mb-5 flex items-center gap-2">
-          <User size={18} className="text-zena-green-mid" /> Dados pessoais
-        </h2>
-
-        {/* Avatar upload */}
-        <div className="flex items-center gap-4 mb-6 pb-5 border-b border-zena-mint/20">
-          <div className="relative">
-            <Avatar src={nutricionista?.foto} nome={nutricionista?.nome || "?"} tamanho={72} />
-            <button
-              type="button"
-              onClick={() => avatarInputRef.current?.click()}
-              disabled={loadingAvatar}
-              className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-zena-green-dark border-2 border-white flex items-center justify-center disabled:opacity-60"
-            >
-              <Camera size={12} className="text-white" />
+    <div className="flex min-h-screen bg-nx-bg-lowest text-nx-on-surface font-sans">
+      <main className="flex-1 min-w-0 flex flex-col pb-24 lg:pb-0">
+        {/* Header */}
+        <header className="flex items-center justify-between gap-4 px-5 md:px-8 h-16 border-b border-nx-outline-variant sticky top-0 z-30 bg-nx-bg-lowest">
+          <h1 className="text-headline-md text-nx-primary font-bold">Configurações</h1>
+          <div className="flex items-center gap-2">
+            <button aria-label="Notificações" className="relative p-2 rounded-full hover:bg-nx-surface-hover transition-colors">
+              <Bell size={20} /><span className="absolute top-2 right-2 size-2 rounded-full bg-nx-secondary" />
             </button>
-            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+            <button aria-label="Conta" className="p-2 rounded-full hover:bg-nx-surface-hover transition-colors"><UserCircle2 size={22} /></button>
           </div>
-          <div>
-            <p className="text-sm font-medium text-zena-text-dark">Foto de perfil</p>
-            <p className="text-xs text-zena-text-light mt-0.5">JPG ou PNG, máx. 2MB</p>
-            {loadingAvatar && <p className="text-xs text-zena-green-mid mt-0.5">Enviando...</p>}
-            {erroAvatar && <p className="text-xs text-red-500 mt-0.5">{erroAvatar}</p>}
+        </header>
+
+        <div className="p-5 md:p-8 mx-auto max-w-6xl w-full grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+          {/* ── Coluna principal ──────────────────────────── */}
+          <div className="lg:col-span-2 space-y-5">
+            {/* Card de perfil */}
+            {loading ? (
+              <div className="h-48 animate-pulse rounded-2xl bg-nx-container/60" />
+            ) : error ? (
+              <div className={`${GLASS} p-8 text-center`}>
+                <p className="text-nx-error mb-3">{error}</p>
+                <button onClick={carregar} className="text-nx-primary hover:underline text-label-md">Tentar de novo</button>
+              </div>
+            ) : (
+              <div className={`${GLASS} p-6`}>
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                  {/* Avatar + editar foto */}
+                  <div className="relative shrink-0">
+                    <Avatar src={nutricionista?.foto} nome={nome} tamanho={112} className="rounded-2xl" />
+                    <button
+                      onClick={() => fileRef.current?.click()}
+                      disabled={fotoLoading}
+                      aria-label="Trocar foto"
+                      className="absolute -bottom-2 -right-2 grid place-items-center size-9 rounded-full bg-nx-primary-container text-white shadow-nx-glow hover:bg-[#8b46f5] transition-colors disabled:opacity-60"
+                    >
+                      {fotoLoading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
+                    </button>
+                    <input ref={fileRef} type="file" accept="image/*" hidden onChange={escolherFoto} />
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0 text-center sm:text-left">
+                    <div className="flex items-start justify-center sm:justify-between gap-3">
+                      <div>
+                        <h2 className="text-headline-lg font-extrabold leading-tight">{nome}</h2>
+                        <p className="text-body-md text-nx-primary mt-0.5">{subtitulo}</p>
+                      </div>
+                      <button
+                        onClick={() => setEditOpen(true)}
+                        className="hidden sm:flex items-center gap-1.5 text-label-md text-nx-on-surface-variant hover:text-nx-primary rounded-lg px-3 py-1.5 border border-nx-primary-container/10"
+                      >
+                        <Pencil size={14} /> Editar
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-4">
+                      {me?.crn && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-nx-container px-3 py-1.5 text-label-md text-nx-on-surface-variant">
+                          <BadgeCheck size={15} className="text-nx-tertiary" /> {me.crn}
+                        </span>
+                      )}
+                      {me?.enderecoConsultorio?.trim() && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-nx-container px-3 py-1.5 text-label-md text-nx-on-surface-variant">
+                          <MapPin size={15} className="text-nx-primary" /> {me.enderecoConsultorio}
+                        </span>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => setEditOpen(true)}
+                      className="sm:hidden mt-4 w-full flex items-center justify-center gap-1.5 text-label-md text-nx-primary rounded-xl py-2.5 border border-nx-primary-container/10"
+                    >
+                      <Pencil size={14} /> Editar dados
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Ajustes */}
+            <section>
+              <p className="text-label-md uppercase tracking-wider text-nx-outline px-1 mb-3">Ajustes</p>
+              <div className={`${GLASS} divide-y divide-nx-primary-container/10 overflow-hidden`}>
+                {/* Dados Pessoais → abre modal */}
+                <AjusteRow
+                  icon={<IdCard size={16} />}
+                  titulo="Dados Pessoais"
+                  descricao="Nome, CRN e endereço do consultório"
+                  onClick={() => setEditOpen(true)}
+                />
+
+                {/* Segurança / senha (expansível) */}
+                <SegurancaRow />
+
+                {/* 2FA — Em breve */}
+                <AjusteRow
+                  icon={<ShieldCheck size={16} />}
+                  titulo="Autenticação em duas etapas"
+                  descricao="Camada extra de segurança no login"
+                  tint="tertiary"
+                  disabled
+                  right={<span className="text-[11px] font-bold uppercase tracking-wider text-nx-secondary bg-nx-secondary/15 rounded-full px-2.5 py-1">Em breve</span>}
+                />
+
+                {/* Notificações push (toggle) */}
+                <NotificacoesRow />
+              </div>
+            </section>
+          </div>
+
+          {/* ── Coluna lateral ───────────────────────────── */}
+          <div className="space-y-5">
+            <AjudaCard />
+            <StatusCard />
           </div>
         </div>
+      </main>
 
-        <form onSubmit={salvarPerfil} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-zena-text-mid mb-1.5 block">Nome completo</label>
-            <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} className={inputCls} required />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-zena-text-mid mb-1.5 block">CRN</label>
-            <input type="text" value={crn} onChange={(e) => setCrn(e.target.value)} className={inputCls} required />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-zena-text-mid mb-1.5 block">E-mail</label>
-            <input
-              type="email"
-              value={nutricionista?.email || ""}
-              disabled
-              className="w-full px-4 py-3 rounded-xl border border-zena-mint/30 bg-gray-50 text-zena-text-light text-sm cursor-not-allowed"
-            />
-            <p className="text-xs text-zena-text-light mt-1">O e-mail não pode ser alterado.</p>
-          </div>
-          {erroPerfil && <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{erroPerfil}</p>}
-          {sucessoPerfil && (
-            <div className="flex items-center gap-2 text-emerald-600 text-sm bg-emerald-50 px-3 py-2 rounded-lg">
-              <CheckCircle size={16} /> Perfil atualizado!
-            </div>
-          )}
-          <button type="submit" disabled={loadingPerfil} className="bg-zena-green-dark hover:bg-zena-green-mid text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-60">
-            {loadingPerfil ? "Salvando..." : "Salvar alterações"}
-          </button>
-        </form>
-      </div>
-
-      {/* Meu Consultório */}
-      <div className="bg-white rounded-2xl border border-zena-mint/30 p-6">
-        <h2 className="font-semibold text-zena-text-dark mb-1 flex items-center gap-2">
-          <Building2 size={18} className="text-zena-green-mid" /> Meu Consultório
-        </h2>
-        <p className="text-zena-text-light text-xs mb-5">Aparece na sidebar e em documentos gerados pelo Clinne.</p>
-        <form onSubmit={salvarConsultorio} className="space-y-4">
-          {/* Logo */}
-          <div>
-            <label className="text-sm font-medium text-zena-text-mid mb-2 block">Logo do consultório</label>
-            <div className="flex items-center gap-4">
-              <div
-                onClick={() => logoInputRef.current?.click()}
-                className="w-20 h-20 rounded-xl border-2 border-dashed border-zena-mint/50 flex items-center justify-center cursor-pointer hover:border-zena-green-mid hover:bg-zena-cream/50 transition-all overflow-hidden flex-shrink-0"
-              >
-                {logoConsultorio ? (
-                  <img src={logoConsultorio} alt="Logo" className="w-full h-full object-cover" />
-                ) : (
-                  <Upload size={20} className="text-zena-text-light" />
-                )}
-              </div>
-              <div className="flex-1 text-xs text-zena-text-light space-y-1">
-                <p>Clique para fazer upload da sua logo.</p>
-                <p>PNG ou JPG, máximo 500KB.</p>
-                {logoConsultorio && (
-                  <button
-                    type="button"
-                    onClick={() => setLogoConsultorio(null)}
-                    className="flex items-center gap-1 text-red-400 hover:text-red-500 mt-1"
-                  >
-                    <X size={12} /> Remover logo
-                  </button>
-                )}
-              </div>
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                onChange={handleLogoChange}
-                className="hidden"
-              />
-            </div>
-          </div>
-
-          {/* Nome do consultório */}
-          <div>
-            <label className="text-sm font-medium text-zena-text-mid mb-1.5 block">Nome do consultório</label>
-            <input
-              type="text"
-              value={nomeConsultorio}
-              onChange={(e) => setNomeConsultorio(e.target.value)}
-              placeholder="Clínica NutriVida ou Dra. Ana Souza"
-              className={inputCls}
-            />
-            <p className="text-xs text-zena-text-light mt-1">Este nome aparece na sidebar abaixo do logo "clinne".</p>
-          </div>
-
-          {/* CRN (read-only nesta seção, editável em Dados pessoais) */}
-          <div>
-            <label className="text-sm font-medium text-zena-text-mid mb-1.5 block">CRN</label>
-            <input
-              type="text"
-              value={crn}
-              disabled
-              className="w-full px-4 py-3 rounded-xl border border-zena-mint/30 bg-gray-50 text-zena-text-light text-sm cursor-not-allowed"
-            />
-            <p className="text-xs text-zena-text-light mt-1">Altere o CRN na seção "Dados pessoais" acima.</p>
-          </div>
-
-          {/* Endereço */}
-          <div>
-            <label className="text-sm font-medium text-zena-text-mid mb-1.5 block">Endereço de atendimento</label>
-            <input
-              type="text"
-              value={enderecoConsultorio}
-              onChange={(e) => setEnderecoConsultorio(e.target.value)}
-              placeholder="Rua das Flores, 123 – São Paulo, SP"
-              className={inputCls}
-            />
-          </div>
-
-          {erroConsultorio && <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{erroConsultorio}</p>}
-          {sucessoConsultorio && (
-            <div className="flex items-center gap-2 text-emerald-600 text-sm bg-emerald-50 px-3 py-2 rounded-lg">
-              <CheckCircle size={16} /> Consultório atualizado! Recarregue a página para ver na sidebar.
-            </div>
-          )}
-          <button type="submit" disabled={loadingConsultorio} className="bg-zena-green-dark hover:bg-zena-green-mid text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-60">
-            {loadingConsultorio ? "Salvando..." : "Salvar consultório"}
-          </button>
-        </form>
-      </div>
-
-      {/* Alterar senha */}
-      <div className="bg-white rounded-2xl border border-zena-mint/30 p-6">
-        <h2 className="font-semibold text-zena-text-dark mb-5 flex items-center gap-2">
-          <Lock size={18} className="text-zena-green-mid" /> Alterar senha
-        </h2>
-        <form onSubmit={alterarSenha} className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-zena-text-mid mb-1.5 block">Senha atual</label>
-            <input type="password" value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} placeholder="••••••••" className={inputCls} required />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-zena-text-mid mb-1.5 block">Nova senha</label>
-            <input type="password" value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)} placeholder="mínimo 6 caracteres" className={inputCls} required minLength={6} />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-zena-text-mid mb-1.5 block">Confirmar nova senha</label>
-            <input type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} placeholder="••••••••" className={inputCls} required />
-          </div>
-          {erroSenha && <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{erroSenha}</p>}
-          {sucessoSenha && (
-            <div className="flex items-center gap-2 text-emerald-600 text-sm bg-emerald-50 px-3 py-2 rounded-lg">
-              <CheckCircle size={16} /> Senha alterada com sucesso!
-            </div>
-          )}
-          <button type="submit" disabled={loadingSenha} className="bg-zena-green-dark hover:bg-zena-green-mid text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors disabled:opacity-60">
-            {loadingSenha ? "Alterando..." : "Alterar senha"}
-          </button>
-        </form>
-      </div>
-
-      {/* Código de vínculo do paciente */}
-      <div className="bg-white rounded-2xl border border-zena-mint/30 p-6">
-        <h2 className="font-semibold text-zena-text-dark mb-1 flex items-center gap-2">
-          <Link2 size={18} className="text-zena-green-mid" /> Acesso do paciente
-        </h2>
-        <p className="text-sm text-zena-text-light mb-5">
-          Compartilhe este código com seus pacientes para que eles criem conta no app.
-        </p>
-
-        {codigoVinculo ? (
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 flex items-center justify-center py-4 rounded-2xl border-2 border-dashed border-zena-mint/60 bg-zena-surface">
-              <span className="text-4xl font-bold tracking-[0.3em] text-zena-green-dark tabular-nums">
-                {codigoVinculo}
-              </span>
-            </div>
-            <button
-              onClick={copiarCodigo}
-              title="Copiar código"
-              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${
-                copiado ? "bg-zena-green-mid text-white" : "bg-zena-cream text-zena-text-mid hover:bg-zena-mint/20"
-              }`}
-            >
-              {copiado ? <CheckCircle size={17} /> : <Copy size={17} />}
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center justify-center py-6 rounded-2xl border-2 border-dashed border-zena-mint/40 bg-zena-cream mb-4">
-            <p className="text-sm text-zena-text-light">Nenhum código gerado ainda.</p>
-          </div>
-        )}
-
-        <button
-          onClick={gerarCodigo}
-          disabled={loadingCodigo}
-          className="flex items-center gap-2 text-sm font-medium text-zena-green-dark hover:text-zena-green-mid transition-colors disabled:opacity-60"
-        >
-          <RefreshCw size={15} className={loadingCodigo ? "animate-spin" : ""} />
-          {codigoVinculo ? "Gerar novo código" : "Gerar código"}
-        </button>
-        {codigoVinculo && (
-          <p className="text-xs text-zena-text-light mt-2">Gerar um novo código invalida o anterior.</p>
-        )}
-      </div>
-
-      {/* Sair da conta */}
-      <button
-        onClick={() => setModalLogout(true)}
-        className="md:hidden w-full flex items-center justify-center gap-2 py-[14px] rounded-lg border border-red-600 bg-white text-red-600 font-medium text-sm transition-colors hover:bg-red-50 mt-6"
+      {/* FAB — falar com suporte */}
+      <a
+        href={`mailto:${SUPORTE_EMAIL}`}
+        className="fixed bottom-24 lg:bottom-8 right-6 lg:right-8 z-40 flex items-center gap-3 px-6 py-4 rounded-full bg-nx-surface/80 backdrop-blur-xl border border-nx-primary-container/40 shadow-2xl hover:scale-105 transition-transform"
       >
-        <LogOut size={16} />
-        Sair da conta
+        <MessageCircle size={22} className="text-nx-primary" />
+        <span className="text-label-md font-bold uppercase tracking-wider text-nx-primary">Suporte</span>
+      </a>
+
+      {editOpen && me && (
+        <EditarPerfilModal
+          me={me}
+          onClose={() => setEditOpen(false)}
+          onSalvo={(patch) => {
+            setMe((prev) => (prev ? { ...prev, ...patch } : prev));
+            updateNutricionista({ nome: patch.nome, crn: patch.crn });
+            setEditOpen(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ── Linha de ajuste genérica ─────────────────────────────────────────── */
+
+function IconChip({ children, tint = "primary" }: { children: React.ReactNode; tint?: "primary" | "tertiary" | "secondary" }) {
+  const map = {
+    primary: "bg-nx-primary-container/15 text-nx-primary",
+    tertiary: "bg-nx-tertiary/15 text-nx-tertiary",
+    secondary: "bg-nx-secondary/15 text-nx-secondary",
+  } as const;
+  return <div className={`grid place-items-center size-9 rounded-xl shrink-0 ${map[tint]}`}>{children}</div>;
+}
+
+function AjusteRow({ icon, titulo, descricao, onClick, right, disabled, tint = "primary" }: {
+  icon: React.ReactNode; titulo: string; descricao?: string;
+  onClick?: () => void; right?: React.ReactNode; disabled?: boolean;
+  tint?: "primary" | "tertiary" | "secondary";
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full flex items-center gap-3.5 px-5 py-4 text-left transition-colors enabled:hover:bg-nx-surface-hover disabled:opacity-60 disabled:cursor-default"
+    >
+      <IconChip tint={tint}>{icon}</IconChip>
+      <div className="flex-1 min-w-0">
+        <p className="text-body-md font-semibold text-nx-on-surface">{titulo}</p>
+        {descricao && <p className="text-body-sm text-nx-on-surface-variant truncate">{descricao}</p>}
+      </div>
+      {right ?? <ChevronRight size={18} className="text-nx-outline shrink-0" />}
+    </button>
+  );
+}
+
+/* ── Segurança / alterar senha ────────────────────────────────────────── */
+
+function SegurancaRow() {
+  const [open, setOpen] = useState(false);
+  const [atual, setAtual] = useState("");
+  const [nova, setNova] = useState("");
+  const [conf, setConf] = useState("");
+  const [showA, setShowA] = useState(false);
+  const [showN, setShowN] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
+
+  async function submit() {
+    if (!atual) { setErr("Informe a senha atual."); return; }
+    if (nova.length < 6) { setErr("Nova senha deve ter pelo menos 6 caracteres."); return; }
+    if (nova !== conf) { setErr("As senhas não coincidem."); return; }
+    setLoading(true); setErr(""); setMsg("");
+    try {
+      await api.put("/auth/perfil", { senhaAtual: atual, novaSenha: nova });
+      setMsg("Senha alterada com sucesso!");
+      setAtual(""); setNova(""); setConf("");
+    } catch (e: any) {
+      setErr(e?.response?.data?.error || "Erro ao alterar senha.");
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3.5 px-5 py-4 text-left transition-colors hover:bg-nx-surface-hover"
+      >
+        <IconChip><Lock size={16} /></IconChip>
+        <div className="flex-1 min-w-0">
+          <p className="text-body-md font-semibold text-nx-on-surface">Segurança</p>
+          <p className="text-body-sm text-nx-on-surface-variant">Alterar senha de acesso</p>
+        </div>
+        <ChevronRight size={18} className="text-nx-outline shrink-0 transition-transform" style={{ transform: open ? "rotate(90deg)" : "none" }} />
       </button>
 
-      {/* Modal de confirmação de logout */}
-      {modalLogout && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.45)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) setModalLogout(false); }}
-        >
-          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mx-auto mb-4">
-              <LogOut size={22} className="text-red-600" />
-            </div>
-            <h2 className="text-[17px] font-bold text-center text-zena-text-dark mb-1">Sair da conta?</h2>
-            <p className="text-sm text-center text-zena-text-light mb-6">Você precisará fazer login novamente.</p>
-            <div className="flex flex-col gap-2.5">
-              <button
-                onClick={() => logout()}
-                className="w-full py-3.5 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors"
-              >
-                Sair
-              </button>
-              <button
-                onClick={() => setModalLogout(false)}
-                className="w-full py-3.5 rounded-xl bg-gray-100 text-gray-600 font-medium text-sm hover:bg-gray-200 transition-colors"
-              >
-                Cancelar
-              </button>
-            </div>
+      {open && (
+        <div className="px-5 pb-5 space-y-3">
+          <div className="relative">
+            <input
+              type={showA ? "text" : "password"} placeholder="Senha atual" value={atual}
+              onChange={(e) => setAtual(e.target.value)}
+              className="w-full bg-nx-container border border-nx-primary-container/10 rounded-xl px-3 py-2.5 pr-10 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-primary"
+            />
+            <button onClick={() => setShowA((s) => !s)} aria-label="Mostrar senha" className="absolute right-3 top-2.5 text-nx-outline hover:text-nx-on-surface">
+              {showA ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
           </div>
+          <div className="relative">
+            <input
+              type={showN ? "text" : "password"} placeholder="Nova senha" value={nova}
+              onChange={(e) => setNova(e.target.value)}
+              className="w-full bg-nx-container border border-nx-primary-container/10 rounded-xl px-3 py-2.5 pr-10 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-primary"
+            />
+            <button onClick={() => setShowN((s) => !s)} aria-label="Mostrar senha" className="absolute right-3 top-2.5 text-nx-outline hover:text-nx-on-surface">
+              {showN ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          <input
+            type="password" placeholder="Confirmar nova senha" value={conf}
+            onChange={(e) => setConf(e.target.value)}
+            className="w-full bg-nx-container border border-nx-primary-container/10 rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-primary"
+          />
+          {err && <p className="text-nx-error text-body-sm">{err}</p>}
+          {msg && <p className="text-nx-tertiary text-body-sm">{msg}</p>}
+          <button
+            onClick={submit} disabled={loading}
+            className="w-full bg-nx-primary-container hover:bg-[#8b46f5] disabled:opacity-50 text-nx-on-primary-container text-label-md font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+            {loading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : "Salvar senha"}
+          </button>
         </div>
       )}
     </div>
+  );
+}
+
+/* ── Notificações push (toggle real via VAPID) ────────────────────────── */
+
+function urlBase64ToUint8Array(base64: string): ArrayBuffer {
+  const pad = "=".repeat((4 - (base64.length % 4)) % 4);
+  const b64 = (base64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(b64);
+  const arr = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr.buffer as ArrayBuffer;
+}
+
+function NotificacoesRow() {
+  const supported = typeof navigator !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
+  const [on, setOn] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!supported) return;
+    navigator.serviceWorker.ready
+      .then((reg) => reg.pushManager.getSubscription())
+      .then((sub) => setOn(!!sub))
+      .catch(() => {});
+  }, [supported]);
+
+  async function toggle() {
+    if (busy || !supported) return;
+    setBusy(true);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      if (on) {
+        const sub = await reg.pushManager.getSubscription();
+        const endpoint = sub?.endpoint;
+        if (sub) await sub.unsubscribe();
+        if (endpoint) await api.delete("/notificacoes/subscribe", { data: { endpoint } }).catch(() => {});
+        setOn(false);
+      } else {
+        const { data } = await api.get<{ key: string | null }>("/notificacoes/vapid-public-key");
+        if (!data.key) return; // backend sem VAPID configurado
+        if (Notification.permission !== "granted") {
+          const perm = await Notification.requestPermission();
+          if (perm !== "granted") return;
+        }
+        const existing = await reg.pushManager.getSubscription();
+        const sub = existing ?? await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(data.key),
+        });
+        await api.post("/notificacoes/subscribe", sub.toJSON());
+        setOn(true);
+      }
+    } catch { /* ignora */ } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-3.5 px-5 py-4">
+      <IconChip><Bell size={16} /></IconChip>
+      <div className="flex-1 min-w-0">
+        <p className="text-body-md font-semibold text-nx-on-surface">Notificações push</p>
+        <p className="text-body-sm text-nx-on-surface-variant">
+          {supported ? "Alertas de check-ins e atividade dos pacientes" : "Não suportado neste navegador"}
+        </p>
+      </div>
+      <button
+        onClick={toggle}
+        disabled={!supported || busy}
+        aria-label="Alternar notificações"
+        className="relative w-12 h-6 rounded-full transition-colors shrink-0 disabled:opacity-50"
+        style={{ background: on ? "#7c3aed" : "rgba(210,187,255,0.2)" }}
+      >
+        {busy ? (
+          <Loader2 size={14} className="animate-spin absolute top-1 left-4 text-white" />
+        ) : (
+          <span className={`absolute top-1 size-4 bg-white rounded-full shadow transition-all ${on ? "left-7" : "left-1"}`} />
+        )}
+      </button>
+    </div>
+  );
+}
+
+/* ── Card de Ajuda ────────────────────────────────────────────────────── */
+
+function AjudaCard() {
+  const links = [
+    { icon: <LifeBuoy size={16} />, label: "Falar com o suporte", href: `mailto:${SUPORTE_EMAIL}`, external: false },
+    { icon: <FileText size={16} />, label: "Termos de uso", href: "/termos", external: true },
+    { icon: <ShieldQuestion size={16} />, label: "Política de privacidade", href: "/privacidade", external: true },
+  ];
+  return (
+    <section>
+      <p className="text-label-md uppercase tracking-wider text-nx-outline px-1 mb-3">Ajuda</p>
+      <div className={`${GLASS} divide-y divide-nx-primary-container/10 overflow-hidden`}>
+        {links.map((l) => (
+          <a
+            key={l.label}
+            href={l.href}
+            {...(l.external ? { target: "_blank", rel: "noreferrer" } : {})}
+            className="flex items-center gap-3.5 px-5 py-4 transition-colors hover:bg-nx-surface-hover"
+          >
+            <IconChip>{l.icon}</IconChip>
+            <span className="flex-1 min-w-0 text-body-md font-semibold text-nx-on-surface">{l.label}</span>
+            <ChevronRight size={18} className="text-nx-outline shrink-0" />
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ── Status do sistema (estático) ─────────────────────────────────────── */
+
+function StatusCard() {
+  const servicos = ["API principal", "Notificações", "Sincronização"];
+  return (
+    <section>
+      <p className="text-label-md uppercase tracking-wider text-nx-outline px-1 mb-3">Status do sistema</p>
+      <div className={`${GLASS} p-5`}>
+        <div className="flex items-center gap-2.5 mb-4">
+          <span className="relative flex size-2.5">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-nx-tertiary opacity-60 animate-ping" />
+            <span className="relative inline-flex size-2.5 rounded-full bg-nx-tertiary" />
+          </span>
+          <p className="text-body-md font-bold text-nx-on-surface">Todos os sistemas operacionais</p>
+        </div>
+        <ul className="space-y-2.5">
+          {servicos.map((s) => (
+            <li key={s} className="flex items-center justify-between text-body-sm">
+              <span className="flex items-center gap-2 text-nx-on-surface-variant">
+                <Activity size={14} className="text-nx-outline" /> {s}
+              </span>
+              <span className="text-nx-tertiary font-semibold">Operacional</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+/* ── Modal de edição de dados ─────────────────────────────────────────── */
+
+function EditarPerfilModal({ me, onClose, onSalvo }: {
+  me: Me; onClose: () => void; onSalvo: (patch: Partial<Me>) => void;
+}) {
+  const [nome, setNome] = useState(me.nome);
+  const [crn, setCrn] = useState(me.crn);
+  const [endereco, setEndereco] = useState(me.enderecoConsultorio ?? "");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function salvar() {
+    if (!nome.trim() || !crn.trim()) { setErro("Nome e CRN são obrigatórios"); return; }
+    setSalvando(true); setErro(null);
+    try {
+      await api.put("/auth/perfil", { nome, crn, enderecoConsultorio: endereco });
+      onSalvo({ nome, crn, enderecoConsultorio: endereco });
+    } catch (e: any) {
+      setErro(e?.response?.data?.error ?? "Erro ao salvar");
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full md:max-w-md bg-nx-surface border border-nx-primary-container/10 rounded-t-3xl md:rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-body-lg font-bold">Editar dados</h3>
+          <button onClick={onClose} aria-label="Fechar" className="text-nx-outline hover:text-nx-on-surface"><X size={20} /></button>
+        </div>
+        <div className="space-y-3">
+          <Campo label="Nome" value={nome} onChange={setNome} />
+          <Campo label="CRN" value={crn} onChange={setCrn} />
+          <Campo label="Localização (endereço do consultório)" value={endereco} onChange={setEndereco} />
+        </div>
+        {erro && <p className="text-nx-error text-body-sm mt-3">{erro}</p>}
+        <button
+          onClick={salvar}
+          disabled={salvando}
+          className="w-full mt-5 bg-nx-primary-container hover:bg-[#8b46f5] disabled:opacity-50 text-nx-on-primary-container text-label-md font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+        >
+          {salvando ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : "Salvar"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Campo({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="block">
+      <span className="text-label-md text-nx-on-surface-variant">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full bg-nx-container border border-nx-primary-container/10 rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-primary"
+      />
+    </label>
   );
 }

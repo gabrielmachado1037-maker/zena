@@ -47,7 +47,7 @@ function ShareModal({ quote, onClose }: { quote: string; onClose: () => void }) 
         logging: false,
       });
       const link = document.createElement("a");
-      link.download = `clinne-frase-${new Date().toISOString().split("T")[0]}.png`;
+      link.download = `nexvel-frase-${new Date().toISOString().split("T")[0]}.png`;
       link.href = canvas.toDataURL("image/png");
       link.click();
     } finally {
@@ -71,7 +71,7 @@ function ShareModal({ quote, onClose }: { quote: string; onClose: () => void }) 
         style={{
           width: 360,
           height: 360,
-          background: "linear-gradient(135deg, #1C4A2E 0%, #2D6A4F 100%)",
+          background: "linear-gradient(135deg, #7C3AED 0%, #A855F7 100%)",
           position: "relative",
           display: "flex",
           flexDirection: "column",
@@ -128,7 +128,7 @@ function ShareModal({ quote, onClose }: { quote: string; onClose: () => void }) 
 
         {/* Rodapé */}
         <div style={{ width: "100%", borderTop: "1px solid rgba(255,255,255,0.15)", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <p style={{ color: "white", fontSize: 11, fontWeight: 300, margin: 0 }}>clinne.com.br</p>
+          <p style={{ color: "white", fontSize: 11, fontWeight: 300, margin: 0 }}>nexvel.com.br</p>
           <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, margin: 0 }}>{todayPtBR()}</p>
         </div>
       </div>

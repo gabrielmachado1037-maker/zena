@@ -3,6 +3,13 @@ import prisma from "./lib/prisma";
 import { emailTrialExpirando } from "./lib/email";
 import { enviarNotificacao, enviarNotificacaoPaciente } from "./routes/notificacoes";
 import { calcularProgressoCiclo, encerrarCiclo, notificarAquecimento, notificarUltimasHoras } from "./services/cicloService";
+import {
+  calcularLiga,
+  DIAS_ATE_CONGELAR,
+  DIAS_ATE_PENALIZAR,
+  PENALIDADE_INATIVIDADE_POR_DIA,
+  PENALIDADE_INATIVIDADE_MAXIMA,
+} from "./config/ligas";
 
 const TZ = { timezone: "America/Sao_Paulo" };
 
@@ -137,7 +144,7 @@ export function initCron() {
     }
   }, TZ);
 
-  // Daily at 7am BRT: block Clinne subscriptions overdue by more than 3 days
+  // Daily at 7am BRT: block Nexvel subscriptions overdue by more than 3 days
   cron.schedule("0 7 * * *", async () => {
     try {
       const tresAtraso = new Date();
@@ -179,6 +186,51 @@ export function initCron() {
     }
   }, TZ);
 
+  // Daily at 00:01 BRT: processar inatividade do Sistema de Ligas
+  cron.schedule("1 0 * * *", async () => {
+    try {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const ontem = new Date(hoje);
+      ontem.setDate(ontem.getDate() - 1);
+
+      const pacientes = await prisma.paciente.findMany({ where: { ativo: true } });
+      for (const p of pacientes) {
+        const registrouOntem =
+          p.ultimoCheckin && new Date(p.ultimoCheckin).getTime() === ontem.getTime();
+        if (registrouOntem) continue;
+
+        const diasInativo = p.diasInativo + 1;
+        const data: {
+          diasInativo: number;
+          streakAtual?: number;
+          barraCongelada?: boolean;
+          pontosTotal?: number;
+          ligaAtual?: string;
+          ligaNivel?: string;
+        } = { diasInativo };
+
+        if (diasInativo >= 2) data.streakAtual = 0;
+        if (diasInativo >= DIAS_ATE_CONGELAR) data.barraCongelada = true;
+
+        if (diasInativo > DIAS_ATE_PENALIZAR) {
+          const diasPenalizados = diasInativo - DIAS_ATE_PENALIZAR;
+          if (diasPenalizados * PENALIDADE_INATIVIDADE_POR_DIA <= PENALIDADE_INATIVIDADE_MAXIMA) {
+            const novoTotal = Math.max(0, p.pontosTotal - PENALIDADE_INATIVIDADE_POR_DIA);
+            data.pontosTotal = novoTotal;
+            const liga = calcularLiga(novoTotal);
+            data.ligaAtual = liga.liga;
+            data.ligaNivel = liga.nivel;
+          }
+        }
+
+        await prisma.paciente.update({ where: { id: p.id }, data });
+      }
+    } catch (e) {
+      console.error("Cron inatividade_ligas error:", e);
+    }
+  }, TZ);
+
   // Daily at 20:00 BRT: lembrete de checklist para quem não fez
   cron.schedule("0 20 * * *", async () => {
     try {
@@ -204,7 +256,7 @@ export function initCron() {
             const titulo = temStreak ? "🔥 Não esqueça seu check-in!" : "📋 Check-in de hoje";
             const corpo = temStreak
               ? "Sua sequência está em risco. Faça o check-in antes da meia-noite."
-              : "Registre suas conquistas de hoje no Clinne!";
+              : "Registre suas conquistas de hoje no Nexvel!";
             enviarNotificacaoPaciente(p.pacienteId, titulo, corpo, "/paciente/feed").catch(console.error);
           }
         }

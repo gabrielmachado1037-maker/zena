@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const STORAGE_KEY = "clinne_install_fechado";
+const STORAGE_KEY = "nexvel_install_fechado";
 
 export default function BannerInstalacao() {
   const [mostrar, setMostrar] = useState(false);
@@ -48,7 +48,7 @@ export default function BannerInstalacao() {
   return (
     <div
       className="install-banner fixed left-4 right-4 z-50 rounded-2xl p-4 shadow-2xl"
-      style={{ bottom: "88px", background: "#1C4A2E" }}
+      style={{ bottom: "88px", background: "#7C3AED" }}
     >
       <button
         onClick={fechar}
@@ -64,10 +64,10 @@ export default function BannerInstalacao() {
           width={40}
           height={40}
           className="rounded-xl flex-shrink-0"
-          alt="Clinne"
+          alt="Nexvel"
         />
         <div className="flex-1 min-w-0">
-          <p className="text-white text-[14px] font-semibold">Instale o Clinne</p>
+          <p className="text-white text-[14px] font-semibold">Instale o Nexvel</p>
           <p className="text-white/65 text-[12px] mt-0.5">
             {isIOS
               ? "Toque em Compartilhar → Adicionar à Tela de Início"
@@ -77,7 +77,7 @@ export default function BannerInstalacao() {
         {!isIOS && (
           <button
             onClick={instalar}
-            className="flex-shrink-0 px-4 py-2 rounded-xl bg-white text-[#1C4A2E] text-[13px] font-semibold"
+            className="flex-shrink-0 px-4 py-2 rounded-xl bg-white text-[#7C3AED] text-[13px] font-semibold"
           >
             Instalar
           </button>

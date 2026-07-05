@@ -3,10 +3,21 @@ import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { checkModulo } from "../middleware/checkModulo";
 import { enviarNotificacao } from "./notificacoes";
+import { calcularLiga } from "../config/ligas";
 
 const router = Router();
 router.use(authMiddleware);
 router.use(checkModulo("ranking"));
+
+// Ordem/estilo das 6 ligas (espelha frontend/src/lib/ligas.ts)
+const LIGA_ORDEM = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"] as const;
+const LIGA_CORES: Record<string, string> = {
+  Bronze: "#CD7F32", Prata: "#9CA3AF", Ouro: "#F59E0B",
+  Diamante: "#60A5FA", Mestre: "#A855F7", "Lendário": "#F97316",
+};
+const LIGA_ICONE: Record<string, string> = {
+  Bronze: "🥉", Prata: "🥈", Ouro: "🏅", Diamante: "💎", Mestre: "⚔️", "Lendário": "👑",
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -200,6 +211,72 @@ router.put("/config", async (req: AuthRequest, res: Response) => {
     create: { nutricionistaId: req.nutricionistaId!, pesoPesoMeta, pesoHabitosConsecutivos, pesoMetasSemanais, diasConsecutivosAlvo, metasSemanaisAlvo },
   });
   return res.json(config);
+});
+
+// GET /api/ranking/ligas — Painel de Ligas da nutricionista
+// Distribuição de pacientes por liga + lista enriquecida. A LIGA é derivada da
+// pontuação ACUMULADA (Paciente.pontosTotal) via calcularLiga; as métricas do
+// período (% objetivo de peso etc.) vêm de calcularRanking. Escopo por nutricionista.
+router.get("/ligas", async (req: AuthRequest, res: Response) => {
+  const nutricionistaId = req.nutricionistaId!;
+  const now = new Date();
+  const periodo = (req.query.periodo as string) === "mensal" ? "mensal" : "semanal";
+  const ano = parseInt(req.query.ano as string) || now.getFullYear();
+  const semana = periodo === "semanal" ? (parseInt(req.query.semana as string) || getISOWeek(now)) : null;
+  const mes = periodo === "mensal" ? (parseInt(req.query.mes as string) || now.getMonth() + 1) : null;
+  const somenteAtivos = req.query.ativos !== "false";
+
+  // Métricas competitivas do período (só considera pacientes ativos)
+  const rankingPeriodo = await calcularRanking(nutricionistaId, periodo, semana, mes, ano);
+  const metricaMap = new Map(rankingPeriodo.map((r) => [r.pacienteId, r]));
+
+  const pacientes = await prisma.paciente.findMany({
+    where: { nutricionistaId, ...(somenteAtivos ? { ativo: true } : {}) },
+    select: { id: true, nome: true, fotoPerfilUrl: true, pontosTotal: true, ativo: true, objetivo: true },
+  });
+
+  const base = pacientes.map((p) => {
+    const tier = calcularLiga(p.pontosTotal);
+    const m = metricaMap.get(p.id);
+    return {
+      id: p.id,
+      nome: p.nome,
+      foto: p.fotoPerfilUrl,
+      ativo: p.ativo,
+      objetivo: p.objetivo,
+      pontosTotal: p.pontosTotal,
+      liga: tier.liga,
+      nivel: tier.nivel,
+      cor: tier.cor,
+      icone: tier.icone,
+      pctObjetivoPeso: m?.pctObjetivoPeso ?? 0,
+      pontuacaoPeriodo: m?.pontuacaoTotal ?? 0,
+      posicaoGeral: 0,
+      posicaoLiga: 0,
+    };
+  });
+
+  base.sort((a, b) => b.pontosTotal - a.pontosTotal);
+  const ligaCounter: Record<string, number> = {};
+  const pacientesEnriquecidos = base.map((e, i) => {
+    ligaCounter[e.liga] = (ligaCounter[e.liga] || 0) + 1;
+    return { ...e, posicaoGeral: i + 1, posicaoLiga: ligaCounter[e.liga] };
+  });
+
+  const distribuicao = LIGA_ORDEM.map((liga) => ({
+    liga,
+    cor: LIGA_CORES[liga],
+    icone: LIGA_ICONE[liga],
+    count: pacientesEnriquecidos.filter((e) => e.liga === liga).length,
+  }));
+
+  return res.json({
+    periodo, ano, semana, mes,
+    total: pacientesEnriquecidos.length,
+    totalAtivos: pacientesEnriquecidos.filter((e) => e.ativo).length,
+    distribuicao,
+    pacientes: pacientesEnriquecidos,
+  });
 });
 
 // GET /api/ranking  or  GET /api/ranking/:nutricionistaId

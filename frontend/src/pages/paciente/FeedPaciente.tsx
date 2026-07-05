@@ -3,7 +3,7 @@ import { Heart, Plus, X, Camera, Globe, Lock } from "lucide-react";
 import api from "../../lib/api";
 import apiPaciente from "../../lib/apiPaciente";
 import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
-import { tempoRelativo, type FeedPost } from "../Feed";
+import { tempoRelativo, type FeedPost } from "../../lib/feed";
 import { ComentariosSection } from "../../components/ComentariosSection";
 import Avatar from "../../components/Avatar";
 import LobbyCard from "../../components/LobbyCard";
@@ -63,7 +63,7 @@ function PostCard({ post, liked, onLike, authHeader, meuPacienteId }: {
             </span>
             {isNutri && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
-                style={{ background: "#1B4332" }}>
+                style={{ background: "#7C3AED" }}>
                 Nutricionista
               </span>
             )}
@@ -179,11 +179,11 @@ function ModalNovoPost({ token, onClose, onCreate }: {
             {(["REFEICAO", "TREINO", "MOMENTO"] as Categoria[]).map(c => (
               <button key={c} onClick={() => setCat(c)}
                 className={`flex flex-col items-center gap-1 py-4 rounded-2xl border-2 transition-all ${
-                  cat === c ? "border-[#1B4332] bg-[#F0FAF5]" : "border-[#F0F0EE] bg-white"
+                  cat === c ? "border-[#7C3AED] bg-[#F0FAF5]" : "border-[#F0F0EE] bg-white"
                 }`}>
                 <span className="text-[28px]">{CAT_EMOJI[c]}</span>
                 <span className="text-[12px] font-semibold"
-                  style={{ color: cat === c ? "#1B4332" : "#888" }}>
+                  style={{ color: cat === c ? "#7C3AED" : "#888" }}>
                   {CAT_LABEL[c]}
                 </span>
               </button>
@@ -201,7 +201,7 @@ function ModalNovoPost({ token, onClose, onCreate }: {
             </div>
           ) : (
             <button onClick={() => fileRef.current?.click()}
-              className="w-full border-2 border-dashed border-[#D0D0D0] rounded-2xl flex flex-col items-center gap-2 py-8 mb-4 text-[#bbb] hover:border-[#1B4332] hover:text-[#1B4332] transition-colors">
+              className="w-full border-2 border-dashed border-[#D0D0D0] rounded-2xl flex flex-col items-center gap-2 py-8 mb-4 text-[#bbb] hover:border-[#7C3AED] hover:text-[#7C3AED] transition-colors">
               <Camera size={28} />
               <span className="text-[13px] font-medium">Adicionar foto</span>
             </button>
@@ -215,14 +215,14 @@ function ModalNovoPost({ token, onClose, onCreate }: {
             onChange={e => setMensagem(e.target.value)}
             placeholder="Como foi? Conte para o consultório… ✨"
             rows={3}
-            className="w-full px-4 py-3 rounded-2xl border border-[#E8E8E8] text-[14px] text-[#333] placeholder-[#bbb] resize-none focus:outline-none focus:border-[#1B4332] mb-4"
+            className="w-full px-4 py-3 rounded-2xl border border-[#E8E8E8] text-[14px] text-[#333] placeholder-[#bbb] resize-none focus:outline-none focus:border-[#7C3AED] mb-4"
           />
 
           {/* Privacidade */}
           <div className="flex items-center justify-between p-4 rounded-2xl border border-[#E8E8E8] mb-5">
             <div className="flex items-center gap-2">
               {priv === "PUBLICO"
-                ? <Globe size={18} style={{ color: "#1B4332" }} />
+                ? <Globe size={18} style={{ color: "#7C3AED" }} />
                 : <Lock size={18} style={{ color: "#B45309" }} />}
               <div>
                 <p className="text-[13px] font-semibold text-[#111]">
@@ -236,7 +236,7 @@ function ModalNovoPost({ token, onClose, onCreate }: {
             <button
               onClick={() => setPriv(p => p === "PUBLICO" ? "APENAS_NUTRI" : "PUBLICO")}
               className="relative w-12 h-6 rounded-full transition-all flex-shrink-0"
-              style={{ background: priv === "PUBLICO" ? "#1B4332" : "#D0D0D0" }}
+              style={{ background: priv === "PUBLICO" ? "#7C3AED" : "#D0D0D0" }}
             >
               <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${
                 priv === "PUBLICO" ? "left-7" : "left-1"
@@ -248,7 +248,7 @@ function ModalNovoPost({ token, onClose, onCreate }: {
 
           <button onClick={handleSubmit} disabled={saving}
             className="w-full py-4 rounded-2xl text-white text-[15px] font-bold disabled:opacity-50"
-            style={{ background: "#1B4332" }}>
+            style={{ background: "#7C3AED" }}>
             {saving ? "Publicando…" : "Publicar"}
           </button>
         </div>
@@ -344,7 +344,7 @@ export default function FeedPaciente() {
             </p>
             <button onClick={() => setShowModal(true)}
               className="flex items-center gap-2 px-6 py-3 rounded-2xl text-white text-[14px] font-bold"
-              style={{ background: "#1B4332" }}>
+              style={{ background: "#7C3AED" }}>
               <Plus size={16} /> Criar publicação
             </button>
           </div>
@@ -367,7 +367,7 @@ export default function FeedPaciente() {
         <button
           onClick={() => setShowChecklist(true)}
           className="fixed left-4 z-40 flex items-center gap-2 px-4 py-3 rounded-full text-white text-[13px] font-bold shadow-lg transition-transform active:scale-95"
-          style={{ background: "#1B4332", bottom: "84px" }}>
+          style={{ background: "#7C3AED", bottom: "84px" }}>
           ✅ Check-in do dia
         </button>
       )}
@@ -376,7 +376,7 @@ export default function FeedPaciente() {
       <button
         onClick={() => setShowModal(true)}
         className="fixed right-4 z-40 w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg transition-transform active:scale-95"
-        style={{ background: "#1B4332", bottom: "84px" }}
+        style={{ background: "#7C3AED", bottom: "84px" }}
       >
         <Plus size={24} />
       </button>

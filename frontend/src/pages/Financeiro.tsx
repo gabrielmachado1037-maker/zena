@@ -31,6 +31,18 @@ function fmt(v: number) {
   return `R$ ${v.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
 
+function MoneyValue({ v, colorClass = "text-nexvel-green-dark" }: { v: number; colorClass?: string }) {
+  const numero = v.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const digits = numero.replace(/\D/g, "").length;
+  const numSize = digits <= 6 ? "text-2xl" : digits <= 8 ? "text-xl" : "text-lg";
+  return (
+    <div className={`flex items-baseline gap-1 font-mono-data font-bold ${colorClass}`} style={{ whiteSpace: "nowrap" }}>
+      <span className="text-sm font-medium">R$</span>
+      <span className={numSize}>{numero}</span>
+    </div>
+  );
+}
+
 export default function Financeiro() {
   const [data, setData] = useState<DashFinanceiro | null>(null);
   const [loading, setLoading] = useState(true);
@@ -92,12 +104,12 @@ export default function Financeiro() {
 
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-zena-green-dark">Financeiro</h1>
-          <p className="text-zena-text-mid mt-1">Receitas, cobranças e Pix automático.</p>
+          <h1 className="text-2xl font-bold text-nexvel-green-dark">Financeiro</h1>
+          <p className="text-nexvel-text-mid mt-1">Receitas, cobranças e Pix automático.</p>
         </div>
         <button
           onClick={() => setShowKeyForm(!showKeyForm)}
-          className="flex items-center gap-2 text-sm border border-zena-mint/50 text-zena-text-mid px-4 py-2 rounded-xl hover:bg-zena-cream"
+          className="flex items-center gap-2 text-sm border border-nexvel-mint/50 text-nexvel-text-mid px-4 py-2 rounded-xl hover:bg-nexvel-cream"
         >
           <Zap size={14} /> Configurar Asaas
         </button>
@@ -105,17 +117,17 @@ export default function Financeiro() {
 
       {/* Config Asaas */}
       {showKeyForm && (
-        <div className="bg-white border border-zena-mint/30 rounded-2xl p-6 mb-6 shadow-sm">
-          <h3 className="font-semibold text-zena-text-dark mb-1">Conectar minha conta Asaas</h3>
-          <p className="text-zena-text-light text-sm mb-2">
+        <div className="bg-white border border-nexvel-mint/30 rounded-2xl p-6 mb-6 shadow-sm">
+          <h3 className="font-semibold text-nexvel-text-dark mb-1">Conectar minha conta Asaas</h3>
+          <p className="text-nexvel-text-light text-sm mb-2">
             Crie uma conta em <strong>asaas.com.br</strong>, acesse <strong>Integrações → Chave de API</strong> e cole aqui.
           </p>
-          <div className="bg-zena-cream rounded-xl p-3 mb-4 border border-zena-mint/20">
-            <p className="text-zena-green-dark text-sm font-medium">
+          <div className="bg-nexvel-cream rounded-xl p-3 mb-4 border border-nexvel-mint/20">
+            <p className="text-nexvel-green-dark text-sm font-medium">
               🔒 Os pagamentos dos seus pacientes vão direto para a sua conta Asaas.
-              O Clinne não tem acesso a esses valores.
+              O Nexvel não tem acesso a esses valores.
             </p>
-            <p className="text-zena-text-light text-xs mt-1">A chave é armazenada de forma criptografada no banco.</p>
+            <p className="text-nexvel-text-light text-xs mt-1">A chave é armazenada de forma criptografada no banco.</p>
           </div>
           <div className="flex gap-3">
             <input
@@ -123,90 +135,90 @@ export default function Financeiro() {
               value={asaasKey}
               onChange={e => setAsaasKey(e.target.value)}
               placeholder="$aas_live_... ou $aas_sandbox_..."
-              className="flex-1 px-4 py-2.5 rounded-xl border border-zena-mint/50 bg-zena-cream text-sm focus:outline-none focus:ring-2 focus:ring-zena-green-light font-mono"
+              className="flex-1 px-4 py-2.5 rounded-xl border border-nexvel-mint/50 bg-nexvel-cream text-sm focus:outline-none focus:ring-2 focus:ring-nexvel-green-light font-mono"
             />
             <button
               onClick={salvarChaveAsaas}
               disabled={!asaasKey}
-              className="bg-zena-green-dark text-white px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-zena-green-mid"
+              className="bg-nexvel-green-dark text-white px-5 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-nexvel-green-mid"
             >
               Salvar
             </button>
           </div>
-          {savedKey && <p className="text-zena-green-light text-sm mt-2">✓ Chave salva com sucesso.</p>}
+          {savedKey && <p className="text-nexvel-green-light text-sm mt-2">✓ Chave salva com sucesso.</p>}
         </div>
       )}
 
       {/* KPIs */}
       {loading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8 animate-pulse">
-          {[...Array(4)].map((_, i) => <div key={i} className="bg-white h-28 rounded-2xl border border-zena-mint/30" />)}
+          {[...Array(4)].map((_, i) => <div key={i} className="bg-white h-28 rounded-2xl border border-nexvel-mint/30" />)}
         </div>
       ) : data && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-2xl p-5 border border-zena-mint/30 shadow-sm">
+          <div className="bg-white rounded-2xl p-5 border border-nexvel-mint/30 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
-              <DollarSign size={16} className="text-zena-green-mid" />
-              <p className="text-xs text-zena-text-light font-medium">Receita do mês</p>
+              <DollarSign size={16} className="text-nexvel-green-mid" />
+              <p className="text-xs text-nexvel-text-light font-medium">Receita do mês</p>
             </div>
-            <p className="text-2xl font-bold text-zena-green-dark font-mono-data">{fmt(data.receitaMes)}</p>
+            <MoneyValue v={data.receitaMes} />
             <div className="flex items-center gap-1 mt-1">
               {variacao >= 0
-                ? <TrendingUp size={12} className="text-zena-green-light" />
-                : <TrendingDown size={12} className="text-zena-brown" />}
-              <p className={`text-xs font-medium ${variacao >= 0 ? "text-zena-green-light" : "text-zena-brown"}`}>
+                ? <TrendingUp size={12} className="text-nexvel-green-light" />
+                : <TrendingDown size={12} className="text-nexvel-brown" />}
+              <p className={`text-xs font-medium ${variacao >= 0 ? "text-nexvel-green-light" : "text-nexvel-brown"}`}>
                 {variacao >= 0 ? "+" : ""}{variacaoPct}% vs mês passado
               </p>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-zena-mint/30 shadow-sm">
+          <div className="bg-white rounded-2xl p-5 border border-nexvel-mint/30 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
-              <Calendar size={16} className="text-zena-green-mid" />
-              <p className="text-xs text-zena-text-light font-medium">A receber</p>
+              <Calendar size={16} className="text-nexvel-green-mid" />
+              <p className="text-xs text-nexvel-text-light font-medium">A receber</p>
             </div>
-            <p className="text-2xl font-bold text-zena-green-dark font-mono-data">{fmt(data.aReceber)}</p>
-            <p className="text-xs text-zena-text-light mt-1">Cobranças pendentes do mês</p>
+            <MoneyValue v={data.aReceber} />
+            <p className="text-xs text-nexvel-text-light mt-1">Cobranças pendentes do mês</p>
           </div>
 
           <div className="bg-white rounded-2xl p-5 border border-red-100 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
               <AlertCircle size={16} className="text-red-500" />
-              <p className="text-xs text-zena-text-light font-medium">Inadimplente</p>
+              <p className="text-xs text-nexvel-text-light font-medium">Inadimplente</p>
             </div>
-            <p className="text-2xl font-bold text-red-600 font-mono-data">{fmt(data.totalInadimplente)}</p>
-            <p className="text-xs text-zena-text-light mt-1">{data.inadimplentes.length} cobrança(s) vencida(s)</p>
+            <MoneyValue v={data.totalInadimplente} colorClass="text-red-600" />
+            <p className="text-xs text-nexvel-text-light mt-1">{data.inadimplentes.length} cobrança(s) vencida(s)</p>
           </div>
 
-          <div className="bg-zena-green-dark rounded-2xl p-5 shadow-sm">
+          <div className="bg-nexvel-green-dark rounded-2xl p-5 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
-              <TrendingUp size={16} className="text-zena-mint" />
-              <p className="text-xs text-zena-mint font-medium">Projeção do mês</p>
+              <TrendingUp size={16} className="text-nexvel-mint" />
+              <p className="text-xs text-nexvel-mint font-medium">Projeção do mês</p>
             </div>
-            <p className="text-2xl font-bold text-white font-mono-data">{fmt(data.projecaoMes)}</p>
-            <p className="text-xs text-zena-mint/70 mt-1">{data.totalPacientesComPlano} pacientes com plano ativo</p>
+            <MoneyValue v={data.projecaoMes} colorClass="text-white" />
+            <p className="text-xs text-nexvel-mint/70 mt-1">{data.totalPacientesComPlano} pacientes com plano ativo</p>
           </div>
         </div>
       )}
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Inadimplentes */}
-        <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
+        <div className="bg-white rounded-2xl p-6 border border-nexvel-mint/30 shadow-sm">
           <div className="flex items-center gap-2 mb-5">
             <AlertCircle size={16} className="text-red-500" />
-            <h3 className="font-semibold text-zena-text-dark">Cobranças vencidas</h3>
+            <h3 className="font-semibold text-nexvel-text-dark">Cobranças vencidas</h3>
           </div>
           {!data?.inadimplentes.length ? (
             <div className="text-center py-8">
-              <CheckCircle size={32} className="mx-auto text-zena-green-light mb-2" />
-              <p className="text-zena-text-light text-sm">Nenhuma cobrança em atraso!</p>
+              <CheckCircle size={32} className="mx-auto text-nexvel-green-light mb-2" />
+              <p className="text-nexvel-text-light text-sm">Nenhuma cobrança em atraso!</p>
             </div>
           ) : (
             <div className="space-y-3">
               {data.inadimplentes.map(c => (
                 <div key={c.id} className="border border-red-100 rounded-xl p-3">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="font-semibold text-zena-text-dark text-sm">{c.paciente.nome}</p>
+                    <p className="font-semibold text-nexvel-text-dark text-sm">{c.paciente.nome}</p>
                     <p className="font-bold text-red-600 font-mono-data text-sm">{fmt(c.valor)}</p>
                   </div>
                   <p className="text-xs text-red-400 mb-3">
@@ -217,13 +229,13 @@ export default function Financeiro() {
                       <>
                         <button
                           onClick={() => copiarPix(c.pixCopiaECola!)}
-                          className="flex items-center gap-1.5 text-xs bg-zena-green-dark text-white px-3 py-1.5 rounded-lg font-medium"
+                          className="flex items-center gap-1.5 text-xs bg-nexvel-green-dark text-white px-3 py-1.5 rounded-lg font-medium"
                         >
                           <Copy size={12} /> Copiar Pix
                         </button>
                         {c.linkPagamento && (
                           <a href={c.linkPagamento} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-1.5 text-xs border border-zena-green-light/40 text-zena-green-mid px-3 py-1.5 rounded-lg font-medium">
+                            className="flex items-center gap-1.5 text-xs border border-nexvel-green-light/40 text-nexvel-green-mid px-3 py-1.5 rounded-lg font-medium">
                             <ExternalLink size={12} /> Link
                           </a>
                         )}
@@ -232,7 +244,7 @@ export default function Financeiro() {
                       <button
                         onClick={() => gerarPix(c.id)}
                         disabled={gerandoPix === c.id}
-                        className="text-xs bg-zena-mint/50 text-zena-green-dark px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
+                        className="text-xs bg-nexvel-mint/50 text-nexvel-green-dark px-3 py-1.5 rounded-lg font-medium disabled:opacity-50"
                       >
                         {gerandoPix === c.id ? "Gerando..." : "Gerar Pix"}
                       </button>
@@ -251,38 +263,38 @@ export default function Financeiro() {
         </div>
 
         {/* Próximos vencimentos */}
-        <div className="bg-white rounded-2xl p-6 border border-zena-mint/30 shadow-sm">
+        <div className="bg-white rounded-2xl p-6 border border-nexvel-mint/30 shadow-sm">
           <div className="flex items-center gap-2 mb-5">
-            <Calendar size={16} className="text-zena-green-mid" />
-            <h3 className="font-semibold text-zena-text-dark">Próximos vencimentos</h3>
+            <Calendar size={16} className="text-nexvel-green-mid" />
+            <h3 className="font-semibold text-nexvel-text-dark">Próximos vencimentos</h3>
           </div>
           {!data?.proximosVencimentos.length ? (
-            <p className="text-zena-text-light text-sm text-center py-8">Nenhum vencimento pendente.</p>
+            <p className="text-nexvel-text-light text-sm text-center py-8">Nenhum vencimento pendente.</p>
           ) : (
             <div className="space-y-2">
               {data.proximosVencimentos.map(c => (
-                <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zena-cream">
-                  <div className="w-10 h-10 rounded-xl bg-zena-cream flex flex-col items-center justify-center flex-shrink-0">
-                    <p className="text-xs font-bold text-zena-green-dark leading-none">
+                <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-nexvel-cream">
+                  <div className="w-10 h-10 rounded-xl bg-nexvel-cream flex flex-col items-center justify-center flex-shrink-0">
+                    <p className="text-xs font-bold text-nexvel-green-dark leading-none">
                       {format(new Date(c.vencimento), "dd")}
                     </p>
-                    <p className="text-[10px] text-zena-text-light uppercase">
+                    <p className="text-[10px] text-nexvel-text-light uppercase">
                       {format(new Date(c.vencimento), "MMM", { locale: ptBR })}
                     </p>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-zena-text-dark truncate">{c.paciente.nome}</p>
-                    <p className="text-xs text-zena-text-light font-mono-data">{fmt(c.valor)}</p>
+                    <p className="text-sm font-medium text-nexvel-text-dark truncate">{c.paciente.nome}</p>
+                    <p className="text-xs text-nexvel-text-light font-mono-data">{fmt(c.valor)}</p>
                   </div>
                   <div className="flex gap-1.5">
                     {c.pixCopiaECola ? (
                       <button onClick={() => copiarPix(c.pixCopiaECola!)}
-                        className="text-xs bg-zena-green-dark text-white px-2.5 py-1 rounded-lg flex items-center gap-1">
+                        className="text-xs bg-nexvel-green-dark text-white px-2.5 py-1 rounded-lg flex items-center gap-1">
                         <Copy size={10} /> Pix
                       </button>
                     ) : (
                       <button onClick={() => gerarPix(c.id)} disabled={gerandoPix === c.id}
-                        className="text-xs text-zena-green-mid border border-zena-green-light/30 px-2.5 py-1 rounded-lg disabled:opacity-50">
+                        className="text-xs text-nexvel-green-mid border border-nexvel-green-light/30 px-2.5 py-1 rounded-lg disabled:opacity-50">
                         {gerandoPix === c.id ? "..." : "Gerar Pix"}
                       </button>
                     )}

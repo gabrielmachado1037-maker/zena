@@ -1,7 +1,6 @@
 import prisma from "../lib/prisma";
 import { enviarNotificacao, enviarNotificacaoPaciente } from "../routes/notificacoes";
-
-const PONTOS = { refeicoes: 8, agua: 6, treino: 6, bonus: 5 };
+import { PONTOS, LIMITES_DIARIOS } from "../config/pontuacao";
 
 export function calcularStatusCiclo(ciclo: { dataInicio: Date; dataFim: Date }) {
   const diasRestantes = Math.ceil(
@@ -30,7 +29,9 @@ function gerarMensagemPersonalizada(percentual: number): string {
   return "Todo ciclo é um aprendizado. O importante é não desistir!";
 }
 
-function calcularMelhorStreak(checklists: { refeicoesOk: boolean; aguaOk: boolean; treinoOk: boolean; data: Date }[]): number {
+function calcularMelhorStreak(
+  checklists: { refeicoesOk: boolean; aguaOk: boolean; treinoOk: boolean; data: Date }[]
+): number {
   const sorted = [...checklists].sort((a, b) => a.data.getTime() - b.data.getTime());
   let melhor = 0;
   let atual = 0;
@@ -89,7 +90,7 @@ export async function gerarRelatorioCiclo(cicloId: string, pacienteId: string) {
       percentualRefeicao: pctRefeicao,
       percentualTreino: pctTreino,
       melhorSequencia: calcularMelhorStreak(checklists),
-      pontosTotal: participante?.pontosCiclo ?? 0,
+      pontosTotal: Math.round(participante?.pontosCiclo ?? 0),
       posicaoFinal: participante?.posicaoAtual ?? 0,
       totalParticipantes,
       destaque,
@@ -101,13 +102,89 @@ export async function gerarRelatorioCiclo(cicloId: string, pacienteId: string) {
       percentualRefeicao: pctRefeicao,
       percentualTreino: pctTreino,
       melhorSequencia: calcularMelhorStreak(checklists),
-      pontosTotal: participante?.pontosCiclo ?? 0,
+      pontosTotal: Math.round(participante?.pontosCiclo ?? 0),
       posicaoFinal: participante?.posicaoAtual ?? 0,
       totalParticipantes,
       destaque,
     },
   });
 }
+
+// ─── Streak e marcos ──────────────────────────────────────────────────────────
+
+async function atualizarStreak(pacienteId: string, cicloId: string | null) {
+  const paciente = await prisma.paciente.findUnique({ where: { id: pacienteId } });
+  if (!paciente) return;
+
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const ontem = new Date(hoje);
+  ontem.setDate(ontem.getDate() - 1);
+
+  let novoStreak = 1;
+
+  if (paciente.ultimoCheckin) {
+    const ultimaData = new Date(paciente.ultimoCheckin);
+    ultimaData.setHours(0, 0, 0, 0);
+    if (ultimaData.getTime() === ontem.getTime()) {
+      novoStreak = (paciente.streakAtual || 0) + 1;
+    }
+    // Se foi antes de ontem, quebrou — volta para 1
+  }
+
+  const novoMaximo = Math.max(novoStreak, paciente.streakMaximo || 0);
+
+  await prisma.paciente.update({
+    where: { id: pacienteId },
+    data: {
+      streakAtual:  novoStreak,
+      streakMaximo: novoMaximo,
+      ultimoCheckin: hoje,
+    },
+  });
+
+  // Verificar marcos de streak (apenas 1x por ciclo)
+  if (!cicloId) return;
+
+  for (const marco of [7, 21]) {
+    if (novoStreak === marco) {
+      const jaGanhou = await prisma.streakMarco.findUnique({
+        where: { pacienteId_cicloId_marco: { pacienteId, cicloId, marco } },
+      });
+
+      if (!jaGanhou) {
+        const pontosBonus = marco === 7 ? PONTOS.streak_7dias : PONTOS.streak_21dias;
+
+        await prisma.streakMarco.create({
+          data: { pacienteId, cicloId, marco, pontosBonus },
+        });
+
+        await Promise.all([
+          prisma.cicloParticipante.update({
+            where: { cicloId_pacienteId: { cicloId, pacienteId } },
+            data: { pontosCiclo: { increment: pontosBonus } },
+          }),
+          prisma.paciente.update({
+            where: { id: pacienteId },
+            data: { pontosTotal: { increment: pontosBonus } },
+          }),
+        ]);
+
+        enviarNotificacaoPaciente(
+          pacienteId,
+          marco === 7 ? "🔥 7 dias seguidos!" : "👑 21 dias sem parar!",
+          marco === 7
+            ? "Você ganhou +5 pts bônus pela sequência!"
+            : "Incrível! +10 pts bônus. Você é imparável!",
+          "/paciente/feed"
+        ).catch(console.error);
+      }
+    }
+  }
+}
+
+// ─── Processar checklist ──────────────────────────────────────────────────────
 
 export async function processarChecklist(
   pacienteId: string,
@@ -117,10 +194,10 @@ export async function processarChecklist(
   const { refeicoesOk, aguaOk, treinoOk } = dados;
 
   let pontosDia = 0;
-  if (refeicoesOk) pontosDia += PONTOS.refeicoes;
-  if (aguaOk) pontosDia += PONTOS.agua;
-  if (treinoOk) pontosDia += PONTOS.treino;
-  if (refeicoesOk && aguaOk && treinoOk) pontosDia += PONTOS.bonus;
+  if (refeicoesOk) pontosDia += PONTOS.refeicoes_ok;
+  if (aguaOk)      pontosDia += PONTOS.agua_ok;
+  if (treinoOk)    pontosDia += PONTOS.treino_ok;
+  if (refeicoesOk && aguaOk && treinoOk) pontosDia += PONTOS.bonus_tudo;
 
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
@@ -133,9 +210,9 @@ export async function processarChecklist(
       refeicoesOk,
       aguaOk,
       treinoOk,
-      pontosRefeicao: refeicoesOk ? PONTOS.refeicoes : 0,
-      pontosAgua: aguaOk ? PONTOS.agua : 0,
-      pontosTreino: treinoOk ? PONTOS.treino : 0,
+      pontosRefeicao: refeicoesOk ? PONTOS.refeicoes_ok : 0,
+      pontosAgua:     aguaOk     ? PONTOS.agua_ok       : 0,
+      pontosTreino:   treinoOk   ? PONTOS.treino_ok     : 0,
       pontosTotalDia: pontosDia,
     },
   });
@@ -143,7 +220,13 @@ export async function processarChecklist(
   if (cicloId) {
     await prisma.cicloParticipante.upsert({
       where: { cicloId_pacienteId: { cicloId, pacienteId } },
-      create: { cicloId, pacienteId, pontosCiclo: pontosDia, diasConsistente: pontosDia > 0 ? 1 : 0, diasTotal: 1 },
+      create: {
+        cicloId,
+        pacienteId,
+        pontosCiclo: pontosDia,
+        diasConsistente: pontosDia > 0 ? 1 : 0,
+        diasTotal: 1,
+      },
       update: {
         pontosCiclo: { increment: pontosDia },
         ...(pontosDia > 0 ? { diasConsistente: { increment: 1 } } : {}),
@@ -153,8 +236,61 @@ export async function processarChecklist(
     await recalcularPosicoes(cicloId);
   }
 
+  // Atualizar pontos totais do paciente
+  await prisma.paciente.update({
+    where: { id: pacienteId },
+    data: { pontosTotal: { increment: pontosDia } },
+  });
+
+  // Atualizar streak e verificar marcos
+  await atualizarStreak(pacienteId, cicloId);
+
   return { pontosGanhos: pontosDia, checklist };
 }
+
+// ─── Processar pontos sociais ─────────────────────────────────────────────────
+
+export async function processarPontoSocial(
+  pacienteId: string,
+  cicloId: string | null,
+  tipo: "comentario" | "curtida" | "registro_excecao"
+) {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const limite =
+    tipo === "comentario"       ? LIMITES_DIARIOS.comentarios_pontuados :
+    tipo === "curtida"          ? LIMITES_DIARIOS.curtidas_pontuadas     :
+    /* registro_excecao */        LIMITES_DIARIOS.registros_excecao;
+
+  const count = await prisma.pontosLog.count({
+    where: { pacienteId, tipo, data: hoje },
+  });
+
+  if (count >= limite) return { pontosGanhos: 0 };
+
+  const pontos = PONTOS[tipo];
+
+  await prisma.pontosLog.create({
+    data: { pacienteId, tipo, pontos, data: hoje },
+  });
+
+  await prisma.paciente.update({
+    where: { id: pacienteId },
+    data: { pontosTotal: { increment: pontos } },
+  });
+
+  if (cicloId) {
+    await prisma.cicloParticipante.update({
+      where: { cicloId_pacienteId: { cicloId, pacienteId } },
+      data: { pontosCiclo: { increment: pontos } },
+    }).catch(() => {}); // silencia se não participar do ciclo
+  }
+
+  return { pontosGanhos: pontos };
+}
+
+// ─── Recalcular posições ──────────────────────────────────────────────────────
 
 async function recalcularPosicoes(cicloId: string) {
   const participantes = await prisma.cicloParticipante.findMany({
@@ -170,6 +306,8 @@ async function recalcularPosicoes(cicloId: string) {
     )
   );
 }
+
+// ─── Encerrar ciclo ───────────────────────────────────────────────────────────
 
 export async function encerrarCiclo(cicloId: string) {
   const ciclo = await prisma.ciclo.findUnique({
@@ -199,8 +337,63 @@ export async function encerrarCiclo(cicloId: string) {
     })
   );
 
+  // ── Registrar campeões (top 3) ──
+  const top3 = ciclo.participantes.slice(0, 3);
+  const agora = new Date();
+
+  for (let i = 0; i < top3.length; i++) {
+    const p      = top3[i];
+    const posicao = i + 1;
+    const ehCampeao = posicao === 1;
+    const pct = diasCiclo > 0
+      ? Math.round((p.diasConsistente / diasCiclo) * 100)
+      : 0;
+
+    await prisma.cicloCampeao.create({
+      data: {
+        cicloId,
+        pacienteId:      p.pacienteId,
+        nutricionistaId: ciclo.nutricionistaId,
+        posicao,
+        pontosFinais:    p.pontosCiclo,
+        percentualConsistencia: pct,
+        streakMaximo:    p.streakNoCiclo,
+        fotoUrl:         p.paciente.fotoPerfilUrl ?? null,
+        nomePaciente:    p.paciente.nome,
+        escudoAtivo:     ehCampeao,
+        escudoExpiresEm: ehCampeao
+          ? new Date(agora.getTime() + 24 * 60 * 60 * 1000)
+          : null,
+        cicloNumero: ciclo.numero,
+        cicloTitulo: ciclo.titulo ?? null,
+        cicloDataFim: ciclo.dataFim,
+      },
+    });
+  }
+
+  // Desativar escudo do ciclo anterior
+  await prisma.cicloCampeao.updateMany({
+    where: { nutricionistaId: ciclo.nutricionistaId, cicloId: { not: cicloId }, escudoAtivo: true },
+    data: { escudoAtivo: false },
+  });
+
+  // Manter apenas os 3 ciclos mais recentes no histórico
+  const ciclosNoHistorico = await prisma.cicloCampeao.findMany({
+    where: { nutricionistaId: ciclo.nutricionistaId },
+    select: { cicloId: true },
+    distinct: ["cicloId"],
+    orderBy: { createdAt: "desc" },
+  });
+  const ciclosUnicos = [...new Set(ciclosNoHistorico.map(c => c.cicloId))];
+  if (ciclosUnicos.length > 3) {
+    await prisma.cicloCampeao.deleteMany({
+      where: { cicloId: { in: ciclosUnicos.slice(3) } },
+    });
+  }
+
+  // ── FeedEncerramento ──
   const vencedor = ciclo.participantes[0];
-  const top3 = ciclo.participantes.slice(0, 3).map((p, i) => ({
+  const top3Json = ciclo.participantes.slice(0, 3).map((p, i) => ({
     pacienteId: p.pacienteId,
     nome: p.paciente.nome,
     pontos: p.pontosCiclo,
@@ -212,7 +405,7 @@ export async function encerrarCiclo(cicloId: string) {
       cicloId,
       nutricionistaId: ciclo.nutricionistaId,
       vencedorId: vencedor?.pacienteId ?? null,
-      top3,
+      top3: top3Json,
       mensagem: vencedor
         ? `🎉 ${vencedor.paciente.nome} venceu o Ciclo ${String(ciclo.numero).padStart(2, "0")}!`
         : `🎉 Ciclo ${String(ciclo.numero).padStart(2, "0")} encerrado!`,
@@ -224,13 +417,23 @@ export async function encerrarCiclo(cicloId: string) {
     data: { status: "encerrado", relatorioGerado: true },
   });
 
-  for (const p of ciclo.participantes) {
-    const isVencedor = p.pacienteId === vencedor?.pacienteId;
-    const titulo = isVencedor ? "👑 Parabéns! Você venceu!" : "🎉 Ciclo encerrado!";
-    const corpo = isVencedor
-      ? `Você venceu o Ciclo ${String(ciclo.numero).padStart(2, "0")}! Veja seu relatório.`
-      : `Veja seu relatório do Ciclo ${String(ciclo.numero).padStart(2, "0")}.`;
-    enviarNotificacaoPaciente(p.pacienteId, titulo, corpo, `/paciente/relatorio/${cicloId}`).catch(console.error);
+  // ── Notificações ──
+  if (top3[0]) {
+    enviarNotificacaoPaciente(
+      top3[0].pacienteId,
+      "👑 Parabéns! Você venceu!",
+      `Você venceu o Ciclo ${String(ciclo.numero).padStart(2, "0")}! Seu escudo dourado está no topo!`,
+      "/paciente/relatorio/" + cicloId
+    ).catch(console.error);
+  }
+
+  for (const p of ciclo.participantes.slice(1)) {
+    enviarNotificacaoPaciente(
+      p.pacienteId,
+      "🎉 Ciclo encerrado!",
+      `Veja seu relatório do Ciclo ${String(ciclo.numero).padStart(2, "0")}.`,
+      "/paciente/relatorio/" + cicloId
+    ).catch(console.error);
   }
 
   enviarNotificacao(
@@ -240,6 +443,7 @@ export async function encerrarCiclo(cicloId: string) {
     "/app/ranking"
   ).catch(console.error);
 
+  // ── Criar próximo ciclo automaticamente ──
   const proximoNumero = ciclo.numero + 1;
   const novoInicio = new Date(ciclo.dataFim);
   novoInicio.setDate(novoInicio.getDate() + 1);
@@ -256,7 +460,6 @@ export async function encerrarCiclo(cicloId: string) {
     },
   });
 
-  // Auto-enroll pacientes ativos no próximo ciclo
   const pacientes = await prisma.paciente.findMany({
     where: { nutricionistaId: ciclo.nutricionistaId, ativo: true },
     select: { id: true },

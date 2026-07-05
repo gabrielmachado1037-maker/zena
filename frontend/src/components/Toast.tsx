@@ -15,7 +15,7 @@ export function Toast({ message, type = "success", onClose }: ToastProps) {
 
   return (
     <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white text-sm font-medium animate-in slide-in-from-bottom-2 ${
-      type === "success" ? "bg-zena-green-mid" : "bg-zena-brown"
+      type === "success" ? "bg-nexvel-green-mid" : "bg-nexvel-brown"
     }`}>
       {type === "success" ? <CheckCircle size={16} /> : <XCircle size={16} />}
       {message}

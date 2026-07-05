@@ -1,9 +1,17 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { calcularLiga } from "../config/ligas";
 
 const router = Router();
 router.use(authMiddleware);
+
+const LIGA_ORDEM = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"];
+const LIGA_CORES: Record<string, string> = {
+  Bronze: "#CD7F32", Prata: "#9CA3AF", Ouro: "#F59E0B",
+  Diamante: "#60A5FA", Mestre: "#A855F7", "Lendário": "#F97316",
+};
+const MESES_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 router.get("/", async (req: AuthRequest, res: Response) => {
   const now = new Date();
@@ -282,6 +290,164 @@ router.get("/alertas", async (req: AuthRequest, res: Response) => {
 
   alertas.sort((a, b) => a.prioridade - b.prioridade);
   res.json(alertas.slice(0, 10));
+});
+
+// GET /api/dashboard/ligas — métricas do Sistema de Ligas (Nexvel)
+router.get("/ligas", async (req: AuthRequest, res: Response) => {
+  const id = req.nutricionistaId!;
+  const now = new Date();
+  const hoje = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const fimHoje = new Date(hoje.getTime() + 86_399_999);
+  const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
+  const ha30 = new Date(hoje.getTime() - 30 * 86_400_000);
+  const ha3 = new Date(hoje.getTime() - 3 * 86_400_000);
+  const inicioSemana = new Date(hoje.getTime() - 7 * 86_400_000);
+  const seisMesesAtras = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+  const [pacientes, novosMes, registrosHoje, evolucoesSemana, registros6m, conquistas] =
+    await Promise.all([
+      prisma.paciente.findMany({
+        where: { nutricionistaId: id, ativo: true },
+        select: {
+          id: true, nome: true, pontosTotal: true, ligaAtual: true, ligaNivel: true,
+          streakAtual: true, ultimoCheckin: true, diasInativo: true, fotoPerfilUrl: true,
+        },
+      }),
+      prisma.paciente.count({ where: { nutricionistaId: id, ativo: true, createdAt: { gte: inicioMes } } }),
+      prisma.registro.count({ where: { paciente: { nutricionistaId: id }, data: { gte: hoje, lte: fimHoje } } }),
+      prisma.registro.count({ where: { paciente: { nutricionistaId: id }, fotoUrl: { not: null }, data: { gte: inicioSemana } } }),
+      prisma.registro.findMany({
+        where: { paciente: { nutricionistaId: id }, data: { gte: seisMesesAtras } },
+        select: { pacienteId: true, data: true },
+      }),
+      prisma.conquista.findMany({
+        where: { paciente: { nutricionistaId: id } },
+        include: { paciente: { select: { nome: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 8,
+      }),
+    ]);
+
+  // Pedidos de ajuste pendentes
+  const pedidosRaw = await prisma.registro.findMany({
+    where: { paciente: { nutricionistaId: id }, pediuAjuste: true, ajusteLido: false },
+    include: { paciente: { select: { id: true, nome: true, fotoPerfilUrl: true } } },
+    orderBy: { data: "desc" },
+    take: 10,
+  });
+  const pedidosAjuste = pedidosRaw.map((r) => ({
+    registroId: r.id,
+    pacienteId: r.paciente.id,
+    pacienteNome: r.paciente.nome,
+    foto: r.paciente.fotoPerfilUrl,
+    motivo: r.motivoAjuste,
+    data: r.data,
+  }));
+
+  const total = pacientes.length;
+
+  // Retenção 30 dias — % de pacientes que registraram nos últimos 30 dias
+  const ativos30 = pacientes.filter((p) => p.ultimoCheckin && new Date(p.ultimoCheckin) >= ha30).length;
+  const retencao30 = total ? Math.round((ativos30 / total) * 100) : 0;
+
+  // Check-ins de hoje (% dos pacientes)
+  const pctCheckins = total ? Math.round((registrosHoje / total) * 100) : 0;
+
+  // Em risco de abandono — inativo há 3+ dias (ou nunca registrou)
+  const emRisco = pacientes.filter(
+    (p) => p.diasInativo >= 3 || !p.ultimoCheckin || new Date(p.ultimoCheckin) < ha3
+  ).length;
+
+  // Registros por paciente nos últimos 30 dias (para índice de saúde)
+  const reg30ByPac: Record<string, number> = {};
+  for (const r of registros6m) {
+    if (new Date(r.data) >= ha30) reg30ByPac[r.pacienteId] = (reg30ByPac[r.pacienteId] || 0) + 1;
+  }
+  let somaAdesao = 0;
+  for (const p of pacientes) somaAdesao += Math.min((reg30ByPac[p.id] || 0) / 30, 1);
+  const indiceSaude = total ? Math.round((somaAdesao / total) * 100) : 0;
+
+  // Badge da clínica — liga média dos pacientes
+  const avgPontos = total ? Math.round(pacientes.reduce((s, p) => s + p.pontosTotal, 0) / total) : 0;
+  const ligaClinica = calcularLiga(avgPontos);
+
+  // Distribuição por liga
+  const distMap: Record<string, number> = {};
+  for (const p of pacientes) distMap[p.ligaAtual] = (distMap[p.ligaAtual] || 0) + 1;
+  const distribuicaoLigas = LIGA_ORDEM.map((liga) => ({
+    liga, count: distMap[liga] || 0, cor: LIGA_CORES[liga],
+  }));
+
+  // Retenção mensal (6 meses)
+  const retencaoMensal: { label: string; pct: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const fim = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    const pacs = new Set<string>();
+    for (const r of registros6m) {
+      const rd = new Date(r.data);
+      if (rd >= d && rd < fim) pacs.add(r.pacienteId);
+    }
+    retencaoMensal.push({ label: MESES_PT[d.getMonth()], pct: total ? Math.round((pacs.size / total) * 100) : 0 });
+  }
+
+  // Top ranking (5)
+  const topRanking = [...pacientes]
+    .sort((a, b) => b.pontosTotal - a.pontosTotal)
+    .slice(0, 5)
+    .map((p, i) => ({
+      pos: i + 1, nome: p.nome, pontos: p.pontosTotal,
+      liga: p.ligaAtual, ligaNivel: p.ligaNivel, streak: p.streakAtual, foto: p.fotoPerfilUrl,
+    }));
+
+  // Pacientes em risco (detalhe para a lista de alertas)
+  const alertas = pacientes
+    .filter((p) => p.diasInativo >= 3 || !p.ultimoCheckin || new Date(p.ultimoCheckin) < ha3)
+    .sort((a, b) => b.diasInativo - a.diasInativo)
+    .slice(0, 6)
+    .map((p) => ({
+      id: p.id, nome: p.nome, foto: p.fotoPerfilUrl, diasInativo: p.diasInativo,
+      liga: p.ligaAtual, ultimoCheckin: p.ultimoCheckin,
+    }));
+
+  const atividadeRecente = conquistas.map((c) => ({
+    id: c.id, pacienteNome: c.paciente.nome, titulo: c.titulo,
+    icone: c.icone, quando: c.createdAt,
+  }));
+
+  // Desempenho por categoria — % de adesão de cada hábito nos últimos 30 dias
+  const reg30 = await prisma.registro.findMany({
+    where: { paciente: { nutricionistaId: id }, data: { gte: ha30 } },
+    select: { alimentacaoOk: true, treinoOk: true, aguaOk: true, sonoOk: true },
+  });
+  const nReg = reg30.length || 1;
+  const desempenhoCategoria = {
+    alimentacao: Math.round((reg30.filter((r) => r.alimentacaoOk).length / nReg) * 100),
+    treino: Math.round((reg30.filter((r) => r.treinoOk).length / nReg) * 100),
+    agua: Math.round((reg30.filter((r) => r.aguaOk).length / nReg) * 100),
+    sono: Math.round((reg30.filter((r) => r.sonoOk).length / nReg) * 100),
+  };
+
+  res.json({
+    kpis: {
+      pacientesAtivos: total,
+      novosMes,
+      retencao30,
+      checkinsHoje: registrosHoje,
+      pctCheckins,
+      evolucoesSemana,
+      emRisco,
+      indiceSaude,
+      ligaClinica: { liga: ligaClinica.liga, nivel: ligaClinica.nivel, cor: ligaClinica.cor, icone: ligaClinica.icone },
+    },
+    distribuicaoLigas,
+    retencaoMensal,
+    topRanking,
+    alertas,
+    atividadeRecente,
+    pedidosAjuste,
+    desempenhoCategoria,
+  });
 });
 
 export default router;

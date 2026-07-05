@@ -77,7 +77,7 @@ export default function LobbyCard() {
   const nrStr = String(ciclo.numero).padStart(2, "0");
 
   const colors: Record<string, { bg: string; border: string; titulo: string }> = {
-    ativo:       { bg: "#F0FDF4", border: "#1C4A2E", titulo: "#1C4A2E" },
+    ativo:       { bg: "#F0FDF4", border: "#7C3AED", titulo: "#7C3AED" },
     aquecimento: { bg: "#FFFBEB", border: "#F59E0B", titulo: "#92400E" },
     encerrado:   { bg: "#F5F3FF", border: "#7C3AED", titulo: "#5B21B6" },
   };

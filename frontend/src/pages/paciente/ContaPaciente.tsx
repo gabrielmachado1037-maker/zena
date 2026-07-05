@@ -61,7 +61,7 @@ function Conquistas({ data, diasConsecutivos }: { data: PacienteData; diasConsec
               b.ok ? "bg-[#F0FAF5]" : "bg-[#F5F5F3] opacity-40"
             }`}>
             <span className="text-[24px]">{b.emoji}</span>
-            <span className="text-[9px] font-semibold leading-tight" style={{ color: b.ok ? "#1B4332" : "#999" }}>
+            <span className="text-[9px] font-semibold leading-tight" style={{ color: b.ok ? "#7C3AED" : "#999" }}>
               {b.label}
             </span>
           </div>
@@ -101,11 +101,11 @@ function Evolucao({ data }: { data: PacienteData }) {
         <div>
           <div className="flex justify-between text-[11px] text-[#999] mb-1.5">
             <span>Progresso</span>
-            <span className="font-semibold" style={{ color: "#1B4332" }}>{pct}%</span>
+            <span className="font-semibold" style={{ color: "#7C3AED" }}>{pct}%</span>
           </div>
           <div className="h-2.5 bg-[#E5E7EB] rounded-full overflow-hidden">
             <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${pct}%`, background: "#1B4332" }} />
+              style={{ width: `${pct}%`, background: "#7C3AED" }} />
           </div>
         </div>
       )}
@@ -146,7 +146,7 @@ function AlterarSenha({ token }: { token: string }) {
         className="flex items-center justify-between w-full px-5 py-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#E0F2E9" }}>
-            <Lock size={16} style={{ color: "#1B4332" }} />
+            <Lock size={16} style={{ color: "#7C3AED" }} />
           </div>
           <span className="text-[14px] font-semibold text-[#111]">Alterar senha</span>
         </div>
@@ -159,7 +159,7 @@ function AlterarSenha({ token }: { token: string }) {
           <div className="relative">
             <input type={showA ? "text" : "password"} placeholder="Senha atual" value={atual}
               onChange={e => setAtual(e.target.value)}
-              className="w-full px-4 py-3 pr-10 rounded-xl border border-[#E8E8E8] text-[14px] focus:outline-none focus:border-[#1B4332]" />
+              className="w-full px-4 py-3 pr-10 rounded-xl border border-[#E8E8E8] text-[14px] focus:outline-none focus:border-[#7C3AED]" />
             <button onClick={() => setShowA(s => !s)}
               className="absolute right-3 top-3.5 text-[#bbb]">
               {showA ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -168,7 +168,7 @@ function AlterarSenha({ token }: { token: string }) {
           <div className="relative">
             <input type={showN ? "text" : "password"} placeholder="Nova senha" value={nova}
               onChange={e => setNova(e.target.value)}
-              className="w-full px-4 py-3 pr-10 rounded-xl border border-[#E8E8E8] text-[14px] focus:outline-none focus:border-[#1B4332]" />
+              className="w-full px-4 py-3 pr-10 rounded-xl border border-[#E8E8E8] text-[14px] focus:outline-none focus:border-[#7C3AED]" />
             <button onClick={() => setShowN(s => !s)}
               className="absolute right-3 top-3.5 text-[#bbb]">
               {showN ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -176,12 +176,12 @@ function AlterarSenha({ token }: { token: string }) {
           </div>
           <input type="password" placeholder="Confirmar nova senha" value={conf}
             onChange={e => setConf(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-[#E8E8E8] text-[14px] focus:outline-none focus:border-[#1B4332]" />
+            className="w-full px-4 py-3 rounded-xl border border-[#E8E8E8] text-[14px] focus:outline-none focus:border-[#7C3AED]" />
           {err && <p className="text-[12px] text-red-400">{err}</p>}
-          {msg && <p className="text-[12px]" style={{ color: "#1B4332" }}>{msg}</p>}
+          {msg && <p className="text-[12px]" style={{ color: "#7C3AED" }}>{msg}</p>}
           <button onClick={submit} disabled={loading}
             className="w-full py-3 rounded-xl text-white font-semibold text-[14px] disabled:opacity-50"
-            style={{ background: "#1B4332" }}>
+            style={{ background: "#7C3AED" }}>
             {loading ? "Salvando…" : "Salvar senha"}
           </button>
         </div>
@@ -258,7 +258,7 @@ export default function ContaPaciente() {
             onClick={() => fileRef.current?.click()}
             disabled={uploadingFoto}
             className="absolute bottom-0 right-0 w-8 h-8 rounded-full flex items-center justify-center text-white border-2 border-white disabled:opacity-60"
-            style={{ background: "#1B4332" }}>
+            style={{ background: "#7C3AED" }}>
             {uploadingFoto
               ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               : <Camera size={14} />}
@@ -288,7 +288,7 @@ export default function ContaPaciente() {
             style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#E0F2E9" }}>
-                <Bell size={16} style={{ color: "#1B4332" }} />
+                <Bell size={16} style={{ color: "#7C3AED" }} />
               </div>
               <div>
                 <p className="text-[14px] font-semibold text-[#111]">Notificações push</p>
@@ -298,7 +298,7 @@ export default function ContaPaciente() {
             <button
               onClick={() => setPushOn(o => !o)}
               className="relative w-12 h-6 rounded-full transition-all flex-shrink-0"
-              style={{ background: pushOn ? "#1B4332" : "#D0D0D0" }}>
+              style={{ background: pushOn ? "#7C3AED" : "#D0D0D0" }}>
               <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${pushOn ? "left-7" : "left-1"}`} />
             </button>
           </div>
@@ -308,7 +308,7 @@ export default function ContaPaciente() {
             style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "#E0F2E9" }}>
-                <Globe size={16} style={{ color: "#1B4332" }} />
+                <Globe size={16} style={{ color: "#7C3AED" }} />
               </div>
               <div>
                 <p className="text-[14px] font-semibold text-[#111]">Posts públicos por padrão</p>
@@ -320,7 +320,7 @@ export default function ContaPaciente() {
             <button
               onClick={() => setPrivDefault(p => p === "PUBLICO" ? "APENAS_NUTRI" : "PUBLICO")}
               className="relative w-12 h-6 rounded-full transition-all flex-shrink-0"
-              style={{ background: privDefault === "PUBLICO" ? "#1B4332" : "#D0D0D0" }}>
+              style={{ background: privDefault === "PUBLICO" ? "#7C3AED" : "#D0D0D0" }}>
               <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${
                 privDefault === "PUBLICO" ? "left-7" : "left-1"
               }`} />
@@ -337,7 +337,7 @@ export default function ContaPaciente() {
       <button
         onClick={logout}
         className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border border-[#F0F0EE] bg-white text-[14px] font-semibold"
-        style={{ color: "#1B4332" }}>
+        style={{ color: "#7C3AED" }}>
         <LogOut size={16} />
         Sair da conta
       </button>

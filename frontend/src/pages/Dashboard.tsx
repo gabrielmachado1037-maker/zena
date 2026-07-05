@@ -1,704 +1,376 @@
-import { useEffect, useState } from "react";
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-import { Users, DollarSign, Calendar, AlertCircle, Clock, CheckCircle, XCircle, MessageCircle, Bell, X, Zap, ChevronRight, FileText, TrendingUp } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { useAuth } from "../contexts/AuthContext";
-import { useAlertas } from "../contexts/AlertasContext";
-import StatCard from "../components/StatCard";
-import WhatsAppModal from "../components/WhatsAppModal";
-import { QuoteInline } from "../components/DailyQuoteCard";
-import api from "../lib/api";
-import { type TemplateWhatsApp } from "../lib/utils";
+import { useNavigate } from "react-router-dom";
+import {
+  AreaChart, Area, XAxis, ResponsiveContainer, PieChart, Pie, Cell, Tooltip,
+} from "recharts";
+import {
+  Search, Bell, TrendingUp, CheckCircle2, ArrowUpDown, Rocket,
+  AlertTriangle, Send, SlidersHorizontal, CalendarClock, Plus, ChevronDown, HeartPulse,
+} from "lucide-react";
+import { useFetch } from "../hooks/useFetch";
+import Avatar from "../components/Avatar";
 
-interface ConsultaHoje {
-  id: string;
-  data: string;
-  status: string;
-  paciente: { id: string; nome: string; telefone?: string; linkUnico: string };
+/* ───────── shapes reais da API ───────── */
+interface LigasResp {
+  kpis: {
+    pacientesAtivos: number; novosMes: number; retencao30: number;
+    checkinsHoje: number; pctCheckins: number; emRisco: number; indiceSaude: number;
+    ligaClinica: { liga: string; nivel: string; cor: string; icone: string };
+  };
+  distribuicaoLigas: { liga: string; count: number; cor: string }[];
+  retencaoMensal: { label: string; pct: number }[];
+  topRanking: { pos: number; nome: string; pontos: number; liga: string; ligaNivel: string; streak: number; foto: string | null }[];
+  alertas: { id: string; nome: string; foto: string | null; diasInativo: number; liga: string; ultimoCheckin: string | null }[];
+  pedidosAjuste: { registroId: string; pacienteId: string; pacienteNome: string }[];
+  desempenhoCategoria: { alimentacao: number; treino: number; agua: number; sono: number };
 }
+interface DashResp { pacientesAtivos: number; adesaoPlanos: number; novosPacientesMes: number }
 
-interface DashboardData {
-  pacientesAtivos: number;
-  faturamentoMes: number;
-  recebidoMes: number;
-  aReceber: number;
-  consultasHoje: ConsultaHoje[];
-  cobrancasVencidas: number;
-  pacientesSemConsulta: Array<{ id: string; nome: string; linkUnico: string; telefone?: string }>;
-  totalConsultas: number;
-  asaasConectado: boolean;
-  totalCobrancas: number;
-  totalPlanos: number;
-  evolucaoPeso: { pct: number; sparkline: number[]; totalComMedicoes: number };
-  novosPacientesMes: number;
-  adesaoPlanos: number;
-  evolucaoSemanal: Array<{ semana: string; label: string; pesoMedio: number }>;
-  proximosAtendimentos: Array<{ id: string; data: string; pacienteNome: string; status: string }>;
-  planosMaisUsados: Array<{ nome: string; count: number }>;
-}
-
-interface Lembrete {
-  id: string;
-  tipo: string;
-  referencia?: string;
-  paciente: { id: string; nome: string; telefone?: string; linkUnico: string };
-}
-
-interface WAState {
-  paciente: { id: string; nome: string; telefone?: string; linkUnico: string };
-  template: TemplateWhatsApp;
-  consultaData?: string;
-  lembreteId?: string;
-}
-
-const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  confirmada: { label: "Confirmada", color: "text-zena-green-light bg-zena-green-light/10", icon: CheckCircle },
-  agendada: { label: "Agendada", color: "text-zena-green-mid bg-zena-mint/30", icon: Clock },
-  cancelada: { label: "Cancelada", color: "text-zena-brown bg-zena-brown/10", icon: XCircle },
-  remarcacao_solicitada: { label: "Remarcar", color: "text-yellow-600 bg-yellow-50", icon: AlertCircle },
-  aguardando_confirmacao: { label: "Aguardando", color: "text-blue-600 bg-blue-50", icon: Clock },
-};
-
-const lembreteCfg: Record<string, { emoji: string; label: string; template: TemplateWhatsApp }> = {
-  consulta_24h: { emoji: "📅", label: "Consulta amanhã", template: "lembrete_consulta" },
-  checkin_semanal: { emoji: "✨", label: "Lembrete de check-in", template: "lembrete_checkin" },
-  cobranca_vencida: { emoji: "💚", label: "Cobrança vencida hoje", template: "lembrete_cobranca" },
-};
-
-interface Alerta {
-  id: string;
-  tipo: string;
-  prioridade: number;
-  texto: string;
-  acao: string;
-  link: string;
-  template?: string;
-  paciente?: { id: string; nome: string; telefone?: string; linkUnico: string };
-}
-
-const ALERTA_CFG: Record<string, { dot: string; ringCls: string; textCls: string; btnCls: string }> = {
-  cobranca_vencida:  { dot: "bg-red-500",     ringCls: "bg-red-50 border-red-200",         textCls: "text-red-800",     btnCls: "bg-red-100 hover:bg-red-200 text-red-700" },
-  sem_consulta:      { dot: "bg-amber-500",   ringCls: "bg-amber-50 border-amber-200",     textCls: "text-amber-800",   btnCls: "bg-amber-100 hover:bg-amber-200 text-amber-700" },
-  consulta_proxima:  { dot: "bg-amber-400",   ringCls: "bg-amber-50 border-amber-200",     textCls: "text-amber-800",   btnCls: "bg-amber-100 hover:bg-amber-200 text-amber-700" },
-  cobranca_vencendo: { dot: "bg-emerald-500", ringCls: "bg-emerald-50 border-emerald-200", textCls: "text-emerald-800", btnCls: "bg-emerald-100 hover:bg-emerald-200 text-emerald-700" },
-  aniversario:       { dot: "bg-emerald-400", ringCls: "bg-emerald-50 border-emerald-200", textCls: "text-emerald-800", btnCls: "bg-emerald-100 hover:bg-emerald-200 text-emerald-700" },
-};
-
-const WA_TIPOS = new Set(["cobranca_vencida", "cobranca_vencendo", "sem_consulta", "consulta_proxima"]);
-
-function getInitials(nome: string) {
-  return nome.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase();
-}
-
-interface BillingStatus {
-  emTrial: boolean;
-  diasRestantesTrial: number;
-  planoAtivo: boolean;
-  plano: string;
-}
-
-function Sparkline({ data }: { data: number[] }) {
-  if (data.length < 2) return null;
-  const pts = data.map((v, i) => ({ i, v }));
+/* ───────── primitivos ───────── */
+function Card({ className = "", children }: { className?: string; children: React.ReactNode }) {
   return (
-    <ResponsiveContainer width={100} height={40}>
-      <LineChart data={pts} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
-        <Line type="monotone" dataKey="v" stroke="#1C4A2E" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-      </LineChart>
-    </ResponsiveContainer>
+    <div className={`rounded-2xl bg-nx-surface border border-white/5 ${className}`}>{children}</div>
   );
 }
 
-function fmtMoney(v: number) {
-  if (v >= 10000) return `R$ ${(v / 1000).toFixed(0)}k`;
-  if (v >= 1000) return `R$ ${(v / 1000).toFixed(1).replace(".", ",")}k`;
-  return `R$ ${v.toFixed(0)}`;
-}
-
-export default function Dashboard() {
-  const { nutricionista } = useAuth();
-  const { setCount: setAlertCount } = useAlertas();
-  const navigate = useNavigate();
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [waState, setWaState] = useState<WAState | null>(null);
-  const [lembretes, setLembretes] = useState<Lembrete[]>([]);
-  const [billing, setBilling] = useState<BillingStatus | null>(null);
-  const [onboardingFading, setOnboardingFading] = useState(false);
-  const [onboardingHidden, setOnboardingHidden] = useState(false);
-  const [alertas, setAlertas] = useState<Alerta[]>([]);
-  const [loadingAlertas, setLoadingAlertas] = useState(true);
-  const [dispensados, setDispensados] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    api.get("/dashboard").then((res) => {
-      setData(res.data);
-      setLoading(false);
-    });
-    api.get("/lembretes?status=pendente").then((res) => setLembretes(res.data));
-    api.get<BillingStatus>("/billing/status").then((res) => setBilling(res.data)).catch(() => null);
-    api.get<Alerta[]>("/dashboard/alertas").then((res) => {
-      setAlertas(res.data);
-      setAlertCount(res.data.length);
-    }).catch(() => null).finally(() => setLoadingAlertas(false));
-  }, []);
-
-  const pctRecebido = data ? Math.round((data.recebidoMes / (data.faturamentoMes || 1)) * 100) : 0;
-  const hoje = format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR });
-  const firstName = nutricionista?.nome.split(" ")[0] ?? "";
-  const initials = getInitials(nutricionista?.nome ?? "?");
-
-  function abrirWA(paciente: WAState["paciente"], template: TemplateWhatsApp, consultaData?: string, lembreteId?: string) {
-    setWaState({ paciente, template, consultaData, lembreteId });
-  }
-
-  async function onWAClose() {
-    if (waState?.lembreteId) {
-      await api.patch(`/lembretes/${waState.lembreteId}`, { status: "enviado" });
-      setLembretes((prev) => prev.filter((l) => l.id !== waState.lembreteId));
-    }
-    setWaState(null);
-  }
-
-  async function ignorarLembrete(id: string) {
-    await api.patch(`/lembretes/${id}`, { status: "ignorado" });
-    setLembretes((prev) => prev.filter((l) => l.id !== id));
-  }
-
-  useEffect(() => {
-    if (!data || onboardingHidden || onboardingFading) return;
-    const isNewUser = data.pacientesAtivos < 3 && data.totalCobrancas === 0;
-    if (!isNewUser) return;
-    if (data.pacientesAtivos >= 1 && data.asaasConectado && data.totalConsultas >= 1) {
-      setOnboardingFading(true);
-      const t = setTimeout(() => setOnboardingHidden(true), 700);
-      return () => clearTimeout(t);
-    }
-  }, [data, onboardingHidden, onboardingFading]);
-
-  function dispensarAlerta(id: string) {
-    const novos = new Set(dispensados).add(id);
-    setDispensados(novos);
-    const visiveis = alertas.filter((a) => !novos.has(a.id));
-    setAlertCount(visiveis.length);
-  }
-
-  function handleAlertaAction(alerta: Alerta) {
-    if (WA_TIPOS.has(alerta.tipo) && alerta.paciente && alerta.template) {
-      abrirWA(
-        { id: alerta.paciente.id, nome: alerta.paciente.nome, telefone: alerta.paciente.telefone, linkUnico: alerta.paciente.linkUnico },
-        alerta.template as TemplateWhatsApp,
-      );
-    } else {
-      navigate(`/app${alerta.link}`);
-    }
-    dispensarAlerta(alerta.id);
-  }
-
-  const alertasVisiveis = alertas.filter((a) => !dispensados.has(a.id)).slice(0, 5);
-
-  // Onboarding passos (shared between mobile and desktop)
-  const onboardingPassos = data ? [
-    { label: "Cadastre seu primeiro paciente", desc: "Adicione nome, objetivo e dados de contato", done: data.pacientesAtivos >= 1, to: "/app/pacientes", btn: "Cadastrar →" },
-    { label: "Configure sua cobrança", desc: "Conecte sua conta Asaas para receber pelo Pix", done: data.asaasConectado, to: "/app/financeiro", btn: "Configurar →" },
-    { label: "Agende uma consulta", desc: "Defina sua disponibilidade e agende o primeiro retorno", done: data.totalConsultas >= 1, to: "/app/horarios", btn: "Agendar →" },
-  ] : [];
-  const onboardingTodosConcluidos = onboardingPassos.every((p) => p.done);
-  const isNewUser = data ? data.pacientesAtivos < 3 && data.totalCobrancas === 0 : false;
-  const showOnboarding = isNewUser && !onboardingHidden;
-
-  return (
-    <div>
-      {/* WhatsApp modal — global, above both layouts */}
-      {waState && nutricionista && (
-        <WhatsAppModal
-          context={{
-            pacienteId: waState.paciente.id,
-            pacienteNome: waState.paciente.nome,
-            pacienteTelefone: waState.paciente.telefone,
-            pacienteLinkUnico: waState.paciente.linkUnico,
-            nutricionistaNome: nutricionista.nome,
-            consultaData: waState.consultaData,
-          }}
-          template={waState.template}
-          onClose={onWAClose}
-        />
-      )}
-
-      {/* ━━━ MOBILE LAYOUT ━━━ */}
-      <div className="md:hidden bg-white min-h-screen px-5 pt-10 pb-28">
-
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="min-w-0 flex-1 mr-4">
-            <h1 className="text-[28px] font-bold text-[#111] leading-tight tracking-tight">
-              Olá, {firstName}! 👋
-            </h1>
-            {data?.consultasHoje[0] ? (
-              <p className="text-[13px] font-medium mt-0.5" style={{ color: "#1B4332" }}>
-                Próxima consulta: {data.consultasHoje[0].paciente.nome.split(" ")[0]} às{" "}
-                {new Date(data.consultasHoje[0].data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-              </p>
-            ) : (
-              <p className="text-[13px] text-[#999] mt-0.5">Tenha um dia incrível!</p>
-            )}
-            <QuoteInline />
-          </div>
-          {nutricionista?.logoConsultorio ? (
-            <img
-              src={nutricionista.logoConsultorio}
-              alt={firstName}
-              className="w-12 h-12 rounded-full object-cover bg-[#F5F5F3] flex-shrink-0"
-            />
-          ) : (
-            <div className="w-12 h-12 rounded-full bg-zena-green-dark flex items-center justify-center flex-shrink-0">
-              <span className="text-white font-semibold text-sm">{initials}</span>
-            </div>
-          )}
-        </div>
-
-        {/* KPI Cards */}
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="bg-[#F5F5F3] rounded-2xl px-5 py-5 animate-pulse">
-                <div className="h-3 w-36 bg-[#E0E0DC] rounded mb-4" />
-                <div className="h-12 w-14 bg-[#E0E0DC] rounded" />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {/* Card 1 — Atendimentos hoje */}
-            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-4 flex items-center gap-4">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#E0F2E9" }}>
-                <Calendar size={20} style={{ color: "#1B4332" }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] text-[#999] font-medium">Atendimentos hoje</p>
-                <div className="flex items-end justify-between mt-0.5">
-                  <span className="text-[46px] font-bold text-[#111] leading-none tabular-nums">
-                    {String(data!.consultasHoje.length).padStart(2, "0")}
-                  </span>
-                  <Link to="/app/horarios" className="text-[12px] font-semibold pb-1" style={{ color: "#1B4332" }}>
-                    ver agenda →
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2 — Pacientes ativos */}
-            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-4 flex items-center gap-4">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#E0F2E9" }}>
-                <Users size={20} style={{ color: "#1B4332" }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] text-[#999] font-medium">Pacientes ativos</p>
-                <div className="flex items-end justify-between mt-0.5">
-                  <span className="text-[46px] font-bold text-[#111] leading-none tabular-nums">
-                    {data!.pacientesAtivos}
-                  </span>
-                  <Link to="/app/pacientes" className="text-[12px] font-semibold pb-1" style={{ color: "#1B4332" }}>
-                    ver todos →
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3 — Faturamento */}
-            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-4 flex items-center gap-4">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#E0F2E9" }}>
-                <DollarSign size={20} style={{ color: "#1B4332" }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-[12px] text-[#999] font-medium">Faturamento do mês</p>
-                  {pctRecebido > 0 && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "#E0F2E9", color: "#1B4332" }}>
-                      {pctRecebido}% recebido
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-end justify-between mt-0.5">
-                  <span className={`font-bold text-[#111] leading-none tabular-nums ${data!.faturamentoMes >= 10000 ? "text-[34px]" : "text-[44px]"}`}>
-                    {fmtMoney(data!.faturamentoMes)}
-                  </span>
-                  <Link to="/app/financeiro" className="text-[12px] font-semibold pb-1" style={{ color: "#1B4332" }}>
-                    ver financeiro →
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 4 — Planos alimentares */}
-            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-4 flex items-center gap-4">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#E0F2E9" }}>
-                <FileText size={20} style={{ color: "#1B4332" }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] text-[#999] font-medium">Planos alimentares</p>
-                <div className="flex items-end justify-between mt-0.5">
-                  <span className="text-[46px] font-bold text-[#111] leading-none tabular-nums">
-                    {data!.totalPlanos}
-                  </span>
-                  <Link to="/app/pacientes" className="text-[12px] font-semibold pb-1" style={{ color: "#1B4332" }}>
-                    ver pacientes →
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 5 — Evolução dos pacientes */}
-            <div className="bg-[#F5F5F3] rounded-2xl px-5 py-4 flex items-center gap-4">
-              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "#E0F2E9" }}>
-                <TrendingUp size={20} style={{ color: "#1B4332" }} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] text-[#999] font-medium">Evolução dos pacientes</p>
-                <div className="flex items-end justify-between mt-0.5">
-                  <div>
-                    <span className="text-[46px] font-bold text-[#111] leading-none">
-                      {data!.evolucaoPeso.totalComMedicoes > 0 ? `${data!.evolucaoPeso.pct}%` : "—"}
-                    </span>
-                    {data!.evolucaoPeso.totalComMedicoes > 0 && (
-                      <p className="text-[11px] text-[#bbb] mt-0.5">perderam peso</p>
-                    )}
-                  </div>
-                  <Sparkline data={data!.evolucaoPeso.sparkline} />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Onboarding checklist — só para usuários novos */}
-        {!loading && showOnboarding && (
-          <div className={`mt-4 bg-[#F5F5F3] rounded-2xl p-5 transition-all duration-700 ${onboardingFading ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100"}`}>
-            <div className="flex items-center gap-2 mb-4">
-              <Zap size={15} className="text-zena-green-mid" />
-              <p className="text-[13px] font-semibold text-[#333]">Comece agora — 3 passos rápidos</p>
-            </div>
-            <div className="space-y-3">
-              {onboardingPassos.map((p, i) => (
-                <div key={p.label} className="flex items-start gap-3">
-                  <div className={`mt-0.5 w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border-2 transition-all ${p.done ? "bg-zena-green-mid border-zena-green-mid" : "border-[#ccc]"}`}>
-                    {p.done ? <CheckCircle size={11} className="text-white" /> : <span className="text-[9px] text-[#999] font-bold">{i + 1}</span>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-[13px] font-medium ${p.done ? "text-[#bbb] line-through" : "text-[#333]"}`}>{p.label}</p>
-                    {!p.done && <p className="text-[11px] text-[#999] mt-0.5">{p.desc}</p>}
-                  </div>
-                  {!p.done && (
-                    <Link to={p.to} className="flex-shrink-0 text-[11px] text-zena-green-dark font-medium whitespace-nowrap">
-                      {p.btn}
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </div>
-            {onboardingTodosConcluidos && (
-              <p className="text-[12px] text-zena-green-mid font-medium mt-4 text-center">Parabéns! Tudo pronto 🎉</p>
-            )}
-          </div>
-        )}
-
-        {/* Lembretes */}
-        {lembretes.length > 0 && (
-          <div className="mt-4">
-            <p className="text-[13px] text-[#999] font-normal mb-3 px-1">Lembretes de hoje</p>
-            <div className="space-y-2">
-              {lembretes.map((l) => {
-                const cfg = lembreteCfg[l.tipo];
-                if (!cfg) return null;
-                return (
-                  <div key={l.id} className="bg-[#F5F5F3] rounded-2xl px-5 py-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] text-[#333] font-medium">{cfg.label}</p>
-                        <p className="text-[12px] text-[#999] mt-0.5 truncate">{l.paciente.nome}</p>
-                      </div>
-                      <button
-                        onClick={() => abrirWA(
-                          { id: l.paciente.id, nome: l.paciente.nome, telefone: l.paciente.telefone, linkUnico: l.paciente.linkUnico },
-                          cfg.template, undefined, l.id
-                        )}
-                        className="text-[12px] text-[#25D366] font-medium flex-shrink-0"
-                      >
-                        WhatsApp →
-                      </button>
-                      <button onClick={() => ignorarLembrete(l.id)} className="flex-shrink-0">
-                        <X size={14} className="text-[#ccc]" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Alertas */}
-        {!loadingAlertas && alertasVisiveis.length > 0 && (
-          <div className="mt-4">
-            <p className="text-[13px] text-[#999] font-normal mb-3 px-1">Alertas</p>
-            <div className="space-y-2">
-              {alertasVisiveis.map((alerta) => (
-                <div key={alerta.id} className="bg-[#F5F5F3] rounded-2xl px-5 py-4">
-                  <p className="text-[13px] text-[#333] leading-snug">{alerta.texto}</p>
-                  <div className="flex items-center gap-4 mt-2.5">
-                    <button onClick={() => handleAlertaAction(alerta)} className="text-[12px] text-zena-green-dark font-medium">
-                      {alerta.acao} →
-                    </button>
-                    <button onClick={() => dispensarAlerta(alerta.id)} className="text-[11px] text-[#bbb]">
-                      dispensar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+function StateBox({
+  loading, error, empty, onRetry, children, minH = "h-28",
+}: {
+  loading: boolean; error: string | null; empty?: boolean; onRetry?: () => void;
+  children: React.ReactNode; minH?: string;
+}) {
+  if (loading)
+    return <div className={`${minH} animate-pulse rounded-xl bg-nx-container/60`} aria-busy="true" />;
+  if (error)
+    return (
+      <div className={`${minH} flex flex-col items-center justify-center gap-2 text-center`}>
+        <p className="text-body-sm text-nx-error">{error}</p>
+        {onRetry && (
+          <button onClick={onRetry} className="text-label-md text-nx-primary hover:underline">Tentar de novo</button>
         )}
       </div>
+    );
+  if (empty)
+    return <div className={`${minH} flex items-center justify-center text-body-sm text-nx-outline`}>Sem dados ainda</div>;
+  return <>{children}</>;
+}
 
-      {/* ━━━ DESKTOP LAYOUT ━━━ */}
-      <div className="hidden md:block bg-zena-cream min-h-screen p-8">
+/* ───────── página ───────── */
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const ligas = useFetch<LigasResp>("/dashboard/ligas");
+  const dash = useFetch<DashResp>("/dashboard");
 
-        {/* Welcome header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="min-w-0 flex-1 mr-6">
-            <h1 className="text-[28px] font-semibold text-[#1C4A2E] leading-tight">Olá, {firstName}!</h1>
-            <p className="text-[14px] font-normal text-[#999] mt-1">Tenha um dia incrível! 👋</p>
-            <QuoteInline />
+  const hoje = new Date().toLocaleDateString("pt-BR", { day: "numeric", month: "long" });
+
+  return (
+    <div className="flex min-h-screen bg-nx-bg-lowest text-nx-on-surface font-sans">
+      <main className="flex-1 min-w-0 px-4 md:px-6 py-6 pb-24 lg:pb-6">
+        {/* Header */}
+        <header className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-headline-md text-nx-on-surface">Visão Geral</h1>
+            <p className="text-body-sm text-nx-on-surface-variant mt-0.5">Resumo clínico do dia {hoje}</p>
           </div>
-          {nutricionista?.logoConsultorio ? (
-            <img
-              src={nutricionista.logoConsultorio}
-              alt={firstName}
-              className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-[#1C4A2E] flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-[13px] font-semibold">{initials}</span>
-            </div>
-          )}
-        </div>
-
-        {/* ── KPI Row ── */}
-        {loading ? (
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="bg-white rounded-xl p-6 animate-pulse">
-                <div className="h-3 w-28 bg-[#F0F0EE] rounded mb-4" />
-                <div className="h-8 w-16 bg-[#F0F0EE] rounded mb-2" />
-                <div className="h-3 w-20 bg-[#F0F0EE] rounded" />
-              </div>
-            ))}
+          <div className="flex items-center gap-2 shrink-0">
+            <button aria-label="Buscar" className="grid place-items-center size-11 rounded-full bg-nx-surface border border-white/5 text-nx-on-surface-variant hover:text-nx-on-surface transition-colors">
+              <Search size={18} />
+            </button>
+            <button aria-label="Notificações" className="relative grid place-items-center size-11 rounded-full bg-nx-surface border border-white/5 text-nx-on-surface-variant hover:text-nx-on-surface transition-colors">
+              <Bell size={18} />
+              <span className="absolute top-2.5 right-2.5 size-2 rounded-full bg-nx-secondary" />
+            </button>
           </div>
-        ) : (
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            {/* Pacientes ativos */}
-            <div className="bg-white rounded-xl p-6 border border-[#E8F0EC] shadow-[0_1px_4px_rgba(27,67,50,0.06)]">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#E0F2E9" }}>
-                  <Users size={14} style={{ color: "#1B4332" }} />
-                </div>
-                <p className="text-[12px] text-[#999] font-medium">Pacientes ativos</p>
-              </div>
-              <p className="text-[36px] font-bold text-[#111] leading-none tabular-nums mb-2">{data!.pacientesAtivos}</p>
-              {data!.novosPacientesMes > 0 && (
-                <p className="text-[12px] font-semibold" style={{ color: "#1B4332" }}>+{data!.novosPacientesMes} este mês</p>
-              )}
-            </div>
+        </header>
 
-            {/* Atendimentos hoje */}
-            <div className="bg-white rounded-xl p-6 border border-[#E8F0EC] shadow-[0_1px_4px_rgba(27,67,50,0.06)]">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#E0F2E9" }}>
-                  <Calendar size={14} style={{ color: "#1B4332" }} />
-                </div>
-                <p className="text-[12px] text-[#999] font-medium">Atendimentos hoje</p>
-              </div>
-              <p className="text-[36px] font-bold text-[#111] leading-none tabular-nums mb-2">
-                {String(data!.consultasHoje.length).padStart(2, "0")}
-              </p>
-              <Link to="/app/horarios" className="text-[12px] font-semibold" style={{ color: "#1B4332" }}>ver agenda →</Link>
-            </div>
+        {/* KPIs */}
+        <section className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
+          <Kpi label="Pacientes Ativos" loading={ligas.loading} error={ligas.error} onRetry={ligas.refetch}
+            value={ligas.data?.kpis.pacientesAtivos} trend={ligas.data ? `+${ligas.data.kpis.novosMes}` : undefined} trendIcon={TrendingUp} />
+          <Kpi label="Taxa de Adesão" loading={dash.loading} error={dash.error} onRetry={dash.refetch}
+            value={dash.data != null ? `${dash.data.adesaoPlanos}%` : undefined} trend="Meta" trendIcon={CheckCircle2} />
+          <Kpi label="Retenção 30d" loading={ligas.loading} error={ligas.error} onRetry={ligas.refetch}
+            value={ligas.data ? `${ligas.data.kpis.retencao30}%` : undefined} trend="Estável" trendIcon={ArrowUpDown} trendMuted />
+          <Kpi label="Desafios Ativos" loading={false} error={null} value={undefined} emptyNote="sem endpoint" trendIcon={Rocket} />
+          <Kpi label="Check-ins Hoje" loading={ligas.loading} error={ligas.error} onRetry={ligas.refetch}
+            value={ligas.data?.kpis.checkinsHoje}
+            trend={ligas.data ? `${ligas.data.kpis.pctCheckins}% dos ativos` : undefined} trendIcon={HeartPulse} />
+          <Kpi label="Pacientes em Risco" loading={ligas.loading} error={ligas.error} onRetry={ligas.refetch}
+            value={ligas.data?.kpis.emRisco} trend="Atenção" trendIcon={AlertTriangle} danger />
+        </section>
 
-            {/* Novos pacientes */}
-            <div className="bg-white rounded-xl p-6 border border-[#E8F0EC] shadow-[0_1px_4px_rgba(27,67,50,0.06)]">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "#E0F2E9" }}>
-                  <TrendingUp size={14} style={{ color: "#1B4332" }} />
-                </div>
-                <p className="text-[12px] text-[#999] font-medium">Novos pacientes</p>
-              </div>
-              <p className="text-[36px] font-bold text-[#111] leading-none tabular-nums mb-2">{data!.novosPacientesMes}</p>
-              <p className="text-[12px] text-[#bbb]">este mês</p>
-            </div>
-
-            {/* Faturamento */}
-            <div className="rounded-xl p-6 border shadow-[0_1px_4px_rgba(27,67,50,0.08)]" style={{ background: "#1B4332", borderColor: "#1B4332" }}>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(255,255,255,0.15)" }}>
-                  <DollarSign size={14} className="text-white" />
-                </div>
-                <p className="text-[12px] text-white/60 font-medium">Faturamento</p>
-              </div>
-              <p className="text-[26px] font-bold text-white leading-none tabular-nums mb-2">
-                {`R$ ${data!.faturamentoMes.toFixed(2).replace(".", ",")}`}
-              </p>
-              {pctRecebido > 0 && (
-                <p className="text-[12px] font-semibold text-zena-mint">{pctRecebido}% recebido este mês</p>
-              )}
-            </div>
+        {/* Radar de Urgência */}
+        <section className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-body-lg font-semibold text-nx-on-surface">Radar de Urgência</h2>
+            <button onClick={() => navigate("/app/pacientes")} className="text-body-sm text-nx-primary hover:underline">Ver todos os alertas</button>
           </div>
-        )}
+          <StateBox loading={ligas.loading} error={ligas.error} onRetry={ligas.refetch} empty={ligas.data?.alertas.length === 0} minH="h-40">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {ligas.data?.alertas.slice(0, 3).map((a, i) => (
+                <RadarCard key={a.id} nome={a.nome} foto={a.foto} dias={a.diasInativo} variant={i} onClick={() => navigate(`/app/pacientes/${a.id}`)} />
+              ))}
+            </div>
+          </StateBox>
+        </section>
 
-        {/* ── Charts Row ── */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
-
-          {/* Evolução — Area chart (2/3) */}
-          <div className="col-span-2 bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-            <p className="text-[13px] font-medium text-[#333] mb-5">Evolução dos pacientes</p>
-            {loading || !data ? (
-              <div className="h-[180px] bg-[#F8F8F6] rounded-lg animate-pulse" />
-            ) : data.evolucaoSemanal.length < 2 ? (
-              <div className="h-[180px] flex items-center justify-center">
-                <p className="text-[13px] text-[#bbb]">Sem dados de medições ainda</p>
+        {/* Índice de Saúde + Retenção + Alertas */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-8">
+          {/* Índice de Saúde Clínica */}
+          <Card className="lg:col-span-4 p-6 flex flex-col items-center">
+            <p className="text-label-md uppercase text-nx-on-surface-variant self-start">Índice de Saúde Clínica</p>
+            <StateBox loading={ligas.loading} error={ligas.error} onRetry={ligas.refetch} minH="h-52">
+              <Gauge value={ligas.data?.kpis.indiceSaude ?? 0} />
+              <div className="flex items-center justify-around w-full mt-2">
+                <div className="text-center">
+                  <p className="text-body-sm text-nx-on-surface-variant">Próxima meta</p>
+                  <p className="text-body-md font-semibold text-nx-tertiary">90 pts</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-body-sm text-nx-on-surface-variant">Liga clínica</p>
+                  <p className="text-body-md font-semibold" style={{ color: ligas.data?.kpis.ligaClinica.cor }}>
+                    {ligas.data ? `${ligas.data.kpis.ligaClinica.liga}` : "—"}
+                  </p>
+                </div>
               </div>
-            ) : (
-              <>
-                <ResponsiveContainer width="100%" height={180}>
-                  <AreaChart data={data.evolucaoSemanal} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+            </StateBox>
+          </Card>
+
+          {/* Retenção de Pacientes */}
+          <Card className="lg:col-span-5 p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-body-lg font-semibold">Retenção de Pacientes</h3>
+              <span className="flex items-center gap-1 text-body-sm text-nx-on-surface-variant rounded-lg bg-nx-container px-3 py-1.5">
+                Últimos 6 meses <ChevronDown size={14} />
+              </span>
+            </div>
+            <StateBox loading={ligas.loading} error={ligas.error} onRetry={ligas.refetch}
+              empty={(ligas.data?.retencaoMensal.length ?? 0) === 0} minH="h-56">
+              <div className="h-56">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={ligas.data?.retencaoMensal ?? []} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="evolGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#1C4A2E" stopOpacity={0.12} />
-                        <stop offset="95%" stopColor="#1C4A2E" stopOpacity={0} />
+                      <linearGradient id="nxRet" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#7c3aed" stopOpacity={0.5} />
+                        <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#F0F0EE" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#bbb" }} tickLine={false} axisLine={false} />
-                    <YAxis domain={["auto", "auto"]} tick={{ fontSize: 11, fill: "#bbb" }} tickLine={false} axisLine={false} width={40} />
-                    <Area type="monotone" dataKey="pesoMedio" stroke="#1C4A2E" strokeWidth={1.5} fill="url(#evolGrad)" dot={{ fill: "#1C4A2E", r: 2.5, strokeWidth: 0 }} activeDot={{ r: 4, strokeWidth: 0 }} isAnimationActive={false} />
+                    <XAxis dataKey="label" tick={{ fill: "#958da1", fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ background: "#1e1e2c", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, color: "#e3e0f4" }}
+                      formatter={(v) => [`${v}%`, "Retenção"]} />
+                    <Area type="monotone" dataKey="pct" stroke="#d2bbff" strokeWidth={2.5} fill="url(#nxRet)" dot={{ r: 3, fill: "#d2bbff" }} />
                   </AreaChart>
                 </ResponsiveContainer>
-                <Link to="/app/pacientes" className="text-[12px] text-zena-green-dark mt-3 inline-block">
-                  ver relatórios completos →
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Adesão aos planos — Donut (1/3) */}
-          <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)] flex flex-col items-center justify-center">
-            <p className="text-[13px] font-medium text-[#333] mb-4 self-start">Adesão aos planos</p>
-            {loading || !data ? (
-              <div className="w-36 h-36 rounded-full bg-[#F8F8F6] animate-pulse" />
-            ) : (
-              <>
-                <div className="relative flex items-center justify-center" style={{ width: 160, height: 160 }}>
-                  <ResponsiveContainer width={160} height={160}>
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: "Com adesão", value: data.adesaoPlanos },
-                          { name: "Sem adesão", value: 100 - data.adesaoPlanos },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={52}
-                        outerRadius={68}
-                        startAngle={90}
-                        endAngle={-270}
-                        dataKey="value"
-                        strokeWidth={0}
-                        isAnimationActive={false}
-                      >
-                        <Cell fill="#1C4A2E" />
-                        <Cell fill="#F0F0EE" />
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <p className="text-[28px] font-light text-[#111] leading-none tabular-nums">{data.adesaoPlanos}%</p>
-                  </div>
-                </div>
-                <p className="text-[12px] text-[#bbb] mt-3 text-center">dos pacientes com adesão</p>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* ── Bottom Row ── */}
-        <div className="grid grid-cols-2 gap-4">
-
-          {/* Próximos atendimentos */}
-          <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-            <p className="text-[13px] font-medium text-[#333] mb-4">Próximos atendimentos</p>
-            {loading || !data ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => <div key={i} className="h-10 bg-[#F8F8F6] rounded animate-pulse" />)}
               </div>
-            ) : data.proximosAtendimentos.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-[13px] text-[#bbb]">Nenhum atendimento agendado</p>
-                <Link to="/app/horarios" className="text-[12px] text-zena-green-dark mt-2 inline-block">agendar →</Link>
-              </div>
-            ) : (
-              <>
-                <div className="divide-y divide-[#F5F5F3]">
-                  {data.proximosAtendimentos.map((c) => {
-                    const d = new Date(c.data);
-                    const hora = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-                    const dia = d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
-                    const statusLabel = statusConfig[c.status]?.label ?? c.status;
-                    return (
-                      <div key={c.id} className="flex items-center gap-3 py-3">
-                        <div className="text-right flex-shrink-0 w-14">
-                          <p className="text-[13px] font-medium text-[#111]">{hora}</p>
-                          <p className="text-[11px] text-[#bbb] capitalize">{dia}</p>
-                        </div>
-                        <p className="flex-1 text-[13px] text-[#333] truncate">{c.pacienteNome}</p>
-                        <p className="text-[12px] text-[#bbb] flex-shrink-0">{statusLabel}</p>
+            </StateBox>
+          </Card>
+
+          {/* Alertas */}
+          <div className="lg:col-span-3 flex flex-col gap-3">
+            <AlertsColumn ligas={ligas} onNovoLembrete={() => navigate("/app/pacientes")} />
+          </div>
+        </section>
+
+        {/* Top Pacientes + Distribuição + Saúde por Categoria */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Top Pacientes */}
+          <Card className="p-6">
+            <h3 className="text-body-lg font-semibold mb-4">Top Pacientes (Engajamento)</h3>
+            <StateBox loading={ligas.loading} error={ligas.error} onRetry={ligas.refetch}
+              empty={(ligas.data?.topRanking.length ?? 0) === 0} minH="h-40">
+              <ol className="flex flex-col gap-4">
+                {ligas.data?.topRanking.slice(0, 3).map((p) => (
+                  <li key={p.pos} className="flex items-center gap-3">
+                    <span className="text-label-md text-nx-outline w-4">{p.pos}º</span>
+                    <Avatar src={p.foto} nome={p.nome} tamanho={36} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-body-md font-semibold truncate">{p.nome}</p>
+                      <div className="h-1 rounded-full bg-white/8 mt-1.5 overflow-hidden">
+                        <div className="h-full rounded-full bg-nx-secondary" style={{ width: `${Math.min(100, (p.pontos / (ligas.data!.topRanking[0].pontos || 1)) * 100)}%` }} />
                       </div>
-                    );
-                  })}
-                </div>
-                <Link to="/app/horarios" className="text-[12px] text-zena-green-dark mt-3 inline-block">
-                  ver todos →
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Planos mais usados */}
-          <div className="bg-white rounded-xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-            <p className="text-[13px] font-medium text-[#333] mb-4">Planos alimentares</p>
-            {loading || !data ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => <div key={i} className="h-10 bg-[#F8F8F6] rounded animate-pulse" />)}
-              </div>
-            ) : data.planosMaisUsados.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-[13px] text-[#bbb]">Nenhum plano criado ainda</p>
-                <Link to="/app/pacientes" className="text-[12px] text-zena-green-dark mt-2 inline-block">criar plano →</Link>
-              </div>
-            ) : (
-              <div className="divide-y divide-[#F5F5F3]">
-                {data.planosMaisUsados.map((p) => (
-                  <div key={p.nome} className="flex items-center justify-between py-3">
-                    <p className="text-[13px] text-[#333] truncate flex-1 mr-4">{p.nome.split(" ").slice(0, 2).join(" ")}</p>
-                    <p className="text-[13px] text-[#bbb] flex-shrink-0 tabular-nums">
-                      {p.count} {p.count === 1 ? "plano" : "planos"}
-                    </p>
-                  </div>
+                    </div>
+                    <span className="text-label-md text-nx-secondary shrink-0">{p.pontos} XP</span>
+                  </li>
                 ))}
+              </ol>
+            </StateBox>
+          </Card>
+
+          {/* Distribuição de Ligas */}
+          <Card className="p-6">
+            <h3 className="text-body-lg font-semibold mb-2">Distribuição de Ligas</h3>
+            <StateBox loading={ligas.loading} error={ligas.error} onRetry={ligas.refetch}
+              empty={(ligas.data?.distribuicaoLigas.filter(d => d.count > 0).length ?? 0) === 0} minH="h-52">
+              <LeagueDonut data={ligas.data?.distribuicaoLigas ?? []} />
+            </StateBox>
+          </Card>
+
+          {/* Saúde por Categoria */}
+          <Card className="p-6">
+            <h3 className="text-body-lg font-semibold mb-4">Saúde por Categoria</h3>
+            <StateBox loading={ligas.loading} error={ligas.error} onRetry={ligas.refetch} minH="h-52">
+              <div className="grid grid-cols-2 gap-4">
+                <Ring label="Hidratação" pct={ligas.data?.desempenhoCategoria.agua ?? 0} color="#d2bbff" />
+                <Ring label="Proteína" pct={ligas.data?.desempenhoCategoria.alimentacao ?? 0} color="#4edea3" />
+                <Ring label="Sono" pct={ligas.data?.desempenhoCategoria.sono ?? 0} color="#ffb95f" />
+                <Ring label="Treino" pct={ligas.data?.desempenhoCategoria.treino ?? 0} color="#A855F7" />
               </div>
-            )}
-          </div>
+            </StateBox>
+          </Card>
+        </section>
+      </main>
+
+      {/* FAB Preciso de ajuste */}
+      <button
+        onClick={() => navigate("/app/feed")}
+        className="fixed bottom-24 lg:bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-5 py-3 bg-nx-surface/70 backdrop-blur-xl border border-white/10 shadow-nx-glow text-nx-on-surface hover:bg-nx-surface transition-colors"
+      >
+        <AlertTriangle size={18} className="text-nx-secondary" />
+        <span className="text-body-sm font-medium">Preciso de ajuste</span>
+      </button>
+    </div>
+  );
+}
+
+/* ───────── subcomponentes ───────── */
+function Kpi({
+  label, value, trend, trendIcon: TrendIcon, danger, trendMuted, loading, error, onRetry, emptyNote,
+}: {
+  label: string; value?: React.ReactNode; trend?: string;
+  trendIcon: React.ComponentType<{ size?: number; className?: string }>;
+  danger?: boolean; trendMuted?: boolean; loading: boolean; error: string | null;
+  onRetry?: () => void; emptyNote?: string;
+}) {
+  return (
+    <Card className="p-5">
+      <p className="text-body-sm text-nx-on-surface-variant">{label}</p>
+      <StateBox loading={loading} error={error} onRetry={onRetry} empty={value == null && !loading && !error} minH="h-12">
+        <p className={`text-headline-md mt-1 ${danger ? "text-nx-error" : "text-nx-on-surface"}`}>
+          {value ?? "—"}
+        </p>
+        {trend && (
+          <p className={`flex items-center gap-1 text-label-md mt-2 ${
+            danger ? "text-nx-error" : trendMuted ? "text-nx-on-surface-variant" : "text-nx-tertiary"
+          }`}>
+            <TrendIcon size={12} className="" /> {trend}
+          </p>
+        )}
+        {value == null && emptyNote && <p className="text-label-sm text-nx-outline mt-2">{emptyNote}</p>}
+      </StateBox>
+    </Card>
+  );
+}
+
+const RADAR = [
+  { reason: (d: number) => `${d} DIAS SEM CHECK-IN`, action: "Enviar motivação", icon: Send, accent: "border-nx-primary-container/40", btn: "bg-nx-container text-nx-on-surface" },
+  { reason: (_d: number) => `BAIXA ADESÃO`, action: "Ajustar plano", icon: SlidersHorizontal, accent: "border-nx-primary-container/40", btn: "bg-nx-container text-nx-on-surface" },
+  { reason: (_d: number) => `RETORNO VENCIDO`, action: "Agendar retorno", icon: CalendarClock, accent: "border-nx-secondary-container/60 shadow-[0_0_20px_rgba(238,152,0,0.15)]", btn: "bg-transparent text-nx-secondary border border-nx-secondary-container/60" },
+];
+
+function RadarCard({ nome, foto, dias, variant, onClick }: { nome: string; foto: string | null; dias: number; variant: number; onClick: () => void }) {
+  const v = RADAR[variant % RADAR.length];
+  return (
+    <Card className={`p-4 ${v.accent}`}>
+      <div className="flex items-center gap-3 mb-3">
+        <Avatar src={foto} nome={nome} tamanho={40} />
+        <div className="min-w-0">
+          <p className="text-body-md font-bold truncate">{nome}</p>
+          <p className="text-label-sm text-nx-secondary flex items-center gap-1">{v.reason(dias)}</p>
         </div>
+      </div>
+      <button onClick={onClick} className={`w-full rounded-xl py-2.5 text-body-sm font-medium ${v.btn}`}>{v.action}</button>
+    </Card>
+  );
+}
+
+function AlertsColumn({ ligas, onNovoLembrete }: {
+  ligas: ReturnType<typeof useFetch<LigasResp>>; onNovoLembrete: () => void;
+}) {
+  const items: { level: "urgente" | "alerta" | "sucesso"; title: string }[] = [];
+  if (ligas.data) {
+    if (ligas.data.kpis.emRisco > 0) items.push({ level: "urgente", title: `${ligas.data.kpis.emRisco} pacientes em risco de abandono` });
+    if (ligas.data.pedidosAjuste.length > 0) items.push({ level: "alerta", title: `${ligas.data.pedidosAjuste.length} pedidos de ajuste pendentes` });
+    if (ligas.data.kpis.checkinsHoje > 0) items.push({ level: "sucesso", title: `${ligas.data.kpis.checkinsHoje} check-ins registrados hoje` });
+  }
+
+  const styles = {
+    urgente: "border-nx-error-container/70 text-nx-error",
+    alerta: "border-nx-secondary-container/70 text-nx-secondary",
+    sucesso: "border-nx-tertiary-container/70 text-nx-tertiary",
+  } as const;
+  const labels = { urgente: "URGENTE", alerta: "ALERTA", sucesso: "SUCESSO" } as const;
+
+  return (
+    <StateBox loading={ligas.loading} error={ligas.error} empty={items.length === 0 && !ligas.loading} minH="h-52">
+      {items.map((it, i) => (
+        <div key={i} className={`rounded-xl bg-nx-surface border-l-2 border p-4 ${styles[it.level]} border-y-white/5 border-r-white/5`}>
+          <p className="text-label-md uppercase">{labels[it.level]}</p>
+          <p className="text-body-sm text-nx-on-surface mt-1">{it.title}</p>
+        </div>
+      ))}
+      <button onClick={onNovoLembrete} className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-white/10 py-3 text-body-sm text-nx-on-surface-variant hover:text-nx-on-surface hover:border-white/20 transition-colors">
+        <Plus size={16} /> Novo Lembrete
+      </button>
+    </StateBox>
+  );
+}
+
+function Gauge({ value }: { value: number }) {
+  const r = 70, c = 2 * Math.PI * r, off = c - (Math.min(100, value) / 100) * c;
+  const label = value >= 80 ? "EXCELENTE" : value >= 60 ? "BOM" : value >= 40 ? "REGULAR" : "ATENÇÃO";
+  return (
+    <div className="relative grid place-items-center my-4" style={{ width: 180, height: 180 }}>
+      <svg width="180" height="180" className="-rotate-90">
+        <circle cx="90" cy="90" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="12" />
+        <circle cx="90" cy="90" r={r} fill="none" stroke="#d2bbff" strokeWidth="12" strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={off} style={{ filter: "drop-shadow(0 0 6px rgba(210,187,255,0.5))" }} />
+      </svg>
+      <div className="absolute text-center">
+        <p className="text-headline-lg font-bold text-nx-on-surface">{value}</p>
+        <p className="text-label-md text-nx-primary">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function Ring({ label, pct, color }: { label: string; pct: number; color: string }) {
+  const r = 26, c = 2 * Math.PI * r, off = c - (Math.min(100, pct) / 100) * c;
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative grid place-items-center" style={{ width: 72, height: 72 }}>
+        <svg width="72" height="72" className="-rotate-90">
+          <circle cx="36" cy="36" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
+          <circle cx="36" cy="36" r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} />
+        </svg>
+        <span className="absolute text-label-md text-nx-on-surface">{pct}%</span>
+      </div>
+      <span className="text-label-sm uppercase text-nx-on-surface-variant">{label}</span>
+    </div>
+  );
+}
+
+function LeagueDonut({ data }: { data: { liga: string; count: number; cor: string }[] }) {
+  const filtered = data.filter((d) => d.count > 0);
+  const total = filtered.reduce((s, d) => s + d.count, 0) || 1;
+  return (
+    <div className="flex flex-col items-center">
+      <div className="h-48 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie data={filtered} dataKey="count" nameKey="liga" innerRadius={58} outerRadius={80} paddingAngle={2} stroke="none" cornerRadius={4}>
+              {filtered.map((d) => <Cell key={d.liga} fill={d.cor} />)}
+            </Pie>
+            <Tooltip contentStyle={{ background: "#1e1e2c", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, color: "#e3e0f4" }} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-3 w-full">
+        {filtered.map((d) => (
+          <div key={d.liga} className="flex items-center gap-2 text-body-sm">
+            <span className="size-2.5 rounded-full" style={{ background: d.cor }} />
+            <span className="text-nx-on-surface-variant">{d.liga}</span>
+            <span className="ml-auto text-nx-outline">{Math.round((d.count / total) * 100)}%</span>
+          </div>
+        ))}
       </div>
     </div>
   );

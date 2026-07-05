@@ -47,22 +47,22 @@ export async function buscarStatusCobranca(apiKey: string, chargeId: string) {
   return req(apiKey, "GET", `/payments/${chargeId}`);
 }
 
-// ── Clinne subscription (usa a chave DO CLINNE, não do nutricionista) ──────────
+// ── Nexvel subscription (usa a chave DO NEXVEL, não do nutricionista) ──────────
 
-function clinneKey() {
-  const k = process.env.CLINNE_ASAAS_API_KEY;
-  if (!k) throw new Error("CLINNE_ASAAS_API_KEY não configurada.");
+function nexvelKey() {
+  const k = process.env.NEXVEL_ASAAS_API_KEY;
+  if (!k) throw new Error("NEXVEL_ASAAS_API_KEY não configurada.");
   return k;
 }
 
-export async function clinneReq(method: string, path: string, body?: any) {
-  return req(clinneKey(), method, path, body);
+export async function nexvelReq(method: string, path: string, body?: any) {
+  return req(nexvelKey(), method, path, body);
 }
 
-export async function criarClienteCliNNe(nome: string, email: string, cpfCnpj?: string) {
-  const existing = await clinneReq("GET", `/customers?email=${encodeURIComponent(email)}&limit=1`);
+export async function criarClienteNexvel(nome: string, email: string, cpfCnpj?: string) {
+  const existing = await nexvelReq("GET", `/customers?email=${encodeURIComponent(email)}&limit=1`);
   if (existing.data?.length > 0) return existing.data[0];
-  return clinneReq("POST", "/customers", {
+  return nexvelReq("POST", "/customers", {
     name: nome,
     email,
     cpfCnpj: cpfCnpj || undefined,
@@ -73,7 +73,7 @@ export async function criarClienteCliNNe(nome: string, email: string, cpfCnpj?: 
 export async function criarAssinaturaPix(customerId: string, valor: number, ciclo: "MONTHLY" | "YEARLY", descricao: string, nutricionistaId: string) {
   const hoje = new Date();
   const nextDue = hoje.toISOString().split("T")[0];
-  const sub = await clinneReq("POST", "/subscriptions", {
+  const sub = await nexvelReq("POST", "/subscriptions", {
     customer: customerId,
     billingType: "PIX",
     nextDueDate: nextDue,
@@ -83,19 +83,19 @@ export async function criarAssinaturaPix(customerId: string, valor: number, cicl
     externalReference: nutricionistaId,
   });
   // Busca o primeiro pagamento gerado pela assinatura
-  const payments = await clinneReq("GET", `/subscriptions/${sub.id}/payments?limit=1`);
+  const payments = await nexvelReq("GET", `/subscriptions/${sub.id}/payments?limit=1`);
   const firstPayment = payments.data?.[0];
   let pix = null;
   if (firstPayment) {
-    pix = await clinneReq("GET", `/payments/${firstPayment.id}/pixQrCode`);
+    pix = await nexvelReq("GET", `/payments/${firstPayment.id}/pixQrCode`);
   }
   return { subscription: sub, firstPayment, pix };
 }
 
 export async function cancelarAssinatura(subscriptionId: string) {
-  return clinneReq("DELETE", `/subscriptions/${subscriptionId}`);
+  return nexvelReq("DELETE", `/subscriptions/${subscriptionId}`);
 }
 
 export async function buscarAssinatura(subscriptionId: string) {
-  return clinneReq("GET", `/subscriptions/${subscriptionId}`);
+  return nexvelReq("GET", `/subscriptions/${subscriptionId}`);
 }

@@ -1,3 +1,11 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+// shadcn/ui className merge helper (usado pelos componentes do dashboard v0)
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
 // Image compression using canvas
 export async function comprimirImagem(file: File, maxWidth = 800, quality = 0.75): Promise<string> {
   return new Promise((resolve, reject) => {

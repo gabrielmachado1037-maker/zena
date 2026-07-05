@@ -71,7 +71,6 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
       medicoes: { orderBy: { data: "desc" } },
       consultas: { orderBy: { data: "desc" } },
       cobrancas: { orderBy: { vencimento: "desc" } },
-      planosAlimentares: { orderBy: { dataCriacao: "desc" } },
       checkIns: { orderBy: { criadoEm: "desc" }, take: 20 },
       mensagens: { orderBy: { criadoEm: "desc" }, take: 30 },
       registrosContato: { orderBy: { data: "desc" }, take: 50 },
@@ -140,15 +139,6 @@ router.post("/:id/medicoes", async (req: AuthRequest, res: Response) => {
   // fire-and-forget — não atrasa a resposta
   gerarFeedAutomatico(pacienteId, nutricionistaId, parseFloat(peso))
     .catch(err => console.error("[feedAutomatico]", err));
-});
-
-router.post("/:id/planos", async (req: AuthRequest, res: Response) => {
-  const pacienteId = req.params["id"] as string;
-  const { cafeManha, lancheManha, almoco, lancheTarde, jantar, ceia, observacoes } = req.body;
-  const plano = await prisma.planoAlimentar.create({
-    data: { pacienteId, cafeManha, lancheManha, almoco, lancheTarde, jantar, ceia, observacoes },
-  });
-  res.json(plano);
 });
 
 router.post("/:id/consultas", async (req: AuthRequest, res: Response) => {

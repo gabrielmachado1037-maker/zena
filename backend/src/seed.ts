@@ -72,19 +72,6 @@ async function main() {
     await prisma.medicao.create({ data: m });
   }
 
-  await prisma.planoAlimentar.create({
-    data: {
-      pacienteId: p1.id,
-      cafeManha: "2 fatias de pão integral + 2 ovos mexidos + 1 copo de suco de laranja natural",
-      lancheManha: "1 banana + 10 amêndoas",
-      almoco: "4 col. de arroz integral + 1 concha de feijão + 150g frango grelhado + salada verde à vontade + azeite",
-      lancheTarde: "1 iogurte grego natural + 1 colher de granola",
-      jantar: "Sopa de legumes com frango ou omelete com 2 ovos + salada",
-      ceia: "1 copo de leite morno desnatado",
-      observacoes: "Evitar frituras e alimentos ultraprocessados. Beber no mínimo 2L de água por dia.",
-    },
-  });
-
   const agora = new Date();
   const amanha = new Date(agora.getTime() + 24 * 60 * 60 * 1000);
   const proximaSemana = new Date(agora.getTime() + 7 * 24 * 60 * 60 * 1000);
