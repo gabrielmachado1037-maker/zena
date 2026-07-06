@@ -30,8 +30,8 @@ export default function Layout() {
 
   if (!checked) {
     return (
-      <div className="min-h-screen bg-nexvel-bg-primary flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-nexvel-purple-light border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-nx-bg flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-nx-evo border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -44,9 +44,9 @@ export default function Layout() {
   }
 
   return (
-    <div className="flex min-h-screen" style={{ background: "#0D0D1A" }}>
+    <div className="flex min-h-screen" style={{ background: "#09090B" }}>
       <DashboardSidebar />
-      <main className="flex-1 min-w-0 overflow-auto pb-16 lg:pb-0" style={{ background: "#0D0D1A" }}>
+      <main className="flex-1 min-w-0 overflow-auto pb-16 lg:pb-0" style={{ background: "#09090B" }}>
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 8 }}
@@ -60,31 +60,31 @@ export default function Layout() {
       {isInstallable && !installDismissed && (
         <div className="fixed bottom-16 left-0 right-0 z-30 px-3 pb-2 md:hidden">
           {iosHint ? (
-            <div className="bg-nexvel-green-dark border border-white/10 rounded-2xl p-4 shadow-2xl">
-              <p className="text-white font-semibold text-sm mb-1">Instalar no iPhone</p>
-              <p className="text-nexvel-mint text-xs leading-relaxed">
-                Abra no <strong>Safari</strong> → toque em <strong>Compartilhar&nbsp;↑</strong> →{" "}
-                <strong>Adicionar à Tela de Início</strong>
+            <div className="bg-nx-container border border-nx-border rounded-nx-lg p-4 shadow-nx-card">
+              <p className="text-nx-on-surface font-semibold text-sm mb-1">Instalar no iPhone</p>
+              <p className="text-nx-on-surface-variant text-xs leading-relaxed">
+                Abra no <strong className="text-nx-on-surface">Safari</strong> → toque em <strong className="text-nx-on-surface">Compartilhar&nbsp;↑</strong> →{" "}
+                <strong className="text-nx-on-surface">Adicionar à Tela de Início</strong>
               </p>
               <button
                 onClick={() => { setIosHint(false); setInstallDismissed(true); }}
-                className="mt-3 text-xs text-nexvel-mint/60 hover:text-white"
+                className="mt-3 text-xs text-nx-outline hover:text-nx-on-surface"
               >
                 Fechar
               </button>
             </div>
           ) : (
-            <div className="bg-nexvel-green-dark border border-white/10 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-2xl">
-              <Download size={18} className="text-nexvel-mint flex-shrink-0" />
+            <div className="bg-nx-container border border-nx-border rounded-nx-lg px-4 py-3 flex items-center gap-3 shadow-nx-card">
+              <Download size={18} className="text-nx-evo flex-shrink-0" />
               <button
                 onClick={() => isIOS ? setIosHint(true) : install()}
-                className="flex-1 text-left text-white text-sm font-medium"
+                className="flex-1 text-left text-nx-on-surface text-sm font-medium"
               >
                 Instalar app no celular
               </button>
               <button
                 onClick={() => setInstallDismissed(true)}
-                className="text-white/40 hover:text-white flex-shrink-0"
+                className="text-nx-outline hover:text-nx-on-surface flex-shrink-0"
               >
                 <X size={16} />
               </button>

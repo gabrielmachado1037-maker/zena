@@ -19,7 +19,7 @@ export default function Avatar({
     .join("")
     .toUpperCase();
   return (
-    <div className={`flex items-center justify-center bg-nx-primary/20 text-nx-primary font-bold text-xs ${className}`}>
+    <div className={`flex items-center justify-center bg-nx-container-high text-nx-on-surface-variant font-bold text-xs ${className}`}>
       {iniciais}
     </div>
   );
