@@ -69,18 +69,38 @@ export default {
         warning: "oklch(0.8 0.16 85 / <alpha-value>)",
         danger: "oklch(0.62 0.23 25 / <alpha-value>)",
 
-        /* ── DESIGN.md — Nexvel High-Fidelity Dark (redesign do Dashboard) ── */
-        "nx-bg": "#12121f",
-        "nx-bg-lowest": "#0d0d1a",
-        "nx-surface": "#13131F",
-        "nx-surface-hover": "#1A1A2E",
-        "nx-container": "#1e1e2c",
-        "nx-container-low": "#1a1a28",
-        "nx-container-high": "#292937",
-        "nx-on-surface": "#e3e0f4",
-        "nx-on-surface-variant": "#ccc3d8",
-        "nx-outline": "#958da1",
-        "nx-outline-variant": "#4a4455",
+        /* ══ Nexvel DS v0.2 — direção VERDE (evolução). Roxo → só marca. ══ */
+
+        /* Fundações — grafite frio (shell de-purplezado; mudanças imperceptíveis/seguras) */
+        "nx-bg": "#09090B",
+        "nx-bg-lowest": "#09090B",
+        "nx-surface": "#111318",
+        "nx-surface-hover": "#171A22",
+        "nx-elevated": "#171A22",
+        "nx-container": "#1C212B",
+        "nx-container-low": "#14171E",
+        "nx-container-high": "#232A35",
+        "nx-on-surface": "#F8FAFC",         /* texto principal (neutro, não mais lilás) */
+        "nx-on-surface-variant": "#9CA3AF", /* texto secundário */
+        "nx-outline": "#6B7280",            /* rótulos / hints */
+        "nx-outline-variant": "#2A2F38",    /* bordas sutis */
+        "nx-border": "#2A2F38",
+
+        /* Evolução — a cor principal do app (verde) */
+        "nx-evo": "#7CFF5B",
+        "nx-evo-2": "#70F570",
+        "nx-on-evo": "#08130A",             /* texto escuro sobre verde */
+        "nx-success": "#53F27C",
+
+        /* Funcionais — uma cor, uma função */
+        "nx-water": "#49A8FF",              /* hidratação / recuperação */
+        "nx-streak": "#FF8A1F",             /* sequência */
+        "nx-gold": "#F8C84B",               /* conquista / Liga Ouro */
+        "nx-warn": "#FFD34D",               /* atenção */
+        "nx-danger": "#FF5D5D",             /* risco / erro */
+        "nx-brand": "#7C3AED",              /* marca, institucional, Liga Mestre */
+
+        /* Legado roxo — migração tela a tela; remover ao final da migração */
         "nx-primary": "#d2bbff",
         "nx-primary-container": "#7c3aed",
         "nx-on-primary": "#3f008e",
@@ -91,12 +111,14 @@ export default {
         "nx-tertiary-container": "#007650",
         "nx-error": "#ffb4ab",
         "nx-error-container": "#93000a",
-        "league-bronze": "#CD7F32",
-        "league-silver": "#9CA3AF",
-        "league-gold": "#F59E0B",
-        "league-diamond": "#60A5FA",
+
+        /* Ligas — assinatura de cor por liga */
+        "league-bronze": "#C77B3C",
+        "league-silver": "#C2C9D2",
+        "league-gold": "#F8C84B",
+        "league-diamond": "#8FE3FF",
         "league-master": "#A855F7",
-        "league-legendary": "#F97316",
+        "league-legendary": "#F8C84B",
       },
       fontFamily: {
         sans: ["Inter", "sans-serif"],
@@ -115,6 +137,42 @@ export default {
       boxShadow: {
         "nx-glow": "0 0 24px rgba(124,58,237,0.20)",
         "nx-glow-strong": "0 0 32px rgba(124,58,237,0.35)",
+        /* Evolução — brilho verde para primários/celebrações */
+        "nx-evo": "0 0 24px rgba(124,255,91,0.22)",
+        "nx-evo-strong": "0 0 40px rgba(124,255,91,0.40)",
+        "nx-card": "0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.25)",
+      },
+      borderRadius: {
+        "nx-sm": "10px",
+        "nx-md": "14px",
+        "nx-lg": "20px",
+        "nx-xl": "28px",
+      },
+      keyframes: {
+        "nx-pop": {
+          "0%": { transform: "scale(0.6)", opacity: "0" },
+          "60%": { transform: "scale(1.08)", opacity: "1" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        "nx-rise": {
+          "0%": { transform: "translateY(6px)", opacity: "0" },
+          "20%": { opacity: "1" },
+          "100%": { transform: "translateY(-22px)", opacity: "0" },
+        },
+        "nx-evo-pulse": {
+          "0%,100%": { boxShadow: "0 0 0 0 rgba(124,255,91,0.35)" },
+          "50%": { boxShadow: "0 0 0 10px rgba(124,255,91,0)" },
+        },
+        "nx-sheen": {
+          "0%": { backgroundPosition: "-160% 0" },
+          "100%": { backgroundPosition: "260% 0" },
+        },
+      },
+      animation: {
+        "nx-pop": "nx-pop 0.4s cubic-bezier(0.34,1.56,0.64,1) both",
+        "nx-rise": "nx-rise 1.1s ease-out forwards",
+        "nx-evo-pulse": "nx-evo-pulse 2s ease-in-out infinite",
+        "nx-sheen": "nx-sheen 2.2s ease-in-out infinite",
       },
     },
   },

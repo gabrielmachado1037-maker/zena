@@ -103,6 +103,7 @@ export type Achievement = {
   title: string
   description: string
   date: string
+  tipo?: string
 }
 
 export const achievements: Achievement[] = [
@@ -201,6 +202,8 @@ export type Challenge = {
   remaining: string
   color: string
   status: "ativo" | "concluido"
+  xp?: number
+  tipo?: string
 }
 
 export const challenges: Challenge[] = [

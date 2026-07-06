@@ -32,6 +32,7 @@ const Relatorios    = lazy(() => import("./pages/Relatorios"));
 const Desafios      = lazy(() => import("./pages/Desafios"));
 const Mensagens     = lazy(() => import("./pages/Mensagens"));
 const EmBreve       = lazy(() => import("./pages/EmBreve"));
+const DesignShowcase = lazy(() => import("./pages/DesignShowcase"));
 const Feed               = lazy(() => import("./pages/Feed"));
 const LoginPaciente      = lazy(() => import("./pages/LoginPaciente"));
 const RankingPaciente    = lazy(() => import("./pages/paciente/RankingPaciente"));
@@ -71,6 +72,7 @@ function AppRoutes() {
         <Route path="/redefinir-senha" element={<RedefinirSenha />} />
         <Route path="/privacidade" element={<Privacidade />} />
         <Route path="/termos" element={<Termos />} />
+        <Route path="/ds" element={<DesignShowcase />} />
         <Route path="/p/:link" element={<AreaPaciente />} />
         <Route
           path="/app"

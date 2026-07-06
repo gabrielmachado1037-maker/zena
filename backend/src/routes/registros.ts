@@ -13,11 +13,19 @@ router.use(authPacienteMiddleware);
 router.post("/", async (req: PacienteAuthRequest, res: Response) => {
   const {
     alimentacaoOk, treinoOk, aguaOk, sonoOk,
+    cafeOk, almocoOk, lancheOk, jantarOk,
     tipoRegistro, fotoUrl, descricao, humor, tags,
   } = req.body as {
-    alimentacaoOk: boolean; treinoOk: boolean; aguaOk: boolean; sonoOk: boolean;
+    alimentacaoOk?: boolean; treinoOk: boolean; aguaOk: boolean; sonoOk: boolean;
+    cafeOk?: boolean; almocoOk?: boolean; lancheOk?: boolean; jantarOk?: boolean;
     tipoRegistro?: string; fotoUrl?: string; descricao?: string; humor?: string; tags?: string[];
   };
+
+  // Refeições são a interação principal. Se vierem, alimentacaoOk é DERIVADO (>=3 das 4);
+  // senão, cai no booleano legado (retrocompat com clientes antigos).
+  const temRefeicoes = [cafeOk, almocoOk, lancheOk, jantarOk].some((v) => v !== undefined);
+  const refeicoesMarcadas = [cafeOk, almocoOk, lancheOk, jantarOk].filter(Boolean).length;
+  const alimentacaoFinal = temRefeicoes ? refeicoesMarcadas >= 3 : !!alimentacaoOk;
 
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
@@ -33,7 +41,7 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
   if (jaFezCheckin) return res.status(409).json({ error: "Registro já enviado hoje" });
 
   const { total: pontosGanhos, detalhes: pontosDetalhes } = calcularPontosRegistro({
-    alimentacaoOk: !!alimentacaoOk, treinoOk: !!treinoOk, aguaOk: !!aguaOk, sonoOk: !!sonoOk,
+    alimentacaoOk: alimentacaoFinal, treinoOk: !!treinoOk, aguaOk: !!aguaOk, sonoOk: !!sonoOk,
   });
 
   const paciente = await prisma.paciente.findUnique({ where: { id: req.pacienteId! } });
@@ -56,10 +64,14 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
       create: {
         pacienteId: req.pacienteId!,
         data: hoje,
-        alimentacaoOk: !!alimentacaoOk,
+        alimentacaoOk: alimentacaoFinal,
         treinoOk: !!treinoOk,
         aguaOk: !!aguaOk,
         sonoOk: !!sonoOk,
+        cafeOk: temRefeicoes ? !!cafeOk : null,
+        almocoOk: temRefeicoes ? !!almocoOk : null,
+        lancheOk: temRefeicoes ? !!lancheOk : null,
+        jantarOk: temRefeicoes ? !!jantarOk : null,
         tipoRegistro: tipoRegistro ?? "normal",
         fotoUrl,
         descricao,
@@ -70,10 +82,14 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
       },
       // Promove o stub de humor a check-in completo (preserva humor já lançado).
       update: {
-        alimentacaoOk: !!alimentacaoOk,
+        alimentacaoOk: alimentacaoFinal,
         treinoOk: !!treinoOk,
         aguaOk: !!aguaOk,
         sonoOk: !!sonoOk,
+        cafeOk: temRefeicoes ? !!cafeOk : undefined,
+        almocoOk: temRefeicoes ? !!almocoOk : undefined,
+        lancheOk: temRefeicoes ? !!lancheOk : undefined,
+        jantarOk: temRefeicoes ? !!jantarOk : undefined,
         tipoRegistro: tipoRegistro ?? "normal",
         fotoUrl,
         descricao,

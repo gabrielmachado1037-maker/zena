@@ -1,185 +1,201 @@
-import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Flame, Check, Lock, Trophy } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
-import { usePacienteData } from "@/lib/paciente-data";
-import { CORES_LIGA, ICONE_LIGA } from "@/lib/ligas";
-import type { RankUser } from "@/lib/nexvel-data";
+import { Fragment } from "react"
+import { useNavigate } from "react-router-dom"
+import { ChevronLeft, ChevronsUp, ChevronsDown, ShieldCheck } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { usePacienteData } from "@/lib/paciente-data"
+import { LeagueCrest, LEAGUE_FROM_NOME } from "@/components/ui-nx"
+import type { RankUser } from "@/lib/nexvel-data"
 
-const TIERS = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"] as const;
-const nf = (n: number) => n.toLocaleString("pt-BR");
+const TIERS = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"] as const
+const nf = (n: number) => n.toLocaleString("pt-BR")
 
-/* Benefícios: copy de produto (estático). O ESTADO é derivado da liga real do paciente. */
-const BENEFICIOS = [
-  "Acesso básico ao ranking",
-  "Desafios exclusivos Prata",
-  "Badge dourado no perfil",
-  "Desafios premium + destaque",
-  "Acesso VIP + suporte prioritário",
-  "Status máximo + troféu físico",
-];
+type Zone = "promo" | "safe" | "releg"
 
-type Estado = "feito" | "atual" | "bloqueado";
-
-function Pill({ children, variant = "neutral" }: { children: React.ReactNode; variant?: "gold" | "purple" | "green" | "neutral" }) {
-  const cls = {
-    gold: "bg-gold/15 text-gold",
-    purple: "bg-primary/15 text-primary",
-    green: "bg-green/15 text-green",
-    neutral: "bg-secondary text-muted-foreground",
-  }[variant];
-  return <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold", cls)}>{children}</span>;
-}
-
-function ZoneBanner({ tipo, texto }: { tipo: "promo" | "queda"; texto: string }) {
-  const promo = tipo === "promo";
+function RankRow({ u, posicao, zone }: { u: RankUser; posicao: number; zone: Zone }) {
   return (
-    <div className={cn("flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold", promo ? "bg-green/12 text-green" : "bg-danger/12 text-danger")}>
-      <span className={cn("size-2 rounded-full", promo ? "bg-green" : "bg-danger")} />
-      {texto}
-    </div>
-  );
-}
-
-function RankRow({ u, streakDias }: { u: RankUser; streakDias?: number }) {
-  return (
-    <Card className={cn("flex flex-row items-center gap-3 rounded-[14px] p-3", u.me && "border-primary/50 bg-primary/10")}>
-      <div className="flex w-5 justify-center text-sm font-bold text-muted-foreground">{u.position}</div>
-      <Avatar className="size-10">
-        <AvatarImage src={u.avatar} alt={u.name} />
-        <AvatarFallback>{u.name.charAt(0)}</AvatarFallback>
-      </Avatar>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className="truncate font-semibold leading-tight">{u.name}</p>
-          {u.me && <Pill variant="purple">VOCÊ</Pill>}
-        </div>
-        {u.league && <p className="truncate text-xs text-muted-foreground">{u.league}</p>}
-      </div>
-      {streakDias != null && streakDias > 0 && (
-        <span className="flex items-center gap-0.5 text-xs font-medium text-gold">
-          <Flame size={12} /> {streakDias}d
-        </span>
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-nx-md border px-3 py-2.5 transition-colors",
+        u.me
+          ? "border-nx-evo/50 bg-nx-evo/10"
+          : zone === "promo"
+            ? "border-nx-evo/20 bg-nx-evo/5"
+            : zone === "releg"
+              ? "border-nx-danger/20 bg-nx-danger/5"
+              : "border-nx-border bg-nx-surface",
       )}
-      <span className="text-sm font-bold text-gold">{nf(u.points)} pts</span>
-    </Card>
-  );
+    >
+      <div className="flex w-6 justify-center">
+        <span
+          className={cn(
+            "text-body-md font-bold tabular-nums",
+            zone === "promo" ? "text-nx-evo" : zone === "releg" ? "text-nx-danger" : "text-nx-outline",
+          )}
+        >
+          {posicao}
+        </span>
+      </div>
+      <div className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-nx-container-high">
+        {u.avatar && !u.avatar.includes("placeholder") ? (
+          <img src={u.avatar} alt={u.name} className="size-full object-cover" />
+        ) : (
+          <span className="text-body-sm font-bold text-nx-on-surface-variant">{u.name.charAt(0).toUpperCase()}</span>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className={cn("truncate text-body-md font-semibold", u.me ? "text-nx-on-surface" : "text-nx-on-surface")}>
+          {u.name}
+          {u.me && <span className="ml-2 text-label-sm font-bold uppercase text-nx-evo">Você</span>}
+        </p>
+      </div>
+      <span className="shrink-0 text-body-sm font-bold tabular-nums text-nx-on-surface">{nf(u.points)} <span className="text-nx-outline">XP</span></span>
+    </div>
+  )
 }
 
-function BenefitRow({ label, estado }: { label: string; estado: Estado }) {
+function ZoneDivider({ tipo, texto }: { tipo: "promo" | "releg"; texto: string }) {
+  const promo = tipo === "promo"
+  const Icon = promo ? ChevronsUp : ChevronsDown
   return (
-    <div className={cn("flex items-center gap-3 rounded-[14px] px-3.5 py-3", estado === "atual" ? "bg-gold/10 ring-1 ring-gold/40" : "bg-card")}>
-      <span className={cn(
-        "flex size-7 shrink-0 items-center justify-center rounded-full",
-        estado === "feito" && "bg-green/15 text-green",
-        estado === "atual" && "bg-gold/20 text-gold",
-        estado === "bloqueado" && "bg-secondary text-muted-foreground",
-      )}>
-        {estado === "bloqueado" ? <Lock size={14} /> : <Check size={15} />}
+    <div className="flex items-center gap-2 py-1">
+      <span className={cn("h-px flex-1", promo ? "bg-nx-evo/40" : "bg-nx-danger/40")} />
+      <span className={cn("flex items-center gap-1 text-label-sm font-bold uppercase tracking-wide", promo ? "text-nx-evo" : "text-nx-danger")}>
+        <Icon className="size-3.5" /> {texto}
       </span>
-      <span className={cn("flex-1 text-sm", estado === "bloqueado" ? "text-muted-foreground" : "text-foreground")}>{label}</span>
-      {estado === "atual" && <Pill variant="gold">Atual</Pill>}
+      <span className={cn("h-px flex-1", promo ? "bg-nx-evo/40" : "bg-nx-danger/40")} />
     </div>
-  );
+  )
 }
 
 export function LigasScreen() {
-  const navigate = useNavigate();
-  const { user, ranking, currentLeagueIndex } = usePacienteData();
+  const navigate = useNavigate()
+  const { user, ranking, currentLeagueIndex } = usePacienteData()
 
-  const tierAtual = TIERS[currentLeagueIndex] ?? "Bronze";
-  const corTier = CORES_LIGA[tierAtual] ?? "#F5A623";
+  const tierAtual = TIERS[currentLeagueIndex] ?? "Bronze"
+  const nextKey = user.nextLeague.split(" ")[0]
+  const temProxima = nextKey in LEAGUE_FROM_NOME
 
-  // Top jogadores da MESMA liga (dado real). Reordena posições dentro da liga.
-  const daLiga: RankUser[] = ranking
-    .filter((r) => r.league?.startsWith(tierAtual))
-    .map((r, i) => ({ ...r, position: i + 1 }));
+  // Jogadores da MESMA liga, ordenados por XP (o dado real vem ordenado).
+  const daLiga: RankUser[] = ranking.filter((r) => r.league?.startsWith(tierAtual))
+  const n = daLiga.length
+  const promoCount = Math.min(3, n)
+  const relegCount = n >= 7 ? 3 : 0
+  const relegStart = n - relegCount
+
+  const zoneOf = (i: number): Zone => {
+    if (i < promoCount) return "promo"
+    if (relegCount && i >= relegStart) return "releg"
+    return "safe"
+  }
+
+  const meIdx = daLiga.findIndex((u) => u.me)
+  const meZone = meIdx >= 0 ? zoneOf(meIdx) : null
+
+  const status =
+    meZone === "promo"
+      ? { txt: "Você está subindo", cls: "bg-nx-evo/12 text-nx-evo", Icon: ChevronsUp }
+      : meZone === "releg"
+        ? { txt: "Você está na zona de queda", cls: "bg-nx-danger/12 text-nx-danger", Icon: ChevronsDown }
+        : meZone === "safe"
+          ? { txt: "Posição segura", cls: "bg-nx-container-high text-nx-on-surface-variant", Icon: ShieldCheck }
+          : null
 
   return (
-    <div className="mx-auto max-w-[430px] px-4 pb-28 pt-5">
+    <div className="px-5 pb-24 pt-5">
       {/* Top bar */}
       <div className="mb-5 flex items-center gap-2">
-        <button onClick={() => navigate(-1)} aria-label="Voltar" className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground">
+        <button onClick={() => navigate(-1)} aria-label="Voltar" className="rounded-nx-sm p-1.5 text-nx-outline hover:text-nx-on-surface">
           <ChevronLeft size={22} />
         </button>
-        <div>
-          <h1 className="text-[22px] font-bold leading-none tracking-tight">Ligas</h1>
-          <p className="mt-1 text-xs text-muted-foreground">Sua posição atual</p>
+        <h1 className="text-headline-lg text-nx-on-surface">Ligas</h1>
+      </div>
+
+      {/* Hero da liga */}
+      <div className="rounded-nx-xl border border-nx-border bg-nx-surface p-5">
+        <div className="flex items-center gap-4">
+          <LeagueCrest liga={tierAtual} size={76} />
+          <div className="min-w-0 flex-1">
+            <p className="text-label-md uppercase text-nx-outline">Sua liga</p>
+            <p className="text-headline-md text-nx-on-surface">{user.league}</p>
+            <p className="mt-0.5 text-body-md font-bold tabular-nums text-nx-on-surface">{nf(user.points)} XP</p>
+          </div>
+          {status && (
+            <span className={cn("flex shrink-0 items-center gap-1 self-start rounded-full px-2.5 py-1 text-label-sm font-bold uppercase", status.cls)}>
+              <status.Icon className="size-3.5" /> {meZone === "promo" ? "Subindo" : meZone === "releg" ? "Risco" : "Seguro"}
+            </span>
+          )}
+        </div>
+
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-nx-container-low">
+          <div className="h-full rounded-full bg-nx-gold shadow-[0_0_10px_rgba(248,200,75,0.5)]" style={{ width: `${user.leagueProgress}%` }} />
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <p className="text-body-sm text-nx-on-surface-variant">
+            {user.pointsToNext > 0 ? (
+              <>Faltam <span className="font-semibold text-nx-on-surface">{nf(user.pointsToNext)}</span> pra {user.nextLeague}</>
+            ) : (
+              "Você atingiu a liga máxima 👑"
+            )}
+          </p>
+          {temProxima && <LeagueCrest liga={nextKey} size={28} animated={false} className="shrink-0 opacity-70" />}
         </div>
       </div>
 
-      {/* Card herói da liga */}
-      <Card
-        className="mb-6 rounded-[18px] p-5"
-        style={{ borderColor: `${corTier}66`, boxShadow: `0 0 24px ${corTier}33` }}
-      >
-        <div className="flex items-center gap-4">
-          <span className="flex size-14 items-center justify-center rounded-full text-3xl" style={{ background: `${corTier}22` }}>
-            {ICONE_LIGA[tierAtual]}
-          </span>
-          <div className="flex-1">
-            <p className="text-xl font-extrabold uppercase tracking-wide" style={{ color: corTier }}>{user.league}</p>
-            <p className="text-lg font-bold text-gold">{nf(user.points)} pts</p>
-          </div>
-        </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-border">
-          <div className="h-full rounded-full" style={{ width: `${user.leagueProgress}%`, background: corTier, boxShadow: `0 0 8px ${corTier}88` }} />
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {user.pointsToNext > 0 ? `Faltam ${nf(user.pointsToNext)} pts para ${user.nextLeague}` : "Você atingiu a liga máxima 👑"}
-        </p>
-      </Card>
-
-      {/* Trajetória das Ligas */}
-      <section className="mb-6">
-        <h2 className="mb-3 text-sm font-bold text-foreground">Trajetória das Ligas</h2>
-        <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+      {/* Trajetória — escada de brasões */}
+      <section className="mt-6">
+        <h2 className="mb-3 text-label-md uppercase tracking-wide text-nx-outline">Sua jornada</h2>
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 hide-scrollbar">
           {TIERS.map((tier, i) => {
-            const atual = i === currentLeagueIndex;
-            const passado = i < currentLeagueIndex;
+            const atual = i === currentLeagueIndex
+            const passado = i < currentLeagueIndex
             return (
-              <div key={tier} className="flex shrink-0 flex-col items-center gap-1.5">
-                <div
-                  className={cn("flex size-14 items-center justify-center rounded-2xl text-2xl transition-opacity", !atual && !passado && "opacity-40")}
-                  style={{ background: atual ? `${CORES_LIGA[tier]}22` : "var(--secondary, #1B1C28)", boxShadow: atual ? `0 0 16px ${CORES_LIGA[tier]}55` : undefined }}
-                >
-                  {ICONE_LIGA[tier]}
+              <Fragment key={tier}>
+                {i > 0 && <span className={cn("h-px w-3 shrink-0", passado || atual ? "bg-nx-evo/50" : "bg-nx-border")} />}
+                <div className="flex shrink-0 flex-col items-center gap-1">
+                  <LeagueCrest liga={tier} size={atual ? 52 : 40} animated={atual} className={cn(!atual && !passado && "opacity-35", passado && "opacity-70")} />
+                  <span className={cn("text-label-sm font-medium", atual ? "text-nx-on-surface" : "text-nx-outline")}>{tier}</span>
                 </div>
-                <span className={cn("text-[11px] font-medium", atual ? "text-foreground" : "text-muted-foreground")}>{tier}</span>
-                {atual && <span className="size-1.5 rounded-full" style={{ background: CORES_LIGA[tier] }} />}
-              </div>
-            );
+              </Fragment>
+            )
           })}
         </div>
       </section>
 
-      {/* Benefícios da sua liga */}
-      <section className="mb-6">
-        <h2 className="mb-3 text-sm font-bold text-foreground">Benefícios da sua liga</h2>
-        <div className="space-y-2">
-          {BENEFICIOS.map((label, i) => {
-            const estado: Estado = i < currentLeagueIndex ? "feito" : i === currentLeagueIndex ? "atual" : "bloqueado";
-            return <BenefitRow key={label} label={label} estado={estado} />;
-          })}
+      {/* Leaderboard */}
+      <section className="mt-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-label-md uppercase tracking-wide text-nx-outline">Liga {tierAtual}</h2>
+          {status && (
+            <span className={cn("flex items-center gap-1 rounded-full px-2.5 py-1 text-label-sm font-semibold", status.cls)}>
+              <status.Icon className="size-3.5" /> {status.txt}
+            </span>
+          )}
         </div>
-      </section>
 
-      {/* Top jogadores da liga */}
-      <section>
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground">
-          <Trophy size={15} className="text-gold" /> Top jogadores — Liga {tierAtual}
-        </h2>
-        {daLiga.length === 0 ? (
-          <p className="rounded-[14px] bg-card p-6 text-center text-sm text-muted-foreground">Ainda não há outros jogadores nesta liga.</p>
+        {n === 0 ? (
+          <div className="rounded-nx-lg border border-nx-border bg-nx-surface p-8 text-center">
+            <LeagueCrest liga={tierAtual} size={64} className="mx-auto" />
+            <p className="mt-3 text-body-md text-nx-on-surface-variant">Você é pioneiro nesta liga.</p>
+            <p className="mt-1 text-body-sm text-nx-outline">Continue evoluindo pra defender o topo.</p>
+          </div>
         ) : (
-          <div className="space-y-2">
-            <ZoneBanner tipo="promo" texto="Zona de promoção — Top 3 sobem!" />
-            {daLiga.map((u) => <RankRow key={u.name + u.position} u={u} />)}
-            <ZoneBanner tipo="queda" texto="Zona de queda — Bottom 3 descem!" />
+          <div className="space-y-1.5">
+            {daLiga.map((u, i) => (
+              <Fragment key={`${u.name}-${i}`}>
+                {i === promoCount && n > promoCount && (
+                  <ZoneDivider tipo="promo" texto={temProxima ? `sobem pra ${nextKey}` : "zona de promoção"} />
+                )}
+                {relegCount > 0 && i === relegStart && <ZoneDivider tipo="releg" texto="zona de rebaixamento" />}
+                <RankRow u={u} posicao={i + 1} zone={zoneOf(i)} />
+              </Fragment>
+            ))}
           </div>
         )}
+
+        <p className="mt-3 px-1 text-center text-label-sm text-nx-outline">
+          Os {promoCount} primeiros sobem de liga{relegCount > 0 ? ` · os ${relegCount} últimos caem` : ""}
+        </p>
       </section>
     </div>
-  );
+  )
 }

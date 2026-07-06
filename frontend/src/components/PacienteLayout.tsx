@@ -6,7 +6,7 @@ import { usePacienteAuth } from "../contexts/PacienteAuthContext";
 import { PacienteDataProvider } from "../lib/paciente-data";
 import api from "../lib/api";
 
-const BG = "#0D0D1A";
+const BG = "#09090B";
 
 const TABS = [
   { to: "/paciente/dashboard", icon: Home,       label: "Início" },
@@ -22,8 +22,8 @@ function PacienteNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 flex pb-safe"
-      style={{ background: BG, borderTop: "1px solid rgba(255,255,255,0.06)" }}
+      className="fixed bottom-0 left-0 right-0 z-40 flex pb-safe backdrop-blur-lg"
+      style={{ background: "rgba(9,9,11,0.92)", borderTop: "1px solid #2A2F38" }}
     >
       {TABS.map(({ to, icon: Icon, label }) => {
         const active = location.pathname === to || location.pathname.startsWith(to + "/");
@@ -34,17 +34,18 @@ function PacienteNav() {
             className="flex-1 flex flex-col items-center justify-center gap-1 pt-2.5 pb-1.5"
           >
             <span
-              className="flex items-center justify-center rounded-xl"
+              className="flex items-center justify-center rounded-xl transition-colors"
               style={{
                 width: 40, height: 30,
-                background: active ? "#7C3AED" : "transparent",
+                background: active ? "#7CFF5B" : "transparent",
+                boxShadow: active ? "0 0 16px rgba(124,255,91,0.35)" : undefined,
               }}
             >
-              <Icon size={19} color={active ? "#FFFFFF" : "#64748B"} strokeWidth={2} />
+              <Icon size={19} color={active ? "#08130A" : "#6B7280"} strokeWidth={active ? 2.4 : 2} />
             </span>
             <span
-              className="text-[10px] font-medium"
-              style={{ color: active ? "#A78BFA" : "#64748B" }}
+              className="text-[10px] font-medium transition-colors"
+              style={{ color: active ? "#7CFF5B" : "#6B7280" }}
             >
               {label}
             </span>
@@ -103,7 +104,7 @@ export default function PacienteLayout() {
       <div className="min-h-screen flex items-center justify-center" style={{ background: BG }}>
         <div
           className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin"
-          style={{ borderColor: "#7C3AED", borderTopColor: "transparent" }}
+          style={{ borderColor: "#7CFF5B", borderTopColor: "transparent" }}
         />
       </div>
     );

@@ -15,8 +15,8 @@ html,
 body,
 #root {
   height: 100%;
-  background: #0D0D1A;
-  color: #E2E8F0;
+  background: #09090B;
+  color: #F8FAFC;
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -103,10 +103,10 @@ body,
   width: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: #0D0D1A;
+  background: #09090B;
 }
 ::-webkit-scrollbar-thumb {
-  background: #7C3AED;
+  background: #2A2F38;
   border-radius: 2px;
 }
 
@@ -178,27 +178,29 @@ body,
 }
 
 /* ── Registros Diários — molduras de liga, glow pulsante e scrollbar fina ── */
-.league-frame-gold {
-  border: 2px solid #f59e0b;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
-}
-.league-frame-master {
-  border: 2px solid #a855f7;
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+.league-frame-bronze {
+  border: 2px solid #C77B3C;
+  box-shadow: 0 0 8px rgba(199, 123, 60, 0.30);
 }
 .league-frame-silver {
-  border: 2px solid #9ca3af;
+  border: 2px solid #C2C9D2;
+  box-shadow: 0 0 8px rgba(194, 201, 210, 0.25);
 }
-.league-frame-bronze {
-  border: 2px solid #cd7f32;
+.league-frame-gold {
+  border: 2px solid #F8C84B;
+  box-shadow: 0 0 12px rgba(248, 200, 75, 0.35);
 }
 .league-frame-diamond {
-  border: 2px solid #60a5fa;
-  box-shadow: 0 0 10px rgba(96, 165, 250, 0.3);
+  border: 2px solid #8FE3FF;
+  box-shadow: 0 0 12px rgba(143, 227, 255, 0.35);
+}
+.league-frame-master {
+  border: 2px solid #A855F7;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
 }
 .league-frame-legendary {
-  border: 2px solid #f97316;
-  box-shadow: 0 0 10px rgba(249, 115, 22, 0.35);
+  border: 2px solid #F8C84B;
+  box-shadow: 0 0 14px rgba(248, 200, 75, 0.45), 0 0 26px rgba(248, 200, 75, 0.20);
 }
 @keyframes pulse-glow {
   0%,
@@ -215,6 +217,92 @@ body,
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #4a4455;
+  background: #2A2F38;
   border-radius: 10px;
+}
+
+/* ══ Nexvel DS v0.2 — Recompensa & progresso (verde = evolução) ══
+   "Nenhum clique termina em silêncio." Utilitários leves para XP, level-up e brilho. */
+
+/* Trilha de XP com preenchimento verde e leve sheen ao ganhar pontos */
+.nx-xp-track {
+  background: #14171E;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+.nx-xp-fill {
+  background: linear-gradient(90deg, #53F27C 0%, #7CFF5B 100%);
+  border-radius: 9999px;
+  transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: 0 0 12px rgba(124, 255, 91, 0.45);
+}
+/* Sheen atravessando a barra ao concluir uma missão */
+.nx-xp-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.nx-xp-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.35) 50%, transparent 80%);
+  background-size: 200% 100%;
+  animation: nx-sheen 2.2s ease-in-out infinite;
+}
+@keyframes nx-sheen {
+  0% { background-position: -160% 0; }
+  100% { background-position: 260% 0; }
+}
+
+/* Anel de progresso verde (conic) — para o "centro de progressão" da Home */
+.nx-ring {
+  border-radius: 9999px;
+  background: conic-gradient(#7CFF5B var(--pct, 0%), #1C212B 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring, 10px)), #000 calc(100% - var(--ring, 10px)));
+          mask: radial-gradient(farthest-side, transparent calc(100% - var(--ring, 10px)), #000 calc(100% - var(--ring, 10px)));
+}
+
+/* Brilho pulsante verde para elemento em foco/celebração */
+@keyframes nx-evo-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 255, 91, 0.35); }
+  50% { box-shadow: 0 0 0 10px rgba(124, 255, 91, 0); }
+}
+.nx-evo-pulse { animation: nx-evo-pulse 2s ease-in-out infinite; }
+
+/* +XP que sobe e some (feedback de ponto ganho) */
+@keyframes nx-rise {
+  0% { transform: translateY(6px); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(-22px); opacity: 0; }
+}
+.nx-rise { animation: nx-rise 1.1s ease-out forwards; }
+
+/* Pop de conquista (medalha / level-up) */
+@keyframes nx-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.nx-pop { animation: nx-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* Brasões de liga — brilho metálico varrendo + aura pulsante (lendário) */
+@keyframes nx-crest-sheen {
+  0% { transform: translateX(-46px); }
+  55%, 100% { transform: translateX(132px); }
+}
+.nx-crest-sheen { animation: nx-crest-sheen 3.6s ease-in-out infinite; }
+@keyframes nx-crest-aura {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.06); }
+}
+.nx-crest-aura { animation: nx-crest-aura 2.8s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nx-xp-sheen::after,
+  .nx-evo-pulse,
+  .nx-rise,
+  .nx-pop,
+  .nx-crest-sheen,
+  .nx-crest-aura { animation: none; }
+  .nx-xp-fill { transition: none; }
 }

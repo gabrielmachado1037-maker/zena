@@ -639,6 +639,13 @@ model Registro {
   aguaOk         Boolean  @default(false)
   sonoOk         Boolean  @default(false)
 
+  // Detalhe por refeição (alimenta insights/relatório da nutri). Nullable = "sem dado"
+  // p/ registros antigos. alimentacaoOk é derivado: >=3 das 4 marcadas.
+  cafeOk         Boolean?
+  almocoOk       Boolean?
+  lancheOk       Boolean?
+  jantarOk       Boolean?
+
   tipoRegistro   String   @default("normal") // normal | excecao | ajuste_necessario
 
   fotoUrl        String?

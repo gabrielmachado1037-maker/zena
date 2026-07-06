@@ -1,5 +1,28 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// tailwind-merge precisa conhecer nossos fontSize custom (text-body-md, text-headline-lg…),
+// senão os confunde com text-<cor> e descarta a cor (ex.: text-nx-on-evo some ao lado de text-body-md).
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [
+        {
+          text: [
+            "display-lg",
+            "headline-lg",
+            "headline-md",
+            "body-lg",
+            "body-md",
+            "body-sm",
+            "label-md",
+            "label-sm",
+          ],
+        },
+      ],
+    },
+  },
+});
 
 // shadcn/ui className merge helper (usado pelos componentes do dashboard v0)
 export function cn(...inputs: ClassValue[]) {

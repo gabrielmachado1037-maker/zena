@@ -20,7 +20,7 @@ interface ResumoResp {
   conquistas: { id: string; tipo: string; titulo: string; descricao: string | null; createdAt: string }[];
 }
 interface RankResp { pos: number; nome: string; fotoPerfilUrl: string | null; pontosTotal: number; ligaAtual: string; ligaNivel: string; isMe: boolean }
-interface DesafioResp { id: string; titulo: string; descricao: string | null; tipo: string; duracaoDias: number; dataFim: string | null; progresso: number; concluido: boolean }
+interface DesafioResp { id: string; titulo: string; descricao: string | null; tipo: string; duracaoDias: number; dataFim: string | null; progresso: number; concluido: boolean; pontosBonus?: number }
 interface EvolucaoResp {
   fotos: { id: string; data: string; fotoUrl: string | null }[];
   medicoes: { data: string; peso: number; cintura?: number | null; quadril?: number | null; braco?: number | null; coxa?: number | null }[];
@@ -158,11 +158,12 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
           id: d.id, icon: st.icon, title: d.titulo, description: d.descricao ?? "",
           progress: Math.round(d.progresso), remaining, color: st.color,
           status: d.concluido ? "concluido" : "ativo",
+          xp: d.pontosBonus, tipo: d.tipo,
         };
       });
 
       const achievements: Achievement[] = (resumo?.conquistas ?? []).map((c) => ({
-        id: c.id, icon: CONQUISTA_ICON[c.tipo] ?? Award,
+        id: c.id, icon: CONQUISTA_ICON[c.tipo] ?? Award, tipo: c.tipo,
         title: c.titulo, description: c.descricao ?? "", date: relDays(c.createdAt),
       }));
 
@@ -232,9 +233,9 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
 
   if (!data) {
     return (
-      <div className="flex min-h-screen items-center justify-center" style={{ background: "#0D0D1A" }}>
+      <div className="flex min-h-screen items-center justify-center" style={{ background: "#09090B" }}>
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-t-transparent"
-          style={{ borderColor: "#7C3AED", borderTopColor: "transparent" }} />
+          style={{ borderColor: "#7CFF5B", borderTopColor: "transparent" }} />
       </div>
     );
   }
