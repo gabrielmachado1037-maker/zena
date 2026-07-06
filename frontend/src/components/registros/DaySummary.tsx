@@ -1,7 +1,9 @@
 import GlassPanel from "./GlassPanel";
 
+const pad2 = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+
 // Bloco "Resumo do Dia" — Registros (primary) e Alertas (secondary).
-export default function DaySummary() {
+export default function DaySummary({ registros, alertas }: { registros: number; alertas: number }) {
   return (
     <GlassPanel className="rounded-2xl p-6 relative overflow-hidden">
       <h3 className="text-label-md uppercase tracking-wider text-nx-on-surface-variant mb-4 relative z-10">
@@ -10,11 +12,11 @@ export default function DaySummary() {
       <div className="grid grid-cols-2 gap-4 relative z-10">
         <div className="bg-nx-container-high p-3 rounded-xl">
           <p className="text-label-sm text-nx-on-surface-variant">Registros</p>
-          <p className="text-headline-md font-bold text-nx-primary">124</p>
+          <p className="text-headline-md font-bold text-nx-primary">{pad2(registros)}</p>
         </div>
         <div className="bg-nx-container-high p-3 rounded-xl">
           <p className="text-label-sm text-nx-on-surface-variant">Alertas</p>
-          <p className="text-headline-md font-bold text-nx-secondary">08</p>
+          <p className="text-headline-md font-bold text-nx-secondary">{pad2(alertas)}</p>
         </div>
       </div>
     </GlassPanel>

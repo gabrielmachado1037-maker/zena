@@ -1,23 +1,58 @@
 
 import { useState } from "react"
-import { Calendar, TrendingUp, ChevronRight } from "lucide-react"
+import { Calendar, TrendingUp, ChevronRight, Check } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import { usePacienteData } from "@/lib/paciente-data"
+import apiPaciente from "@/lib/apiPaciente"
 import type { NavigateFn } from "../types"
+
+const HABITOS = ["alimentacao", "treino", "agua", "sono"] as const
 
 export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const { missions: initialMissions, user } = usePacienteData()
   const [checked, setChecked] = useState<Record<string, boolean>>(
     Object.fromEntries(initialMissions.map((m) => [m.id, m.done])),
   )
+  const [enviadoLocal, setEnviadoLocal] = useState(false)
+  const [enviando, setEnviando] = useState(false)
+  const [pontosGanhos, setPontosGanhos] = useState<number | null>(null)
+  const [erro, setErro] = useState("")
 
-  const earned = initialMissions.reduce(
-    (sum, m) => sum + (checked[m.id] ? m.total : 0),
-    0,
-  )
+  // Registro do dia já existe (veio do servidor) ou acabou de ser enviado nesta sessão.
+  const jaEnviado = enviadoLocal || !!initialMissions.find((m) => m.id === "registro")?.done
+
+  const earned = initialMissions.reduce((sum, m) => {
+    const done = m.id === "registro" ? jaEnviado : checked[m.id]
+    return sum + (done ? m.total : 0)
+  }, 0)
   const total = user.todayGoal
+
+  async function enviarRegistro() {
+    if (jaEnviado || enviando) return
+    setEnviando(true)
+    setErro("")
+    try {
+      const { data } = await apiPaciente.post("/registros", {
+        alimentacaoOk: !!checked.alimentacao,
+        treinoOk: !!checked.treino,
+        aguaOk: !!checked.agua,
+        sonoOk: !!checked.sono,
+      })
+      setPontosGanhos(data?.pontosGanhos ?? earned)
+      setEnviadoLocal(true)
+    } catch (e: any) {
+      if (e?.response?.status === 409) {
+        // Já havia registro hoje — reflete como enviado em vez de mostrar erro.
+        setEnviadoLocal(true)
+      } else {
+        setErro(e?.response?.data?.error || "Não foi possível enviar. Tente de novo.")
+      }
+    } finally {
+      setEnviando(false)
+    }
+  }
 
   return (
     <div className="space-y-4 px-4 pb-4 pt-6">
@@ -30,7 +65,8 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
 
       <ul className="space-y-3">
         {initialMissions.map((m) => {
-          const isDone = checked[m.id]
+          const isRegistro = m.id === "registro"
+          const isDone = isRegistro ? jaEnviado : checked[m.id]
           const Icon = m.icon
           return (
             <li key={m.id}>
@@ -72,11 +108,16 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
                   </span>
                   <Checkbox
                     checked={isDone}
-                    onCheckedChange={(v) =>
-                      setChecked((prev) => ({ ...prev, [m.id]: v === true }))
+                    onCheckedChange={
+                      jaEnviado || isRegistro
+                        ? undefined
+                        : (v) => setChecked((prev) => ({ ...prev, [m.id]: v === true }))
                     }
                     aria-label={`Concluir missão ${m.title}`}
-                    className="size-5 data-[state=checked]:border-green data-[state=checked]:bg-green"
+                    className={cn(
+                      "size-5 data-[state=checked]:border-green data-[state=checked]:bg-green",
+                      (jaEnviado || isRegistro) && "pointer-events-none opacity-70",
+                    )}
                   />
                 </div>
               </Card>
@@ -91,6 +132,29 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           {earned}/{total} pts
         </p>
       </Card>
+
+      {erro && <p className="text-center text-sm text-danger">{erro}</p>}
+
+      {/* Enviar registro do dia */}
+      {jaEnviado ? (
+        <Card className="flex flex-row items-center justify-center gap-2 border-green/30 bg-green/10 p-4">
+          <Check className="size-5 text-green" />
+          <p className="font-semibold text-green">
+            {pontosGanhos != null
+              ? `Registro enviado! +${pontosGanhos} pts`
+              : "Registro de hoje enviado"}
+          </p>
+        </Card>
+      ) : (
+        <button
+          type="button"
+          onClick={enviarRegistro}
+          disabled={enviando}
+          className="w-full rounded-2xl bg-primary py-4 font-semibold text-primary-foreground transition-opacity disabled:opacity-60"
+        >
+          {enviando ? "Enviando…" : "Concluir registro do dia"}
+        </button>
+      )}
 
       <button
         type="button"

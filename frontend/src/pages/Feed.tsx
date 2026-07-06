@@ -1,5 +1,8 @@
-import { useMemo, useState } from "react";
-import { REGISTROS, FILTROS } from "../lib/registros";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  FILTROS, getRegistrosFeed, validarRegistro, enviarNudge, type FeedData,
+} from "../lib/registros";
 import FeedFilters from "../components/registros/FeedFilters";
 import DaySummary from "../components/registros/DaySummary";
 import RecordCard from "../components/registros/RecordCard";
@@ -7,22 +10,70 @@ import UrgencyRadar from "../components/registros/UrgencyRadar";
 import CommunityGoal from "../components/registros/CommunityGoal";
 import AdjustFab from "../components/registros/AdjustFab";
 
-// Tela "Registros Diários" — feed de logs clínicos (mock, fiel ao code.html).
+// Tela "Registros Diários" — feed real dos check-ins diários de todos os pacientes.
 export default function Feed() {
+  const navigate = useNavigate();
+  const [data, setData] = useState<FeedData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [busca, setBusca] = useState("");
   const [filtros, setFiltros] = useState<Record<string, boolean>>({});
+  const [enviandoId, setEnviandoId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const flash = useCallback((m: string) => {
+    setToast(m);
+    setTimeout(() => setToast(null), 2500);
+  }, []);
+
+  const carregar = useCallback(async () => {
+    try {
+      setData(await getRegistrosFeed());
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => { void carregar(); }, [carregar]);
 
   const visiveis = useMemo(() => {
+    const registros = data?.registros ?? [];
     const tiposAtivos = FILTROS.filter((f) => filtros[f.id]).map((f) => f.tipo);
     const q = busca.trim().toLowerCase();
-    return REGISTROS.filter((r) => {
+    return registros.filter((r) => {
       if (tiposAtivos.length > 0 && !tiposAtivos.includes(r.tipo)) return false;
-      if (q && ![r.paciente, r.tipoTexto, r.texto ?? ""].some((s) => s.toLowerCase().includes(q))) {
-        return false;
-      }
+      if (q && ![r.paciente, r.tipoTexto, r.texto ?? ""].some((s) => s.toLowerCase().includes(q))) return false;
       return true;
     });
-  }, [busca, filtros]);
+  }, [data, busca, filtros]);
+
+  async function onValidar(id: string) {
+    setEnviandoId(id);
+    try {
+      await validarRegistro(id);
+      setData((d) => (d ? { ...d, registros: d.registros.map((r) => (r.id === id ? { ...r, revisado: true } : r)) } : d));
+    } catch {
+      flash("Não foi possível validar o registro.");
+    } finally {
+      setEnviandoId(null);
+    }
+  }
+
+  async function onNudge(pacienteId: string) {
+    setEnviandoId(pacienteId);
+    try {
+      await enviarNudge(pacienteId);
+      flash("Incentivo enviado ao paciente 💪");
+    } catch {
+      flash("Falha ao enviar o incentivo.");
+    } finally {
+      setEnviandoId(null);
+    }
+  }
+
+  const onAjustar = (pacienteId: string) => navigate(`/app/pacientes/${pacienteId}`);
+  const onChat = () => navigate("/app/mensagens");
 
   return (
     <div className="min-h-screen bg-nx-bg-lowest text-nx-on-surface font-sans px-4 md:px-8 py-6 custom-scrollbar">
@@ -49,28 +100,48 @@ export default function Feed() {
             valores={filtros}
             onChange={(id, checked) => setFiltros((s) => ({ ...s, [id]: checked }))}
           />
-          <DaySummary />
+          <DaySummary registros={data?.resumo.registros ?? 0} alertas={data?.resumo.alertas ?? 0} />
         </div>
 
         {/* Coluna central — feed */}
         <div className="flex-1 min-w-0 max-w-3xl space-y-6">
-          {visiveis.length === 0 ? (
+          {loading ? (
+            <div className="text-center text-body-sm text-nx-on-surface-variant py-16">Carregando registros…</div>
+          ) : visiveis.length === 0 ? (
             <div className="text-center text-body-sm text-nx-on-surface-variant py-16">
-              Nenhum registro corresponde aos filtros.
+              {(data?.registros.length ?? 0) === 0
+                ? "Nenhum registro dos seus pacientes nos últimos 7 dias."
+                : "Nenhum registro corresponde aos filtros."}
             </div>
           ) : (
-            visiveis.map((r) => <RecordCard key={r.id} registro={r} />)
+            visiveis.map((r) => (
+              <RecordCard
+                key={r.id}
+                registro={r}
+                onValidar={onValidar}
+                onAjustar={onAjustar}
+                onNudge={onNudge}
+                onChat={onChat}
+                enviando={enviandoId === r.id || enviandoId === r.pacienteId}
+              />
+            ))
           )}
         </div>
 
         {/* Coluna direita — contexto */}
         <div className="w-80 flex-shrink-0 space-y-6 hidden xl:block">
-          <UrgencyRadar />
-          <CommunityGoal />
+          <UrgencyRadar alertas={data?.radar ?? []} onNudge={onNudge} />
+          <CommunityGoal pct={data?.comunidade.pct ?? 0} deltaSemana={data?.comunidade.deltaSemana ?? 0} />
         </div>
       </div>
 
-      <AdjustFab />
+      {toast && (
+        <div className="fixed bottom-24 right-8 z-50 bg-nx-container-high border border-nx-primary/30 text-nx-on-surface px-5 py-3 rounded-xl shadow-2xl text-body-sm">
+          {toast}
+        </div>
+      )}
+
+      <AdjustFab onRefresh={() => { setRefreshing(true); void carregar(); }} refreshing={refreshing} />
     </div>
   );
 }

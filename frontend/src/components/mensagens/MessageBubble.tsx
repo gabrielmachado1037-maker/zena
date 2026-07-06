@@ -11,7 +11,12 @@ export default function MessageBubble({ msg }: { msg: Mensagem }) {
         <div className="flex flex-col gap-1 items-end">
           <span className="text-label-sm text-nx-on-surface-variant mr-1">{msg.hora}</span>
           <div className="chat-bubble-nutri p-4 shadow-md">
-            <p className="text-body-md text-nx-on-primary-container">{msg.texto}</p>
+            {msg.anexoUrl && (
+              <a href={msg.anexoUrl} target="_blank" rel="noreferrer" className="block">
+                <img src={msg.anexoUrl} alt="Anexo" className={`rounded-lg max-h-64 w-auto object-cover ${msg.texto ? "mb-2" : ""}`} />
+              </a>
+            )}
+            {msg.texto && <p className="text-body-md text-nx-on-primary-container">{msg.texto}</p>}
           </div>
         </div>
       </div>
@@ -26,7 +31,12 @@ export default function MessageBubble({ msg }: { msg: Mensagem }) {
           {msg.nome ? `${msg.nome} • ${msg.hora}` : msg.hora}
         </span>
         <div className="chat-bubble-patient p-4 shadow-sm">
-          <p className="text-body-md text-nx-on-surface">{msg.texto}</p>
+          {msg.anexoUrl && (
+            <a href={msg.anexoUrl} target="_blank" rel="noreferrer" className="block">
+              <img src={msg.anexoUrl} alt="Anexo" className={`rounded-lg max-h-64 w-auto object-cover ${msg.texto ? "mb-2" : ""}`} />
+            </a>
+          )}
+          {msg.texto && <p className="text-body-md text-nx-on-surface">{msg.texto}</p>}
         </div>
       </div>
     </div>

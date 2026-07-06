@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import {
   Utensils, Dumbbell, Droplets, Moon, ClipboardList, Trophy,
   Footprints, Medal, Camera, Crown, Award, type LucideIcon,
@@ -55,6 +55,7 @@ export interface PacienteData {
   pesoDelta: string;
   photoEntries: PhotoEntry[];
   moodHistory: MoodHist[];
+  reload: () => Promise<void>;
 }
 
 /* ─────────── helpers ─────────── */
@@ -104,8 +105,7 @@ export const usePacienteData = () => {
 export function PacienteDataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<PacienteData | null>(null);
 
-  useEffect(() => {
-    (async () => {
+  const load = useCallback(async () => {
       const [resumoR, rankingR, desafiosR, evolucaoR] = await Promise.allSettled([
         apiPaciente.get<ResumoResp>("/registros/resumo"),
         apiPaciente.get<RankResp[]>("/registros/ranking"),
@@ -224,9 +224,11 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
         loading: false, user, missions, challenges, achievements, currentLeagueIndex,
         ranking, friendsRanking: ranking, myPosition, stats,
         measures, weightData, weightHistory, pesoAtual, pesoDelta, photoEntries, moodHistory,
+        reload: load,
       });
-    })();
   }, []);
+
+  useEffect(() => { void load(); }, [load]);
 
   if (!data) {
     return (

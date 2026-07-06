@@ -416,11 +416,12 @@ model RankingPontuacao {
 }
 
 model PacienteUser {
-  id         String   @id @default(cuid())
-  email      String   @unique
-  senha      String
-  fotoUrl    String?
-  pacienteId String   @unique
+  id                String   @id @default(cuid())
+  email             String   @unique
+  senha             String
+  fotoUrl           String?
+  postPublicoPadrao Boolean  @default(true)
+  pacienteId        String   @unique
   paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
 
@@ -651,6 +652,7 @@ model Registro {
   pediuAjuste    Boolean  @default(false)
   motivoAjuste   String?
   ajusteLido     Boolean  @default(false)
+  revisado       Boolean  @default(false)
 
   createdAt      DateTime @default(now())
 
@@ -734,6 +736,7 @@ model MensagemChat {
   paciente        Paciente      @relation(fields: [pacienteId], references: [id])
   autor           String // "paciente" | "nutri"
   conteudo        String
+  anexoUrl        String?
   lida            Boolean       @default(false)
   criadoEm        DateTime      @default(now())
 

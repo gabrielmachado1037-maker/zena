@@ -6,6 +6,9 @@ export type Screen =
   | "perfil"
   | "progresso"
   | "evolucao"
+  | "configuracoes"
+  | "consultas"
+  | "pagamentos"
 
 export type Tab = "home" | "registro" | "desafios" | "ranking" | "perfil"
 

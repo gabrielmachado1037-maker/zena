@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { enviarNotificacaoPaciente } from "./notificacoes";
+import { uploadImagemChat } from "../lib/supabase";
 
 const router = Router();
 router.use(authMiddleware);
@@ -104,6 +105,7 @@ router.get("/thread/:pacienteId", async (req: AuthRequest, res: Response) => {
       id: m.id,
       autor: m.autor,
       conteudo: m.conteudo,
+      anexoUrl: m.anexoUrl,
       criadoEm: m.criadoEm,
     })),
   });
@@ -114,31 +116,45 @@ router.post("/thread/:pacienteId", async (req: AuthRequest, res: Response) => {
   const nutricionistaId = req.nutricionistaId as string;
   const pacienteId = req.params["pacienteId"] as string;
   const conteudo = String(req.body?.conteudo ?? "").trim();
+  const anexoBase64 = typeof req.body?.anexoBase64 === "string" ? req.body.anexoBase64 : "";
 
-  if (!conteudo) return res.status(400).json({ error: "Mensagem vazia" });
+  if (!conteudo && !anexoBase64) return res.status(400).json({ error: "Mensagem vazia" });
 
   const paciente = await prisma.paciente.findFirst({
     where: { id: pacienteId, nutricionistaId },
   });
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrada" });
 
+  let anexoUrl: string | null = null;
+  if (anexoBase64) {
+    if (!anexoBase64.startsWith("data:image/")) {
+      return res.status(400).json({ error: "Anexo inválido (apenas imagens)" });
+    }
+    try {
+      anexoUrl = await uploadImagemChat(`chat/${nutricionistaId}/${pacienteId}/${Date.now()}.jpg`, anexoBase64);
+    } catch {
+      return res.status(502).json({ error: "Falha ao enviar o anexo. Tente novamente." });
+    }
+  }
+
   const msg = await prisma.mensagemChat.create({
-    data: { nutricionistaId, pacienteId, autor: "nutri", conteudo, lida: true },
+    data: { nutricionistaId, pacienteId, autor: "nutri", conteudo, anexoUrl, lida: true },
   });
 
   // Notificação push (best-effort; helper já ignora se não houver VAPID/subscription).
   try {
+    const previa = conteudo || "📷 Enviou uma imagem";
     await enviarNotificacaoPaciente(
       pacienteId,
       "Nova mensagem da sua nutri",
-      conteudo.length > 80 ? conteudo.slice(0, 77) + "..." : conteudo,
+      previa.length > 80 ? previa.slice(0, 77) + "..." : previa,
       "/paciente/dashboard",
     );
   } catch {
     /* silencioso */
   }
 
-  res.json({ id: msg.id, autor: msg.autor, conteudo: msg.conteudo, criadoEm: msg.criadoEm });
+  res.json({ id: msg.id, autor: msg.autor, conteudo: msg.conteudo, anexoUrl: msg.anexoUrl, criadoEm: msg.criadoEm });
 });
 
 // PATCH /api/mensagens/thread/:pacienteId/lida — marca conversa como lida.

@@ -39,6 +39,13 @@ export async function uploadAvatarPaciente(path: string, base64: string): Promis
   return uploadBuffer(BUCKET_AVATAR_PACIENTE, path, Buffer.from(data, "base64"), contentType);
 }
 
+export async function uploadImagemChat(path: string, base64: string): Promise<string> {
+  const match = base64.match(/^data:(image\/\w+);base64,/);
+  const contentType = match?.[1] ?? "image/jpeg";
+  const data = base64.replace(/^data:image\/\w+;base64,/, "");
+  return uploadBuffer(BUCKET, path, Buffer.from(data, "base64"), contentType);
+}
+
 export async function deleteFoto(path: string) {
   const url = `${process.env.SUPABASE_URL}/storage/v1/object/${BUCKET}`;
   await fetch(url, {

@@ -4,16 +4,26 @@ import { RESPOSTAS_RAPIDAS } from "../../lib/mensagens";
 interface Props {
   valor: string;
   onChange: (v: string) => void;
-  onEnviar: () => void;
+  onEnviar: (anexoBase64?: string) => void;
   disabled?: boolean;
 }
 
-// Barra de input: attach_file (abre seletor de arquivo), <textarea> com auto-resize,
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result as string);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// Barra de input: attach_file (anexa imagem com preview), <textarea> com auto-resize,
 // botão "Rápidas" (respostas prontas) e botão send.
 export default function MessageInput({ valor, onChange, onEnviar, disabled }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [rapidasAberto, setRapidasAberto] = useState(false);
+  const [anexo, setAnexo] = useState<string | null>(null);
 
   // Auto-resize: replica `this.style.height = 'auto'; = scrollHeight` do mockup.
   useLayoutEffect(() => {
@@ -23,29 +33,52 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
     el.style.height = `${el.scrollHeight}px`;
   }, [valor]);
 
+  function enviar() {
+    if (disabled) return;
+    if (!valor.trim() && !anexo) return;
+    onEnviar(anexo ?? undefined);
+    setAnexo(null);
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      onEnviar();
+      enviar();
     }
   }
 
-  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
-    if (f) onChange(`${valor}${valor ? " " : ""}[anexo: ${f.name}]`);
+    if (f && f.type.startsWith("image/")) setAnexo(await fileToBase64(f));
     e.target.value = "";
   }
 
   return (
     <div className="p-4 bg-nx-surface border-t border-nx-primary-container/10">
+      {anexo && (
+        <div className="mb-2 flex items-center gap-2">
+          <div className="relative">
+            <img src={anexo} alt="Anexo" className="h-16 w-16 rounded-lg object-cover border border-nx-primary-container/20" />
+            <button
+              onClick={() => setAnexo(null)}
+              aria-label="Remover anexo"
+              className="absolute -top-1.5 -right-1.5 bg-nx-container-high rounded-full p-0.5 text-nx-on-surface-variant hover:text-nx-error border border-nx-surface"
+            >
+              <span className="material-symbols-outlined text-[16px] leading-none">close</span>
+            </button>
+          </div>
+          <span className="text-label-sm text-nx-on-surface-variant">Imagem anexada</span>
+        </div>
+      )}
       <div className="flex items-end gap-3 bg-nx-container-high rounded-xl p-2 focus-within:ring-1 focus-within:ring-nx-primary transition-all">
         <button
           onClick={() => fileRef.current?.click()}
+          title="Anexar imagem"
           className="p-2 text-nx-on-surface-variant hover:text-nx-primary transition-colors mb-1 rounded-full hover:bg-[#343342]/50"
         >
           <span className="material-symbols-outlined">attach_file</span>
         </button>
-        <input ref={fileRef} type="file" className="hidden" onChange={handleFile} />
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
 
         <textarea
           ref={ref}
@@ -68,7 +101,7 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
             <span className="hidden md:inline">Rápidas</span>
           </button>
           <button
-            onClick={onEnviar}
+            onClick={enviar}
             disabled={disabled}
             className="p-2 bg-nx-primary-container text-nx-on-primary-container rounded-full hover:bg-nx-primary transition-colors disabled:opacity-40"
           >

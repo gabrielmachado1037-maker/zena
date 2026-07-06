@@ -1,13 +1,13 @@
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import {
   Plus,
   ArrowDown,
   Minus,
   Camera,
   Ruler,
-  Scale,
   Smile,
+  X,
 } from "lucide-react"
 import {
   LineChart,
@@ -24,16 +24,20 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { moods } from "@/lib/nexvel-data"
 import { usePacienteData } from "@/lib/paciente-data"
+import apiPaciente from "@/lib/apiPaciente"
 import { ScreenHeader } from "../screen-header"
 import type { NavigateFn } from "../types"
 
-function AddButton({ label }: { label: string }) {
-  return (
-    <Button className="mt-4 h-11 w-full rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary/90">
-      <Plus className="size-4" />
-      {label}
-    </Button>
-  )
+// Ordem do array `moods` (0..4) → chave de humor do backend.
+const HUMOR_KEYS = ["pessimo", "dificil", "neutro", "bom", "otimo"] as const
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((res, rej) => {
+    const r = new FileReader()
+    r.onload = () => res(r.result as string)
+    r.onerror = rej
+    r.readAsDataURL(file)
+  })
 }
 
 function InfoCard({
@@ -60,9 +64,88 @@ function InfoCard({
 
 export function EvolucaoScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const {
-    photoEntries, measures, weightData, weightHistory, moodHistory, pesoAtual, pesoDelta,
+    photoEntries, measures, weightData, weightHistory, moodHistory, pesoAtual, pesoDelta, reload,
   } = usePacienteData()
+
+  // ── Medição (peso + medidas) ──
+  const [medOpen, setMedOpen] = useState(false)
+  const [medForm, setMedForm] = useState({ peso: "", cintura: "", quadril: "", braco: "", coxa: "" })
+  const [salvandoMed, setSalvandoMed] = useState(false)
+  const [medErr, setMedErr] = useState("")
+
+  // ── Foto ──
+  const fotoRef = useRef<HTMLInputElement>(null)
+  const [enviandoFoto, setEnviandoFoto] = useState(false)
+  const [fotoErr, setFotoErr] = useState("")
+
+  // ── Humor ──
   const [mood, setMood] = useState(3)
+  const [nota, setNota] = useState("")
+  const [salvandoHumor, setSalvandoHumor] = useState(false)
+  const [humorSalvo, setHumorSalvo] = useState(false)
+
+  const numero = (s: string) => {
+    const n = parseFloat(s.replace(",", "."))
+    return isFinite(n) && n > 0 ? n : undefined
+  }
+
+  async function salvarMedicao() {
+    const peso = numero(medForm.peso)
+    if (!peso) { setMedErr("Informe um peso válido."); return }
+    setSalvandoMed(true); setMedErr("")
+    try {
+      await apiPaciente.post("/registros/medicao", {
+        peso,
+        cintura: numero(medForm.cintura),
+        quadril: numero(medForm.quadril),
+        braco: numero(medForm.braco),
+        coxa: numero(medForm.coxa),
+      })
+      setMedOpen(false)
+      setMedForm({ peso: "", cintura: "", quadril: "", braco: "", coxa: "" })
+      await reload()
+    } catch (e: any) {
+      setMedErr(e?.response?.data?.error || "Não foi possível salvar.")
+    } finally {
+      setSalvandoMed(false)
+    }
+  }
+
+  async function onFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    setEnviandoFoto(true); setFotoErr("")
+    try {
+      const fotoBase64 = await fileToBase64(f)
+      await apiPaciente.post("/registros/foto-evolucao", { fotoBase64 })
+      await reload()
+    } catch (e: any) {
+      setFotoErr(e?.response?.data?.error || "Falha ao enviar a foto.")
+    } finally {
+      setEnviandoFoto(false)
+      if (fotoRef.current) fotoRef.current.value = ""
+    }
+  }
+
+  async function salvarHumor() {
+    setSalvandoHumor(true)
+    try {
+      await apiPaciente.put("/registros/humor", {
+        humor: HUMOR_KEYS[mood],
+        observacoes: nota.trim() || undefined,
+      })
+      setHumorSalvo(true)
+      setNota("")
+      await reload()
+      setTimeout(() => setHumorSalvo(false), 2500)
+    } catch {
+      /* silencioso; o histórico não muda */
+    } finally {
+      setSalvandoHumor(false)
+    }
+  }
+
+  const medInput = "w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
 
   return (
     <div className="pb-4">
@@ -110,7 +193,22 @@ export function EvolucaoScreen({ onNavigate }: { onNavigate: NavigateFn }) {
                 </div>
               </div>
             ))}
-            <AddButton label="Adicionar novas fotos" />
+            {fotoErr && <p className="text-sm text-danger">{fotoErr}</p>}
+            <input
+              ref={fotoRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={onFotoChange}
+            />
+            <Button
+              onClick={() => fotoRef.current?.click()}
+              disabled={enviandoFoto}
+              className="mt-4 h-11 w-full rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              {enviandoFoto ? "Enviando…" : <><Plus className="size-4" /> Adicionar novas fotos</>}
+            </Button>
           </TabsContent>
 
           {/* PESO */}
@@ -197,7 +295,12 @@ export function EvolucaoScreen({ onNavigate }: { onNavigate: NavigateFn }) {
                 ))}
               </Card>
             </div>
-            <AddButton label="Registrar peso" />
+            <Button
+              onClick={() => { setMedErr(""); setMedOpen(true) }}
+              className="mt-4 h-11 w-full rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="size-4" /> Registrar peso
+            </Button>
           </TabsContent>
 
           {/* MEDIDAS */}
@@ -230,7 +333,12 @@ export function EvolucaoScreen({ onNavigate }: { onNavigate: NavigateFn }) {
                 </div>
               ))}
             </Card>
-            <AddButton label="Adicionar medidas" />
+            <Button
+              onClick={() => { setMedErr(""); setMedOpen(true) }}
+              className="mt-4 h-11 w-full rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="size-4" /> Adicionar medidas
+            </Button>
           </TabsContent>
 
           {/* HUMOR */}
@@ -276,9 +384,19 @@ export function EvolucaoScreen({ onNavigate }: { onNavigate: NavigateFn }) {
 
               <textarea
                 rows={3}
+                value={nota}
+                onChange={(e) => setNota(e.target.value)}
                 placeholder="Anotações (opcional)"
                 className="mt-4 w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
               />
+
+              <Button
+                onClick={salvarHumor}
+                disabled={salvandoHumor}
+                className="mt-4 h-11 w-full rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                {salvandoHumor ? "Salvando…" : humorSalvo ? "Humor registrado ✓" : "Salvar humor de hoje"}
+              </Button>
             </Card>
 
             <div>
@@ -307,6 +425,57 @@ export function EvolucaoScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal de medição (peso + medidas) */}
+      {medOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4">
+          <Card className="w-full max-w-md rounded-b-none rounded-t-2xl p-5 sm:rounded-2xl">
+            <div className="flex items-center justify-between">
+              <p className="text-lg font-bold">Nova medição</p>
+              <button type="button" onClick={() => setMedOpen(false)} aria-label="Fechar">
+                <X className="size-5 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-sm text-muted-foreground">Peso (kg) *</label>
+                <input
+                  type="number" inputMode="decimal" step="0.1" placeholder="72.5"
+                  value={medForm.peso}
+                  onChange={(e) => setMedForm((f) => ({ ...f, peso: e.target.value }))}
+                  className={cn(medInput, "mt-1")}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  ["cintura", "Cintura (cm)"],
+                  ["quadril", "Quadril (cm)"],
+                  ["braco", "Braço (cm)"],
+                  ["coxa", "Coxa (cm)"],
+                ] as const).map(([key, label]) => (
+                  <div key={key}>
+                    <label className="text-sm text-muted-foreground">{label}</label>
+                    <input
+                      type="number" inputMode="decimal" step="0.1" placeholder="—"
+                      value={medForm[key]}
+                      onChange={(e) => setMedForm((f) => ({ ...f, [key]: e.target.value }))}
+                      className={cn(medInput, "mt-1")}
+                    />
+                  </div>
+                ))}
+              </div>
+              {medErr && <p className="text-sm text-danger">{medErr}</p>}
+              <Button
+                onClick={salvarMedicao}
+                disabled={salvandoMed}
+                className="h-11 w-full rounded-xl bg-primary font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                {salvandoMed ? "Salvando…" : "Salvar medição"}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

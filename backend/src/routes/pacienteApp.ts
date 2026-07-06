@@ -38,7 +38,7 @@ router.get("/feed", async (req: PacienteAuthRequest, res: Response) => {
 
 // POST /api/paciente-app/feed
 router.post("/feed", async (req: PacienteAuthRequest, res: Response) => {
-  const { mensagem, categoria = "MOMENTO", privacidade = "PUBLICO", fotoBase64 } = req.body as {
+  const { mensagem, categoria = "MOMENTO", privacidade, fotoBase64 } = req.body as {
     mensagem: string;
     categoria?: string;
     privacidade?: string;
@@ -54,14 +54,18 @@ router.post("/feed", async (req: PacienteAuthRequest, res: Response) => {
 
   const pacienteUserSnap = await prisma.pacienteUser.findUnique({
     where: { pacienteId: req.pacienteId! },
-    select: { fotoUrl: true },
+    select: { fotoUrl: true, postPublicoPadrao: true },
   });
+
+  // Se o cliente não especificar, usa a preferência de privacidade padrão do paciente.
+  const privacidadeFinal =
+    privacidade ?? (pacienteUserSnap?.postPublicoPadrao === false ? "APENAS_NUTRI" : "PUBLICO");
 
   const post = await prisma.feedPost.create({
     data: {
       tipo: "CONQUISTA",
       categoria,
-      privacidade,
+      privacidade: privacidadeFinal,
       mensagem: mensagem.trim(),
       fotoUrl,
       autorAvatarUrl: pacienteUserSnap?.fotoUrl ?? null,
@@ -194,7 +198,7 @@ router.get("/me", async (req: PacienteAuthRequest, res: Response) => {
       include: {
         nutricionista: { select: { nome: true, nomeConsultorio: true, logoConsultorio: true } },
         medicoes: { orderBy: { data: "desc" }, take: 1 },
-        pacienteUser: { select: { fotoUrl: true } },
+        pacienteUser: { select: { fotoUrl: true, postPublicoPadrao: true } },
       },
     }),
     prisma.medicao.findFirst({
@@ -204,7 +208,12 @@ router.get("/me", async (req: PacienteAuthRequest, res: Response) => {
   ]);
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrado." });
   const { pacienteUser, ...rest } = paciente;
-  res.json({ ...rest, fotoUrl: pacienteUser?.fotoUrl ?? null, primeiroMedicao });
+  res.json({
+    ...rest,
+    fotoUrl: pacienteUser?.fotoUrl ?? null,
+    postPublicoPadrao: pacienteUser?.postPublicoPadrao ?? true,
+    primeiroMedicao,
+  });
 });
 
 // PUT /api/paciente-app/foto-perfil
@@ -252,7 +261,12 @@ router.get("/frase-motivacional", async (_req: PacienteAuthRequest, res: Respons
 
 // PUT /api/paciente-app/perfil
 router.put("/perfil", async (req: PacienteAuthRequest, res: Response) => {
-  const { nome, senhaAtual, novaSenha } = req.body as { nome?: string; senhaAtual?: string; novaSenha?: string };
+  const { nome, senhaAtual, novaSenha, postPublicoPadrao } = req.body as {
+    nome?: string;
+    senhaAtual?: string;
+    novaSenha?: string;
+    postPublicoPadrao?: boolean;
+  };
   if (novaSenha) {
     if (!senhaAtual) return res.status(400).json({ error: "Senha atual é obrigatória" });
     if (novaSenha.length < 6) return res.status(400).json({ error: "Nova senha deve ter pelo menos 6 caracteres" });
@@ -265,6 +279,12 @@ router.put("/perfil", async (req: PacienteAuthRequest, res: Response) => {
   }
   if (nome?.trim()) {
     await prisma.paciente.update({ where: { id: req.pacienteId! }, data: { nome: nome.trim() } });
+  }
+  if (typeof postPublicoPadrao === "boolean") {
+    await prisma.pacienteUser.updateMany({
+      where: { pacienteId: req.pacienteId! },
+      data: { postPublicoPadrao },
+    });
   }
   return res.json({ ok: true });
 });

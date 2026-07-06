@@ -2,6 +2,9 @@ import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
 import { calcularPontosRegistro, calcularLiga } from "../config/ligas";
+import { uploadFoto } from "../lib/supabase";
+
+const HUMORES_VALIDOS = ["otimo", "bom", "neutro", "dificil", "pessimo"];
 
 const router = Router();
 router.use(authPacienteMiddleware);
@@ -19,10 +22,15 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
 
-  const jaFez = await prisma.registro.findUnique({
+  const existente = await prisma.registro.findUnique({
     where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
   });
-  if (jaFez) return res.status(409).json({ error: "Registro já enviado hoje" });
+  // Um "stub" (só humor, sem check-in) NÃO conta como registro do dia — o check-in o promove.
+  const jaFezCheckin = existente && (
+    existente.pontosGanhos > 0 ||
+    existente.alimentacaoOk || existente.treinoOk || existente.aguaOk || existente.sonoOk
+  );
+  if (jaFezCheckin) return res.status(409).json({ error: "Registro já enviado hoje" });
 
   const { total: pontosGanhos, detalhes: pontosDetalhes } = calcularPontosRegistro({
     alimentacaoOk: !!alimentacaoOk, treinoOk: !!treinoOk, aguaOk: !!aguaOk, sonoOk: !!sonoOk,
@@ -43,8 +51,9 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
   const liga = calcularLiga(pontosTotal);
 
   const [registro] = await prisma.$transaction([
-    prisma.registro.create({
-      data: {
+    prisma.registro.upsert({
+      where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
+      create: {
         pacienteId: req.pacienteId!,
         data: hoje,
         alimentacaoOk: !!alimentacaoOk,
@@ -56,6 +65,20 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
         descricao,
         humor,
         tags: tags ?? [],
+        pontosGanhos,
+        pontosDetalhes,
+      },
+      // Promove o stub de humor a check-in completo (preserva humor já lançado).
+      update: {
+        alimentacaoOk: !!alimentacaoOk,
+        treinoOk: !!treinoOk,
+        aguaOk: !!aguaOk,
+        sonoOk: !!sonoOk,
+        tipoRegistro: tipoRegistro ?? "normal",
+        fotoUrl,
+        descricao,
+        humor: humor ?? undefined,
+        tags: tags ?? undefined,
         pontosGanhos,
         pontosDetalhes,
       },
@@ -145,11 +168,16 @@ router.get("/ranking", async (req: PacienteAuthRequest, res: Response) => {
 
 // GET /api/registros/evolucao — fotos, peso e humor ao longo do tempo
 router.get("/evolucao", async (req: PacienteAuthRequest, res: Response) => {
-  const [fotos, medicoes, humores] = await Promise.all([
+  const [fotosCheckin, fotosEvolucao, medicoes, humores] = await Promise.all([
     prisma.registro.findMany({
       where: { pacienteId: req.pacienteId!, fotoUrl: { not: null } },
       orderBy: { data: "asc" },
-      select: { id: true, data: true, fotoUrl: true, humor: true },
+      select: { id: true, data: true, fotoUrl: true },
+    }),
+    prisma.fotoEvolucao.findMany({
+      where: { pacienteId: req.pacienteId! },
+      orderBy: { data: "asc" },
+      select: { id: true, data: true, imagem: true },
     }),
     prisma.medicao.findMany({
       where: { pacienteId: req.pacienteId! },
@@ -163,6 +191,11 @@ router.get("/evolucao", async (req: PacienteAuthRequest, res: Response) => {
       select: { data: true, humor: true },
     }),
   ]);
+  // Junta fotos de evolução (enviadas pelo paciente) com fotos de check-in.
+  const fotos = [
+    ...fotosCheckin.map((f) => ({ id: f.id, data: f.data, fotoUrl: f.fotoUrl })),
+    ...fotosEvolucao.map((f) => ({ id: f.id, data: f.data, fotoUrl: f.imagem })),
+  ].sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
   return res.json({ fotos, medicoes, humores });
 });
 
@@ -227,6 +260,72 @@ router.post("/:id/ajuste", async (req: PacienteAuthRequest, res: Response) => {
     data: { pediuAjuste: true, motivoAjuste: motivo, ajusteLido: false },
   });
   return res.json(atualizado);
+});
+
+// POST /api/registros/medicao — paciente registra o próprio peso (e opcionalmente medidas)
+router.post("/medicao", async (req: PacienteAuthRequest, res: Response) => {
+  const { peso, cintura, quadril, braco, coxa } = req.body as {
+    peso: number; cintura?: number; quadril?: number; braco?: number; coxa?: number;
+  };
+  if (typeof peso !== "number" || !isFinite(peso) || peso <= 0 || peso > 500) {
+    return res.status(400).json({ error: "Peso inválido" });
+  }
+  const num = (v: unknown) => (typeof v === "number" && isFinite(v) && v > 0 ? v : null);
+  const medicao = await prisma.medicao.create({
+    data: {
+      pacienteId: req.pacienteId!,
+      data: new Date(),
+      peso,
+      cintura: num(cintura),
+      quadril: num(quadril),
+      braco: num(braco),
+      coxa: num(coxa),
+    },
+  });
+  return res.status(201).json(medicao);
+});
+
+// POST /api/registros/foto-evolucao — paciente envia uma foto de evolução
+router.post("/foto-evolucao", async (req: PacienteAuthRequest, res: Response) => {
+  const { fotoBase64, tipo } = req.body as { fotoBase64: string; tipo?: string };
+  if (!fotoBase64?.startsWith("data:image/")) {
+    return res.status(400).json({ error: "Imagem inválida" });
+  }
+  let imagem: string;
+  try {
+    imagem = await uploadFoto(`evolucao/${req.pacienteId!}/${Date.now()}.jpg`, fotoBase64);
+  } catch {
+    return res.status(502).json({ error: "Falha ao enviar a imagem. Tente novamente." });
+  }
+  const foto = await prisma.fotoEvolucao.create({
+    data: { pacienteId: req.pacienteId!, data: new Date(), tipo: tipo || "frente", imagem },
+  });
+  return res.status(201).json(foto);
+});
+
+// PUT /api/registros/humor — paciente registra o humor do dia (upsert no registro de hoje)
+router.put("/humor", async (req: PacienteAuthRequest, res: Response) => {
+  const { humor, observacoes } = req.body as { humor: string; observacoes?: string };
+  if (!HUMORES_VALIDOS.includes(humor)) {
+    return res.status(400).json({ error: "Humor inválido" });
+  }
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const registro = await prisma.registro.upsert({
+    where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
+    // Stub: só humor, sem pontos nem check-in (o check-in do dia promove este registro).
+    create: {
+      pacienteId: req.pacienteId!,
+      data: hoje,
+      humor,
+      descricao: observacoes ?? null,
+      tipoRegistro: "normal",
+      pontosGanhos: 0,
+    },
+    update: { humor, descricao: observacoes ?? undefined },
+  });
+  return res.json({ humor: registro.humor });
 });
 
 export default router;

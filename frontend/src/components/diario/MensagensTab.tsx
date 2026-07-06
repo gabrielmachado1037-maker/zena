@@ -36,22 +36,23 @@ export default function MensagensTab({ pacienteId, pacienteNome }: Props) {
     fimRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mensagens.length, loading]);
 
-  async function enviar() {
+  async function enviar(anexoBase64?: string) {
     const t = texto.trim();
-    if (!t || enviando) return;
+    if ((!t && !anexoBase64) || enviando) return;
     const otimista: Mensagem = {
       id: `tmp-${Date.now()}`,
       autor: "nutri",
       texto: t,
       hora: formatHora(new Date()),
       avatarUrl: nutriAvatar,
+      anexoUrl: anexoBase64 ?? null,
     };
     setMensagens((prev) => [...prev, otimista]);
     setTexto("");
     setEnviando(true);
     try {
-      const salva = await enviarMensagem(pacienteId, t);
-      setMensagens((prev) => prev.map((m) => (m.id === otimista.id ? { ...m, id: salva.id } : m)));
+      const salva = await enviarMensagem(pacienteId, t, anexoBase64);
+      setMensagens((prev) => prev.map((m) => (m.id === otimista.id ? { ...m, id: salva.id, anexoUrl: salva.anexoUrl } : m)));
     } catch {
       setMensagens((prev) => prev.filter((m) => m.id !== otimista.id));
       setTexto(t);

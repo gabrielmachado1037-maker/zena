@@ -25,6 +25,7 @@ export interface Mensagem {
   texto: string;
   hora: string; // "10:30"
   avatarUrl: string | null;
+  anexoUrl?: string | null; // imagem anexada (URL do Supabase ou data URI otimista)
   nome?: string; // primeiro nome do paciente (rótulo acima do balão)
 }
 
@@ -37,7 +38,7 @@ export interface Thread {
 interface ThreadResp {
   pacienteAvatarUrl: string | null;
   nutriAvatarUrl: string | null;
-  mensagens: { id: string; autor: Autor; conteudo: string; criadoEm: string }[];
+  mensagens: { id: string; autor: Autor; conteudo: string; anexoUrl?: string | null; criadoEm: string }[];
 }
 
 // Respostas rápidas (client-side) — botão "Rápidas".
@@ -73,6 +74,7 @@ export async function getThreadById(pacienteId: string, pacienteNome: string): P
       texto: m.conteudo,
       hora: formatHora(m.criadoEm),
       avatarUrl: m.autor === "nutri" ? data.nutriAvatarUrl : data.pacienteAvatarUrl,
+      anexoUrl: m.anexoUrl ?? null,
       nome: m.autor === "paciente" ? primeiroNome : undefined,
     })),
   };
@@ -81,12 +83,13 @@ export async function getThreadById(pacienteId: string, pacienteNome: string): P
 export async function enviarMensagem(
   conversaId: string,
   conteudo: string,
-): Promise<{ id: string; criadoEm: string }> {
-  const { data } = await api.post<{ id: string; conteudo: string; criadoEm: string }>(
+  anexoBase64?: string,
+): Promise<{ id: string; criadoEm: string; anexoUrl: string | null }> {
+  const { data } = await api.post<{ id: string; conteudo: string; anexoUrl: string | null; criadoEm: string }>(
     `/mensagens/thread/${conversaId}`,
-    { conteudo },
+    { conteudo, anexoBase64 },
   );
-  return { id: data.id, criadoEm: data.criadoEm };
+  return { id: data.id, criadoEm: data.criadoEm, anexoUrl: data.anexoUrl ?? null };
 }
 
 export async function marcarLida(conversaId: string): Promise<void> {

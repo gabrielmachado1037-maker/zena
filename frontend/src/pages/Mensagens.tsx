@@ -74,9 +74,9 @@ export default function Mensagens() {
     fimRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mensagens.length, loadingThread]);
 
-  async function enviar() {
+  async function enviar(anexoBase64?: string) {
     const t = texto.trim();
-    if (!t || !conversa || enviando) return;
+    if ((!t && !anexoBase64) || !conversa || enviando) return;
 
     const otimista: Mensagem = {
       id: `tmp-${Date.now()}`,
@@ -84,18 +84,19 @@ export default function Mensagens() {
       texto: t,
       hora: formatHora(new Date()),
       avatarUrl: nutriAvatar,
+      anexoUrl: anexoBase64 ?? null,
     };
     setMensagens((prev) => [...prev, otimista]);
     setTexto("");
     setEnviando(true);
 
     try {
-      const salva = await enviarMensagem(conversa.id, t);
-      // Confirma o id real da mensagem otimista.
-      setMensagens((prev) => prev.map((m) => (m.id === otimista.id ? { ...m, id: salva.id } : m)));
+      const salva = await enviarMensagem(conversa.id, t, anexoBase64);
+      // Confirma o id real e troca o data-URI otimista pela URL final do anexo.
+      setMensagens((prev) => prev.map((m) => (m.id === otimista.id ? { ...m, id: salva.id, anexoUrl: salva.anexoUrl } : m)));
       // Atualiza prévia/horário da conversa na lista.
       setConversas((prev) =>
-        prev.map((c) => (c.id === conversa.id ? { ...c, previa: t, ultimaAtividade: salva.criadoEm } : c)),
+        prev.map((c) => (c.id === conversa.id ? { ...c, previa: t || "📷 Imagem", ultimaAtividade: salva.criadoEm } : c)),
       );
     } catch {
       // Reverte em caso de erro.

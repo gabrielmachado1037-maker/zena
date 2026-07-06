@@ -3,6 +3,7 @@ import {
   LogOut,
   History,
   TrendingUp,
+  CalendarDays,
   Settings,
   HelpCircle,
   ChevronRight,
@@ -21,11 +22,13 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
     icon: LucideIcon
     label: string
     screen?: Screen
+    action?: () => void
   }[] = [
     { icon: History, label: "Histórico", screen: "progresso" },
     { icon: TrendingUp, label: "Minhas Evoluções", screen: "evolucao" },
-    { icon: Settings, label: "Configurações" },
-    { icon: HelpCircle, label: "Ajuda e Suporte" },
+    { icon: CalendarDays, label: "Consultas", screen: "consultas" },
+    { icon: Settings, label: "Configurações", screen: "configuracoes" },
+    { icon: HelpCircle, label: "Ajuda e Suporte", action: () => { window.location.href = "mailto:suporte@nexvel.com.br" } },
   ]
 
   return (
@@ -60,7 +63,7 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
             <button
               key={item.label}
               type="button"
-              onClick={() => item.screen && onNavigate(item.screen)}
+              onClick={() => item.screen ? onNavigate(item.screen) : item.action?.()}
               className="w-full text-left"
             >
               <Card className="flex flex-row items-center gap-3 p-4">
