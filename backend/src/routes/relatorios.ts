@@ -34,10 +34,13 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   const seisMesesAtras = new Date(now.getFullYear(), now.getMonth() - 5, 1);
   const inicioPeriodo = periodo === "semanal" ? inicioSemana : inicioMes;
 
-  const [pacientes, checkins, consultasMes, registros6m] = await Promise.all([
+  const [pacientes, checkins, consultasMes, registros6m, registrosRef, registrosPeriodo] = await Promise.all([
     prisma.paciente.findMany({
       where: { nutricionistaId: id, ativo: true },
-      select: { id: true, pontosTotal: true, ligaAtual: true, ultimoCheckin: true },
+      select: {
+        id: true, nome: true, pontosTotal: true, ligaAtual: true, ultimoCheckin: true,
+        streakAtual: true, streakMaximo: true, fotoPerfilUrl: true,
+      },
     }),
     // Adesão do período — CheckIn.adesao (1–10), escopado por nutri via relação paciente.
     prisma.checkIn.findMany({
@@ -50,6 +53,23 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     prisma.registro.findMany({
       where: { paciente: { nutricionistaId: id }, data: { gte: seisMesesAtras } },
       select: { pacienteId: true, data: true },
+    }),
+    // Refeições no período — para "maior dificuldade" (só linhas com detalhe registrado).
+    prisma.registro.findMany({
+      where: {
+        paciente: { nutricionistaId: id },
+        data: { gte: inicioPeriodo },
+        OR: [
+          { cafeOk: { not: null } }, { almocoOk: { not: null } },
+          { lancheOk: { not: null } }, { jantarOk: { not: null } },
+        ],
+      },
+      select: { cafeOk: true, almocoOk: true, lancheOk: true, jantarOk: true },
+    }),
+    // Registros do período com os 4 hábitos + data — p/ "hábitos mais difíceis" e "dias críticos".
+    prisma.registro.findMany({
+      where: { paciente: { nutricionistaId: id }, data: { gte: inicioPeriodo } },
+      select: { data: true, alimentacaoOk: true, treinoOk: true, aguaOk: true, sonoOk: true },
     }),
   ]);
 
@@ -91,8 +111,99 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     engajamentoMensal.push({ label: MESES_PT[d.getMonth()], pct: total ? Math.round((pacs.size / total) * 100) : 0 });
   }
 
+  // ── Maior dificuldade por refeição (café/almoço/lanche/jantar) ──────────
+  // % de vezes que cada refeição foi cumprida, entre os dias com detalhe registrado.
+  const REFS = [
+    { key: "cafeOk", refeicao: "cafe", label: "Café da manhã" },
+    { key: "almocoOk", refeicao: "almoco", label: "Almoço" },
+    { key: "lancheOk", refeicao: "lanche", label: "Lanche da tarde" },
+    { key: "jantarOk", refeicao: "jantar", label: "Jantar" },
+  ] as const;
+  const dificuldadeRefeicoes = REFS.map((r) => {
+    const comDado = registrosRef.filter((x) => x[r.key] !== null);
+    const cumpridas = comDado.filter((x) => x[r.key]).length;
+    const totalDias = comDado.length;
+    return {
+      refeicao: r.refeicao,
+      label: r.label,
+      cumpridas,
+      total: totalDias,
+      pct: totalDias ? Math.round((cumpridas / totalDias) * 100) : null,
+    };
+  });
+  const comAmostra = dificuldadeRefeicoes.filter((d) => d.total > 0);
+  const piorRefeicao = comAmostra.length
+    ? comAmostra.reduce((a, b) => ((a.pct as number) <= (b.pct as number) ? a : b))
+    : null;
+
+  // ── Pacientes em risco + risco de saída ────────────────────────────────
+  // Risco de sair (duro) = inativo ≥4 dias ou nunca fez check-in.
+  // A lista inclui também "sequência quebrada" recente como atenção (mais leve).
+  const diasSemCheckin = (ultimo: Date | null): number | null =>
+    ultimo ? Math.floor((hoje.getTime() - new Date(ultimo).getTime()) / 86_400_000) : null;
+
+  const pacientesRisco = pacientes
+    .map((p) => {
+      const dias = diasSemCheckin(p.ultimoCheckin);
+      const seqQuebrada = p.streakAtual === 0 && p.streakMaximo > 0;
+      let tone: "risco" | "atencao" | null = null;
+      let motivo = "";
+      let sev = 0;
+      if (dias === null) {
+        tone = "risco"; motivo = "Nunca fez check-in"; sev = 10_000;
+      } else if (dias >= 4) {
+        tone = "risco"; motivo = `Há ${dias} dias sem check-in`; sev = dias;
+      } else if (seqQuebrada) {
+        tone = "atencao"; motivo = "Sequência quebrada"; sev = 1;
+      }
+      return { id: p.id, nome: p.nome, avatarUrl: p.fotoPerfilUrl ?? null, dias, motivo, tone, sev };
+    })
+    .filter((x): x is typeof x & { tone: "risco" | "atencao" } => x.tone !== null)
+    .sort((a, b) => b.sev - a.sev);
+
+  const emRiscoDuro = pacientes.filter((p) => {
+    const dias = diasSemCheckin(p.ultimoCheckin);
+    return dias === null || dias >= 4;
+  }).length;
+
+  // ── Hábitos mais difíceis (adesão % por hábito no período) ──────────────
+  const HAB = [
+    { key: "alimentacaoOk", id: "alimentacao", label: "Alimentação" },
+    { key: "treinoOk", id: "treino", label: "Treino" },
+    { key: "aguaOk", id: "agua", label: "Água" },
+    { key: "sonoOk", id: "sono", label: "Sono" },
+  ] as const;
+  const nReg = registrosPeriodo.length;
+  const habitos = HAB.map((h) => ({
+    id: h.id,
+    label: h.label,
+    pct: nReg ? Math.round((registrosPeriodo.filter((r) => r[h.key]).length / nReg) * 100) : null,
+    amostra: nReg,
+  }));
+
+  // ── Dias críticos (adesão média dos 4 hábitos por dia da semana) ────────
+  const NOMES_DOW = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const buckets: number[][] = Array.from({ length: 7 }, () => []);
+  for (const r of registrosPeriodo) {
+    const dow = new Date(r.data).getDay();
+    const ad = (Number(r.alimentacaoOk) + Number(r.treinoOk) + Number(r.aguaOk) + Number(r.sonoOk)) / 4;
+    buckets[dow]!.push(ad);
+  }
+  const diasSemana = buckets.map((vals, dow) => ({
+    dow,
+    label: NOMES_DOW[dow],
+    pct: vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) : null,
+    amostra: vals.length,
+  }));
+
   res.json({
     periodo,
+    dificuldadeRefeicoes,   // [{ refeicao, label, cumpridas, total, pct|null }]
+    piorRefeicao,           // { refeicao, label, pct } | null — "maior dificuldade"
+    pacientesRisco: pacientesRisco.slice(0, 8), // [{ id, nome, avatarUrl, dias, motivo, tone }]
+    riscoResumo: { emRisco: emRiscoDuro, total }, // "risco de saída"
+    habitos,                // [{ id, label, pct|null, amostra }]
+    diasSemana,             // [{ dow, label, pct|null, amostra }] — 7
     kpis: {
       adesaoMedia,       // number (1 casa) | null
       adesaoAmostra: amostra,
@@ -100,8 +211,8 @@ router.get("/", async (req: AuthRequest, res: Response) => {
       pacientesAtivos: total,
       consultasMes,
     },
-    distribuicaoLigas,   // [{ liga, count, cor }] — cumulativo
-    engajamentoMensal,   // [{ label, pct }] — 6 meses
+    distribuicaoLigas,   // [{ liga, count, cor }] — cumulativo (mantido p/ compat; não usado nos Insights)
+    engajamentoMensal,   // [{ label, pct }] — 6 meses (idem)
   });
 });
 

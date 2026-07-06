@@ -13,7 +13,7 @@ const NAV = [
   { label: "Desafios", icon: Award, to: "/app/desafios" },
   { label: "Registros", icon: ClipboardList, to: "/app/feed" },
   { label: "Mensagens", icon: MessageSquare, to: "/app/mensagens" },
-  { label: "Relatórios", icon: BarChart3, to: "/app/relatorios" },
+  { label: "Insights", icon: BarChart3, to: "/app/relatorios" },
   { label: "Configurações", icon: Settings, to: "/app/perfil" },
 ];
 

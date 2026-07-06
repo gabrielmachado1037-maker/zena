@@ -1,0 +1,155 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-06T00:00:00Z",
+  "title": "Design System: Nexvel",
+  "extensions": {
+    "colorMeta": {
+      "evo": {
+        "role": "primary",
+        "displayName": "Verde de Evolução",
+        "canonical": "#7CFF5B",
+        "tonalRamp": ["#0C1F08", "#153610", "#1F5417", "#2E7D22", "#43B233", "#5DE44A", "#7CFF5B", "#B4FFA3"]
+      },
+      "brand": {
+        "role": "secondary",
+        "displayName": "Roxo de Marca",
+        "canonical": "#7C3AED",
+        "tonalRamp": ["#1B0B33", "#2C1152", "#3F1A75", "#5423A0", "#6B2FCF", "#7C3AED", "#A576F2", "#C9AEF9"]
+      },
+      "water": { "role": "tertiary", "displayName": "Azul de Água", "canonical": "#49A8FF", "tonalRamp": ["#0A1D30", "#123657", "#1B5286", "#2778BE", "#3591E0", "#49A8FF", "#84C6FF", "#BFE1FF"] },
+      "streak": { "role": "tertiary", "displayName": "Laranja de Sequência", "canonical": "#FF8A1F", "tonalRamp": ["#301700", "#4E2600", "#7A3C00", "#A85400", "#D66C08", "#FF8A1F", "#FFB061", "#FFD1A3"] },
+      "gold": { "role": "tertiary", "displayName": "Ouro de Conquista", "canonical": "#F8C84B", "tonalRamp": ["#302400", "#4E3B00", "#7A5D00", "#A87F0C", "#D6A322", "#F8C84B", "#FBDA85", "#FDEBBE"] },
+      "danger": { "role": "tertiary", "displayName": "Vermelho de Risco", "canonical": "#FF5D5D", "tonalRamp": ["#330F0F", "#571818", "#862424", "#BE3030", "#E04545", "#FF5D5D", "#FF9090", "#FFC3C3"] },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Grafite Frio",
+        "canonical": "#111318",
+        "tonalRamp": ["#09090B", "#111318", "#14171E", "#171A22", "#1C212B", "#232A35", "#2A2F38", "#6B7280"]
+      },
+      "on-surface": {
+        "role": "neutral",
+        "displayName": "Tinta Clara",
+        "canonical": "#F8FAFC",
+        "tonalRamp": ["#2A2F38", "#3D434E", "#525963", "#6B7280", "#8B93A0", "#9CA3AF", "#CBD2DB", "#F8FAFC"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Número-herói dos KPIs e overlays de conquista. tabular-nums." },
+      "headline": { "displayName": "Headline", "purpose": "Título de tela (ex.: Insights, Comunicação)." },
+      "title": { "displayName": "Title", "purpose": "Título de painel/seção e nome do paciente no hero." },
+      "body": { "displayName": "Body", "purpose": "Texto de interface e conteúdo; prosa em 65–75ch." },
+      "label": { "displayName": "Label", "purpose": "Eyebrows de seção, chips e rótulos de tile; frequentemente UPPERCASE." }
+    },
+    "shadows": [
+      { "name": "nx-card", "value": "0 1px 2px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.25)", "purpose": "Elevação ambiente sutil de painéis, planos em repouso." },
+      { "name": "nx-evo", "value": "0 0 24px rgba(124,255,91,0.22)", "purpose": "Halo verde de CTAs primários e cartões em foco." },
+      { "name": "nx-evo-strong", "value": "0 0 40px rgba(124,255,91,0.40)", "purpose": "Pico de celebração — hover do primário, missão concluída, level-up." }
+    ],
+    "motion": [
+      { "name": "state", "value": "150ms ease", "purpose": "Transições de estado padrão (botões, hover, foco)." },
+      { "name": "fill", "value": "700ms cubic-bezier(0.16,1,0.3,1)", "purpose": "Preenchimento de barras de progresso/XP (ease-out expo)." },
+      { "name": "pop", "value": "400ms cubic-bezier(0.34,1.56,0.64,1)", "purpose": "Entrada de conquista/check (nx-pop) — leve overshoot, sem elástico." },
+      { "name": "reduced", "value": "prefers-reduced-motion: reduce → crossfade/instantâneo", "purpose": "Alternativa obrigatória para toda animação." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "CTA dominante de progresso — verde sólido, texto escuro, halo verde. Um por foco.",
+      "html": "<button class=\"ds-btn-primary\">Enviar mensagem</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;border:none;border-radius:14px;background:#7CFF5B;color:#08130A;font-family:Inter,sans-serif;font-weight:600;font-size:16px;box-shadow:0 0 24px rgba(124,255,91,.22);cursor:pointer;transition:background .15s ease,transform .15s ease,box-shadow .15s ease}.ds-btn-primary:hover{background:#70F570;box-shadow:0 0 40px rgba(124,255,91,.40)}.ds-btn-primary:active{transform:scale(.98)}.ds-btn-primary:focus-visible{outline:2px solid rgba(124,255,91,.6);outline-offset:2px}"
+    },
+    {
+      "name": "Surface Button",
+      "kind": "button",
+      "refersTo": "button-surface",
+      "description": "Ação secundária em superfície elevada com borda grafite.",
+      "html": "<button class=\"ds-btn-surface\">Ver perfil</button>",
+      "css": ".ds-btn-surface{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;border:1px solid #2A2F38;border-radius:14px;background:#232A35;color:#F8FAFC;font-family:Inter,sans-serif;font-weight:500;font-size:16px;cursor:pointer;transition:background .15s ease,transform .15s ease}.ds-btn-surface:hover{background:#171A22}.ds-btn-surface:active{transform:scale(.98)}.ds-btn-surface:focus-visible{outline:2px solid rgba(124,255,91,.6);outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Ação terciária, sem preenchimento.",
+      "html": "<button class=\"ds-btn-ghost\">Cancelar</button>",
+      "css": ".ds-btn-ghost{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;border:none;border-radius:14px;background:transparent;color:#9CA3AF;font-family:Inter,sans-serif;font-weight:500;font-size:16px;cursor:pointer;transition:background .15s ease,color .15s ease}.ds-btn-ghost:hover{background:#171A22;color:#F8FAFC}.ds-btn-ghost:focus-visible{outline:2px solid rgba(124,255,91,.6);outline-offset:2px}"
+    },
+    {
+      "name": "Functional Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Pílula tingida no tom funcional — o tom carrega o significado (aqui: sequência/streak).",
+      "html": "<span class=\"ds-chip\">🔥 18 dias de sequência</span>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:9999px;border:1px solid rgba(255,138,31,.25);background:rgba(255,138,31,.12);color:#FF8A1F;font-family:Inter,sans-serif;font-weight:600;font-size:12px;line-height:1}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Superfície-base: plana em repouso, cantos generosos, borda grafite sutil.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-card-label\">SUGESTÃO DE HOJE</p><p class=\"ds-card-title\">18 dias de sequência</p></div>",
+      "css": ".ds-card{background:#111318;border:1px solid #2A2F38;border-radius:20px;padding:20px;color:#F8FAFC;font-family:Inter,sans-serif;box-shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.25)}.ds-card-label{margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#6B7280}.ds-card-title{margin:0;font-size:24px;font-weight:600;line-height:32px}"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo escuro; foco muda a borda para verde, sem glow pesado.",
+      "html": "<input class=\"ds-input\" placeholder=\"Buscar paciente…\" />",
+      "css": ".ds-input{width:100%;box-sizing:border-box;background:#1C212B;border:1px solid #2A2F38;border-radius:10px;padding:10px 12px;color:#F8FAFC;font-family:Inter,sans-serif;font-size:16px;outline:none;transition:border-color .15s ease}.ds-input::placeholder{color:#6B7280}.ds-input:focus{border-color:rgba(124,255,91,.5)}"
+    },
+    {
+      "name": "Progress / XP Bar",
+      "kind": "custom",
+      "refersTo": "progressbar",
+      "description": "Trilho fino com preenchimento em gradiente verde e halo — assinatura de progresso.",
+      "html": "<div class=\"ds-progress\" role=\"progressbar\" aria-valuenow=\"64\" aria-valuemin=\"0\" aria-valuemax=\"100\"><div class=\"ds-progress-fill\"></div></div>",
+      "css": ".ds-progress{height:8px;width:100%;background:#14171E;border-radius:9999px;overflow:hidden}.ds-progress-fill{height:100%;width:64%;border-radius:9999px;background:linear-gradient(90deg,#53F27C,#7CFF5B);box-shadow:0 0 12px rgba(124,255,91,.45);transition:width .7s cubic-bezier(0.16,1,0.3,1)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "A Sala de Treino no Escuro",
+    "overview": "O Nexvel é uma sala de treino às escuras: o ambiente é grafite profundo e silencioso (#09090B), e a única fonte de energia é o verde de evolução (#7CFF5B) — ele acende onde há progresso, e só ali. A interface é premium por subtração: muito espaço negativo, poucos componentes grandes, tipografia neutra e afiada, e brilhos de luz reservados para o momento em que o paciente avança. O sistema serve ao produto: cada tela responde a uma pergunta e leva a uma ação — o número é herói, o gráfico é raro, o texto é curto. Rejeita explicitamente CRM/ERP frio, chat estilo WhatsApp, telas afogadas em gráficos, formulários longos e a estética roxa-neon-glassmorphism de origem (legado em migração).",
+    "keyCharacteristics": [
+      "Fundo grafite quase-preto; superfícies em camadas tonais frias, sem linhas brancas.",
+      "Verde de evolução como único acento dominante; roxo rebaixado a marca.",
+      "Uma cor, uma função — cor sempre reforçada por ícone/texto (WCAG AA).",
+      "Componentes grandes, botões confortáveis, muito respiro; poucos cards.",
+      "Luz (glow) só como resposta a estado/progresso, nunca decorativa."
+    ],
+    "rules": [
+      { "name": "A Regra \"Uma Cor, Uma Função\"", "body": "Cada matiz funcional tem um único significado: verde=progresso, azul=água, laranja=sequência, ouro=conquista, vermelho=risco, roxo=marca. Cor jamais é o único portador de significado — sempre com ícone ou texto.", "section": "colors" },
+      { "name": "A Regra \"O Verde é Raro\"", "body": "O verde de evolução aparece em ≤ um foco por tela. Sua raridade é o que faz a luz significar algo.", "section": "colors" },
+      { "name": "A Regra \"Sem Linhas Brancas\"", "body": "Bordas e divisórias são grafite (#2A2F38) ou transparências baixas — nunca branco puro. Superfícies se separam por tom, não por contorno luminoso.", "section": "colors" },
+      { "name": "A Regra \"Número é Herói\"", "body": "Métricas usam a escala Display com tabular-nums e recebem o tom funcional da leitura. O número domina; o rótulo sussurra acima.", "section": "typography" },
+      { "name": "A Regra \"Escala Fixa\"", "body": "Tamanhos são fixos (px/rem), nunca fluidos com clamp() — DPI constante em desktop e mobile.", "section": "typography" },
+      { "name": "A Regra \"Luz é Recompensa\"", "body": "O glow verde nunca é decoração. Aparece quando algo avança: o CTA do próximo passo, a barra que completa, a conquista que desbloqueia.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar o verde de evolução (#7CFF5B) como o único acento dominante — um foco por tela.",
+      "Do dar ao número a escala Display com tabular-nums e o tom da leitura (verde/laranja/vermelho).",
+      "Do manter superfícies planas e escuras; reservar o glow verde para progresso e celebração.",
+      "Do acompanhar toda cor de estado com ícone ou texto (risco, progresso, conquista) — WCAG AA + daltonismo.",
+      "Do respeitar prefers-reduced-motion: toda animação tem alternativa em crossfade/instantâneo.",
+      "Do usar Inter em pesos; muito respiro; componentes grandes e botões confortáveis."
+    ],
+    "donts": [
+      "Don't transformar a tela em CRM/ERP: tabelas frias, densas, com status de cobrança.",
+      "Don't desenhar Mensagens como chat estilo WhatsApp — comunicação é orientada a intenção e ação.",
+      "Don't encher a tela de gráficos; poucos números escolhidos batem um dashboard de charts.",
+      "Don't criar formulários longos — registrar precisa parecer evoluir, não preencher.",
+      "Don't usar glassmorphism decorativo nem background-clip:text com gradiente — legado roxo/neon proibido em telas novas.",
+      "Don't usar border-left/right colorido > 1px como faixa lateral; use borda completa, fundo tingido ou ícone.",
+      "Don't pintar bordas de branco puro nem espalhar verde por toda a tela.",
+      "Don't cair em gamificação infantil: mascotes gigantes, cores berrantes, confete sem propósito."
+    ]
+  }
+}
