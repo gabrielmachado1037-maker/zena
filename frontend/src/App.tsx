@@ -30,7 +30,6 @@ const Ranking       = lazy(() => import("./pages/Ranking"));
 const Ligas         = lazy(() => import("./pages/Ligas"));
 const Relatorios    = lazy(() => import("./pages/Relatorios"));
 const Desafios      = lazy(() => import("./pages/Desafios"));
-const Comunidade    = lazy(() => import("./pages/Comunidade"));
 const Mensagens     = lazy(() => import("./pages/Mensagens"));
 const EmBreve       = lazy(() => import("./pages/EmBreve"));
 const Feed               = lazy(() => import("./pages/Feed"));
@@ -96,7 +95,6 @@ function AppRoutes() {
           <Route path="ranking" element={<Navigate to="/app/ligas" replace />} />
           <Route path="feed" element={<RotaProtegida modulo="feed"><Feed /></RotaProtegida>} />
           <Route path="desafios" element={<Desafios />} />
-          <Route path="comunidade" element={<RotaProtegida modulo="feed"><Comunidade /></RotaProtegida>} />
           <Route path="mensagens" element={<Mensagens />} />
           <Route path="relatorios" element={<Relatorios />} />
         </Route>

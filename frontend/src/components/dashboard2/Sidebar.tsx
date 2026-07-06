@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  LayoutGrid, Users, Trophy, Award, ClipboardList, Globe,
+  LayoutGrid, Users, Trophy, Award, ClipboardList,
   MessageSquare, BarChart3, Settings, LogOut,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
@@ -12,7 +12,6 @@ const NAV = [
   { label: "Ligas", icon: Trophy, to: "/app/ligas" },
   { label: "Desafios", icon: Award, to: "/app/desafios" },
   { label: "Registros", icon: ClipboardList, to: "/app/feed" },
-  { label: "Comunidade", icon: Globe, to: "/app/comunidade" },
   { label: "Mensagens", icon: MessageSquare, to: "/app/mensagens" },
   { label: "Relatórios", icon: BarChart3, to: "/app/relatorios" },
   { label: "Configurações", icon: Settings, to: "/app/perfil" },
