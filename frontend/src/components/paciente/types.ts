@@ -8,7 +8,6 @@ export type Screen =
   | "evolucao"
   | "configuracoes"
   | "consultas"
-  | "pagamentos"
 
 export type Tab = "home" | "registro" | "desafios" | "ranking" | "perfil"
 

@@ -38,7 +38,6 @@ const LoginPaciente      = lazy(() => import("./pages/LoginPaciente"));
 const RankingPaciente    = lazy(() => import("./pages/paciente/RankingPaciente"));
 const LigasPaciente      = lazy(() => import("./pages/paciente/LigasPaciente"));
 const ConsultasPaciente  = lazy(() => import("./pages/paciente/ConsultasPaciente"));
-const PagamentosPaciente = lazy(() => import("./pages/paciente/PagamentosPaciente"));
 const ContaPaciente        = lazy(() => import("./pages/paciente/ContaPaciente"));
 const InicioPaciente       = lazy(() => import("./pages/paciente/InicioPaciente"));
 const RegistroPaciente     = lazy(() => import("./pages/paciente/RegistroPaciente"));
@@ -114,7 +113,6 @@ function AppRoutes() {
           <Route path="ranking"    element={<RankingPaciente />} />
           <Route path="ligas"      element={<LigasPaciente />} />
           <Route path="consultas"  element={<ConsultasPaciente />} />
-          <Route path="pagamentos" element={<PagamentosPaciente />} />
           <Route path="conta"          element={<PerfilPaciente />} />
           <Route path="configuracoes"  element={<ContaPaciente />} />
           <Route path="relatorio/:cicloId" element={<RelatorioCiclo />} />

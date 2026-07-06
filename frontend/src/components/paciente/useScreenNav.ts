@@ -11,7 +11,6 @@ const ROUTES: Record<Screen, string> = {
   evolucao: "/paciente/evolucao",
   configuracoes: "/paciente/configuracoes",
   consultas: "/paciente/consultas",
-  pagamentos: "/paciente/pagamentos",
 }
 
 /** onNavigate compatível com as telas v0, mapeando Screen → rota do react-router. */

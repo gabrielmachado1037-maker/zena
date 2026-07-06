@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Leaf, Check, Copy, CheckCircle, Loader2, AlertCircle, ExternalLink,
-  Rss, Trophy, Bell, Zap, ClipboardList, BarChart2, CalendarDays, FileText,
+  Leaf, Copy, CheckCircle, Loader2, AlertCircle, ExternalLink,
+  Rss, Bell, ClipboardList, BarChart2, CalendarDays, FileText,
 } from "lucide-react";
 import api from "../lib/api";
 import { usePermissao } from "../hooks/usePermissao";
@@ -29,21 +29,6 @@ interface PixData {
 }
 
 const PLANOS = [
-  {
-    slug: "hub",
-    nome: "Hub de Engajamento",
-    descricao: "Foco em engajamento e resultados dos pacientes",
-    precoMensal: 67,
-    precoAnualMensal: 55.83,
-    precoAnualTotal: 670,
-    destaque: false,
-    modulos: [
-      { icon: Rss,   label: "Feed social entre pacientes" },
-      { icon: Trophy,label: "Ranking de engajamento" },
-      { icon: Zap,   label: "Gamificação e desafios" },
-      { icon: Bell,  label: "Notificações push" },
-    ],
-  },
   {
     slug: "ecossistema",
     nome: "Ecossistema Completo",
@@ -178,7 +163,7 @@ export default function Planos() {
           )}
           {jaAssinou && (
             <p className="text-nexvel-green-light font-medium text-sm">
-              ✓ Plano {planoAtivo === "hub" ? "Hub de Engajamento" : "Ecossistema Completo"} ativo
+              ✓ Plano Ecossistema Completo ativo
               {status?.planoVencimento && ` · renova em ${new Date(status.planoVencimento).toLocaleDateString("pt-BR")}`}
             </p>
           )}
@@ -224,7 +209,7 @@ export default function Planos() {
 
         {/* Cards de plano */}
         {!pixData && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 gap-6 mb-6 max-w-md mx-auto">
             {PLANOS.map((plano) => {
               const isAtual = planoAtivo === plano.slug;
               const preco = ciclo === "anual" ? plano.precoAnualMensal : plano.precoMensal;
@@ -240,11 +225,6 @@ export default function Planos() {
                     ? { background: "#7C3AED" }
                     : { background: "#fff", border: "1px solid rgba(134,178,159,0.2)" }}
                 >
-                  {isDestaque && (
-                    <div className="absolute top-4 right-4 bg-nexvel-green-light text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">
-                      Mais completo
-                    </div>
-                  )}
                   {isAtual && (
                     <div className={`absolute top-4 left-4 text-[10px] font-bold px-2.5 py-1 rounded-full ${
                       isDestaque ? "bg-white/20 text-white" : "bg-nexvel-green-light/20 text-nexvel-green-dark"
@@ -357,7 +337,7 @@ export default function Planos() {
             <CheckCircle size={40} className="text-nexvel-green-light mx-auto mb-4" />
             <h2 className="text-xl font-bold text-nexvel-green-dark mb-2">Pague com Pix</h2>
             <p className="text-nexvel-text text-sm mb-6">
-              {pixData.planoSlug === "hub" ? "Hub de Engajamento" : "Ecossistema Completo"}
+              Ecossistema Completo
               {" — "}R${pixData.valor}{ciclo === "anual" ? "/ano" : "/mês"}
               <br />Após o pagamento, seu acesso é liberado em segundos.
             </p>
