@@ -10,6 +10,7 @@ import BannerInstalacao from "./components/BannerInstalacao";
 
 // Lazy-loaded pages — each route only downloads when visited
 const Landing       = lazy(() => import("./pages/Landing"));
+const Welcome       = lazy(() => import("./pages/Welcome"));
 const Login         = lazy(() => import("./pages/Login"));
 const Cadastro      = lazy(() => import("./pages/Cadastro"));
 const EsqueciSenha  = lazy(() => import("./pages/EsqueciSenha"));
@@ -66,6 +67,7 @@ function AppRoutes() {
     <Suspense fallback={<PageSpinner />}>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/welcome" element={<Welcome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
         <Route path="/esqueci-senha" element={<EsqueciSenha />} />
