@@ -38,7 +38,7 @@ function StateBox({
         {onRetry && <button onClick={onRetry} className="text-label-md text-nx-evo hover:underline">Tentar de novo</button>}
       </div>
     );
-  if (empty) return <div className={`${minH} flex items-center justify-center text-body-sm text-nx-outline`}>Sem dados ainda</div>;
+  if (empty) return <div className={`${minH} flex items-center justify-center text-body-sm text-nx-on-surface-variant`}>Sem dados ainda</div>;
   return <>{children}</>;
 }
 
@@ -50,23 +50,23 @@ function PersonaRow({
   tone: "risco" | "ajuste"; onClick: () => void;
 }) {
   const c = tone === "risco"
-    ? { border: "border-l-nx-danger", motivo: "text-nx-danger", acao: "text-nx-danger", Icon: Send }
-    : { border: "border-l-nx-streak", motivo: "text-nx-streak", acao: "text-nx-streak", Icon: SlidersHorizontal };
+    ? { motivo: "text-nx-danger", chip: "bg-nx-danger/12 text-nx-danger", Icon: Send }
+    : { motivo: "text-nx-streak", chip: "bg-nx-streak/12 text-nx-streak", Icon: SlidersHorizontal };
   const Icon = c.Icon;
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-nx-md border border-nx-border border-l-2 ${c.border} bg-nx-surface px-3.5 py-3 text-left transition-colors hover:bg-nx-surface-hover`}
+      className="group flex w-full items-center gap-3 rounded-nx-md border border-nx-border bg-nx-surface px-3.5 py-3 text-left transition-colors hover:bg-nx-surface-hover"
     >
       <Avatar src={foto} nome={nome} tamanho={40} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-body-md font-semibold text-nx-on-surface">{nome}</p>
         <p className={`truncate text-body-sm ${c.motivo}`}>{motivo}</p>
       </div>
-      <span className={`flex shrink-0 items-center gap-1 text-body-sm font-semibold ${c.acao}`}>
-        <Icon className="size-4" /> {acao}
+      <span className={`flex shrink-0 items-center gap-1.5 rounded-nx-sm px-2.5 py-1 text-label-md font-semibold ${c.chip}`}>
+        <Icon className="size-3.5" /> {acao}
       </span>
-      <ChevronRight className="size-4 shrink-0 text-nx-outline" />
+      <ChevronRight className="size-4 shrink-0 text-nx-outline transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
     </button>
   );
 }
@@ -117,7 +117,12 @@ export default function Dashboard() {
         {/* BLOCO 1 — Precisa de você agora */}
         <section className="mb-8">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-body-lg font-semibold text-nx-on-surface">Precisa de você agora</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-body-lg font-semibold text-nx-on-surface">Precisa de você agora</h2>
+              {prioridade.length > 0 && (
+                <span className="rounded-full bg-nx-container-high px-2 py-0.5 text-label-md font-semibold tabular-nums text-nx-on-surface-variant">{prioridade.length}</span>
+              )}
+            </div>
             {prioridade.length > 0 && (
               <button onClick={() => navigate("/app/pacientes")} className="text-body-sm text-nx-evo hover:underline">Ver todos</button>
             )}
@@ -156,7 +161,7 @@ export default function Dashboard() {
                   <Avatar src={p.foto} nome={p.nome} tamanho={38} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-body-md font-semibold text-nx-on-surface">{p.nome}</p>
-                    <p className="truncate text-body-sm text-nx-outline">{p.liga} {p.ligaNivel}</p>
+                    <p className="truncate text-body-sm text-nx-on-surface-variant">{p.liga} {p.ligaNivel}</p>
                   </div>
                   {p.streak > 0 && (
                     <span className="flex shrink-0 items-center gap-1 text-body-sm font-medium text-nx-streak">
@@ -210,7 +215,7 @@ function StatMini({
   return (
     <div className="rounded-nx-md border border-nx-border bg-nx-surface p-4">
       <div className="flex items-center justify-between">
-        <span className="text-label-md uppercase text-nx-outline">{label}</span>
+        <span className="text-label-md uppercase text-nx-on-surface-variant">{label}</span>
         {icon}
       </div>
       {loading ? (
