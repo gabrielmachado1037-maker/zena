@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-// Painel de vidro do mockup Registros (bg #13131F @70% + blur + borda roxa sutil).
-// Reproduz o script de micro-interação: atualiza --mouse-x/--mouse-y no mousemove.
+// Painel de superfície sólida do Registros (glassmorphism fora — ban do DESIGN.md).
+// Mantém o mousemove p/ o efeito .active-glow do radar de urgência.
 export default function GlassPanel({
   children,
   className = "",
@@ -16,7 +16,7 @@ export default function GlassPanel({
         e.currentTarget.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
         e.currentTarget.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
       }}
-      className={`bg-nx-surface/70 backdrop-blur-md border border-nx-primary-container/10 ${className}`}
+      className={`bg-nx-surface border border-nx-border ${className}`}
     >
       {children}
     </div>

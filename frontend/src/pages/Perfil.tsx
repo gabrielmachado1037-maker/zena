@@ -16,8 +16,8 @@ interface Me {
 
 const SUPORTE_EMAIL = "suporte@nexvel.com.br";
 
-/* glass-panel sem linhas brancas (border-subtle = rgba(124,58,237,.1)) */
-const GLASS = "bg-nx-surface/80 backdrop-blur-md border border-nx-primary-container/10 rounded-2xl transition-shadow hover:shadow-[0_0_20px_rgba(124,58,237,0.15)]";
+/* superfície sólida (glassmorphism fora — ban do DESIGN.md) */
+const GLASS = "bg-nx-surface border border-nx-border rounded-nx-lg";
 
 export default function Perfil() {
   const { nutricionista, updateAvatar, updateNutricionista } = useAuth();
@@ -59,10 +59,10 @@ export default function Perfil() {
       <main className="flex-1 min-w-0 flex flex-col pb-24 lg:pb-0">
         {/* Header */}
         <header className="flex items-center justify-between gap-4 px-5 md:px-8 h-16 border-b border-nx-outline-variant sticky top-0 z-30 bg-nx-bg-lowest">
-          <h1 className="text-headline-md text-nx-primary font-bold">Configurações</h1>
+          <h1 className="text-headline-md text-nx-on-surface font-bold">Configurações</h1>
           <div className="flex items-center gap-2">
             <button aria-label="Notificações" className="relative p-2 rounded-full hover:bg-nx-surface-hover transition-colors">
-              <Bell size={20} /><span className="absolute top-2 right-2 size-2 rounded-full bg-nx-secondary" />
+              <Bell size={20} /><span className="absolute top-2 right-2 size-2 rounded-full bg-nx-danger" />
             </button>
             <button aria-label="Conta" className="p-2 rounded-full hover:bg-nx-surface-hover transition-colors"><UserCircle2 size={22} /></button>
           </div>
@@ -76,8 +76,8 @@ export default function Perfil() {
               <div className="h-48 animate-pulse rounded-2xl bg-nx-container/60" />
             ) : error ? (
               <div className={`${GLASS} p-8 text-center`}>
-                <p className="text-nx-error mb-3">{error}</p>
-                <button onClick={carregar} className="text-nx-primary hover:underline text-label-md">Tentar de novo</button>
+                <p className="text-nx-danger mb-3">{error}</p>
+                <button onClick={carregar} className="text-nx-evo hover:underline text-label-md">Tentar de novo</button>
               </div>
             ) : (
               <div className={`${GLASS} p-6`}>
@@ -89,7 +89,7 @@ export default function Perfil() {
                       onClick={() => fileRef.current?.click()}
                       disabled={fotoLoading}
                       aria-label="Trocar foto"
-                      className="absolute -bottom-2 -right-2 grid place-items-center size-9 rounded-full bg-nx-primary-container text-white shadow-nx-glow hover:bg-[#8b46f5] transition-colors disabled:opacity-60"
+                      className="absolute -bottom-2 -right-2 grid place-items-center size-9 rounded-full bg-nx-evo text-nx-on-evo shadow-nx-evo hover:bg-nx-evo-2 transition-colors disabled:opacity-60"
                     >
                       {fotoLoading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
                     </button>
@@ -101,11 +101,11 @@ export default function Perfil() {
                     <div className="flex items-start justify-center sm:justify-between gap-3">
                       <div>
                         <h2 className="text-headline-lg font-extrabold leading-tight">{nome}</h2>
-                        <p className="text-body-md text-nx-primary mt-0.5">{subtitulo}</p>
+                        <p className="text-body-md text-nx-on-surface-variant mt-0.5">{subtitulo}</p>
                       </div>
                       <button
                         onClick={() => setEditOpen(true)}
-                        className="hidden sm:flex items-center gap-1.5 text-label-md text-nx-on-surface-variant hover:text-nx-primary rounded-lg px-3 py-1.5 border border-nx-primary-container/10"
+                        className="hidden sm:flex items-center gap-1.5 text-label-md text-nx-on-surface-variant hover:text-nx-on-surface rounded-lg px-3 py-1.5 border border-nx-border"
                       >
                         <Pencil size={14} /> Editar
                       </button>
@@ -114,19 +114,19 @@ export default function Perfil() {
                     <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-4">
                       {me?.crn && (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-nx-container px-3 py-1.5 text-label-md text-nx-on-surface-variant">
-                          <BadgeCheck size={15} className="text-nx-tertiary" /> {me.crn}
+                          <BadgeCheck size={15} className="text-nx-evo" /> {me.crn}
                         </span>
                       )}
                       {me?.enderecoConsultorio?.trim() && (
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-nx-container px-3 py-1.5 text-label-md text-nx-on-surface-variant">
-                          <MapPin size={15} className="text-nx-primary" /> {me.enderecoConsultorio}
+                          <MapPin size={15} className="text-nx-on-surface-variant" /> {me.enderecoConsultorio}
                         </span>
                       )}
                     </div>
 
                     <button
                       onClick={() => setEditOpen(true)}
-                      className="sm:hidden mt-4 w-full flex items-center justify-center gap-1.5 text-label-md text-nx-primary rounded-xl py-2.5 border border-nx-primary-container/10"
+                      className="sm:hidden mt-4 w-full flex items-center justify-center gap-1.5 text-label-md text-nx-evo rounded-xl py-2.5 border border-nx-border"
                     >
                       <Pencil size={14} /> Editar dados
                     </button>
@@ -138,7 +138,7 @@ export default function Perfil() {
             {/* Ajustes */}
             <section>
               <p className="text-label-md uppercase tracking-wider text-nx-outline px-1 mb-3">Ajustes</p>
-              <div className={`${GLASS} divide-y divide-nx-primary-container/10 overflow-hidden`}>
+              <div className={`${GLASS} divide-y divide-nx-border overflow-hidden`}>
                 {/* Dados Pessoais → abre modal */}
                 <AjusteRow
                   icon={<IdCard size={16} />}
@@ -157,7 +157,7 @@ export default function Perfil() {
                   descricao="Camada extra de segurança no login"
                   tint="tertiary"
                   disabled
-                  right={<span className="text-[11px] font-bold uppercase tracking-wider text-nx-secondary bg-nx-secondary/15 rounded-full px-2.5 py-1">Em breve</span>}
+                  right={<span className="text-[11px] font-bold uppercase tracking-wider text-nx-outline bg-nx-container-high rounded-full px-2.5 py-1">Em breve</span>}
                 />
 
                 {/* Notificações push (toggle) */}
@@ -177,10 +177,10 @@ export default function Perfil() {
       {/* FAB — falar com suporte */}
       <a
         href={`mailto:${SUPORTE_EMAIL}`}
-        className="fixed bottom-24 lg:bottom-8 right-6 lg:right-8 z-40 flex items-center gap-3 px-6 py-4 rounded-full bg-nx-surface/80 backdrop-blur-xl border border-nx-primary-container/40 shadow-2xl hover:scale-105 transition-transform"
+        className="fixed bottom-24 lg:bottom-8 right-6 lg:right-8 z-40 flex items-center gap-3 px-6 py-4 rounded-full bg-nx-container border border-nx-border shadow-nx-card hover:scale-105 transition-transform"
       >
-        <MessageCircle size={22} className="text-nx-primary" />
-        <span className="text-label-md font-bold uppercase tracking-wider text-nx-primary">Suporte</span>
+        <MessageCircle size={22} className="text-nx-evo" />
+        <span className="text-label-md font-bold uppercase tracking-wider text-nx-evo">Suporte</span>
       </a>
 
       {editOpen && me && (
@@ -202,9 +202,9 @@ export default function Perfil() {
 
 function IconChip({ children, tint = "primary" }: { children: React.ReactNode; tint?: "primary" | "tertiary" | "secondary" }) {
   const map = {
-    primary: "bg-nx-primary-container/15 text-nx-primary",
-    tertiary: "bg-nx-tertiary/15 text-nx-tertiary",
-    secondary: "bg-nx-secondary/15 text-nx-secondary",
+    primary: "bg-nx-evo/12 text-nx-evo",
+    tertiary: "bg-nx-container-high text-nx-on-surface-variant",
+    secondary: "bg-nx-gold/15 text-nx-gold",
   } as const;
   return <div className={`grid place-items-center size-9 rounded-xl shrink-0 ${map[tint]}`}>{children}</div>;
 }
@@ -277,7 +277,7 @@ function SegurancaRow() {
             <input
               type={showA ? "text" : "password"} placeholder="Senha atual" value={atual}
               onChange={(e) => setAtual(e.target.value)}
-              className="w-full bg-nx-container border border-nx-primary-container/10 rounded-xl px-3 py-2.5 pr-10 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-primary"
+              className="w-full bg-nx-container border border-nx-border rounded-xl px-3 py-2.5 pr-10 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-evo"
             />
             <button onClick={() => setShowA((s) => !s)} aria-label="Mostrar senha" className="absolute right-3 top-2.5 text-nx-outline hover:text-nx-on-surface">
               {showA ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -287,7 +287,7 @@ function SegurancaRow() {
             <input
               type={showN ? "text" : "password"} placeholder="Nova senha" value={nova}
               onChange={(e) => setNova(e.target.value)}
-              className="w-full bg-nx-container border border-nx-primary-container/10 rounded-xl px-3 py-2.5 pr-10 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-primary"
+              className="w-full bg-nx-container border border-nx-border rounded-xl px-3 py-2.5 pr-10 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-evo"
             />
             <button onClick={() => setShowN((s) => !s)} aria-label="Mostrar senha" className="absolute right-3 top-2.5 text-nx-outline hover:text-nx-on-surface">
               {showN ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -296,13 +296,13 @@ function SegurancaRow() {
           <input
             type="password" placeholder="Confirmar nova senha" value={conf}
             onChange={(e) => setConf(e.target.value)}
-            className="w-full bg-nx-container border border-nx-primary-container/10 rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-primary"
+            className="w-full bg-nx-container border border-nx-border rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-evo"
           />
-          {err && <p className="text-nx-error text-body-sm">{err}</p>}
-          {msg && <p className="text-nx-tertiary text-body-sm">{msg}</p>}
+          {err && <p className="text-nx-danger text-body-sm">{err}</p>}
+          {msg && <p className="text-nx-evo text-body-sm">{msg}</p>}
           <button
             onClick={submit} disabled={loading}
-            className="w-full bg-nx-primary-container hover:bg-[#8b46f5] disabled:opacity-50 text-nx-on-primary-container text-label-md font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-nx-evo hover:bg-nx-evo-2 disabled:opacity-50 text-nx-on-evo text-label-md font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
           >
             {loading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : "Salvar senha"}
           </button>
@@ -381,7 +381,7 @@ function NotificacoesRow() {
         disabled={!supported || busy}
         aria-label="Alternar notificações"
         className="relative w-12 h-6 rounded-full transition-colors shrink-0 disabled:opacity-50"
-        style={{ background: on ? "#7c3aed" : "rgba(210,187,255,0.2)" }}
+        style={{ background: on ? "#7CFF5B" : "rgba(255,255,255,0.12)" }}
       >
         {busy ? (
           <Loader2 size={14} className="animate-spin absolute top-1 left-4 text-white" />
@@ -404,7 +404,7 @@ function AjudaCard() {
   return (
     <section>
       <p className="text-label-md uppercase tracking-wider text-nx-outline px-1 mb-3">Ajuda</p>
-      <div className={`${GLASS} divide-y divide-nx-primary-container/10 overflow-hidden`}>
+      <div className={`${GLASS} divide-y divide-nx-border overflow-hidden`}>
         {links.map((l) => (
           <a
             key={l.label}
@@ -432,8 +432,8 @@ function StatusCard() {
       <div className={`${GLASS} p-5`}>
         <div className="flex items-center gap-2.5 mb-4">
           <span className="relative flex size-2.5">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-nx-tertiary opacity-60 animate-ping" />
-            <span className="relative inline-flex size-2.5 rounded-full bg-nx-tertiary" />
+            <span className="absolute inline-flex h-full w-full rounded-full bg-nx-evo opacity-60 animate-ping" />
+            <span className="relative inline-flex size-2.5 rounded-full bg-nx-evo" />
           </span>
           <p className="text-body-md font-bold text-nx-on-surface">Todos os sistemas operacionais</p>
         </div>
@@ -443,7 +443,7 @@ function StatusCard() {
               <span className="flex items-center gap-2 text-nx-on-surface-variant">
                 <Activity size={14} className="text-nx-outline" /> {s}
               </span>
-              <span className="text-nx-tertiary font-semibold">Operacional</span>
+              <span className="text-nx-evo font-semibold">Operacional</span>
             </li>
           ))}
         </ul>
@@ -477,7 +477,7 @@ function EditarPerfilModal({ me, onClose, onSalvo }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full md:max-w-md bg-nx-surface border border-nx-primary-container/10 rounded-t-3xl md:rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full md:max-w-md bg-nx-surface border border-nx-border rounded-t-3xl md:rounded-2xl p-6" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-body-lg font-bold">Editar dados</h3>
           <button onClick={onClose} aria-label="Fechar" className="text-nx-outline hover:text-nx-on-surface"><X size={20} /></button>
@@ -487,11 +487,11 @@ function EditarPerfilModal({ me, onClose, onSalvo }: {
           <Campo label="CRN" value={crn} onChange={setCrn} />
           <Campo label="Localização (endereço do consultório)" value={endereco} onChange={setEndereco} />
         </div>
-        {erro && <p className="text-nx-error text-body-sm mt-3">{erro}</p>}
+        {erro && <p className="text-nx-danger text-body-sm mt-3">{erro}</p>}
         <button
           onClick={salvar}
           disabled={salvando}
-          className="w-full mt-5 bg-nx-primary-container hover:bg-[#8b46f5] disabled:opacity-50 text-nx-on-primary-container text-label-md font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+          className="w-full mt-5 bg-nx-evo hover:bg-nx-evo-2 disabled:opacity-50 text-nx-on-evo text-label-md font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
         >
           {salvando ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : "Salvar"}
         </button>
@@ -507,7 +507,7 @@ function Campo({ label, value, onChange }: { label: string; value: string; onCha
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full bg-nx-container border border-nx-primary-container/10 rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-primary"
+        className="mt-1 w-full bg-nx-container border border-nx-border rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-evo"
       />
     </label>
   );

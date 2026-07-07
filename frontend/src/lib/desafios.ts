@@ -59,11 +59,11 @@ export function derivarKpisDesafios(r: ResumoResp | null): KpiView[] {
 
 /** Metadados de categoria (rótulo + cor do token). */
 export const CATEGORIAS: Record<string, { label: string; cor: string }> = {
-  hidratacao: { label: "Hidratação", cor: "#d2bbff" },
-  alimentacao: { label: "Alimentação", cor: "#4edea3" },
-  treino: { label: "Treino", cor: "#A855F7" },
-  sono: { label: "Sono", cor: "#ffb95f" },
-  custom: { label: "Personalizado", cor: "#958da1" },
+  hidratacao: { label: "Hidratação", cor: "#49A8FF" },
+  alimentacao: { label: "Alimentação", cor: "#7CFF5B" },
+  treino: { label: "Treino", cor: "#FF8A1F" },
+  sono: { label: "Sono", cor: "#8B7DFF" },
+  custom: { label: "Personalizado", cor: "#F8C84B" },
 };
 
 export function catMeta(categoria: string) {
@@ -126,8 +126,8 @@ export const TEMPLATES_IA: TemplateDesafio[] = [
 ];
 
 export const TONE_TEXT: Record<KpiView["tone"], string> = {
-  primary: "text-nx-primary",
-  tertiary: "text-nx-tertiary",
-  secondary: "text-nx-secondary",
+  primary: "text-nx-evo",
+  tertiary: "text-nx-gold",
+  secondary: "text-nx-streak",
   neutral: "text-nx-on-surface",
 };

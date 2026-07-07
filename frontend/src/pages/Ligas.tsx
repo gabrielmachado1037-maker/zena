@@ -7,6 +7,7 @@ import {
 import { useFetch } from "../hooks/useFetch";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
+import { LeagueCrest } from "../components/ui-nx";
 
 /* ───────── shapes reais da API ───────── */
 interface LigaPaciente {
@@ -30,7 +31,7 @@ const nf = (n: number) => n.toLocaleString("pt-BR");
 
 /* ───────── primitivos ───────── */
 function Card({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  return <div className={`rounded-2xl bg-nx-surface border border-white/5 ${className}`}>{children}</div>;
+  return <div className={`rounded-2xl bg-nx-surface border border-nx-border ${className}`}>{children}</div>;
 }
 
 function StateBox({ loading, error, empty, onRetry, children, minH = "h-28" }: {
@@ -40,8 +41,8 @@ function StateBox({ loading, error, empty, onRetry, children, minH = "h-28" }: {
   if (loading) return <div className={`${minH} animate-pulse rounded-xl bg-nx-container/60`} aria-busy="true" />;
   if (error) return (
     <div className={`${minH} flex flex-col items-center justify-center gap-2 text-center`}>
-      <p className="text-body-sm text-nx-error">{error}</p>
-      {onRetry && <button onClick={onRetry} className="text-label-md text-nx-primary hover:underline">Tentar de novo</button>}
+      <p className="text-body-sm text-nx-danger">{error}</p>
+      {onRetry && <button onClick={onRetry} className="text-label-md text-nx-evo hover:underline">Tentar de novo</button>}
     </div>
   );
   if (empty) return <div className={`${minH} flex items-center justify-center text-body-sm text-nx-outline`}>Sem dados ainda</div>;
@@ -58,7 +59,7 @@ function Segmented<T extends string>({ value, onChange, options }: {
           key={o.value}
           onClick={() => onChange(o.value)}
           className={`rounded-lg px-3 py-1.5 text-body-sm font-medium transition-colors ${
-            value === o.value ? "bg-nx-primary-container/30 text-nx-on-surface" : "text-nx-on-surface-variant hover:text-nx-on-surface"
+            value === o.value ? "bg-nx-container-high text-nx-on-surface" : "text-nx-on-surface-variant hover:text-nx-on-surface"
           }`}
         >
           {o.label}
@@ -96,13 +97,13 @@ function LigaCard({ d, active, onClick }: {
     <button
       onClick={onClick}
       className={`flex flex-col items-center gap-1 rounded-2xl border p-4 transition-all ${
-        active ? "bg-nx-surface" : "border-white/5 bg-nx-surface hover:bg-nx-surface-hover"
+        active ? "bg-nx-surface" : "border-nx-border bg-nx-surface hover:bg-nx-surface-hover"
       }`}
       style={active ? { borderColor: `${d.cor}88`, boxShadow: `0 0 20px ${d.cor}22` } : undefined}
     >
-      <span className="text-3xl" aria-hidden>{d.icone}</span>
+      <LeagueCrest liga={d.liga} size={46} animated={active} />
       <span className="text-body-sm font-semibold" style={{ color: d.cor }}>{d.liga}</span>
-      <span className="text-headline-sm font-bold text-nx-on-surface">{d.count}</span>
+      <span className="text-[22px] leading-none font-bold text-nx-on-surface">{d.count}</span>
       <span className="text-label-sm text-nx-outline">{d.count === 1 ? "paciente" : "pacientes"}</span>
     </button>
   );
@@ -115,8 +116,13 @@ function PacienteRow({ p, zona, onClick }: {
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-xl border border-white/5 bg-nx-surface px-3 py-2.5 text-left transition-colors hover:bg-nx-surface-hover"
-      style={zona === "promo" ? { borderLeft: "3px solid #4edea3" } : zona === "queda" ? { borderLeft: "3px solid #ffb4ab" } : undefined}
+      className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors hover:bg-nx-surface-hover ${
+        zona === "promo"
+          ? "border-nx-evo/30 bg-nx-evo/[0.06]"
+          : zona === "queda"
+          ? "border-nx-danger/30 bg-nx-danger/[0.06]"
+          : "border-nx-border bg-nx-surface"
+      }`}
     >
       <span className="w-5 shrink-0 text-center text-body-sm font-bold text-nx-outline">{p.posicaoLiga}</span>
       <Avatar src={p.foto} nome={p.nome} tamanho={38} />
@@ -131,7 +137,7 @@ function PacienteRow({ p, zona, onClick }: {
           <span className="text-label-sm font-medium text-nx-on-surface-variant">{p.pctObjetivoPeso}%</span>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-nx-container">
-          <div className="h-full rounded-full bg-nx-tertiary" style={{ width: `${p.pctObjetivoPeso}%` }} />
+          <div className="h-full rounded-full bg-nx-evo" style={{ width: `${p.pctObjetivoPeso}%` }} />
         </div>
       </div>
       <div className="shrink-0 text-right">
@@ -179,7 +185,7 @@ function ConfigModal({ onClose, onSaved, zonaN, setZonaN }: {
           type="number"
           value={form?.[k] ?? 0}
           onChange={(e) => set(k, Math.max(0, parseInt(e.target.value) || 0))}
-          className="w-20 rounded-lg border border-white/10 bg-nx-container px-2 py-1 text-right text-body-md text-nx-on-surface focus:border-nx-primary focus:outline-none"
+          className="w-20 rounded-lg border border-nx-border bg-nx-container px-2 py-1 text-right text-body-md text-nx-on-surface focus:border-nx-evo/50 focus:outline-none"
         />
       </label>
       {hint && <p className="mt-0.5 text-label-sm text-nx-outline">{hint}</p>}
@@ -199,34 +205,34 @@ function ConfigModal({ onClose, onSaved, zonaN, setZonaN }: {
           <Field label="Peso — Objetivo de peso" k="pesoPesoMeta" />
           <Field label="Peso — Hábitos consecutivos" k="pesoHabitosConsecutivos" />
           <Field label="Peso — Metas semanais" k="pesoMetasSemanais" />
-          <p className={`text-body-sm ${somaPesos === 100 ? "text-nx-tertiary" : "text-nx-secondary"}`}>
+          <p className={`text-body-sm ${somaPesos === 100 ? "text-nx-evo" : "text-nx-streak"}`}>
             Soma atual: {somaPesos} {somaPesos !== 100 && "· o ideal é 100"}
           </p>
 
-          <hr className="border-white/5" />
+          <hr className="border-nx-border" />
           <p className="text-label-md uppercase text-nx-outline">Metas-alvo</p>
           <Field label="Dias consecutivos (alvo)" k="diasConsecutivosAlvo" hint="Dias de hábitos para pontuação máxima" />
           <Field label="Metas semanais (alvo)" k="metasSemanaisAlvo" hint="Semanas com adesão ≥ 7 no mês" />
 
-          <hr className="border-white/5" />
+          <hr className="border-nx-border" />
           <p className="text-label-md uppercase text-nx-outline">Faixa de corte (zona de promoção/queda)</p>
           <label className="flex items-center justify-between text-body-sm text-nx-on-surface-variant">
             Nº de pacientes na zona
             <input
               type="number" min={1} value={zonaN}
               onChange={(e) => setZonaN(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-20 rounded-lg border border-white/10 bg-nx-container px-2 py-1 text-right text-body-md text-nx-on-surface focus:border-nx-primary focus:outline-none"
+              className="w-20 rounded-lg border border-nx-border bg-nx-container px-2 py-1 text-right text-body-md text-nx-on-surface focus:border-nx-evo/50 focus:outline-none"
             />
           </label>
           <p className="text-label-sm text-nx-outline">Top {zonaN} sobem de liga · Bottom {zonaN} caem.</p>
 
-          {err && <p className="text-body-sm text-nx-error">{err}</p>}
+          {err && <p className="text-body-sm text-nx-danger">{err}</p>}
         </div>
 
         <div className="mt-6 flex gap-3" onClick={(e) => e.stopPropagation()}>
-          <button onClick={onClose} className="flex-1 rounded-xl border border-white/10 py-2.5 text-body-md text-nx-on-surface-variant hover:bg-nx-surface-hover">Cancelar</button>
+          <button onClick={onClose} className="flex-1 rounded-xl border border-nx-border py-2.5 text-body-md text-nx-on-surface-variant hover:bg-nx-surface-hover">Cancelar</button>
           <button onClick={salvar} disabled={saving || !form}
-            className="flex-1 rounded-xl bg-nx-primary-container py-2.5 text-body-md font-semibold text-white disabled:opacity-50">
+            className="flex-1 rounded-xl bg-nx-evo py-2.5 text-body-md font-semibold text-nx-on-evo disabled:opacity-50">
             {saving ? "Salvando…" : "Salvar"}
           </button>
         </div>
@@ -278,7 +284,7 @@ export default function Ligas() {
         <header className="flex flex-wrap items-start justify-between gap-4 mb-6">
           <div>
             <h1 className="flex items-center gap-2 text-headline-md text-nx-on-surface">
-              <Trophy size={24} className="text-nx-secondary" /> Ligas
+              <Trophy size={24} className="text-nx-gold" /> Ligas
             </h1>
             <p className="text-body-sm text-nx-on-surface-variant mt-0.5">
               {data ? `${data.totalAtivos} pacientes ativos distribuídos em 6 ligas` : "Acompanhe seus pacientes por liga"}
@@ -287,11 +293,11 @@ export default function Ligas() {
           <div className="flex items-center gap-2 shrink-0">
             <Segmented value={periodo} onChange={setPeriodo} options={[{ value: "semanal", label: "Semanal" }, { value: "mensal", label: "Mensal" }]} />
             <button onClick={refetch} aria-label="Recarregar"
-              className="grid place-items-center size-11 rounded-full bg-nx-surface border border-white/5 text-nx-on-surface-variant hover:text-nx-on-surface transition-colors">
+              className="grid place-items-center size-11 rounded-full bg-nx-surface border border-nx-border text-nx-on-surface-variant hover:text-nx-on-surface transition-colors">
               <RotateCcw size={17} />
             </button>
             <button onClick={() => setConfigOpen(true)}
-              className="flex items-center gap-2 rounded-full bg-nx-surface border border-white/5 px-4 h-11 text-body-sm text-nx-on-surface-variant hover:text-nx-on-surface transition-colors">
+              className="flex items-center gap-2 rounded-full bg-nx-surface border border-nx-border px-4 h-11 text-body-sm text-nx-on-surface-variant hover:text-nx-on-surface transition-colors">
               <SlidersHorizontal size={16} /> <span className="hidden sm:inline">Configurar</span>
             </button>
           </div>
@@ -304,12 +310,12 @@ export default function Ligas() {
             <input
               value={busca} onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar paciente por nome…"
-              className="w-full rounded-xl border border-white/5 bg-nx-surface py-2.5 pl-9 pr-3 text-body-md text-nx-on-surface placeholder:text-nx-outline focus:border-nx-primary focus:outline-none"
+              className="w-full rounded-xl border border-nx-border bg-nx-surface py-2.5 pl-9 pr-3 text-body-md text-nx-on-surface placeholder:text-nx-outline focus:border-nx-evo/50 focus:outline-none"
             />
           </div>
           <button onClick={() => setAtivos((v) => !v)}
             className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-body-sm transition-colors ${
-              ativos ? "border-nx-primary-container/40 bg-nx-primary-container/15 text-nx-on-surface" : "border-white/5 bg-nx-surface text-nx-on-surface-variant"
+              ativos ? "border-nx-evo/30 bg-nx-evo/10 text-nx-evo" : "border-nx-border bg-nx-surface text-nx-on-surface-variant"
             }`}>
             <Users size={16} /> Só ativos
           </button>
@@ -338,7 +344,7 @@ export default function Ligas() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="flex items-center gap-2 text-body-lg font-semibold text-nx-on-surface">
-              <span className="text-xl">{distSel?.icone}</span>
+              <LeagueCrest liga={ligaAtiva} size={26} animated={false} />
               Liga {ligaAtiva}
               <span className="text-body-sm font-normal text-nx-outline">· {pacientesLiga.length} {pacientesLiga.length === 1 ? "paciente" : "pacientes"}</span>
             </h2>
@@ -347,7 +353,7 @@ export default function Ligas() {
           <StateBox loading={loading} error={error} onRetry={refetch} empty={!loading && pacientesLiga.length === 0} minH="h-32">
             <div className="space-y-2">
               {showPromo && pacientesLiga.length > 0 && (
-                <div className="flex items-center gap-2 rounded-lg bg-nx-tertiary/10 px-3 py-1.5 text-body-sm font-medium text-nx-tertiary">
+                <div className="flex items-center gap-2 rounded-lg bg-nx-evo/10 px-3 py-1.5 text-body-sm font-medium text-nx-evo">
                   <TrendingUp size={15} /> Zona de promoção — Top {Math.min(zonaN, n)} sobem de liga
                 </div>
               )}
@@ -357,7 +363,7 @@ export default function Ligas() {
                 return (
                   <div key={p.id}>
                     {primeiraQueda && (
-                      <div className="mb-2 flex items-center gap-2 rounded-lg bg-nx-error/10 px-3 py-1.5 text-body-sm font-medium text-nx-error">
+                      <div className="mb-2 flex items-center gap-2 rounded-lg bg-nx-danger/10 px-3 py-1.5 text-body-sm font-medium text-nx-danger">
                         <TrendingDown size={15} /> Zona de queda — Bottom {Math.min(zonaN, n)} caem de liga
                       </div>
                     )}

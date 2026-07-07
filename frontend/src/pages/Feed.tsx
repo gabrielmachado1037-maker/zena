@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Search } from "lucide-react";
 import {
   FILTROS, getRegistrosFeed, validarRegistro, enviarNudge, type FeedData,
 } from "../lib/registros";
@@ -79,9 +80,9 @@ export default function Feed() {
     <div className="min-h-screen bg-nx-bg-lowest text-nx-on-surface font-sans px-4 md:px-8 py-6 custom-scrollbar">
       {/* Header (título + busca) */}
       <header className="flex items-center gap-4 mb-6 flex-wrap">
-        <h2 className="text-headline-md font-bold text-nx-primary">Registros Diários</h2>
-        <div className="hidden md:flex bg-nx-container-high px-4 py-1.5 rounded-full items-center gap-2 border border-nx-outline-variant focus-within:ring-1 focus-within:ring-nx-primary transition-all">
-          <span className="material-symbols-outlined text-nx-on-surface-variant text-sm" data-icon="search">search</span>
+        <h2 className="text-headline-md font-bold text-nx-on-surface">Registros Diários</h2>
+        <div className="hidden md:flex bg-nx-container-high px-4 py-1.5 rounded-full items-center gap-2 border border-nx-border focus-within:ring-1 focus-within:ring-nx-evo transition-all">
+          <Search size={16} className="text-nx-on-surface-variant" />
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
@@ -136,7 +137,7 @@ export default function Feed() {
       </div>
 
       {toast && (
-        <div className="fixed bottom-24 right-8 z-50 bg-nx-container-high border border-nx-primary/30 text-nx-on-surface px-5 py-3 rounded-xl shadow-2xl text-body-sm">
+        <div className="fixed bottom-24 right-8 z-50 bg-nx-container-high border border-nx-border text-nx-on-surface px-5 py-3 rounded-xl shadow-nx-card text-body-sm">
           {toast}
         </div>
       )}

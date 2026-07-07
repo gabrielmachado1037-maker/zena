@@ -1,4 +1,5 @@
 // Tela "Registros Diários" (Nexvel) — tipos + acesso à API real (/api/registros-feed).
+import { AlertTriangle, UtensilsCrossed, Dumbbell, type LucideIcon } from "lucide-react";
 import api from "./api";
 
 export type TipoRegistro = "excecao" | "treino" | "refeicao" | "furtada";
@@ -8,15 +9,15 @@ export type Liga = "bronze" | "silver" | "gold" | "diamond" | "master" | "legend
 export interface FiltroDef {
   id: string;
   tipo: TipoRegistro;
-  icon: string;
+  icon: LucideIcon;
   cor: string; // classe de cor do ícone
   label: string;
 }
 
 export const FILTROS: FiltroDef[] = [
-  { id: "excecoes", tipo: "excecao", icon: "priority_high", cor: "text-nx-secondary", label: "Exceções / Ajustes" },
-  { id: "furtadas", tipo: "furtada", icon: "no_meals", cor: "text-nx-error", label: "Baixa adesão" },
-  { id: "treinos", tipo: "treino", icon: "fitness_center", cor: "text-nx-tertiary", label: "Check-ins completos" },
+  { id: "excecoes", tipo: "excecao", icon: AlertTriangle, cor: "text-nx-streak", label: "Exceções / Ajustes" },
+  { id: "furtadas", tipo: "furtada", icon: UtensilsCrossed, cor: "text-nx-danger", label: "Baixa adesão" },
+  { id: "treinos", tipo: "treino", icon: Dumbbell, cor: "text-nx-evo", label: "Check-ins completos" },
 ];
 
 export interface Registro {

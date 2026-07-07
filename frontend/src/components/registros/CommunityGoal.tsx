@@ -14,10 +14,10 @@ export default function CommunityGoal({ pct, deltaSemana }: { pct: number; delta
       <div className="space-y-2">
         <div className="flex justify-between text-label-sm">
           <span>Check-ins de hoje</span>
-          <span className="text-nx-primary font-bold">{pct}%</span>
+          <span className="text-nx-evo font-bold">{pct}%</span>
         </div>
         <div className="w-full h-2 bg-nx-container-high rounded-full overflow-hidden">
-          <div className="h-full bg-nx-primary transition-all" style={{ width: `${pct}%` }} />
+          <div className="h-full bg-nx-evo transition-all" style={{ width: `${pct}%` }} />
         </div>
         <p className="text-[11px] text-nx-on-surface-variant leading-tight mt-3">{legenda}</p>
       </div>

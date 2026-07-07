@@ -15,7 +15,7 @@ import type {
 
 /* ───────── primitivos ───────── */
 function Card({ className = "", children }: { className?: string; children: React.ReactNode }) {
-  return <div className={`rounded-2xl bg-nx-surface border border-white/5 ${className}`}>{children}</div>;
+  return <div className={`rounded-2xl bg-nx-surface border border-nx-border ${className}`}>{children}</div>;
 }
 function StateBox({ loading, error, empty, onRetry, children, minH = "h-28", emptyText = "Sem dados" }: {
   loading: boolean; error: string | null; empty?: boolean; onRetry?: () => void;
@@ -25,16 +25,16 @@ function StateBox({ loading, error, empty, onRetry, children, minH = "h-28", emp
   if (error)
     return (
       <div className={`${minH} flex flex-col items-center justify-center gap-2 text-center`}>
-        <p className="text-body-sm text-nx-error">{error}</p>
-        {onRetry && <button onClick={onRetry} className="text-label-md text-nx-primary hover:underline">Tentar de novo</button>}
+        <p className="text-body-sm text-nx-danger">{error}</p>
+        {onRetry && <button onClick={onRetry} className="text-label-md text-nx-evo hover:underline">Tentar de novo</button>}
       </div>
     );
   if (empty) return <div className={`${minH} flex items-center justify-center text-body-sm text-nx-outline`}>{emptyText}</div>;
   return <>{children}</>;
 }
-function Barra({ pct, cor = "#4edea3" }: { pct: number; cor?: string }) {
+function Barra({ pct, cor = "#7CFF5B" }: { pct: number; cor?: string }) {
   return (
-    <div className="h-2 rounded-full bg-white/8 overflow-hidden">
+    <div className="h-2 rounded-full bg-nx-container overflow-hidden">
       <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, pct)}%`, background: cor }} />
     </div>
   );
@@ -79,21 +79,21 @@ export default function Desafios() {
             <p className="text-body-sm text-nx-on-surface-variant mt-0.5">Engajamento e gamificação dos seus pacientes</p>
           </div>
           <div className="flex items-center gap-2 print:hidden">
-            <button onClick={() => window.print()} className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-body-sm text-nx-on-surface-variant hover:text-nx-on-surface transition-colors">
+            <button onClick={() => window.print()} className="flex items-center gap-2 rounded-xl border border-nx-border px-4 py-2.5 text-body-sm text-nx-on-surface-variant hover:text-nx-on-surface transition-colors">
               <FileDown size={16} /> Exportar PDF
             </button>
-            <button onClick={() => setCreateOpen(true)} className="flex items-center gap-2 rounded-xl bg-nx-primary-container text-nx-on-primary-container px-4 py-2.5 text-body-sm font-semibold hover:bg-[#8b46f5] transition-colors">
+            <button onClick={() => setCreateOpen(true)} className="flex items-center gap-2 rounded-xl bg-nx-evo text-nx-on-evo px-4 py-2.5 text-body-sm font-semibold hover:bg-nx-evo-2 transition-colors">
               <Plus size={16} /> Novo Desafio
             </button>
           </div>
         </header>
 
         {/* Abas */}
-        <div className="inline-flex rounded-xl bg-nx-surface border border-white/5 p-1 mb-6 print:hidden">
+        <div className="inline-flex rounded-xl bg-nx-surface border border-nx-border p-1 mb-6 print:hidden">
           {(["em_curso", "encerrado"] as Aba[]).map((a) => (
             <button key={a} onClick={() => setAba(a)}
               className={`px-4 py-2 rounded-lg text-body-sm font-medium transition-colors ${
-                aba === a ? "bg-nx-primary-container text-nx-on-primary-container" : "text-nx-on-surface-variant hover:text-nx-on-surface"
+                aba === a ? "bg-nx-container-high text-nx-on-surface" : "text-nx-on-surface-variant hover:text-nx-on-surface"
               }`}>
               {a === "em_curso" ? "Em curso" : "Encerrados"}
             </button>
@@ -131,9 +131,9 @@ export default function Desafios() {
           {/* Coluna lateral: Seções 3, 4, 5 */}
           <div className="space-y-4 print:hidden">
             {/* Seção 3: Baixa adesão */}
-            <Card className="p-5 border-nx-secondary-container/40">
+            <Card className="p-5 border-nx-streak/30">
               <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle size={18} className="text-nx-secondary" />
+                <AlertTriangle size={18} className="text-nx-streak" />
                 <h3 className="text-body-md font-semibold">Baixa adesão</h3>
               </div>
               <StateBox loading={resumo.loading} error={resumo.error}
@@ -144,10 +144,10 @@ export default function Desafios() {
                     <li key={b.id} className="flex items-center gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-body-sm font-medium truncate">{b.titulo}</p>
-                        <p className="text-label-sm text-nx-secondary">{b.adesaoMedia}% de adesão · {b.participantes} part.</p>
+                        <p className="text-label-sm text-nx-streak">{b.adesaoMedia}% de adesão · {b.participantes} part.</p>
                       </div>
                       <button onClick={() => lembreteBaixa(b.id)} title="Enviar lembrete a todos"
-                        className="shrink-0 flex items-center gap-1 rounded-lg border border-nx-secondary-container/60 text-nx-secondary px-2.5 py-1.5 text-label-md hover:bg-nx-secondary/10 transition-colors">
+                        className="shrink-0 flex items-center gap-1 rounded-lg border border-nx-streak/40 text-nx-streak px-2.5 py-1.5 text-label-md hover:bg-nx-streak/10 transition-colors">
                         <Bell size={13} /> Lembrar
                       </button>
                     </li>
@@ -159,7 +159,7 @@ export default function Desafios() {
             {/* Seção 4: Sugestões (IA INSIGHT) */}
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-3">
-                <Sparkles size={18} className="text-nx-primary" />
+                <Sparkles size={18} className="text-nx-evo" />
                 <h3 className="text-body-md font-semibold">Sugestões</h3>
               </div>
               <div className="space-y-3">
@@ -173,7 +173,7 @@ export default function Desafios() {
             <Card className="p-5">
               <h3 className="text-body-md font-semibold mb-1">Relatório Mensal</h3>
               <p className="text-body-sm text-nx-on-surface-variant mb-4">Engajamento dos desafios em PDF.</p>
-              <button onClick={() => window.print()} className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/10 py-3 text-body-sm text-nx-on-surface hover:bg-nx-surface-hover transition-colors">
+              <button onClick={() => window.print()} className="w-full flex items-center justify-center gap-2 rounded-xl border border-nx-border py-3 text-body-sm text-nx-on-surface hover:bg-nx-surface-hover transition-colors">
                 <FileDown size={16} /> Exportar PDF
               </button>
             </Card>
@@ -217,10 +217,10 @@ function DesafioCardView({ d, onDetalhes }: { d: DesafioCard; onDetalhes: () => 
       <div className="mt-auto">
         <div className="flex justify-between text-label-sm text-nx-on-surface-variant mb-1.5">
           <span>Conclusão</span>
-          <span className="text-nx-tertiary font-semibold">{d.taxaConclusao == null ? "—" : `${d.taxaConclusao}%`}</span>
+          <span className="text-nx-evo font-semibold">{d.taxaConclusao == null ? "—" : `${d.taxaConclusao}%`}</span>
         </div>
         <Barra pct={d.taxaConclusao ?? 0} />
-        <button onClick={onDetalhes} className="w-full mt-4 rounded-xl border border-white/10 py-2.5 text-body-sm text-nx-primary hover:bg-nx-surface-hover transition-colors print:hidden">
+        <button onClick={onDetalhes} className="w-full mt-4 rounded-xl border border-nx-border py-2.5 text-body-sm text-nx-evo hover:bg-nx-surface-hover transition-colors print:hidden">
           Ver Detalhes
         </button>
       </div>
@@ -234,15 +234,15 @@ function TemplateCard({ t, onAtivar }: { t: TemplateDesafio; onAtivar: () => voi
   const cat = catMeta(t.categoria);
   async function ativar() { setBusy(true); try { await onAtivar(); } finally { setBusy(false); } }
   return (
-    <div className="rounded-xl border border-nx-primary-container/20 bg-nx-container/40 p-3.5">
+    <div className="rounded-xl border border-nx-border bg-nx-container/40 p-3.5">
       <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-nx-primary bg-nx-primary-container/20 rounded-full px-2 py-0.5">IA Insight</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-nx-evo bg-nx-evo/12 rounded-full px-2 py-0.5">IA Insight</span>
         <span className="text-[18px] ml-auto">{t.icone}</span>
       </div>
       <p className="text-body-sm font-semibold" style={{ color: cat.cor }}>{t.titulo}</p>
       <p className="text-label-sm text-nx-on-surface-variant mt-1 leading-relaxed">{t.insight}</p>
       <button onClick={ativar} disabled={busy}
-        className="w-full mt-3 rounded-lg bg-nx-primary-container/80 text-nx-on-primary-container py-2 text-label-md font-bold hover:bg-nx-primary-container disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
+        className="w-full mt-3 rounded-lg bg-nx-evo text-nx-on-evo py-2 text-label-md font-bold hover:bg-nx-evo-2 disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Play size={13} />} Ativar Agora
       </button>
     </div>
@@ -292,14 +292,14 @@ function CreateModal({ onClose, onCriado }: { onClose: () => void; onCriado: () 
       <div className="space-y-3">
         <div className="flex gap-3">
           <input value={icone} onChange={(e) => setIcone(e.target.value)} maxLength={2} aria-label="Ícone"
-            className="w-16 text-center text-[24px] bg-nx-container border border-nx-primary-container/10 rounded-xl" />
+            className="w-16 text-center text-[24px] bg-nx-container border border-nx-border rounded-xl" />
           <Campo label="Título" value={titulo} onChange={setTitulo} className="flex-1" />
         </div>
         <Campo label="Descrição" value={descricao} onChange={setDescricao} />
         <label className="block">
           <span className="text-label-md text-nx-on-surface-variant">Categoria</span>
           <select value={categoria} onChange={(e) => setCategoria(e.target.value)}
-            className="mt-1 w-full bg-nx-container border border-nx-primary-container/10 rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-primary">
+            className="mt-1 w-full bg-nx-container border border-nx-border rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-evo">
             <option value="hidratacao">Hidratação</option>
             <option value="alimentacao">Alimentação</option>
             <option value="treino">Treino</option>
@@ -313,17 +313,17 @@ function CreateModal({ onClose, onCriado }: { onClose: () => void; onCriado: () 
         </div>
         <Campo label="Duração (dias)" value={duracaoDias} onChange={setDuracaoDias} type="number" />
         <label className="flex items-center gap-2.5 text-body-sm text-nx-on-surface-variant cursor-pointer">
-          <input type="checkbox" checked={inscreverTodos} onChange={(e) => setInscreverTodos(e.target.checked)} className="accent-nx-primary-container size-4" />
+          <input type="checkbox" checked={inscreverTodos} onChange={(e) => setInscreverTodos(e.target.checked)} className="accent-nx-evo size-4" />
           Inscrever todos os pacientes ativos
         </label>
         <label className="flex items-center gap-2.5 text-body-sm text-nx-on-surface-variant cursor-pointer">
-          <input type="checkbox" checked={ativar} onChange={(e) => setAtivar(e.target.checked)} className="accent-nx-primary-container size-4" />
+          <input type="checkbox" checked={ativar} onChange={(e) => setAtivar(e.target.checked)} className="accent-nx-evo size-4" />
           Ativar imediatamente (senão fica como rascunho)
         </label>
       </div>
-      {erro && <p className="text-nx-error text-body-sm mt-3">{erro}</p>}
+      {erro && <p className="text-nx-danger text-body-sm mt-3">{erro}</p>}
       <button onClick={salvar} disabled={salvando}
-        className="w-full mt-5 bg-nx-primary-container hover:bg-[#8b46f5] disabled:opacity-50 text-nx-on-primary-container text-label-md font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+        className="w-full mt-5 bg-nx-evo hover:bg-nx-evo-2 disabled:opacity-50 text-nx-on-evo text-label-md font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
         {salvando ? <><Loader2 size={16} className="animate-spin" /> Criando...</> : "Criar Desafio"}
       </button>
     </ModalShell>
@@ -366,8 +366,8 @@ function DetailModal({ id, onClose, onMudou }: { id: string; onClose: () => void
             {/* Métricas */}
             <div className="grid grid-cols-3 gap-3">
               <MiniStat label="Participantes" value={String(d.participantes)} />
-              <MiniStat label="Conclusão" value={d.taxaConclusao == null ? "—" : `${d.taxaConclusao}%`} tone="text-nx-tertiary" />
-              <MiniStat label="Adesão média" value={d.adesaoMedia == null ? "—" : `${d.adesaoMedia}%`} tone="text-nx-secondary" />
+              <MiniStat label="Conclusão" value={d.taxaConclusao == null ? "—" : `${d.taxaConclusao}%`} tone="text-nx-evo" />
+              <MiniStat label="Adesão média" value={d.adesaoMedia == null ? "—" : `${d.adesaoMedia}%`} tone="text-nx-streak" />
             </div>
 
             {/* Seção 2: Status dos Participantes */}
@@ -383,9 +383,9 @@ function DetailModal({ id, onClose, onMudou }: { id: string; onClose: () => void
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="text-body-sm font-medium truncate">{p.nome}</p>
-                          {p.concluido && <CheckCircle2 size={14} className="text-nx-tertiary shrink-0" />}
+                          {p.concluido && <CheckCircle2 size={14} className="text-nx-evo shrink-0" />}
                         </div>
-                        <div className="mt-1"><Barra pct={p.progresso} cor={p.concluido ? "#4edea3" : "#d2bbff"} /></div>
+                        <div className="mt-1"><Barra pct={p.progresso} cor={p.concluido ? "#7CFF5B" : "#6B7280"} /></div>
                       </div>
                       <span className="text-label-md text-nx-on-surface-variant shrink-0 w-10 text-right">{Math.round(p.progresso)}%</span>
                     </li>
@@ -415,9 +415,9 @@ function DetailModal({ id, onClose, onMudou }: { id: string; onClose: () => void
 function ModalShell({ titulo, onClose, wide, children }: { titulo: string; onClose: () => void; wide?: boolean; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4" onClick={onClose}>
-      <div className={`w-full ${wide ? "md:max-w-xl" : "md:max-w-md"} max-h-[92vh] overflow-auto bg-nx-surface border border-nx-primary-container/10 rounded-t-3xl md:rounded-2xl p-6`} onClick={(e) => e.stopPropagation()}>
+      <div className={`w-full ${wide ? "md:max-w-xl" : "md:max-w-md"} max-h-[92vh] overflow-auto bg-nx-surface border border-nx-border rounded-t-3xl md:rounded-2xl p-6`} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-body-lg font-bold flex items-center gap-2"><Award size={18} className="text-nx-primary" /> {titulo}</h3>
+          <h3 className="text-body-lg font-bold flex items-center gap-2"><Award size={18} className="text-nx-gold" /> {titulo}</h3>
           <button onClick={onClose} aria-label="Fechar" className="text-nx-outline hover:text-nx-on-surface"><X size={20} /></button>
         </div>
         {children}
@@ -437,10 +437,10 @@ function BtnAcao({ onClick, busy, icon: Icon, label, primary, danger }: {
   onClick: () => void; busy: boolean; icon: React.ComponentType<{ size?: number }>; label: string; primary?: boolean; danger?: boolean;
 }) {
   const cls = primary
-    ? "bg-nx-primary-container text-nx-on-primary-container hover:bg-[#8b46f5]"
+    ? "bg-nx-evo text-nx-on-evo hover:bg-nx-evo-2"
     : danger
-    ? "border border-nx-error-container/60 text-nx-error hover:bg-nx-error/10"
-    : "border border-white/10 text-nx-on-surface hover:bg-nx-surface-hover";
+    ? "border border-nx-danger/50 text-nx-danger hover:bg-nx-danger/10"
+    : "border border-nx-border text-nx-on-surface hover:bg-nx-surface-hover";
   return (
     <button onClick={onClick} disabled={busy} className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-body-sm font-semibold transition-colors disabled:opacity-60 ${cls}`}>
       {busy ? <Loader2 size={15} className="animate-spin" /> : <Icon size={15} />} {label}
@@ -454,7 +454,7 @@ function Campo({ label, value, onChange, type = "text", placeholder, className =
     <label className={`block ${className}`}>
       <span className="text-label-md text-nx-on-surface-variant">{label}</span>
       <input value={value} onChange={(e) => onChange(e.target.value)} type={type} placeholder={placeholder}
-        className="mt-1 w-full bg-nx-container border border-nx-primary-container/10 rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-primary" />
+        className="mt-1 w-full bg-nx-container border border-nx-border rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-evo" />
     </label>
   );
 }

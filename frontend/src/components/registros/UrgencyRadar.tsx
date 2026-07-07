@@ -1,10 +1,11 @@
+import { Send } from "lucide-react";
 import type { AlertaRadar } from "../../lib/registros";
 import GlassPanel from "./GlassPanel";
 
 // Cor por severidade (strings literais para o JIT do Tailwind).
 const CFG: Record<AlertaRadar["cor"], { wrap: string; dot: string }> = {
-  error: { wrap: "bg-nx-error/5 border border-nx-error/20", dot: "bg-nx-error" },
-  secondary: { wrap: "bg-nx-secondary/5 border border-nx-secondary/20", dot: "bg-nx-secondary" },
+  error: { wrap: "bg-nx-danger/5 border border-nx-danger/20", dot: "bg-nx-danger" },
+  secondary: { wrap: "bg-nx-streak/5 border border-nx-streak/20", dot: "bg-nx-streak" },
 };
 
 interface Props {
@@ -36,9 +37,9 @@ export default function UrgencyRadar({ alertas, onNudge }: Props) {
                 <button
                   onClick={() => onNudge(a.pacienteId)}
                   title="Enviar incentivo"
-                  className="p-1.5 rounded-lg bg-nx-container hover:bg-[#343342]"
+                  className="p-1.5 rounded-lg bg-nx-container text-nx-on-surface-variant hover:bg-nx-surface-hover hover:text-nx-on-surface transition-colors"
                 >
-                  <span className="material-symbols-outlined text-sm" data-icon="send">send</span>
+                  <Send size={15} />
                 </button>
               </div>
             );
