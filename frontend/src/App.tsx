@@ -36,6 +36,7 @@ const EmBreve       = lazy(() => import("./pages/EmBreve"));
 const DesignShowcase = lazy(() => import("./pages/DesignShowcase"));
 const Feed               = lazy(() => import("./pages/Feed"));
 const LoginPaciente      = lazy(() => import("./pages/LoginPaciente"));
+const Onboarding         = lazy(() => import("./pages/onboarding/OnboardingScreen"));
 const RankingPaciente    = lazy(() => import("./pages/paciente/RankingPaciente"));
 const LigasPaciente      = lazy(() => import("./pages/paciente/LigasPaciente"));
 const ConsultasPaciente  = lazy(() => import("./pages/paciente/ConsultasPaciente"));
@@ -103,6 +104,7 @@ function AppRoutes() {
           <Route path="relatorios" element={<Relatorios />} />
         </Route>
         {/* Paciente routes */}
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/login-paciente" element={<LoginPaciente />} />
         <Route path="/paciente" element={<PacienteLayout />}>
           <Route index element={<Navigate to="/paciente/dashboard" replace />} />

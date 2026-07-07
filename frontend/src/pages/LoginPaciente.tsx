@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Leaf, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { usePacienteAuth } from "../contexts/PacienteAuthContext";
 
 export default function LoginPaciente() {
-  const [tab, setTab] = useState<"login" | "register">("login");
+  const [sp] = useSearchParams();
+  const [tab, setTab] = useState<"login" | "register">(sp.get("tab") === "register" ? "register" : "login");
   const [email, setEmail]   = useState("");
   const [senha, setSenha]   = useState("");
   const [codigo, setCodigo] = useState("");
