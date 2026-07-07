@@ -19,6 +19,7 @@ interface LigasResp {
   alertas: { id: string; nome: string; foto: string | null; diasInativo: number; liga: string; ultimoCheckin: string | null }[];
   pedidosAjuste: { registroId: string; pacienteId: string; pacienteNome: string }[];
   desempenhoCategoria: { alimentacao: number; treino: number; agua: number; sono: number };
+  alimentacaoBreakdown: { seguiu: number | null; adaptou: number | null; pulou: number | null; amostra: number };
 }
 
 const nf = (n: number) => n.toLocaleString("pt-BR");
@@ -196,10 +197,56 @@ export default function Dashboard() {
                   );
                 })}
               </div>
+
+              {/* Comportamento alimentar — Seguiu / Adaptou / Pulou (entre todas as refeições) */}
+              <div className="mt-6 border-t border-nx-border pt-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-body-sm font-medium text-nx-on-surface">Comportamento alimentar</span>
+                  <span className="text-label-md uppercase text-nx-on-surface-variant">30 dias</span>
+                </div>
+                <AlimentacaoBar breakdown={ligas.data?.alimentacaoBreakdown} />
+              </div>
             </StateBox>
           </div>
         </section>
       </main>
+    </div>
+  );
+}
+
+/* Distribuição Seguiu / Adaptou / Pulou — barra segmentada + legenda (cor + rótulo) */
+export const ALIM_ESTADOS = [
+  { key: "seguiu" as const, label: "Seguiu", color: "#7CFF5B" },
+  { key: "adaptou" as const, label: "Adaptou", color: "#F8C84B" },
+  { key: "pulou" as const, label: "Pulou", color: "#FF5D5D" },
+];
+function AlimentacaoBar({
+  breakdown,
+}: {
+  breakdown?: { seguiu: number | null; adaptou: number | null; pulou: number | null; amostra: number };
+}) {
+  if (!breakdown || breakdown.amostra === 0) {
+    return <p className="text-body-sm text-nx-on-surface-variant">Sem dados de refeição ainda</p>;
+  }
+  return (
+    <div className="space-y-2.5">
+      <div className="flex h-3 overflow-hidden rounded-full bg-nx-container-low">
+        {ALIM_ESTADOS.map((e) => {
+          const pct = breakdown[e.key] ?? 0;
+          return pct > 0 ? (
+            <div key={e.key} style={{ width: `${pct}%`, background: e.color }} title={`${e.label} ${pct}%`} />
+          ) : null;
+        })}
+      </div>
+      <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+        {ALIM_ESTADOS.map((e) => (
+          <span key={e.key} className="flex items-center gap-1.5 text-body-sm">
+            <span className="size-2.5 rounded-full" style={{ background: e.color }} />
+            <span className="text-nx-on-surface-variant">{e.label}</span>
+            <span className="font-semibold tabular-nums text-nx-on-surface">{breakdown[e.key] ?? 0}%</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

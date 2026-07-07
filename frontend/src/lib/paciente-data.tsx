@@ -15,6 +15,9 @@ interface ResumoResp {
   };
   registroHoje: {
     pontosGanhos: number; alimentacaoOk: boolean; treinoOk: boolean; aguaOk: boolean; sonoOk: boolean; humor: string | null;
+    cafeStatus: string | null; almocoStatus: string | null; lancheStatus: string | null; jantarStatus: string | null;
+    refeicoesNotas: Record<string, { nota?: string; motivo?: string }> | null;
+    aguaMl: number | null; aguaMetaMl: number | null; finalizado: boolean;
   } | null;
   feitoHoje: boolean;
   conquistas: { id: string; tipo: string; titulo: string; descricao: string | null; createdAt: string }[];
@@ -30,7 +33,18 @@ interface EvolucaoResp {
 export interface PacienteUser {
   name: string; firstName: string; avatar: string;
   league: string; points: number; nextLeague: string; pointsToNext: number;
-  streak: number; todayPoints: number; todayGoal: number; leagueProgress: number;
+  streak: number; streakBest: number; todayPoints: number; todayGoal: number; leagueProgress: number;
+}
+export interface MealState { status: string | null; nota?: string; motivo?: string }
+export interface TodayState {
+  finalizado: boolean;
+  refeicoes: Record<"cafe" | "almoco" | "lanche" | "jantar", MealState>;
+  aguaMl: number;
+  aguaMetaMl: number;
+  treinoOk: boolean;
+  sonoOk: boolean;
+  humor: string | null;
+  xpAlimentacao: number;
 }
 interface WeightPoint { date: string; peso: number }
 interface WeightHist { date: string; value: string; delta: string }
@@ -40,6 +54,7 @@ interface MoodHist { date: string; emoji: string; label: string }
 export interface PacienteData {
   loading: boolean;
   user: PacienteUser;
+  today: TodayState;
   missions: Mission[];
   challenges: Challenge[];
   achievements: Achievement[];
@@ -132,15 +147,36 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
         nextLeague: prog.proxima ? `${prog.proxima.liga} ${prog.proxima.nivel}` : "Liga máxima",
         pointsToNext: prog.faltam,
         streak: p?.streakAtual ?? 0,
+        streakBest: p?.streakMaximo ?? 0,
         todayPoints: rh?.pontosGanhos ?? 0,
-        todayGoal: 10,
+        todayGoal: 12,
         leagueProgress: prog.pct,
       };
 
+      // Estado do dia (hidrata a tela Registro a partir do servidor)
+      const refKeys = ["cafe", "almoco", "lanche", "jantar"] as const;
+      const notas = (rh?.refeicoesNotas ?? {}) as Record<string, { nota?: string; motivo?: string }>;
+      const statusOf = (k: string) => (rh ? ((rh as any)[`${k}Status`] as string | null) : null);
+      const xpMeal = (s: string | null) => (s === "seguiu" ? 1 : s === "adaptou" ? 0.5 : 0);
+      const xpAlim = refKeys.reduce((sum, k) => sum + xpMeal(statusOf(k)), 0);
+      const refeicoes = Object.fromEntries(
+        refKeys.map((k) => [k, { status: statusOf(k), nota: notas[k]?.nota, motivo: notas[k]?.motivo }]),
+      ) as TodayState["refeicoes"];
+      const today: TodayState = {
+        finalizado: !!resumo?.feitoHoje,
+        refeicoes,
+        aguaMl: rh?.aguaMl ?? 0,
+        aguaMetaMl: rh?.aguaMetaMl ?? 3000,
+        treinoOk: !!rh?.treinoOk,
+        sonoOk: !!rh?.sonoOk,
+        humor: rh?.humor ?? null,
+        xpAlimentacao: xpAlim,
+      };
+
       const missions: Mission[] = [
-        { id: "alimentacao", icon: Utensils, title: "Alimentação", subtitle: "Registre suas refeições", earned: rh?.alimentacaoOk ? 3 : 0, total: 3, done: !!rh?.alimentacaoOk },
+        { id: "alimentacao", icon: Utensils, title: "Alimentação", subtitle: "Registre suas refeições", earned: xpAlim, total: 4, done: xpAlim >= 3 },
         { id: "treino", icon: Dumbbell, title: "Treino", subtitle: "Registre seu treino", earned: rh?.treinoOk ? 2 : 0, total: 2, done: !!rh?.treinoOk },
-        { id: "agua", icon: Droplets, title: "Água", subtitle: "Beba 2L de água", earned: rh?.aguaOk ? 2 : 0, total: 2, done: !!rh?.aguaOk },
+        { id: "agua", icon: Droplets, title: "Água", subtitle: "Beba 3L de água", earned: rh?.aguaOk ? 2 : 0, total: 2, done: !!rh?.aguaOk },
         { id: "sono", icon: Moon, title: "Sono", subtitle: "Durma pelo menos 7h", earned: rh?.sonoOk ? 2 : 0, total: 2, done: !!rh?.sonoOk },
         { id: "registro", icon: ClipboardList, title: "Registro diário", subtitle: "Compartilhe seu dia", earned: resumo?.feitoHoje ? 1 : 0, total: 1, done: !!resumo?.feitoHoje },
       ];
@@ -222,7 +258,7 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
       const currentLeagueIndex = Math.max(0, LEAGUE_ORDER.indexOf(p?.ligaAtual ?? "Bronze"));
 
       setData({
-        loading: false, user, missions, challenges, achievements, currentLeagueIndex,
+        loading: false, user, today, missions, challenges, achievements, currentLeagueIndex,
         ranking, friendsRanking: ranking, myPosition, stats,
         measures, weightData, weightHistory, pesoAtual, pesoDelta, photoEntries, moodHistory,
         reload: load,

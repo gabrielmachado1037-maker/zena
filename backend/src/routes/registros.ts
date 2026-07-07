@@ -1,100 +1,153 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
-import { calcularPontosRegistro, calcularLiga } from "../config/ligas";
+import {
+  calcularPontosRegistro,
+  calcularLiga,
+  calcularXpAlimentacao,
+  REFEICOES_KEYS,
+  AGUA_META_ML_PADRAO,
+} from "../config/ligas";
 import { uploadFoto } from "../lib/supabase";
 
 const HUMORES_VALIDOS = ["otimo", "bom", "neutro", "dificil", "pessimo"];
+const STATUS_VALIDOS = ["seguiu", "adaptou", "pulou"];
 
 const router = Router();
 router.use(authPacienteMiddleware);
 
-// POST /api/registros
-router.post("/", async (req: PacienteAuthRequest, res: Response) => {
-  const {
-    alimentacaoOk, treinoOk, aguaOk, sonoOk,
-    cafeOk, almocoOk, lancheOk, jantarOk,
-    tipoRegistro, fotoUrl, descricao, humor, tags,
-  } = req.body as {
-    alimentacaoOk?: boolean; treinoOk: boolean; aguaOk: boolean; sonoOk: boolean;
-    cafeOk?: boolean; almocoOk?: boolean; lancheOk?: boolean; jantarOk?: boolean;
-    tipoRegistro?: string; fotoUrl?: string; descricao?: string; humor?: string; tags?: string[];
-  };
-
-  // Refeições são a interação principal. Se vierem, alimentacaoOk é DERIVADO (>=3 das 4);
-  // senão, cai no booleano legado (retrocompat com clientes antigos).
-  const temRefeicoes = [cafeOk, almocoOk, lancheOk, jantarOk].some((v) => v !== undefined);
-  const refeicoesMarcadas = [cafeOk, almocoOk, lancheOk, jantarOk].filter(Boolean).length;
-  const alimentacaoFinal = temRefeicoes ? refeicoesMarcadas >= 3 : !!alimentacaoOk;
-
+function inicioDeHoje() {
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
+  return hoje;
+}
 
-  const existente = await prisma.registro.findUnique({
-    where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
-  });
-  // Um "stub" (só humor, sem check-in) NÃO conta como registro do dia — o check-in o promove.
-  const jaFezCheckin = existente && (
-    existente.pontosGanhos > 0 ||
-    existente.alimentacaoOk || existente.treinoOk || existente.aguaOk || existente.sonoOk
-  );
-  if (jaFezCheckin) return res.status(409).json({ error: "Registro já enviado hoje" });
+function normStatus(v: unknown): string | null {
+  return typeof v === "string" && STATUS_VALIDOS.includes(v) ? v : null;
+}
 
-  const { total: pontosGanhos, detalhes: pontosDetalhes } = calcularPontosRegistro({
-    alimentacaoOk: alimentacaoFinal, treinoOk: !!treinoOk, aguaOk: !!aguaOk, sonoOk: !!sonoOk,
-  });
-
-  const paciente = await prisma.paciente.findUnique({ where: { id: req.pacienteId! } });
-  if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });
-
+/** Sequência + total + liga a creditar ao FECHAR o dia. */
+function calcularFechamentoPaciente(
+  paciente: { ultimoCheckin: Date | null; streakAtual: number; streakMaximo: number; pontosTotal: number },
+  pontosGanhos: number,
+  hoje: Date,
+) {
   const ontem = new Date(hoje);
   ontem.setDate(ontem.getDate() - 1);
   const registrouOntem = paciente.ultimoCheckin
     ? new Date(paciente.ultimoCheckin).getTime() === ontem.getTime()
     : false;
-
   const streakAtual = registrouOntem ? paciente.streakAtual + 1 : 1;
   const streakMaximo = Math.max(paciente.streakMaximo, streakAtual);
   const pontosTotal = paciente.pontosTotal + pontosGanhos;
   const liga = calcularLiga(pontosTotal);
+  return { streakAtual, streakMaximo, pontosTotal, liga };
+}
 
-  const [registro] = await prisma.$transaction([
-    prisma.registro.upsert({
-      where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
-      create: {
-        pacienteId: req.pacienteId!,
-        data: hoje,
-        alimentacaoOk: alimentacaoFinal,
-        treinoOk: !!treinoOk,
-        aguaOk: !!aguaOk,
-        sonoOk: !!sonoOk,
-        cafeOk: temRefeicoes ? !!cafeOk : null,
-        almocoOk: temRefeicoes ? !!almocoOk : null,
-        lancheOk: temRefeicoes ? !!lancheOk : null,
-        jantarOk: temRefeicoes ? !!jantarOk : null,
-        tipoRegistro: tipoRegistro ?? "normal",
-        fotoUrl,
-        descricao,
-        humor,
-        tags: tags ?? [],
-        pontosGanhos,
-        pontosDetalhes,
-      },
-      // Promove o stub de humor a check-in completo (preserva humor já lançado).
-      update: {
-        alimentacaoOk: alimentacaoFinal,
-        treinoOk: !!treinoOk,
-        aguaOk: !!aguaOk,
-        sonoOk: !!sonoOk,
-        cafeOk: temRefeicoes ? !!cafeOk : undefined,
-        almocoOk: temRefeicoes ? !!almocoOk : undefined,
-        lancheOk: temRefeicoes ? !!lancheOk : undefined,
-        jantarOk: temRefeicoes ? !!jantarOk : undefined,
-        tipoRegistro: tipoRegistro ?? "normal",
-        fotoUrl,
-        descricao,
-        humor: humor ?? undefined,
-        tags: tags ?? undefined,
+// PUT /api/registros/dia — AUTOSAVE do dia (refeições, água, treino, sono).
+// Persiste o estado imediatamente, mas NÃO credita liga/streak (isso é o "fechar o dia").
+// Idempotente: recebe o snapshot atual do dia e faz upsert. 409 se o dia já foi fechado.
+router.put("/dia", async (req: PacienteAuthRequest, res: Response) => {
+  const {
+    cafeStatus, almocoStatus, lancheStatus, jantarStatus,
+    refeicoesNotas, aguaMl, aguaMetaMl, treinoOk, sonoOk,
+  } = req.body as {
+    cafeStatus?: unknown; almocoStatus?: unknown; lancheStatus?: unknown; jantarStatus?: unknown;
+    refeicoesNotas?: unknown; aguaMl?: unknown; aguaMetaMl?: unknown; treinoOk?: unknown; sonoOk?: unknown;
+  };
+
+  const hoje = inicioDeHoje();
+  const existente = await prisma.registro.findUnique({
+    where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
+  });
+  if (existente?.finalizado) return res.status(409).json({ error: "Dia já fechado" });
+
+  const status = {
+    cafe: normStatus(cafeStatus),
+    almoco: normStatus(almocoStatus),
+    lanche: normStatus(lancheStatus),
+    jantar: normStatus(jantarStatus),
+  };
+  const metaMl = typeof aguaMetaMl === "number" && aguaMetaMl > 0 ? Math.round(aguaMetaMl) : AGUA_META_ML_PADRAO;
+  const ml = typeof aguaMl === "number" && aguaMl >= 0 ? Math.round(aguaMl) : 0;
+  const aguaOk = ml >= metaMl;
+  const xpAlim = calcularXpAlimentacao(status);
+
+  const dados = {
+    // booleanos derivados (mantêm as agregações legadas da nutri funcionando)
+    alimentacaoOk: xpAlim >= 3,
+    treinoOk: !!treinoOk,
+    aguaOk,
+    sonoOk: !!sonoOk,
+    cafeOk: status.cafe ? status.cafe === "seguiu" : null,
+    almocoOk: status.almoco ? status.almoco === "seguiu" : null,
+    lancheOk: status.lanche ? status.lanche === "seguiu" : null,
+    jantarOk: status.jantar ? status.jantar === "seguiu" : null,
+    // estado por refeição (3 estados) + notas
+    cafeStatus: status.cafe,
+    almocoStatus: status.almoco,
+    lancheStatus: status.lanche,
+    jantarStatus: status.jantar,
+    refeicoesNotas: (refeicoesNotas ?? undefined) as any,
+    // água como progresso
+    aguaMl: ml,
+    aguaMetaMl: metaMl,
+  };
+
+  const registro = await prisma.registro.upsert({
+    where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
+    create: {
+      pacienteId: req.pacienteId!,
+      data: hoje,
+      tipoRegistro: "normal",
+      pontosGanhos: 0,
+      finalizado: false,
+      ...dados,
+    },
+    update: { ...dados },
+  });
+  return res.json({ registro });
+});
+
+// POST /api/registros/dia/fechar — FINALIZA o dia (o commit): credita XP dos hábitos +
+// registro_diario + bônus, atualiza streak/liga. Lê o estado autossalvo como fonte da verdade.
+router.post("/dia/fechar", async (req: PacienteAuthRequest, res: Response) => {
+  const hoje = inicioDeHoje();
+  const registro = await prisma.registro.findUnique({
+    where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
+  });
+  if (!registro) return res.status(400).json({ error: "Nada pra fechar hoje" });
+  if (registro.finalizado) return res.status(409).json({ error: "Dia já fechado" });
+
+  const xpAlim = calcularXpAlimentacao({
+    cafe: registro.cafeStatus, almoco: registro.almocoStatus,
+    lanche: registro.lancheStatus, jantar: registro.jantarStatus,
+  });
+  const aguaOk =
+    registro.aguaMl != null && registro.aguaMetaMl != null && registro.aguaMl >= registro.aguaMetaMl;
+
+  const { total: pontosGanhos, detalhes: pontosDetalhes } = calcularPontosRegistro({
+    xpAlimentacao: xpAlim,
+    treinoOk: registro.treinoOk,
+    aguaOk,
+    sonoOk: registro.sonoOk,
+    incluirFechamento: true,
+  });
+
+  const paciente = await prisma.paciente.findUnique({ where: { id: req.pacienteId! } });
+  if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });
+
+  const { streakAtual, streakMaximo, pontosTotal, liga } = calcularFechamentoPaciente(
+    paciente, pontosGanhos, hoje,
+  );
+
+  await prisma.$transaction([
+    prisma.registro.update({
+      where: { id: registro.id },
+      data: {
+        finalizado: true,
+        alimentacaoOk: xpAlim >= 3,
+        aguaOk,
         pontosGanhos,
         pontosDetalhes,
       },
@@ -114,24 +167,128 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
     }),
   ]);
 
+  return res.status(201).json({ pontosGanhos, pontosTotal, liga, streakAtual });
+});
+
+// POST /api/registros — LEGADO (one-shot). Fecha o dia num único envio (retrocompat).
+router.post("/", async (req: PacienteAuthRequest, res: Response) => {
+  const {
+    alimentacaoOk, treinoOk, aguaOk, sonoOk,
+    cafeOk, almocoOk, lancheOk, jantarOk,
+    tipoRegistro, fotoUrl, descricao, humor, tags,
+  } = req.body as {
+    alimentacaoOk?: boolean; treinoOk: boolean; aguaOk: boolean; sonoOk: boolean;
+    cafeOk?: boolean; almocoOk?: boolean; lancheOk?: boolean; jantarOk?: boolean;
+    tipoRegistro?: string; fotoUrl?: string; descricao?: string; humor?: string; tags?: string[];
+  };
+
+  const temRefeicoes = [cafeOk, almocoOk, lancheOk, jantarOk].some((v) => v !== undefined);
+  // Cada refeição marcada = "seguiu"; alimentação também aceita o booleano legado (4 XP).
+  const statusLegado = {
+    cafe: cafeOk ? "seguiu" : temRefeicoes ? "pulou" : null,
+    almoco: almocoOk ? "seguiu" : temRefeicoes ? "pulou" : null,
+    lanche: lancheOk ? "seguiu" : temRefeicoes ? "pulou" : null,
+    jantar: jantarOk ? "seguiu" : temRefeicoes ? "pulou" : null,
+  };
+  const xpAlim = temRefeicoes ? calcularXpAlimentacao(statusLegado) : alimentacaoOk ? 4 : 0;
+
+  const hoje = inicioDeHoje();
+  const existente = await prisma.registro.findUnique({
+    where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
+  });
+  const jaFezCheckin =
+    existente &&
+    (existente.finalizado ||
+      existente.pontosGanhos > 0 ||
+      existente.alimentacaoOk || existente.treinoOk || existente.aguaOk || existente.sonoOk);
+  if (jaFezCheckin) return res.status(409).json({ error: "Registro já enviado hoje" });
+
+  const { total: pontosGanhos, detalhes: pontosDetalhes } = calcularPontosRegistro({
+    xpAlimentacao: xpAlim, treinoOk: !!treinoOk, aguaOk: !!aguaOk, sonoOk: !!sonoOk,
+    incluirFechamento: true,
+  });
+
+  const paciente = await prisma.paciente.findUnique({ where: { id: req.pacienteId! } });
+  if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });
+
+  const { streakAtual, streakMaximo, pontosTotal, liga } = calcularFechamentoPaciente(
+    paciente, pontosGanhos, hoje,
+  );
+
+  const [registro] = await prisma.$transaction([
+    prisma.registro.upsert({
+      where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
+      create: {
+        pacienteId: req.pacienteId!,
+        data: hoje,
+        alimentacaoOk: xpAlim >= 3,
+        treinoOk: !!treinoOk,
+        aguaOk: !!aguaOk,
+        sonoOk: !!sonoOk,
+        cafeOk: temRefeicoes ? !!cafeOk : null,
+        almocoOk: temRefeicoes ? !!almocoOk : null,
+        lancheOk: temRefeicoes ? !!lancheOk : null,
+        jantarOk: temRefeicoes ? !!jantarOk : null,
+        cafeStatus: statusLegado.cafe,
+        almocoStatus: statusLegado.almoco,
+        lancheStatus: statusLegado.lanche,
+        jantarStatus: statusLegado.jantar,
+        finalizado: true,
+        tipoRegistro: tipoRegistro ?? "normal",
+        fotoUrl,
+        descricao,
+        humor,
+        tags: tags ?? [],
+        pontosGanhos,
+        pontosDetalhes,
+      },
+      update: {
+        alimentacaoOk: xpAlim >= 3,
+        treinoOk: !!treinoOk,
+        aguaOk: !!aguaOk,
+        sonoOk: !!sonoOk,
+        cafeOk: temRefeicoes ? !!cafeOk : undefined,
+        almocoOk: temRefeicoes ? !!almocoOk : undefined,
+        lancheOk: temRefeicoes ? !!lancheOk : undefined,
+        jantarOk: temRefeicoes ? !!jantarOk : undefined,
+        cafeStatus: temRefeicoes ? statusLegado.cafe : undefined,
+        almocoStatus: temRefeicoes ? statusLegado.almoco : undefined,
+        lancheStatus: temRefeicoes ? statusLegado.lanche : undefined,
+        jantarStatus: temRefeicoes ? statusLegado.jantar : undefined,
+        finalizado: true,
+        tipoRegistro: tipoRegistro ?? "normal",
+        fotoUrl,
+        descricao,
+        humor: humor ?? undefined,
+        tags: tags ?? undefined,
+        pontosGanhos,
+        pontosDetalhes,
+      },
+    }),
+    prisma.paciente.update({
+      where: { id: req.pacienteId! },
+      data: {
+        pontosTotal, streakAtual, streakMaximo, ultimoCheckin: hoje,
+        diasInativo: 0, barraCongelada: false, ligaAtual: liga.liga, ligaNivel: liga.nivel,
+      },
+    }),
+  ]);
+
   return res.status(201).json({ registro, pontosGanhos, pontosTotal, liga, streakAtual });
 });
 
 // GET /api/registros/hoje
 router.get("/hoje", async (req: PacienteAuthRequest, res: Response) => {
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-
+  const hoje = inicioDeHoje();
   const registro = await prisma.registro.findUnique({
     where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
   });
-  return res.json({ registro, feito: !!registro });
+  return res.json({ registro, feito: !!registro?.finalizado });
 });
 
 // GET /api/registros/resumo — estado de gamificação do paciente para a tela Início
 router.get("/resumo", async (req: PacienteAuthRequest, res: Response) => {
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
+  const hoje = inicioDeHoje();
 
   const [paciente, registroHoje, conquistas] = await Promise.all([
     prisma.paciente.findUnique({
@@ -151,7 +308,12 @@ router.get("/resumo", async (req: PacienteAuthRequest, res: Response) => {
     }),
   ]);
 
-  return res.json({ paciente, registroHoje, feitoHoje: !!registroHoje, conquistas });
+  return res.json({
+    paciente,
+    registroHoje,
+    feitoHoje: !!registroHoje?.finalizado,
+    conquistas,
+  });
 });
 
 // GET /api/registros/historico
@@ -207,7 +369,6 @@ router.get("/evolucao", async (req: PacienteAuthRequest, res: Response) => {
       select: { data: true, humor: true },
     }),
   ]);
-  // Junta fotos de evolução (enviadas pelo paciente) com fotos de check-in.
   const fotos = [
     ...fotosCheckin.map((f) => ({ id: f.id, data: f.data, fotoUrl: f.fotoUrl })),
     ...fotosEvolucao.map((f) => ({ id: f.id, data: f.data, fotoUrl: f.imagem })),
@@ -233,11 +394,9 @@ router.get("/desafios", async (req: PacienteAuthRequest, res: Response) => {
 });
 
 // POST /api/registros/pedir-ajuste — paciente sinaliza que precisa de ajuste no plano.
-// Anexa ao registro de hoje; se não houver, cria um registro marcado como ajuste (sem pontos).
 router.post("/pedir-ajuste", async (req: PacienteAuthRequest, res: Response) => {
   const { motivo } = req.body as { motivo?: string };
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
+  const hoje = inicioDeHoje();
 
   const existente = await prisma.registro.findUnique({
     where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
@@ -325,12 +484,10 @@ router.put("/humor", async (req: PacienteAuthRequest, res: Response) => {
   if (!HUMORES_VALIDOS.includes(humor)) {
     return res.status(400).json({ error: "Humor inválido" });
   }
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
+  const hoje = inicioDeHoje();
 
   const registro = await prisma.registro.upsert({
     where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
-    // Stub: só humor, sem pontos nem check-in (o check-in do dia promove este registro).
     create: {
       pacienteId: req.pacienteId!,
       data: hoje,

@@ -16,6 +16,7 @@ export interface RelatoriosResp {
   distribuicaoLigas: { liga: string; count: number; cor: string }[];  // cumulativo
   engajamentoMensal: { label: string; pct: number }[];                // 6 meses
   dificuldadeRefeicoes: DificuldadeRefeicao[];                         // por refeição no período
+  refeicoesBreakdown: RefeicaoBreakdown[];                             // Seguiu/Adaptou/Pulou por refeição
   piorRefeicao: { refeicao: string; label: string; pct: number } | null;
   pacientesRisco: PacienteRisco[];                                     // quem está escorregando
   riscoResumo: { emRisco: number; total: number };                    // risco de saída (inativos ≥4d)
@@ -52,6 +53,15 @@ export interface DificuldadeRefeicao {
   cumpridas: number;
   total: number;         // dias com detalhe registrado
   pct: number | null;    // null = sem amostra
+}
+
+export interface RefeicaoBreakdown {
+  refeicao: string;
+  label: string;
+  seguiu: number | null;
+  adaptou: number | null;
+  pulou: number | null;
+  amostra: number;
 }
 
 export interface KpiView {

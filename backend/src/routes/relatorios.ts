@@ -64,7 +64,10 @@ router.get("/", async (req: AuthRequest, res: Response) => {
           { lancheOk: { not: null } }, { jantarOk: { not: null } },
         ],
       },
-      select: { cafeOk: true, almocoOk: true, lancheOk: true, jantarOk: true },
+      select: {
+        cafeOk: true, almocoOk: true, lancheOk: true, jantarOk: true,
+        cafeStatus: true, almocoStatus: true, lancheStatus: true, jantarStatus: true,
+      },
     }),
     // Registros do período com os 4 hábitos + data — p/ "hábitos mais difíceis" e "dias críticos".
     prisma.registro.findMany({
@@ -131,6 +134,33 @@ router.get("/", async (req: AuthRequest, res: Response) => {
       pct: totalDias ? Math.round((cumpridas / totalDias) * 100) : null,
     };
   });
+  // ── Comportamento por refeição (Seguiu / Adaptou / Pulou) ───────────────
+  // Distribuição dos 3 estados em cada refeição — mostra COMO o paciente lida com
+  // cada momento, não só o % cumprido.
+  const REFS_STATUS = [
+    { statusKey: "cafeStatus", refeicao: "cafe", label: "Café da manhã" },
+    { statusKey: "almocoStatus", refeicao: "almoco", label: "Almoço" },
+    { statusKey: "lancheStatus", refeicao: "lanche", label: "Lanche da tarde" },
+    { statusKey: "jantarStatus", refeicao: "jantar", label: "Jantar" },
+  ] as const;
+  const refeicoesBreakdown = REFS_STATUS.map((r) => {
+    const c = { seguiu: 0, adaptou: 0, pulou: 0 };
+    for (const x of registrosRef) {
+      const s = x[r.statusKey];
+      if (s === "seguiu" || s === "adaptou" || s === "pulou") c[s]++;
+    }
+    const amostra = c.seguiu + c.adaptou + c.pulou;
+    const pct = (n: number) => (amostra ? Math.round((n / amostra) * 100) : null);
+    return {
+      refeicao: r.refeicao,
+      label: r.label,
+      seguiu: pct(c.seguiu),
+      adaptou: pct(c.adaptou),
+      pulou: pct(c.pulou),
+      amostra,
+    };
+  });
+
   const comAmostra = dificuldadeRefeicoes.filter((d) => d.total > 0);
   const piorRefeicao = comAmostra.length
     ? comAmostra.reduce((a, b) => ((a.pct as number) <= (b.pct as number) ? a : b))
@@ -199,6 +229,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   res.json({
     periodo,
     dificuldadeRefeicoes,   // [{ refeicao, label, cumpridas, total, pct|null }]
+    refeicoesBreakdown,     // [{ refeicao, label, seguiu, adaptou, pulou, amostra }]
     piorRefeicao,           // { refeicao, label, pct } | null — "maior dificuldade"
     pacientesRisco: pacientesRisco.slice(0, 8), // [{ id, nome, avatarUrl, dias, motivo, tone }]
     riscoResumo: { emRisco: emRiscoDuro, total }, // "risco de saída"

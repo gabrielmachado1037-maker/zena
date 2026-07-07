@@ -2,14 +2,27 @@
 // Sistema contínuo/cumulativo — separado do Ciclo (ver config/pontuacao.ts)
 
 export const PONTOS = {
-  alimentacao: 3, // seguiu a dieta
+  alimentacao: 4, // MÁX da alimentação (0–4, somada por refeição — ver XP_REFEICAO)
   treino: 2, // treino concluído
   agua: 2, // meta de água
   sono: 2, // dormiu bem
-  registro_diario: 1, // postou no diário
+  registro_diario: 1, // fechou o dia
   bonus_tudo: 1, // bônus por completar os 4
 };
-// Máximo por dia: 10 pts (4 hábitos) + 1 pt (registro) + 1 pt (bônus tudo) = 11 pts/dia
+// Máximo por dia: 4 (alimentação) + 2 + 2 + 2 (hábitos) + 1 (registro) + 1 (bônus) = 12 pts/dia
+
+// Alimentação por refeição — 3 estados. Máx 4 XP (4 refeições × seguiu).
+export const XP_REFEICAO: Record<string, number> = { seguiu: 1, adaptou: 0.5, pulou: 0 };
+export const REFEICOES_KEYS = ["cafe", "almoco", "lanche", "jantar"] as const;
+export const ALIMENTACAO_OK_MIN = 3; // XP p/ contar alimentação como "completa" (bônus + nutri)
+export const AGUA_META_ML_PADRAO = 3000; // meta diária de água (ml)
+
+/** Soma o XP de alimentação a partir do estado de cada refeição. */
+export function calcularXpAlimentacao(
+  status: Partial<Record<(typeof REFEICOES_KEYS)[number], string | null | undefined>>,
+): number {
+  return REFEICOES_KEYS.reduce((s, k) => s + (XP_REFEICAO[status[k] ?? ""] ?? 0), 0);
+}
 
 export interface LigaTier {
   liga: string;
@@ -51,20 +64,29 @@ export function proximaLiga(pontos: number): LigaTier | null {
   return LIGAS[idx + 1] ?? null;
 }
 
+/**
+ * Pontos de um dia. `xpAlimentacao` (0–4) já vem somado das refeições.
+ * `incluirFechamento` (registro_diario + bônus por completar tudo) só entra ao FECHAR
+ * o dia — durante o autosave o registro reflete só o XP dos hábitos, sem creditar liga.
+ */
 export function calcularPontosRegistro(hoje: {
-  alimentacaoOk: boolean;
+  xpAlimentacao: number;
   treinoOk: boolean;
   aguaOk: boolean;
   sonoOk: boolean;
+  incluirFechamento?: boolean;
 }): { total: number; detalhes: Record<string, number> } {
   const detalhes: Record<string, number> = {};
-  if (hoje.alimentacaoOk) detalhes.alimentacao = PONTOS.alimentacao;
+  if (hoje.xpAlimentacao > 0) detalhes.alimentacao = hoje.xpAlimentacao;
   if (hoje.treinoOk) detalhes.treino = PONTOS.treino;
   if (hoje.aguaOk) detalhes.agua = PONTOS.agua;
   if (hoje.sonoOk) detalhes.sono = PONTOS.sono;
-  detalhes.registro_diario = PONTOS.registro_diario;
-  if (hoje.alimentacaoOk && hoje.treinoOk && hoje.aguaOk && hoje.sonoOk) {
-    detalhes.bonus_tudo = PONTOS.bonus_tudo;
+  if (hoje.incluirFechamento) {
+    detalhes.registro_diario = PONTOS.registro_diario;
+    const alimentacaoOk = hoje.xpAlimentacao >= ALIMENTACAO_OK_MIN;
+    if (alimentacaoOk && hoje.treinoOk && hoje.aguaOk && hoje.sonoOk) {
+      detalhes.bonus_tudo = PONTOS.bonus_tudo;
+    }
   }
   const total = Object.values(detalhes).reduce((a, b) => a + b, 0);
   return { total, detalhes };

@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import { useFetch } from "../hooks/useFetch";
 import { piorHabito, diaCritico } from "../lib/relatorios";
-import type { RelatoriosResp, Periodo, DificuldadeRefeicao, HabitoAd, PacienteRisco } from "../lib/relatorios";
+import type { RelatoriosResp, Periodo, RefeicaoBreakdown, HabitoAd, PacienteRisco } from "../lib/relatorios";
 import Avatar from "../components/mensagens/Avatar";
 
 // Insights (nutricionista) — leituras acionáveis da carteira, não um relatório frio.
@@ -56,9 +56,9 @@ export default function Relatorios() {
 
   const risco = d?.pacientesRisco ?? [];
   const habitos = d?.habitos ?? [];
-  const dificuldade = d?.dificuldadeRefeicoes ?? [];
+  const breakdown = d?.refeicoesBreakdown ?? [];
   const pior = d?.piorRefeicao ?? null;
-  const semRefeicao = dificuldade.length > 0 && dificuldade.every((x) => x.pct == null);
+  const semRefeicao = breakdown.length > 0 && breakdown.every((x) => x.amostra === 0);
   const piorHab = piorHabito(habitos);
   const dias = diaCritico(d?.diasSemana ?? []);
 
@@ -150,15 +150,22 @@ export default function Relatorios() {
           <Panel className="p-6">
             <SectionHead
               icon={<Utensils size={18} />}
-              title="Momento do dia mais difícil"
-              hint={pior ? `${pior.label} é a refeição mais furada · ${pior.pct}%` : `Adesão por refeição ${janela}`}
+              title="Comportamento por refeição"
+              hint={pior ? `${pior.label} é o momento mais difícil · ${pior.pct}% seguido` : `Seguiu / Adaptou / Pulou ${janela}`}
             />
             <StateBox loading={rel.loading} error={rel.error} onRetry={rel.refetch} minH="h-40" empty={semRefeicao}>
               <div className="flex flex-col gap-4">
-                {dificuldade.map((m) => (
-                  <Bar key={m.refeicao} label={m.label} pct={m.pct} foco={pior?.refeicao === m.refeicao}
-                    sub={m.total > 0 ? `${m.cumpridas}/${m.total} dias` : "sem registro ainda"} />
+                {breakdown.map((m) => (
+                  <MealBreakdownRow key={m.refeicao} m={m} foco={pior?.refeicao === m.refeicao} />
                 ))}
+                <div className="flex flex-wrap gap-x-5 gap-y-1.5 border-t border-nx-border pt-3">
+                  {ALIM_LEGENDA.map((e) => (
+                    <span key={e.key} className="flex items-center gap-1.5 text-label-sm">
+                      <span className="size-2.5 rounded-full" style={{ background: e.color }} />
+                      <span className="text-nx-on-surface-variant">{e.label}</span>
+                    </span>
+                  ))}
+                </div>
               </div>
             </StateBox>
           </Panel>
@@ -185,6 +192,40 @@ export default function Relatorios() {
 const SINAL_TONE: Record<string, string> = {
   evo: "text-nx-evo", streak: "text-nx-streak", danger: "text-nx-danger", neutral: "text-nx-on-surface",
 };
+
+const ALIM_LEGENDA = [
+  { key: "seguiu", label: "Seguiu", color: "#7CFF5B" },
+  { key: "adaptou", label: "Adaptou", color: "#F8C84B" },
+  { key: "pulou", label: "Pulou", color: "#FF5D5D" },
+] as const;
+
+/* Barra segmentada Seguiu/Adaptou/Pulou de uma refeição (cor + rótulo, nunca só cor). */
+function MealBreakdownRow({ m, foco }: { m: RefeicaoBreakdown; foco?: boolean }) {
+  const semDado = m.amostra === 0;
+  return (
+    <div>
+      <div className="mb-1.5 flex items-center gap-2 text-body-sm">
+        <span className={`font-medium ${foco ? "text-nx-danger" : "text-nx-on-surface"}`}>{m.label}</span>
+        {foco && <span className="rounded-full bg-nx-danger/15 px-2 py-0.5 text-label-sm font-bold text-nx-danger">FOCO</span>}
+        <span className="ml-auto text-label-sm text-nx-on-surface-variant">
+          {semDado ? "sem registro" : `${m.amostra} ${m.amostra === 1 ? "refeição" : "refeições"}`}
+        </span>
+      </div>
+      {semDado ? (
+        <div className="h-2.5 rounded-full bg-nx-container-low" />
+      ) : (
+        <div className="flex h-2.5 overflow-hidden rounded-full bg-nx-container-low">
+          {ALIM_LEGENDA.map((e) => {
+            const pct = m[e.key] ?? 0;
+            return pct > 0 ? (
+              <div key={e.key} style={{ width: `${pct}%`, background: e.color }} title={`${e.label} ${pct}%`} />
+            ) : null;
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Sinal({ label, value, unit, hint, hintTone, tone, loading, error, onRetry, empty }: {
   label: string; value: string | null; unit?: string; hint?: string;

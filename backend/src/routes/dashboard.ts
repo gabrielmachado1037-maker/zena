@@ -418,7 +418,10 @@ router.get("/ligas", async (req: AuthRequest, res: Response) => {
   // Desempenho por categoria — % de adesão de cada hábito nos últimos 30 dias
   const reg30 = await prisma.registro.findMany({
     where: { paciente: { nutricionistaId: id }, data: { gte: ha30 } },
-    select: { alimentacaoOk: true, treinoOk: true, aguaOk: true, sonoOk: true },
+    select: {
+      alimentacaoOk: true, treinoOk: true, aguaOk: true, sonoOk: true,
+      cafeStatus: true, almocoStatus: true, lancheStatus: true, jantarStatus: true,
+    },
   });
   const nReg = reg30.length || 1;
   const desempenhoCategoria = {
@@ -426,6 +429,25 @@ router.get("/ligas", async (req: AuthRequest, res: Response) => {
     treino: Math.round((reg30.filter((r) => r.treinoOk).length / nReg) * 100),
     agua: Math.round((reg30.filter((r) => r.aguaOk).length / nReg) * 100),
     sono: Math.round((reg30.filter((r) => r.sonoOk).length / nReg) * 100),
+  };
+
+  // Comportamento alimentar — distribuição Seguiu/Adaptou/Pulou entre TODAS as refeições
+  // registradas (café/almoço/lanche/jantar) nos últimos 30 dias.
+  const REFEICOES_COLS = ["cafeStatus", "almocoStatus", "lancheStatus", "jantarStatus"] as const;
+  const contagem = { seguiu: 0, adaptou: 0, pulou: 0 };
+  for (const r of reg30) {
+    for (const col of REFEICOES_COLS) {
+      const s = r[col];
+      if (s === "seguiu" || s === "adaptou" || s === "pulou") contagem[s]++;
+    }
+  }
+  const totalRefeicoes = contagem.seguiu + contagem.adaptou + contagem.pulou;
+  const pctRef = (n: number) => (totalRefeicoes ? Math.round((n / totalRefeicoes) * 100) : null);
+  const alimentacaoBreakdown = {
+    seguiu: pctRef(contagem.seguiu),
+    adaptou: pctRef(contagem.adaptou),
+    pulou: pctRef(contagem.pulou),
+    amostra: totalRefeicoes,
   };
 
   res.json({
@@ -447,6 +469,7 @@ router.get("/ligas", async (req: AuthRequest, res: Response) => {
     atividadeRecente,
     pedidosAjuste,
     desempenhoCategoria,
+    alimentacaoBreakdown,
   });
 });
 
