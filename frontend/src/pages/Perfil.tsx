@@ -137,7 +137,7 @@ export default function Perfil() {
 
             {/* Ajustes */}
             <section>
-              <p className="text-label-md uppercase tracking-wider text-nx-outline px-1 mb-3">Ajustes</p>
+              <p className="text-label-md uppercase tracking-wider text-nx-on-surface-variant px-1 mb-3">Ajustes</p>
               <div className={`${GLASS} divide-y divide-nx-border overflow-hidden`}>
                 {/* Dados Pessoais → abre modal */}
                 <AjusteRow
@@ -157,7 +157,7 @@ export default function Perfil() {
                   descricao="Camada extra de segurança no login"
                   tint="tertiary"
                   disabled
-                  right={<span className="text-[11px] font-bold uppercase tracking-wider text-nx-outline bg-nx-container-high rounded-full px-2.5 py-1">Em breve</span>}
+                  right={<span className="text-[11px] font-bold uppercase tracking-wider text-nx-on-surface-variant bg-nx-container-high rounded-full px-2.5 py-1">Em breve</span>}
                 />
 
                 {/* Notificações push (toggle) */}
@@ -403,7 +403,7 @@ function AjudaCard() {
   ];
   return (
     <section>
-      <p className="text-label-md uppercase tracking-wider text-nx-outline px-1 mb-3">Ajuda</p>
+      <p className="text-label-md uppercase tracking-wider text-nx-on-surface-variant px-1 mb-3">Ajuda</p>
       <div className={`${GLASS} divide-y divide-nx-border overflow-hidden`}>
         {links.map((l) => (
           <a
@@ -428,7 +428,7 @@ function StatusCard() {
   const servicos = ["API principal", "Notificações", "Sincronização"];
   return (
     <section>
-      <p className="text-label-md uppercase tracking-wider text-nx-outline px-1 mb-3">Status do sistema</p>
+      <p className="text-label-md uppercase tracking-wider text-nx-on-surface-variant px-1 mb-3">Status do sistema</p>
       <div className={`${GLASS} p-5`}>
         <div className="flex items-center gap-2.5 mb-4">
           <span className="relative flex size-2.5">

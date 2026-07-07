@@ -102,7 +102,7 @@ function Bubble({ m }: { m: Mensagem }) {
           </a>
         )}
         {m.texto && <p className="whitespace-pre-wrap text-body-sm">{m.texto}</p>}
-        <span className="mt-1 block text-right text-[10px] text-nx-outline">{m.hora}</span>
+        <span className="mt-1 block text-right text-[10px] text-nx-on-surface-variant">{m.hora}</span>
       </div>
     </div>
   );
@@ -260,7 +260,7 @@ export default function CommPanel({ conversa, situacao, onEnviado, onLida, onVer
                 return <I size={16} />;
               })()}
             </span>
-            <span className="text-label-md uppercase tracking-wider text-nx-outline">Sugestão de hoje</span>
+            <span className="text-label-md uppercase tracking-wider text-nx-on-surface-variant">Sugestão de hoje</span>
           </div>
           <p className="mt-2 text-body-md text-nx-on-surface">
             <span className={"font-semibold " + INK[situacao.tone]}>{situacao.motivo}</span>
@@ -276,7 +276,7 @@ export default function CommPanel({ conversa, situacao, onEnviado, onLida, onVer
 
         {/* Ações rápidas */}
         <div>
-          <span className="mb-2 block text-label-md uppercase tracking-wider text-nx-outline">Ação rápida</span>
+          <span className="mb-2 block text-label-md uppercase tracking-wider text-nx-on-surface-variant">Ação rápida</span>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {ACOES.map((a) => {
               const A = ICON[a.intent];
@@ -300,7 +300,7 @@ export default function CommPanel({ conversa, situacao, onEnviado, onLida, onVer
 
         {/* Compositor */}
         <div className="rounded-nx-lg border border-nx-border bg-nx-container-low p-4">
-          <div className="mb-2 flex items-center gap-2 text-label-md uppercase tracking-wider text-nx-outline">
+          <div className="mb-2 flex items-center gap-2 text-label-md uppercase tracking-wider text-nx-on-surface-variant">
             <IntentIcon size={14} /> {intentLabel(intent)}
           </div>
           <textarea
@@ -312,7 +312,7 @@ export default function CommPanel({ conversa, situacao, onEnviado, onLida, onVer
                 ? "Escreva sua resposta para " + conversa.nome.split(" ")[0] + "…"
                 : "Ajuste a mensagem antes de enviar…"
             }
-            className="w-full resize-none rounded-nx-sm border border-nx-border bg-nx-surface p-3 text-body-md leading-relaxed text-nx-on-surface outline-none placeholder:text-nx-outline focus:border-nx-evo/50"
+            className="w-full resize-none rounded-nx-sm border border-nx-border bg-nx-surface p-3 text-body-md leading-relaxed text-nx-on-surface outline-none placeholder:text-nx-on-surface-variant focus:border-nx-evo/50"
           />
           <div className="mt-3 flex items-center justify-between gap-3">
             <span className={"text-body-sm " + (feedback ? "text-nx-evo" : "text-transparent")}>
@@ -339,7 +339,7 @@ export default function CommPanel({ conversa, situacao, onEnviado, onLida, onVer
         <div>
           <button
             onClick={() => setHistAberto((v) => !v)}
-            className="mb-2 flex w-full items-center justify-between text-label-md uppercase tracking-wider text-nx-outline"
+            className="mb-2 flex w-full items-center justify-between text-label-md uppercase tracking-wider text-nx-on-surface-variant"
           >
             <span>Conversa {historico.length > 0 && `· ${historico.length}`}</span>
             <ChevronDown

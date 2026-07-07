@@ -85,7 +85,7 @@ export default function AgendarModal({ nome, onClose, onConfirm }: Props) {
 
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1.5">
-            <span className="text-label-md uppercase text-nx-outline">Data</span>
+            <span className="text-label-md uppercase text-nx-on-surface-variant">Data</span>
             <input
               ref={dateRef}
               type="date"
@@ -96,7 +96,7 @@ export default function AgendarModal({ nome, onClose, onConfirm }: Props) {
             />
           </label>
           <label className="flex flex-col gap-1.5">
-            <span className="text-label-md uppercase text-nx-outline">Horário</span>
+            <span className="text-label-md uppercase text-nx-on-surface-variant">Horário</span>
             <input
               type="time"
               value={hora}
@@ -107,7 +107,7 @@ export default function AgendarModal({ nome, onClose, onConfirm }: Props) {
         </div>
 
         <div className="mt-4">
-          <span className="mb-1.5 block text-label-md uppercase text-nx-outline">Tipo</span>
+          <span className="mb-1.5 block text-label-md uppercase text-nx-on-surface-variant">Tipo</span>
           <div className="flex gap-2">
             {TIPOS.map((t) => (
               <button

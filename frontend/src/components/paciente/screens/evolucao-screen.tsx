@@ -198,7 +198,7 @@ export function EvolucaoScreen({ onNavigate }: { onNavigate: NavigateFn }) {
     { icon: Smile, label: "Humor", onClick: () => setHumorOpen(true) },
   ]
 
-  const medInput = "w-full rounded-nx-md border border-nx-border bg-nx-container px-3 py-2.5 text-body-md text-nx-on-surface outline-none placeholder:text-nx-outline focus:border-nx-evo"
+  const medInput = "w-full rounded-nx-md border border-nx-border bg-nx-container px-3 py-2.5 text-body-md text-nx-on-surface outline-none placeholder:text-nx-on-surface-variant focus:border-nx-evo"
 
   return (
     <div className="pb-6">
@@ -243,7 +243,7 @@ export function EvolucaoScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           <div className="rounded-nx-lg border border-nx-border bg-nx-surface p-8 text-center">
             <Sparkles className="mx-auto size-8 text-nx-evo" />
             <p className="mt-3 text-body-lg font-semibold text-nx-on-surface">Seu diário começa hoje</p>
-            <p className="mt-1 text-body-sm text-nx-outline">
+            <p className="mt-1 text-body-sm text-nx-on-surface-variant">
               Adicione uma foto, seu peso ou como você se sente.
             </p>
           </div>
@@ -276,14 +276,14 @@ export function EvolucaoScreen({ onNavigate }: { onNavigate: NavigateFn }) {
             </div>
             <div className="mt-4 space-y-3">
               <div>
-                <label className="text-body-sm text-nx-outline">Peso (kg) *</label>
+                <label className="text-body-sm text-nx-on-surface-variant">Peso (kg) *</label>
                 <input type="number" inputMode="decimal" step="0.1" placeholder="72,5"
                   value={medForm.peso} onChange={(e) => setMedForm((f) => ({ ...f, peso: e.target.value }))} className={cn(medInput, "mt-1")} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 {([["cintura", "Cintura (cm)"], ["quadril", "Quadril (cm)"], ["braco", "Braço (cm)"], ["coxa", "Coxa (cm)"]] as const).map(([key, label]) => (
                   <div key={key}>
-                    <label className="text-body-sm text-nx-outline">{label}</label>
+                    <label className="text-body-sm text-nx-on-surface-variant">{label}</label>
                     <input type="number" inputMode="decimal" step="0.1" placeholder="—"
                       value={medForm[key]} onChange={(e) => setMedForm((f) => ({ ...f, [key]: e.target.value }))} className={cn(medInput, "mt-1")} />
                   </div>
@@ -355,7 +355,7 @@ function TimelineEntry({ entry, name }: { entry: Entry; name: string }) {
           </span>
           <div className="flex-1">
             <p className="text-body-lg font-semibold text-nx-on-surface">{kg(entry.peso)}</p>
-            <p className="text-body-sm text-nx-outline">Pesagem registrada</p>
+            <p className="text-body-sm text-nx-on-surface-variant">Pesagem registrada</p>
           </div>
           {entry.delta != null && entry.delta !== 0 && (
             <span className={cn("flex items-center gap-0.5 rounded-full px-2 py-1 text-body-sm font-semibold",
@@ -385,7 +385,7 @@ function TimelineEntry({ entry, name }: { entry: Entry; name: string }) {
         <span className="text-3xl" aria-hidden>{m.emoji}</span>
         <div>
           <p className="text-body-lg font-semibold text-nx-on-surface">{m.label}</p>
-          <p className="text-body-sm text-nx-outline">Seu humor no dia</p>
+          <p className="text-body-sm text-nx-on-surface-variant">Seu humor no dia</p>
         </div>
       </div>
     )
@@ -399,7 +399,7 @@ function TimelineEntry({ entry, name }: { entry: Entry; name: string }) {
         </span>
         <div className="flex-1">
           <p className="text-body-lg font-semibold text-nx-on-surface">Dia registrado</p>
-          <p className="text-body-sm text-nx-outline">Missões do dia concluídas</p>
+          <p className="text-body-sm text-nx-on-surface-variant">Missões do dia concluídas</p>
         </div>
         {entry.pontos > 0 && <span className="text-body-sm font-bold text-nx-evo">+{entry.pontos} XP</span>}
       </div>
@@ -416,7 +416,7 @@ function TimelineEntry({ entry, name }: { entry: Entry; name: string }) {
       <div className="min-w-0 flex-1">
         <p className="text-label-sm uppercase text-nx-gold">Conquista desbloqueada</p>
         <p className="text-body-lg font-semibold text-nx-on-surface">{entry.titulo}</p>
-        {entry.descricao && <p className="truncate text-body-sm text-nx-outline">{entry.descricao}</p>}
+        {entry.descricao && <p className="truncate text-body-sm text-nx-on-surface-variant">{entry.descricao}</p>}
       </div>
     </div>
   )

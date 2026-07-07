@@ -114,7 +114,7 @@ function Conquistas({ data, diasConsecutivos }: { data: PacienteData; diasConsec
             }`}>
             <span className="text-[24px]">{b.emoji}</span>
             <span className={`text-[9px] font-semibold leading-tight ${
-              b.ok ? "text-nx-tertiary" : "text-nx-outline"
+              b.ok ? "text-nx-tertiary" : "text-nx-on-surface-variant"
             }`}>
               {b.label}
             </span>
@@ -195,7 +195,7 @@ function AlterarSenha({ token }: { token: string }) {
   }
 
   const inputCls =
-    "w-full px-4 py-3 rounded-xl border border-white/10 bg-nx-container text-nx-on-surface text-[14px] placeholder:text-nx-outline focus:outline-none focus:border-nx-primary";
+    "w-full px-4 py-3 rounded-xl border border-white/10 bg-nx-container text-nx-on-surface text-[14px] placeholder:text-nx-on-surface-variant focus:outline-none focus:border-nx-primary";
 
   return (
     <div className="bg-nx-surface rounded-2xl overflow-hidden border border-white/5">
@@ -387,7 +387,7 @@ export default function ContaPaciente() {
 
       {/* Configurações */}
       <div>
-        <p className="text-[12px] font-bold text-nx-outline uppercase tracking-wide mb-3">Configurações</p>
+        <p className="text-[12px] font-bold text-nx-on-surface-variant uppercase tracking-wide mb-3">Configurações</p>
         <div className="space-y-2">
 
           {/* Notificações */}

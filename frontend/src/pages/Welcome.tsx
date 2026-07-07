@@ -231,7 +231,7 @@ export default function Welcome() {
         {/* Rodapé — prova social */}
         <motion.p
           variants={item}
-          className="mt-7 text-center text-[13px] leading-relaxed text-nx-outline"
+          className="mt-7 text-center text-[13px] leading-relaxed text-nx-on-surface-variant"
         >
           Junte-se a milhares de pessoas que evoluem todos os dias.
         </motion.p>

@@ -68,7 +68,7 @@ export default function Layout() {
               </p>
               <button
                 onClick={() => { setIosHint(false); setInstallDismissed(true); }}
-                className="mt-3 text-xs text-nx-outline hover:text-nx-on-surface"
+                className="mt-3 text-xs text-nx-on-surface-variant hover:text-nx-on-surface"
               >
                 Fechar
               </button>

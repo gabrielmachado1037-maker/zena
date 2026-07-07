@@ -56,7 +56,7 @@ export default function LigaPontosTab({ paciente, pontosLog, streakMarcos, conqu
             <div className="w-full bg-nx-container-high h-2 rounded-full overflow-hidden">
               <div className="h-full rounded-full" style={{ width: `${prog.pct}%`, background: cor, boxShadow: `0 0 8px ${cor}80` }} />
             </div>
-            {prog.proxima && <p className="text-label-sm text-nx-outline mt-1">faltam {prog.faltam} pts</p>}
+            {prog.proxima && <p className="text-label-sm text-nx-on-surface-variant mt-1">faltam {prog.faltam} pts</p>}
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -116,7 +116,7 @@ export default function LigaPontosTab({ paciente, pontosLog, streakMarcos, conqu
                 </div>
               </div>
             ))}
-            <p className="text-label-sm text-nx-outline pt-1">Total registrado: {totalLog} pts (últimos {pontosLog.length} lançamentos)</p>
+            <p className="text-label-sm text-nx-on-surface-variant pt-1">Total registrado: {totalLog} pts (últimos {pontosLog.length} lançamentos)</p>
           </div>
         )}
       </div>

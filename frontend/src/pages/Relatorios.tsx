@@ -42,7 +42,7 @@ function StateBox({ loading, error, empty, onRetry, children, minH = "h-28" }: {
         {onRetry && <button onClick={onRetry} className="text-label-md text-nx-evo hover:underline">Tentar de novo</button>}
       </div>
     );
-  if (empty) return <div className={`${minH} flex items-center justify-center text-body-sm text-nx-outline`}>Sem dados ainda</div>;
+  if (empty) return <div className={`${minH} flex items-center justify-center text-body-sm text-nx-on-surface-variant`}>Sem dados ainda</div>;
   return <>{children}</>;
 }
 
@@ -200,7 +200,7 @@ function Sinal({ label, value, unit, hint, hintTone, tone, loading, error, onRet
           {unit && <span className="text-body-md font-medium text-nx-on-surface-variant">{unit}</span>}
         </p>
         {hint && (
-          <p className={`mt-2 text-label-sm ${hintTone === "danger" ? "text-nx-danger" : hintTone === "evo" ? "text-nx-evo" : "text-nx-outline"}`}>
+          <p className={`mt-2 text-label-sm ${hintTone === "danger" ? "text-nx-danger" : hintTone === "evo" ? "text-nx-evo" : "text-nx-on-surface-variant"}`}>
             {hint}
           </p>
         )}
@@ -245,7 +245,7 @@ function Bar({ label, pct, foco, sub }: { label: string; pct: number | null; foc
         <div className="h-full rounded-full transition-[width] duration-500 ease-out"
           style={{ width: `${pct ?? 0}%`, background: pct == null ? "transparent" : corPct(pct) }} />
       </div>
-      <p className="mt-1 text-label-sm text-nx-outline">{sub}</p>
+      <p className="mt-1 text-label-sm text-nx-on-surface-variant">{sub}</p>
     </div>
   );
 }
@@ -267,7 +267,7 @@ function WeekStrip({ dias, piorDow }: { dias: { dow: number; label: string; pct:
                 style={{ height: `${h}%`, background: day.pct == null ? "transparent" : corPct(day.pct) }}
               />
             </div>
-            <span className={`text-label-sm uppercase ${pior ? "text-nx-danger font-bold" : "text-nx-outline"}`}>{day.label}</span>
+            <span className={`text-label-sm uppercase ${pior ? "text-nx-danger font-bold" : "text-nx-on-surface-variant"}`}>{day.label}</span>
           </div>
         );
       })}

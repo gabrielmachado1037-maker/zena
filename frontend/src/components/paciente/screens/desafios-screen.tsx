@@ -54,13 +54,13 @@ function EventCard({ c, onResgatar }: { c: Challenge; onResgatar: (c: Challenge)
           <ProgressBarNx value={c.progress} tone={t.tone} celebrate={done} aria-label={`Progresso do desafio ${c.title}`} />
           <div className="mt-1.5 flex items-center justify-between text-body-sm">
             <span className="font-semibold tabular-nums" style={{ color: t.accent }}>{c.progress}%</span>
-            {!done && <span className="text-nx-outline">{c.remaining}</span>}
+            {!done && <span className="text-nx-on-surface-variant">{c.remaining}</span>}
           </div>
         </div>
 
         {/* Recompensas */}
         <div className="flex items-center gap-2 border-t border-nx-border pt-3">
-          <span className="text-label-md uppercase text-nx-outline">Recompensa</span>
+          <span className="text-label-md uppercase text-nx-on-surface-variant">Recompensa</span>
           <div className="ml-auto flex items-center gap-2">
             {c.xp != null && c.xp > 0 && (
               <span className="flex items-center gap-1 rounded-full bg-nx-gold/12 px-2.5 py-1 text-body-sm font-bold text-nx-gold">
@@ -151,7 +151,7 @@ export function DesafiosScreen() {
           <p className="mt-3 text-body-md text-nx-on-surface-variant">
             {tab === "ativos" ? "Nenhum desafio ativo agora." : "Você ainda não concluiu desafios."}
           </p>
-          <p className="mt-1 text-body-sm text-nx-outline">
+          <p className="mt-1 text-body-sm text-nx-on-surface-variant">
             {tab === "ativos" ? "Seu nutri lança novos eventos por aqui." : "Complete um desafio e desbloqueie sua conquista."}
           </p>
         </div>

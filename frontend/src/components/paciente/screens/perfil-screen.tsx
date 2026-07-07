@@ -26,7 +26,7 @@ function StatCol({ value, label, tone, icon: Icon }: {
     <div className="flex flex-col items-center gap-1 px-2 py-4">
       <Icon className={cn("size-5", tone)} />
       <span className="text-headline-md tabular-nums text-nx-on-surface">{value}</span>
-      <span className="text-label-md uppercase text-nx-outline">{label}</span>
+      <span className="text-label-md uppercase text-nx-on-surface-variant">{label}</span>
     </div>
   )
 }
@@ -89,7 +89,7 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
       {/* Coleção de conquistas */}
       <section className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-label-md uppercase tracking-wide text-nx-outline">Coleção</h2>
+          <h2 className="text-label-md uppercase tracking-wide text-nx-on-surface-variant">Coleção</h2>
           <span className="text-body-sm font-semibold tabular-nums text-nx-on-surface-variant">
             {earnedCount} de {CATALOGO.length}
           </span>
@@ -119,10 +119,10 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
                   )}
                 </div>
                 <div className="min-h-[2.4rem]">
-                  <p className={cn("text-body-sm font-semibold leading-tight", got ? "text-nx-on-surface" : "text-nx-outline")}>
+                  <p className={cn("text-body-sm font-semibold leading-tight", got ? "text-nx-on-surface" : "text-nx-on-surface-variant")}>
                     {c.title}
                   </p>
-                  <p className="mt-0.5 text-label-sm uppercase text-nx-outline">
+                  <p className="mt-0.5 text-label-sm uppercase text-nx-on-surface-variant">
                     {got ? c.earned!.date : c.desc}
                   </p>
                 </div>
@@ -138,7 +138,7 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           <div className="h-full rounded-nx-md border border-nx-border bg-nx-surface p-4">
             <Trophy className="size-5 text-nx-evo" />
             <p className="mt-2 text-headline-md tabular-nums text-nx-on-surface">{desafiosConcluidos}</p>
-            <p className="text-body-sm text-nx-outline">
+            <p className="text-body-sm text-nx-on-surface-variant">
               desafios vencidos{desafiosAtivos > 0 ? ` · ${desafiosAtivos} em curso` : ""}
             </p>
           </div>
@@ -147,20 +147,20 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           <div className="h-full rounded-nx-md border border-nx-border bg-nx-surface p-4">
             <Flame className="size-5 text-nx-streak" />
             <p className="mt-2 text-headline-md tabular-nums text-nx-on-surface">
-              {missoesFeitas}<span className="text-nx-outline">/{missions.length}</span>
+              {missoesFeitas}<span className="text-nx-on-surface-variant">/{missions.length}</span>
             </p>
-            <p className="text-body-sm text-nx-outline">missões de hoje</p>
+            <p className="text-body-sm text-nx-on-surface-variant">missões de hoje</p>
           </div>
         </button>
       </div>
 
       {/* Histórico — linha do tempo da evolução */}
       <section className="space-y-3">
-        <h2 className="px-1 text-label-md uppercase tracking-wide text-nx-outline">Histórico</h2>
+        <h2 className="px-1 text-label-md uppercase tracking-wide text-nx-on-surface-variant">Histórico</h2>
         {achievements.length === 0 ? (
           <div className="rounded-nx-lg border border-nx-border bg-nx-surface p-6 text-center">
             <p className="text-body-md text-nx-on-surface-variant">Sua história começa agora.</p>
-            <p className="mt-1 text-body-sm text-nx-outline">Feche o dia e desbloqueie sua 1ª conquista.</p>
+            <p className="mt-1 text-body-sm text-nx-on-surface-variant">Feche o dia e desbloqueie sua 1ª conquista.</p>
           </div>
         ) : (
           <div className="rounded-nx-lg border border-nx-border bg-nx-surface p-2">
@@ -176,9 +176,9 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-body-md font-medium text-nx-on-surface">{a.title}</p>
-                    {a.description && <p className="truncate text-body-sm text-nx-outline">{a.description}</p>}
+                    {a.description && <p className="truncate text-body-sm text-nx-on-surface-variant">{a.description}</p>}
                   </div>
-                  <span className="shrink-0 text-body-sm text-nx-outline">{a.date}</span>
+                  <span className="shrink-0 text-body-sm text-nx-on-surface-variant">{a.date}</span>
                 </div>
               )
             })}

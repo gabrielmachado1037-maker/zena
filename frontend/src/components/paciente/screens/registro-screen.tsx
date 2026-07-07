@@ -78,13 +78,13 @@ function MissionTile({
 
       <div className="min-w-0 flex-1">
         <p className="text-body-lg font-semibold text-nx-on-surface">{title}</p>
-        <p className="truncate text-body-sm text-nx-outline">{done ? "Concluída" : subtitle}</p>
+        <p className="truncate text-body-sm text-nx-on-surface-variant">{done ? "Concluída" : subtitle}</p>
       </div>
 
       <span
         className={cn(
           "text-body-md font-bold tabular-nums",
-          done ? "text-nx-evo" : "text-nx-outline",
+          done ? "text-nx-evo" : "text-nx-on-surface-variant",
         )}
       >
         +{points}
@@ -136,11 +136,11 @@ function MealMission({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-body-lg font-semibold text-nx-on-surface">Alimentação</p>
-          <p className="truncate text-body-sm text-nx-outline">
+          <p className="truncate text-body-sm text-nx-on-surface-variant">
             {done ? "Concluída · plano seguido" : `${count}/4 refeições · marque ${META_REFEICOES} pra concluir`}
           </p>
         </div>
-        <span className={cn("text-body-md font-bold tabular-nums", done ? "text-nx-evo" : "text-nx-outline")}>
+        <span className={cn("text-body-md font-bold tabular-nums", done ? "text-nx-evo" : "text-nx-on-surface-variant")}>
           +{points}
         </span>
       </div>
@@ -256,9 +256,9 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
       {/* Barra de XP do dia — enche conforme você conclui (feedback ao vivo) */}
       <div className="rounded-nx-lg border border-nx-border bg-nx-surface p-4">
         <div className="mb-2 flex items-baseline justify-between">
-          <span className="text-label-md uppercase text-nx-outline">XP de hoje</span>
+          <span className="text-label-md uppercase text-nx-on-surface-variant">XP de hoje</span>
           <span className="text-body-sm font-bold tabular-nums text-nx-evo">
-            {earned}<span className="text-nx-outline"> / {goal} XP</span>
+            {earned}<span className="text-nx-on-surface-variant"> / {goal} XP</span>
           </span>
         </div>
         <ProgressBarNx value={goal ? (earned / goal) * 100 : 0} tone="evo" celebrate={earned >= goal} />
@@ -300,7 +300,7 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           </div>
           <div className="flex-1">
             <p className="text-body-lg font-semibold text-nx-on-surface">Dia registrado</p>
-            <p className="text-body-sm text-nx-outline">Volte amanhã pra manter a chama</p>
+            <p className="text-body-sm text-nx-on-surface-variant">Volte amanhã pra manter a chama</p>
           </div>
           <Flame className="size-6 text-nx-streak" />
         </div>
@@ -327,7 +327,7 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           </div>
           <div className="flex-1">
             <p className="text-body-md font-semibold text-nx-on-surface">Minha evolução</p>
-            <p className="text-body-sm text-nx-outline">Fotos, peso, medidas e humor</p>
+            <p className="text-body-sm text-nx-on-surface-variant">Fotos, peso, medidas e humor</p>
           </div>
           <ChevronRight className="size-5 text-nx-outline" />
         </div>

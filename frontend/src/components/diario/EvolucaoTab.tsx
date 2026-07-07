@@ -115,7 +115,7 @@ export default function EvolucaoTab({ medicoes, fotos, pesoMeta, objetivo }: Pro
                 <img src={f.imagem} alt={f.tipo} className="w-full h-40 object-cover" />
                 <div className="px-3 py-2 flex justify-between items-center">
                   <span className="text-label-sm text-nx-on-surface-variant capitalize">{f.tipo}</span>
-                  <span className="text-label-sm text-nx-outline">{dataCurta(f.data)}</span>
+                  <span className="text-label-sm text-nx-on-surface-variant">{dataCurta(f.data)}</span>
                 </div>
               </div>
             ))}

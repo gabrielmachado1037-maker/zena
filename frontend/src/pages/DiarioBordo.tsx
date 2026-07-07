@@ -225,12 +225,12 @@ export default function DiarioBordo() {
                     </span>
                   </div>
                   <p className="mt-0.5 truncate text-body-sm text-nx-on-surface-variant">{pac.objetivo || "Sem objetivo definido"}</p>
-                  <p className="mt-1 text-body-sm text-nx-outline">
+                  <p className="mt-1 text-body-sm text-nx-on-surface-variant">
                     {dias == null ? "Nunca registrou" : dias === 0 ? "Check-in hoje" : `Último check-in há ${dias} ${dias === 1 ? "dia" : "dias"}`}
                   </p>
                   {humorRecente.length > 0 && (
                     <div className="mt-3 flex items-center gap-1.5">
-                      <span className="text-label-sm uppercase text-nx-outline">Humor</span>
+                      <span className="text-label-sm uppercase text-nx-on-surface-variant">Humor</span>
                       <span className="text-lg leading-none">{humorRecente.join(" ")}</span>
                     </div>
                   )}
@@ -248,7 +248,7 @@ export default function DiarioBordo() {
                   <div className="min-w-0 flex-1">
                     <p className="text-body-lg font-bold tabular-nums text-nx-on-surface">{pac.pontosTotal.toLocaleString("pt-BR")} XP</p>
                     <div className="mt-1.5"><ProgressBarNx value={prog?.pct ?? 0} tone="gold" /></div>
-                    {prog?.proxima && <p className="mt-1 text-label-sm text-nx-outline">faltam {prog.faltam} pra {prog.proxima.liga} {prog.proxima.nivel}</p>}
+                    {prog?.proxima && <p className="mt-1 text-label-sm text-nx-on-surface-variant">faltam {prog.faltam} pra {prog.proxima.liga} {prog.proxima.nivel}</p>}
                   </div>
                 </div>
               </div>
@@ -258,7 +258,7 @@ export default function DiarioBordo() {
                 <div className="mb-4 flex items-end justify-between">
                   <div className="flex items-center gap-2">
                     <Target className="size-4 text-nx-on-surface-variant" />
-                    <span className="text-label-md uppercase text-nx-outline">Aderência · 30 dias</span>
+                    <span className="text-label-md uppercase text-nx-on-surface-variant">Aderência · 30 dias</span>
                   </div>
                   <div className="flex items-baseline gap-2">
                     <span className={`text-display-lg leading-none tabular-nums ${adColor}`}>{adOverall}<span className="text-body-lg">%</span></span>
@@ -280,13 +280,13 @@ export default function DiarioBordo() {
                     ))}
                   </div>
                 ) : (
-                  <p className="py-4 text-center text-body-sm text-nx-outline">Sem check-ins suficientes ainda.</p>
+                  <p className="py-4 text-center text-body-sm text-nx-on-surface-variant">Sem check-ins suficientes ainda.</p>
                 )}
               </div>
 
               {/* Pontos de atenção */}
               <div className={`${CARD} flex flex-col p-5`}>
-                <span className="mb-3 text-label-md uppercase text-nx-outline">Pontos de atenção</span>
+                <span className="mb-3 text-label-md uppercase text-nx-on-surface-variant">Pontos de atenção</span>
                 <div className="flex-1 space-y-2.5">
                   {adesao && adesao.pior.pct < 70 && (
                     <p className="flex items-start gap-2 text-body-sm text-nx-on-surface">
@@ -325,7 +325,7 @@ export default function DiarioBordo() {
               <section className={`${CARD} mt-4 p-5`}>
                 <div className="mb-4 flex items-center gap-2">
                   <Lightbulb className="size-4 text-nx-evo" />
-                  <span className="text-label-md uppercase text-nx-outline">Leitura automática</span>
+                  <span className="text-label-md uppercase text-nx-on-surface-variant">Leitura automática</span>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {insights.slice(0, 6).map((ins) => {
@@ -336,7 +336,7 @@ export default function DiarioBordo() {
                           <Icon className="size-4" />
                         </span>
                         <div className="min-w-0">
-                          <p className="text-label-sm uppercase text-nx-outline">{ins.titulo}</p>
+                          <p className="text-label-sm uppercase text-nx-on-surface-variant">{ins.titulo}</p>
                           <p className={`text-body-sm font-medium ${ins.tone === "risco" || ins.tone === "atencao" ? INSIGHT_TONE[ins.tone] : "text-nx-on-surface"}`}>{ins.texto}</p>
                         </div>
                       </div>
@@ -433,7 +433,7 @@ export default function DiarioBordo() {
                           </div>
                           <div className="grid gap-4 md:grid-cols-2">
                             <div className="rounded-nx-md border border-nx-border bg-nx-container p-4">
-                              <span className="mb-3 block text-label-md font-bold uppercase text-nx-outline">Hábitos</span>
+                              <span className="mb-3 block text-label-md font-bold uppercase text-nx-on-surface-variant">Hábitos</span>
                               <ul className="space-y-3">
                                 {HABITOS.map((h) => (
                                   <li key={h.key} className="flex items-center justify-between">
@@ -444,14 +444,14 @@ export default function DiarioBordo() {
                               </ul>
                             </div>
                             <div className="rounded-nx-md border border-nx-border bg-nx-container p-4">
-                              <span className="mb-3 flex items-center gap-2 text-label-md font-bold uppercase text-nx-outline"><Sparkles size={16} className="text-nx-evo" /> Como se sentiu</span>
+                              <span className="mb-3 flex items-center gap-2 text-label-md font-bold uppercase text-nx-on-surface-variant"><Sparkles size={16} className="text-nx-evo" /> Como se sentiu</span>
                               <div className="mb-2 text-4xl">{selReg.humor ? HUMOR[selReg.humor] ?? "🙂" : "—"}</div>
                               <p className="text-body-sm leading-snug text-nx-on-surface-variant">{selReg.descricao || "Sem anotações neste dia."}</p>
                             </div>
                           </div>
                           {selReg.cafeOk != null && (
                             <div className="mt-4 rounded-nx-md border border-nx-border bg-nx-container p-4">
-                              <span className="mb-3 flex items-center gap-2 text-label-md font-bold uppercase text-nx-outline"><Utensils size={16} className="text-nx-evo" /> Refeições</span>
+                              <span className="mb-3 flex items-center gap-2 text-label-md font-bold uppercase text-nx-on-surface-variant"><Utensils size={16} className="text-nx-evo" /> Refeições</span>
                               <div className="grid grid-cols-4 gap-2">
                                 {REFEICOES.map((r) => {
                                   const ok = selReg[r.key];

@@ -29,7 +29,7 @@ function StateBox({ loading, error, empty, onRetry, children, minH = "h-28", emp
         {onRetry && <button onClick={onRetry} className="text-label-md text-nx-evo hover:underline">Tentar de novo</button>}
       </div>
     );
-  if (empty) return <div className={`${minH} flex items-center justify-center text-body-sm text-nx-outline`}>{emptyText}</div>;
+  if (empty) return <div className={`${minH} flex items-center justify-center text-body-sm text-nx-on-surface-variant`}>{emptyText}</div>;
   return <>{children}</>;
 }
 function Barra({ pct, cor = "#7CFF5B" }: { pct: number; cor?: string }) {
@@ -107,7 +107,7 @@ export default function Desafios() {
               <p className="text-body-sm text-nx-on-surface-variant">{k.label}</p>
               <StateBox loading={resumo.loading} error={resumo.error} onRetry={resumo.refetch} empty={k.value == null && !resumo.loading && !resumo.error} minH="h-14">
                 <p className={`text-[32px] leading-none font-semibold tracking-tight mt-2 ${TONE_TEXT[k.tone]}`}>{k.value ?? "—"}</p>
-                {k.hint && <p className="text-label-sm text-nx-outline mt-2">{k.hint}</p>}
+                {k.hint && <p className="text-label-sm text-nx-on-surface-variant mt-2">{k.hint}</p>}
               </StateBox>
             </Card>
           ))}
@@ -199,7 +199,7 @@ function DesafioCardView({ d, onDetalhes }: { d: DesafioCard; onDetalhes: () => 
           <h3 className="text-body-md font-semibold truncate">{d.titulo}</h3>
           <span className="text-label-sm uppercase tracking-wide" style={{ color: cat.cor }}>{cat.label}</span>
         </div>
-        {d.status === "encerrado" && <span className="text-label-sm rounded-full bg-nx-container px-2 py-1 text-nx-outline">Encerrado</span>}
+        {d.status === "encerrado" && <span className="text-label-sm rounded-full bg-nx-container px-2 py-1 text-nx-on-surface-variant">Encerrado</span>}
       </div>
       {d.descricao && <p className="text-body-sm text-nx-on-surface-variant line-clamp-2 mb-3">{d.descricao}</p>}
 
@@ -374,7 +374,7 @@ function DetailModal({ id, onClose, onMudou }: { id: string; onClose: () => void
             <div>
               <h4 className="text-body-md font-semibold mb-3">Status dos Participantes</h4>
               {d.lista.length === 0 ? (
-                <p className="text-body-sm text-nx-outline py-6 text-center">Sem participantes inscritos</p>
+                <p className="text-body-sm text-nx-on-surface-variant py-6 text-center">Sem participantes inscritos</p>
               ) : (
                 <ul className="space-y-3 max-h-64 overflow-auto pr-1">
                   {d.lista.map((p) => (
@@ -429,7 +429,7 @@ function MiniStat({ label, value, tone = "text-nx-on-surface" }: { label: string
   return (
     <div className="rounded-xl bg-nx-container/60 p-3 text-center">
       <p className={`text-body-lg font-semibold ${tone}`}>{value}</p>
-      <p className="text-label-sm text-nx-outline mt-0.5">{label}</p>
+      <p className="text-label-sm text-nx-on-surface-variant mt-0.5">{label}</p>
     </div>
   );
 }

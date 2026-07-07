@@ -128,7 +128,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: NavigateFn }) {
               <span className="text-display-lg leading-none text-nx-evo tabular-nums">
                 {done}<span className="text-nx-outline">/{total}</span>
               </span>
-              <span className="mt-1 text-label-md uppercase text-nx-outline">missões hoje</span>
+              <span className="mt-1 text-label-md uppercase text-nx-on-surface-variant">missões hoje</span>
             </>
           )}
         </ProgressRing>
@@ -154,14 +154,14 @@ export function HomeScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           <div className="flex items-center gap-3">
             <LeagueCrest liga={ligaKey} size={54} />
             <div className="flex-1">
-              <p className="text-label-md uppercase text-nx-outline">Sua liga</p>
+              <p className="text-label-md uppercase text-nx-on-surface-variant">Sua liga</p>
               <p className="text-headline-md text-nx-on-surface">{user.league}</p>
             </div>
             <div className="text-right">
               <p className="text-body-lg font-bold tabular-nums text-nx-on-surface">
                 {user.points.toLocaleString("pt-BR")}
               </p>
-              <p className="text-label-md uppercase text-nx-outline">XP</p>
+              <p className="text-label-md uppercase text-nx-on-surface-variant">XP</p>
             </div>
           </div>
           <ProgressBarNx value={user.leagueProgress} tone="gold" aria-label="Progresso na liga" />
@@ -187,7 +187,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           <Gift className="size-5 text-nx-gold" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-label-md uppercase text-nx-outline">Próxima recompensa</p>
+          <p className="text-label-md uppercase text-nx-on-surface-variant">Próxima recompensa</p>
           <p className="truncate text-body-lg font-semibold text-nx-on-surface">{recompensa.titulo}</p>
         </div>
         <span className="shrink-0 text-body-sm font-medium text-nx-gold">{recompensa.detalhe}</span>
@@ -196,7 +196,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: NavigateFn }) {
       {/* Missões do dia */}
       <section className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-label-md uppercase tracking-wide text-nx-outline">Missões do dia</h2>
+          <h2 className="text-label-md uppercase tracking-wide text-nx-on-surface-variant">Missões do dia</h2>
           <span className="text-body-sm font-semibold tabular-nums text-nx-on-surface-variant">
             {done}/{total} <span className="text-nx-evo">✓</span>
           </span>
@@ -224,7 +224,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: NavigateFn }) {
                   <p className={`text-body-md font-medium ${m.done ? "text-nx-on-surface-variant line-through" : "text-nx-on-surface"}`}>
                     {m.title}
                   </p>
-                  {!m.done && <p className="truncate text-body-sm text-nx-outline">{m.subtitle}</p>}
+                  {!m.done && <p className="truncate text-body-sm text-nx-on-surface-variant">{m.subtitle}</p>}
                 </div>
                 {m.done ? (
                   <span className="flex items-center gap-1 text-body-sm font-bold text-nx-evo">
@@ -251,7 +251,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: NavigateFn }) {
                   <desafio.icon className="size-5 text-nx-evo" />
                 </div>
                 <div>
-                  <p className="text-label-md uppercase text-nx-outline">Desafio ativo</p>
+                  <p className="text-label-md uppercase text-nx-on-surface-variant">Desafio ativo</p>
                   <p className="text-body-lg font-semibold text-nx-on-surface">{desafio.title}</p>
                 </div>
               </div>

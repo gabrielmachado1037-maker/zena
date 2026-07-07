@@ -33,7 +33,7 @@ export function DashboardSidebar() {
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:shrink-0 min-h-screen bg-nx-bg border-r border-nx-border px-4 py-6">
         <div className="px-2 mb-8">
           <p className="text-nx-on-surface font-extrabold tracking-tight text-[20px] leading-none">NEXVEL</p>
-          <p className="text-label-sm text-nx-outline uppercase mt-1 tracking-[0.14em]">Nutrition Pro</p>
+          <p className="text-label-sm text-nx-on-surface-variant uppercase mt-1 tracking-[0.14em]">Nutrition Pro</p>
         </div>
 
         <nav className="flex-1 flex flex-col gap-1">
@@ -79,7 +79,7 @@ export function DashboardSidebar() {
           <Avatar src={nutricionista?.foto} nome={nome} tamanho={38} />
           <div className="flex-1 min-w-0">
             <p className="text-nx-on-surface text-body-sm font-semibold truncate">{nome}</p>
-            <p className="text-nx-outline text-label-sm">Nutricionista</p>
+            <p className="text-nx-on-surface-variant text-label-sm">Nutricionista</p>
           </div>
           <button onClick={logout} aria-label="Sair" className="text-nx-outline hover:text-nx-danger transition-colors">
             <LogOut size={18} />
@@ -105,7 +105,7 @@ export function DashboardSidebar() {
               >
                 <Icon size={20} />
               </span>
-              <span className={`text-label-sm ${active ? "text-nx-evo" : "text-nx-outline"}`}>{label}</span>
+              <span className={`text-label-sm ${active ? "text-nx-evo" : "text-nx-on-surface-variant"}`}>{label}</span>
             </button>
           );
         })}

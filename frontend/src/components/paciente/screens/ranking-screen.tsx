@@ -72,16 +72,16 @@ function Podium({ top }: { top: RankUser[] }) {
 function RankRow({ u }: { u: RankUser }) {
   return (
     <div className={cn("flex items-center gap-3 rounded-nx-md border px-3 py-2.5", u.me ? "border-nx-evo/50 bg-nx-evo/10" : "border-nx-border bg-nx-surface")}>
-      <span className="w-6 text-center text-body-md font-bold tabular-nums text-nx-outline">{u.position}</span>
+      <span className="w-6 text-center text-body-md font-bold tabular-nums text-nx-on-surface-variant">{u.position}</span>
       <Avatar u={u} size={38} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-body-md font-semibold text-nx-on-surface">
           {u.me ? "Você" : u.name}
         </p>
-        {u.league && <p className="truncate text-body-sm text-nx-outline">{u.league}</p>}
+        {u.league && <p className="truncate text-body-sm text-nx-on-surface-variant">{u.league}</p>}
       </div>
       <LeagueCrest liga={ligaDe(u.league)} size={22} animated={false} className="shrink-0" />
-      <span className="shrink-0 text-body-sm font-bold tabular-nums text-nx-on-surface">{nf(u.points)} <span className="text-nx-outline">XP</span></span>
+      <span className="shrink-0 text-body-sm font-bold tabular-nums text-nx-on-surface">{nf(u.points)} <span className="text-nx-on-surface-variant">XP</span></span>
     </div>
   )
 }
@@ -110,7 +110,7 @@ export function RankingScreen() {
       {ranking.length === 0 ? (
         <div className="rounded-nx-lg border border-nx-border bg-nx-surface p-8 text-center">
           <p className="text-body-md text-nx-on-surface-variant">O ranking ainda vai começar.</p>
-          <p className="mt-1 text-body-sm text-nx-outline">Feche seu dia pra entrar na disputa 🔥</p>
+          <p className="mt-1 text-body-sm text-nx-on-surface-variant">Feche seu dia pra entrar na disputa 🔥</p>
         </div>
       ) : (
         <>
@@ -125,9 +125,9 @@ export function RankingScreen() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-body-lg font-semibold text-nx-on-surface">Sua posição</p>
-                  <p className="text-body-sm text-nx-outline">{user.league}</p>
+                  <p className="text-body-sm text-nx-on-surface-variant">{user.league}</p>
                 </div>
-                <span className="text-body-lg font-bold tabular-nums text-nx-on-surface">{nf(meusPts)} <span className="text-body-sm text-nx-outline">XP</span></span>
+                <span className="text-body-lg font-bold tabular-nums text-nx-on-surface">{nf(meusPts)} <span className="text-body-sm text-nx-on-surface-variant">XP</span></span>
               </div>
               <div className="mt-3 flex items-center gap-2 border-t border-nx-evo/20 pt-3 text-body-sm">
                 {lidera ? (
@@ -150,7 +150,7 @@ export function RankingScreen() {
             <LeagueCrest liga={ligaDe(user.league)} size={34} animated={false} />
             <div className="min-w-0 flex-1">
               <p className="text-body-md font-semibold text-nx-on-surface">Sua liga · {ligaDe(user.league)}</p>
-              <p className="truncate text-body-sm text-nx-outline">Disputa de promoção e queda</p>
+              <p className="truncate text-body-sm text-nx-on-surface-variant">Disputa de promoção e queda</p>
             </div>
             <ChevronRight className="size-5 shrink-0 text-nx-outline" />
           </button>
@@ -158,7 +158,7 @@ export function RankingScreen() {
           {/* Classificação geral (4º em diante) */}
           {resto.length > 0 && (
             <section className="space-y-2">
-              <h2 className="px-1 text-label-md uppercase tracking-wide text-nx-outline">Classificação geral</h2>
+              <h2 className="px-1 text-label-md uppercase tracking-wide text-nx-on-surface-variant">Classificação geral</h2>
               {resto.map((u) => <RankRow key={`${u.name}-${u.position}`} u={u} />)}
             </section>
           )}

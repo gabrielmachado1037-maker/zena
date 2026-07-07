@@ -69,7 +69,7 @@ export default function CommQueue({ conversas, situacoes, ativaId, onSelect, loa
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar paciente…"
-            className="w-full rounded-nx-sm border border-nx-border bg-nx-container py-2.5 pl-9 pr-3 text-body-sm text-nx-on-surface outline-none placeholder:text-nx-outline focus:border-nx-evo/50"
+            className="w-full rounded-nx-sm border border-nx-border bg-nx-container py-2.5 pl-9 pr-3 text-body-sm text-nx-on-surface outline-none placeholder:text-nx-on-surface-variant focus:border-nx-evo/50"
           />
         </div>
 

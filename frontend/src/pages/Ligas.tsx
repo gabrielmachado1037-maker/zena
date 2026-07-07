@@ -45,7 +45,7 @@ function StateBox({ loading, error, empty, onRetry, children, minH = "h-28" }: {
       {onRetry && <button onClick={onRetry} className="text-label-md text-nx-evo hover:underline">Tentar de novo</button>}
     </div>
   );
-  if (empty) return <div className={`${minH} flex items-center justify-center text-body-sm text-nx-outline`}>Sem dados ainda</div>;
+  if (empty) return <div className={`${minH} flex items-center justify-center text-body-sm text-nx-on-surface-variant`}>Sem dados ainda</div>;
   return <>{children}</>;
 }
 
@@ -104,7 +104,7 @@ function LigaCard({ d, active, onClick }: {
       <LeagueCrest liga={d.liga} size={46} animated={active} />
       <span className="text-body-sm font-semibold" style={{ color: d.cor }}>{d.liga}</span>
       <span className="text-[22px] leading-none font-bold text-nx-on-surface">{d.count}</span>
-      <span className="text-label-sm text-nx-outline">{d.count === 1 ? "paciente" : "pacientes"}</span>
+      <span className="text-label-sm text-nx-on-surface-variant">{d.count === 1 ? "paciente" : "pacientes"}</span>
     </button>
   );
 }
@@ -124,16 +124,16 @@ function PacienteRow({ p, zona, onClick }: {
           : "border-nx-border bg-nx-surface"
       }`}
     >
-      <span className="w-5 shrink-0 text-center text-body-sm font-bold text-nx-outline">{p.posicaoLiga}</span>
+      <span className="w-5 shrink-0 text-center text-body-sm font-bold text-nx-on-surface-variant">{p.posicaoLiga}</span>
       <Avatar src={p.foto} nome={p.nome} tamanho={38} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-body-md font-semibold text-nx-on-surface">{p.nome}</p>
-        <p className="truncate text-label-sm text-nx-outline">{p.objetivo || "Sem objetivo definido"}</p>
+        <p className="truncate text-label-sm text-nx-on-surface-variant">{p.objetivo || "Sem objetivo definido"}</p>
       </div>
       {/* % objetivo de peso */}
       <div className="hidden w-24 shrink-0 sm:block">
         <div className="mb-1 flex items-center justify-between">
-          <span className="text-label-sm text-nx-outline">Peso</span>
+          <span className="text-label-sm text-nx-on-surface-variant">Peso</span>
           <span className="text-label-sm font-medium text-nx-on-surface-variant">{p.pctObjetivoPeso}%</span>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-nx-container">
@@ -142,7 +142,7 @@ function PacienteRow({ p, zona, onClick }: {
       </div>
       <div className="shrink-0 text-right">
         <p className="text-body-md font-bold" style={{ color: p.cor }}>{nf(p.pontosTotal)}</p>
-        <p className="text-label-sm text-nx-outline">pts · {p.liga} {p.nivel}</p>
+        <p className="text-label-sm text-nx-on-surface-variant">pts · {p.liga} {p.nivel}</p>
       </div>
       <ChevronRight size={16} className="shrink-0 text-nx-outline" />
     </button>
@@ -188,7 +188,7 @@ function ConfigModal({ onClose, onSaved, zonaN, setZonaN }: {
           className="w-20 rounded-lg border border-nx-border bg-nx-container px-2 py-1 text-right text-body-md text-nx-on-surface focus:border-nx-evo/50 focus:outline-none"
         />
       </label>
-      {hint && <p className="mt-0.5 text-label-sm text-nx-outline">{hint}</p>}
+      {hint && <p className="mt-0.5 text-label-sm text-nx-on-surface-variant">{hint}</p>}
     </div>
   );
 
@@ -201,7 +201,7 @@ function ConfigModal({ onClose, onSaved, zonaN, setZonaN }: {
         </div>
 
         <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
-          <p className="text-label-md uppercase text-nx-outline">Pesos da pontuação (somam 100)</p>
+          <p className="text-label-md uppercase text-nx-on-surface-variant">Pesos da pontuação (somam 100)</p>
           <Field label="Peso — Objetivo de peso" k="pesoPesoMeta" />
           <Field label="Peso — Hábitos consecutivos" k="pesoHabitosConsecutivos" />
           <Field label="Peso — Metas semanais" k="pesoMetasSemanais" />
@@ -210,12 +210,12 @@ function ConfigModal({ onClose, onSaved, zonaN, setZonaN }: {
           </p>
 
           <hr className="border-nx-border" />
-          <p className="text-label-md uppercase text-nx-outline">Metas-alvo</p>
+          <p className="text-label-md uppercase text-nx-on-surface-variant">Metas-alvo</p>
           <Field label="Dias consecutivos (alvo)" k="diasConsecutivosAlvo" hint="Dias de hábitos para pontuação máxima" />
           <Field label="Metas semanais (alvo)" k="metasSemanaisAlvo" hint="Semanas com adesão ≥ 7 no mês" />
 
           <hr className="border-nx-border" />
-          <p className="text-label-md uppercase text-nx-outline">Faixa de corte (zona de promoção/queda)</p>
+          <p className="text-label-md uppercase text-nx-on-surface-variant">Faixa de corte (zona de promoção/queda)</p>
           <label className="flex items-center justify-between text-body-sm text-nx-on-surface-variant">
             Nº de pacientes na zona
             <input
@@ -224,7 +224,7 @@ function ConfigModal({ onClose, onSaved, zonaN, setZonaN }: {
               className="w-20 rounded-lg border border-nx-border bg-nx-container px-2 py-1 text-right text-body-md text-nx-on-surface focus:border-nx-evo/50 focus:outline-none"
             />
           </label>
-          <p className="text-label-sm text-nx-outline">Top {zonaN} sobem de liga · Bottom {zonaN} caem.</p>
+          <p className="text-label-sm text-nx-on-surface-variant">Top {zonaN} sobem de liga · Bottom {zonaN} caem.</p>
 
           {err && <p className="text-body-sm text-nx-danger">{err}</p>}
         </div>
@@ -310,7 +310,7 @@ export default function Ligas() {
             <input
               value={busca} onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar paciente por nome…"
-              className="w-full rounded-xl border border-nx-border bg-nx-surface py-2.5 pl-9 pr-3 text-body-md text-nx-on-surface placeholder:text-nx-outline focus:border-nx-evo/50 focus:outline-none"
+              className="w-full rounded-xl border border-nx-border bg-nx-surface py-2.5 pl-9 pr-3 text-body-md text-nx-on-surface placeholder:text-nx-on-surface-variant focus:border-nx-evo/50 focus:outline-none"
             />
           </div>
           <button onClick={() => setAtivos((v) => !v)}
@@ -346,7 +346,7 @@ export default function Ligas() {
             <h2 className="flex items-center gap-2 text-body-lg font-semibold text-nx-on-surface">
               <LeagueCrest liga={ligaAtiva} size={26} animated={false} />
               Liga {ligaAtiva}
-              <span className="text-body-sm font-normal text-nx-outline">· {pacientesLiga.length} {pacientesLiga.length === 1 ? "paciente" : "pacientes"}</span>
+              <span className="text-body-sm font-normal text-nx-on-surface-variant">· {pacientesLiga.length} {pacientesLiga.length === 1 ? "paciente" : "pacientes"}</span>
             </h2>
           </div>
 

@@ -41,7 +41,7 @@ export function XpBarNx({ nivel, xpAtual, xpProximo, animarGanho = true, classNa
           Nível {nivel}
         </span>
         <span className="tabular-nums text-nx-on-surface-variant">
-          {xpAtual}<span className="text-nx-outline"> / {xpProximo} XP</span>
+          {xpAtual}<span className="text-nx-on-surface-variant"> / {xpProximo} XP</span>
         </span>
       </div>
       <ProgressBarNx value={pct} tone="evo" celebrate={ganho != null} aria-label={`Progresso do nível ${nivel}`} />

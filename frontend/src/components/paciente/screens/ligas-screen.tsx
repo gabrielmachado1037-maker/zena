@@ -29,7 +29,7 @@ function RankRow({ u, posicao, zone }: { u: RankUser; posicao: number; zone: Zon
         <span
           className={cn(
             "text-body-md font-bold tabular-nums",
-            zone === "promo" ? "text-nx-evo" : zone === "releg" ? "text-nx-danger" : "text-nx-outline",
+            zone === "promo" ? "text-nx-evo" : zone === "releg" ? "text-nx-danger" : "text-nx-on-surface-variant",
           )}
         >
           {posicao}
@@ -48,7 +48,7 @@ function RankRow({ u, posicao, zone }: { u: RankUser; posicao: number; zone: Zon
           {u.me && <span className="ml-2 text-label-sm font-bold uppercase text-nx-evo">Você</span>}
         </p>
       </div>
-      <span className="shrink-0 text-body-sm font-bold tabular-nums text-nx-on-surface">{nf(u.points)} <span className="text-nx-outline">XP</span></span>
+      <span className="shrink-0 text-body-sm font-bold tabular-nums text-nx-on-surface">{nf(u.points)} <span className="text-nx-on-surface-variant">XP</span></span>
     </div>
   )
 }
@@ -115,7 +115,7 @@ export function LigasScreen() {
         <div className="flex items-center gap-4">
           <LeagueCrest liga={tierAtual} size={76} />
           <div className="min-w-0 flex-1">
-            <p className="text-label-md uppercase text-nx-outline">Sua liga</p>
+            <p className="text-label-md uppercase text-nx-on-surface-variant">Sua liga</p>
             <p className="text-headline-md text-nx-on-surface">{user.league}</p>
             <p className="mt-0.5 text-body-md font-bold tabular-nums text-nx-on-surface">{nf(user.points)} XP</p>
           </div>
@@ -143,7 +143,7 @@ export function LigasScreen() {
 
       {/* Trajetória — escada de brasões */}
       <section className="mt-6">
-        <h2 className="mb-3 text-label-md uppercase tracking-wide text-nx-outline">Sua jornada</h2>
+        <h2 className="mb-3 text-label-md uppercase tracking-wide text-nx-on-surface-variant">Sua jornada</h2>
         <div className="flex items-center gap-1 overflow-x-auto pb-1 hide-scrollbar">
           {TIERS.map((tier, i) => {
             const atual = i === currentLeagueIndex
@@ -153,7 +153,7 @@ export function LigasScreen() {
                 {i > 0 && <span className={cn("h-px w-3 shrink-0", passado || atual ? "bg-nx-evo/50" : "bg-nx-border")} />}
                 <div className="flex shrink-0 flex-col items-center gap-1">
                   <LeagueCrest liga={tier} size={atual ? 52 : 40} animated={atual} className={cn(!atual && !passado && "opacity-35", passado && "opacity-70")} />
-                  <span className={cn("text-label-sm font-medium", atual ? "text-nx-on-surface" : "text-nx-outline")}>{tier}</span>
+                  <span className={cn("text-label-sm font-medium", atual ? "text-nx-on-surface" : "text-nx-on-surface-variant")}>{tier}</span>
                 </div>
               </Fragment>
             )
@@ -164,7 +164,7 @@ export function LigasScreen() {
       {/* Leaderboard */}
       <section className="mt-6">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-label-md uppercase tracking-wide text-nx-outline">Liga {tierAtual}</h2>
+          <h2 className="text-label-md uppercase tracking-wide text-nx-on-surface-variant">Liga {tierAtual}</h2>
           {status && (
             <span className={cn("flex items-center gap-1 rounded-full px-2.5 py-1 text-label-sm font-semibold", status.cls)}>
               <status.Icon className="size-3.5" /> {status.txt}
@@ -176,7 +176,7 @@ export function LigasScreen() {
           <div className="rounded-nx-lg border border-nx-border bg-nx-surface p-8 text-center">
             <LeagueCrest liga={tierAtual} size={64} className="mx-auto" />
             <p className="mt-3 text-body-md text-nx-on-surface-variant">Você é pioneiro nesta liga.</p>
-            <p className="mt-1 text-body-sm text-nx-outline">Continue evoluindo pra defender o topo.</p>
+            <p className="mt-1 text-body-sm text-nx-on-surface-variant">Continue evoluindo pra defender o topo.</p>
           </div>
         ) : (
           <div className="space-y-1.5">
@@ -192,7 +192,7 @@ export function LigasScreen() {
           </div>
         )}
 
-        <p className="mt-3 px-1 text-center text-label-sm text-nx-outline">
+        <p className="mt-3 px-1 text-center text-label-sm text-nx-on-surface-variant">
           Os {promoCount} primeiros sobem de liga{relegCount > 0 ? ` · os ${relegCount} últimos caem` : ""}
         </p>
       </section>

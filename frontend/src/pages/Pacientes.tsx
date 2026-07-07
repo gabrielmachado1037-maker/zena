@@ -128,7 +128,7 @@ export default function Pacientes() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar por nome..."
-              className="w-full bg-nx-surface border border-nx-border rounded-nx-md pl-11 pr-3 py-3 text-body-sm text-nx-on-surface placeholder:text-nx-outline focus:outline-none focus:border-nx-evo/50 focus:ring-1 focus:ring-nx-evo/40 transition-colors"
+              className="w-full bg-nx-surface border border-nx-border rounded-nx-md pl-11 pr-3 py-3 text-body-sm text-nx-on-surface placeholder:text-nx-on-surface-variant focus:outline-none focus:border-nx-evo/50 focus:ring-1 focus:ring-nx-evo/40 transition-colors"
             />
           </div>
 
@@ -273,7 +273,7 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
         <div className="flex items-baseline justify-between">
           <div className="flex items-baseline gap-1.5">
             <span className="text-[26px] font-extrabold leading-none tracking-tight tabular-nums text-nx-on-surface">{nf(p.pontosTotal)}</span>
-            <span className="text-label-md font-semibold text-nx-outline">XP</span>
+            <span className="text-label-md font-semibold text-nx-on-surface-variant">XP</span>
           </div>
           <span className="text-label-md font-semibold tabular-nums" style={{ color: cor }}>{pct}%</span>
         </div>
@@ -367,7 +367,7 @@ function NovoPacienteModal({ onClose, onCriado }: { onClose: () => void; onCriad
               placeholder={f.label}
               value={(form as any)[f.k]}
               onChange={(e) => set(f.k, e.target.value)}
-              className="w-full bg-nx-container border border-nx-border rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface placeholder:text-nx-outline focus:outline-none focus:border-nx-evo/50 focus:ring-1 focus:ring-nx-evo/40 transition-colors"
+              className="w-full bg-nx-container border border-nx-border rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface placeholder:text-nx-on-surface-variant focus:outline-none focus:border-nx-evo/50 focus:ring-1 focus:ring-nx-evo/40 transition-colors"
             />
           ))}
         </div>

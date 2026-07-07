@@ -127,7 +127,7 @@ export default function RecordCard({ registro, onValidar, onAjustar, onNudge, on
       <div className="p-6">
         {/* Cabeçalho — canal privado */}
         <div className="flex items-center justify-between mb-4 pb-4 border-b border-nx-border">
-          <div className="flex items-center gap-2 text-label-sm font-bold text-nx-outline uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-label-sm font-bold text-nx-on-surface-variant uppercase tracking-wider">
             <Lock size={13} />
             <span>Canal Privado • Log Clínico</span>
           </div>

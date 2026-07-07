@@ -28,7 +28,7 @@ export function StatTileNx({ label, value, unit, icon, tone = "neutral", delta, 
   return (
     <div className={cn("rounded-nx-md bg-nx-container border border-nx-border p-4", className)}>
       <div className="flex items-center justify-between">
-        <span className="text-label-md uppercase text-nx-outline">{label}</span>
+        <span className="text-label-md uppercase text-nx-on-surface-variant">{label}</span>
         {icon}
       </div>
       <div className="mt-2 flex items-baseline gap-1">
