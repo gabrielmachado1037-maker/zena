@@ -10,6 +10,7 @@ colors:
   streak: "#FF8A1F"
   gold: "#F8C84B"
   warn: "#FFD34D"
+  sleep: "#8B7DFF"
   danger: "#FF5D5D"
   brand: "#7C3AED"
   bg: "#09090B"
@@ -140,6 +141,7 @@ Uma paleta de grafite frio drenada de roxo, com um verde vibrante de evolução 
 ### Tertiary
 Funcionais — "uma cor, uma função". Nunca decorativos.
 - **Água** (#49A8FF): hidratação / recuperação.
+- **Sono** (#8B7DFF): sono / descanso — o 4º hábito, indigo suave.
 - **Sequência** (#FF8A1F): streaks / dias seguidos.
 - **Conquista** (#F8C84B): ligas de ouro, badges, celebração de marco.
 - **Atenção** (#FFD34D): avisos brandos.
@@ -150,7 +152,7 @@ Funcionais — "uma cor, uma função". Nunca decorativos.
 - **Superfície** (#111318) / **Elevado** (#171A22): painéis e cartões.
 - **Container** (#1C212B) / **Container Baixo** (#14171E) / **Container Alto** (#232A35): trilhos, chips, tiles, campos.
 - **Tinta Principal** (#F8FAFC) / **Tinta Secundária** (#9CA3AF): texto primário e de apoio.
-- **Rótulo** (#6B7280): hints e labels; **Borda** (#2A2F38): divisórias e contornos sutis.
+- **Contorno** (#6B7280): apenas ícones, divisores e contornos sutis — **nunca como cor de texto** (só 3.84:1 sobre surface, reprova AA); **Borda** (#2A2F38): divisórias e contornos sutis.
 
 ### Ligas
 Assinatura de cor por liga: Bronze (#C77B3C), Prata (#C2C9D2), Ouro (#F8C84B), Diamante (#8FE3FF), Mestre (#A855F7), Lendário (#F8C84B).
@@ -161,6 +163,8 @@ Assinatura de cor por liga: Bronze (#C77B3C), Prata (#C2C9D2), Ouro (#F8C84B), D
 **A Regra "O Verde é Raro".** O verde de evolução aparece em ≤ um foco por tela (o CTA/progresso dominante). Sua raridade é o que faz a luz significar algo. Encher a tela de verde apaga o sinal.
 
 **A Regra "Sem Linhas Brancas".** Bordas e divisórias são grafite (#2A2F38) ou transparências baixas — nunca branco puro. Superfícies se separam por tom, não por contorno luminoso.
+
+**A Regra "Contraste é Lei" (WCAG AA).** Todo texto de apoio usa **Tinta Secundária** (#9CA3AF, ≥5.7:1 em qualquer superfície), incluindo placeholders — **nunca** o **Contorno** (#6B7280), que como texto reprova AA (3.84:1 sobre surface, e 2.99:1 sobre container-alto) e existe só para ícones e bordas. Corpo/label exigem ≥4.5:1, texto grande (≥18px) ≥3:1; quando a razão estiver perto do limite, meça em vez de estimar. Cinza-claro "por elegância" é o motivo nº1 de UI ilegível.
 
 ## 3. Typography
 
@@ -217,7 +221,7 @@ O sistema é **plano por padrão com luz sob demanda**. Superfícies descansam s
 ### Inputs / Fields
 - **Style:** fundo Container (#1C212B), borda grafite, 10px (`rounded-nx-sm`); em campos dark nativos (date/time) use `color-scheme: dark`.
 - **Focus:** borda muda para verde a ~50% (`focus:border-nx-evo/50`); sem glow pesado.
-- **Placeholder:** cor Rótulo (#6B7280) — legível, nunca um cinza fantasma.
+- **Placeholder:** Tinta Secundária (#9CA3AF) — legível (AA); nunca o Contorno #6B7280, que some no fundo e reprova AA.
 
 ### Navigation
 - **Sidebar (nutri):** superfície escura, itens em tinta secundária; item ativo = pílula verde com ícone escuro + leve brilho. Ícones lucide, 18–20px.
@@ -247,4 +251,5 @@ Trilho fino (h-2) em Container Baixo; preenchimento em gradiente verde `#53F27C 
 - **Don't** usar glassmorphism decorativo (blur/glass como padrão) nem `background-clip:text` com gradiente — legado roxo/neon do app original, proibido em telas novas.
 - **Don't** usar `border-left`/`border-right` colorido > 1px como faixa lateral de destaque; use borda completa, fundo tingido ou ícone.
 - **Don't** pintar bordas de branco puro (quebra a Regra "Sem Linhas Brancas") nem espalhar verde por toda a tela (mata o sinal).
+- **Don't** usar o Contorno (#6B7280 / `text-nx-outline`) como cor de texto ou placeholder — reprova WCAG AA (3.84:1); texto de apoio é Tinta Secundária (#9CA3AF). #6B7280 só em ícone/borda.
 - **Don't** cair em gamificação infantil: mascotes gigantes, cores berrantes, confete sem propósito.
