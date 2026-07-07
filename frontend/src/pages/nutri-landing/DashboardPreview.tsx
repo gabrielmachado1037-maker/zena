@@ -2,6 +2,7 @@ import {
   LayoutDashboard, Users, Trophy, Target, ClipboardList, MessageSquare, BarChart3, Settings, ArrowUp,
 } from "lucide-react";
 import Avatar from "../../components/Avatar";
+import { LeagueEmblem } from "../../components/ui-nx";
 import { ProLogo } from "./components/shared";
 
 /* ── dados FAKE (ilustrativo, não-funcional) ── */
@@ -80,7 +81,7 @@ export function DashboardPreview() {
               <div className="grid grid-cols-6 gap-1">
                 {LIGAS.map((l) => (
                   <div key={l.nome} className="flex flex-col items-center gap-1 text-center">
-                    <LeagueShield color={l.cor} />
+                    <LeagueEmblem liga={l.nome} size={38} />
                     <span className="text-[8.5px] font-bold leading-none" style={{ color: l.cor }}>{l.nome}</span>
                     <span className="text-[13px] font-extrabold leading-none text-white">{l.n}</span>
                     <span className="text-[7.5px] text-[#8b8b93]">pacientes</span>
@@ -135,15 +136,6 @@ function Panel({ titulo, children }: { titulo: string; children: React.ReactNode
       <p className="mb-2 text-[9.5px] font-bold text-white">{titulo}</p>
       {children}
     </div>
-  );
-}
-
-function LeagueShield({ color, size = 30 }: { color: string; size?: number }) {
-  return (
-    <svg viewBox="0 0 24 28" width={size} height={(size * 28) / 24} aria-hidden="true">
-      <path d="M12 1 L22 5 V13 C22 20 17 25 12 27 C7 25 2 20 2 13 V5 Z" fill={color} fillOpacity="0.16" stroke={color} strokeWidth="1.4" />
-      <path d="M12 8 l1.5 3.1 3.4 .5 -2.5 2.4 .6 3.4 -3 -1.6 -3 1.6 .6 -3.4 -2.5 -2.4 3.4 -.5 Z" fill={color} />
-    </svg>
   );
 }
 

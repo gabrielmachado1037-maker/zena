@@ -13,6 +13,7 @@ export { XpBarNx } from "./XpBar";
 export { LevelUpOverlay } from "./LevelUpOverlay";
 export { LeagueFrame, LeagueBadge, resolveLeague, LEAGUE_FROM_NOME } from "./LeagueBadge";
 export { LeagueCrest } from "./LeagueCrest";
+export { LeagueEmblem } from "./LeagueEmblem";
 export type { LeagueKey } from "./LeagueBadge";
 export { BottomSheetNx } from "./BottomSheet";
 export { useNxToasts } from "./Toast";
