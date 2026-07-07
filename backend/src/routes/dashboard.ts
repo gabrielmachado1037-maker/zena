@@ -301,7 +301,9 @@ router.get("/ligas", async (req: AuthRequest, res: Response) => {
   const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
   const ha30 = new Date(hoje.getTime() - 30 * 86_400_000);
   const ha3 = new Date(hoje.getTime() - 3 * 86_400_000);
-  const inicioSemana = new Date(hoje.getTime() - 7 * 86_400_000);
+  const ha7 = new Date(hoje.getTime() - 7 * 86_400_000);
+  const ha14 = new Date(hoje.getTime() - 14 * 86_400_000);
+  const inicioSemana = ha7;
   const seisMesesAtras = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
   const [pacientes, novosMes, registrosHoje, evolucoesSemana, registros6m, conquistas] =
@@ -419,6 +421,7 @@ router.get("/ligas", async (req: AuthRequest, res: Response) => {
   const reg30 = await prisma.registro.findMany({
     where: { paciente: { nutricionistaId: id }, data: { gte: ha30 } },
     select: {
+      pacienteId: true, data: true,
       alimentacaoOk: true, treinoOk: true, aguaOk: true, sonoOk: true,
       cafeStatus: true, almocoStatus: true, lancheStatus: true, jantarStatus: true,
     },
@@ -451,7 +454,114 @@ router.get("/ligas", async (req: AuthRequest, res: Response) => {
     amostra: totalRefeicoes,
   };
 
+  /* ───────── Premium: tendências, carteira e retenção prevista ───────── */
+
+  // Nome da nutri (bloco de boas-vindas)
+  const nutriInfo = await prisma.nutricionista.findUnique({ where: { id }, select: { nome: true } });
+
+  // Adesão da clínica semana-a-semana: check-ins (paciente-dia) desta semana vs a anterior,
+  // normalizados por (pacientes ativos × 7 dias possíveis).
+  const checkins7 = reg30.filter((r) => new Date(r.data) >= ha7).length;
+  const checkins14 = reg30.filter((r) => { const d = new Date(r.data); return d >= ha14 && d < ha7; }).length;
+  const base = total * 7;
+  const aderAtual = base ? Math.round((checkins7 / base) * 100) : 0;
+  const aderAnterior = base ? Math.round((checkins14 / base) * 100) : 0;
+  const aderenciaSemana = { atual: aderAtual, anterior: aderAnterior, delta: aderAtual - aderAnterior };
+
+  // Hidratação semana-a-semana (% dos check-ins da semana que bateram a meta de água)
+  const agua7 = reg30.filter((r) => new Date(r.data) >= ha7 && r.aguaOk).length;
+  const agua14 = reg30.filter((r) => { const d = new Date(r.data); return d >= ha14 && d < ha7 && r.aguaOk; }).length;
+  const aguaAtual = checkins7 ? Math.round((agua7 / checkins7) * 100) : 0;
+  const aguaAnterior = checkins14 ? Math.round((agua14 / checkins14) * 100) : 0;
+  const aguaSemana = { atual: aguaAtual, anterior: aguaAnterior, delta: aguaAtual - aguaAnterior };
+
+  // Retenção prevista (estimativa honesta): % de ativos SEM sinal de saída —
+  // sequência viva (streak > 0) e check-in nos últimos 3 dias.
+  const propensos = pacientes.filter(
+    (p) => p.streakAtual > 0 && p.ultimoCheckin && new Date(p.ultimoCheckin) >= ha3
+  ).length;
+  const retencaoPrevista = total ? Math.round((propensos / total) * 100) : 0;
+
+  // Adesão por hábito POR paciente (30d) → maior dificuldade de cada um
+  const HAB: { key: "alimentacao" | "treino" | "agua" | "sono"; col: "alimentacaoOk" | "treinoOk" | "aguaOk" | "sonoOk"; label: string }[] = [
+    { key: "alimentacao", col: "alimentacaoOk", label: "Alimentação" },
+    { key: "treino", col: "treinoOk", label: "Treino" },
+    { key: "agua", col: "aguaOk", label: "Hidratação" },
+    { key: "sono", col: "sonoOk", label: "Sono" },
+  ];
+  const habByPac: Record<string, { n: number; alimentacaoOk: number; treinoOk: number; aguaOk: number; sonoOk: number }> = {};
+  for (const r of reg30) {
+    let a = habByPac[r.pacienteId];
+    if (!a) a = habByPac[r.pacienteId] = { n: 0, alimentacaoOk: 0, treinoOk: 0, aguaOk: 0, sonoOk: 0 };
+    a.n++;
+    if (r.alimentacaoOk) a.alimentacaoOk++;
+    if (r.treinoOk) a.treinoOk++;
+    if (r.aguaOk) a.aguaOk++;
+    if (r.sonoOk) a.sonoOk++;
+  }
+  function maiorDificuldade(pid: string) {
+    const a = habByPac[pid];
+    if (!a || a.n < 3) return null; // amostra insuficiente
+    let pior: { habito: string; label: string; pct: number } | null = null;
+    for (const h of HAB) {
+      const pct = Math.round((a[h.col] / a.n) * 100);
+      if (!pior || pct < pior.pct) pior = { habito: h.key, label: h.label, pct };
+    }
+    return pior;
+  }
+
+  const ORDEM_TONE: Record<string, number> = { risco: 0, atencao: 1, ok: 2 };
+  const riscoTone = (p: { diasInativo: number; ultimoCheckin: Date | null }) =>
+    p.diasInativo >= 3 || !p.ultimoCheckin ? "risco" : p.diasInativo >= 1 ? "atencao" : "ok";
+
+  const pacientesLista = pacientes
+    .map((p) => ({
+      id: p.id, nome: p.nome, foto: p.fotoPerfilUrl,
+      liga: p.ligaAtual, ligaNivel: p.ligaNivel, pontos: p.pontosTotal,
+      streak: p.streakAtual, diasInativo: p.diasInativo,
+      ultimoCheckin: p.ultimoCheckin,
+      score: Math.round(Math.min((reg30ByPac[p.id] || 0) / 30, 1) * 100),
+      risco: riscoTone(p),
+      maiorDificuldade: maiorDificuldade(p.id),
+    }))
+    .sort((a, b) => ORDEM_TONE[a.risco] - ORDEM_TONE[b.risco] || b.diasInativo - a.diasInativo || a.score - b.score);
+
+  // Subiram de liga nesta semana (conquistas de promoção nos últimos 7 dias)
+  const promos = await prisma.conquista.findMany({
+    where: { paciente: { nutricionistaId: id }, tipo: "subiu_liga", createdAt: { gte: ha7 } },
+    include: { paciente: { select: { id: true, nome: true, fotoPerfilUrl: true, ligaAtual: true, ligaNivel: true } } },
+    orderBy: { createdAt: "desc" },
+    take: 8,
+  });
+  const subiramSemana = promos.map((c) => ({
+    id: c.paciente.id, nome: c.paciente.nome, foto: c.paciente.fotoPerfilUrl,
+    liga: c.paciente.ligaAtual, ligaNivel: c.paciente.ligaNivel,
+  }));
+
+  // Impacto dos desafios (leitura honesta: ativos, participantes, concluídos)
+  const desafiosAtivos = await prisma.desafio.findMany({
+    where: { nutricionistaId: id, status: "ativo" }, select: { id: true },
+  });
+  const progressos = desafiosAtivos.length
+    ? await prisma.desafioProgresso.findMany({
+        where: { desafioId: { in: desafiosAtivos.map((d) => d.id) } },
+        select: { pacienteId: true, concluido: true },
+      })
+    : [];
+  const desafiosResumo = {
+    ativos: desafiosAtivos.length,
+    participantes: new Set(progressos.map((p) => p.pacienteId)).size,
+    concluidos: progressos.filter((p) => p.concluido).length,
+  };
+
   res.json({
+    nutri: { nome: nutriInfo?.nome ?? "" },
+    aderenciaSemana,
+    aguaSemana,
+    retencaoPrevista,
+    pacientesLista,
+    subiramSemana,
+    desafiosResumo,
     kpis: {
       pacientesAtivos: total,
       novosMes,
