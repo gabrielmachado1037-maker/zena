@@ -1,5 +1,5 @@
-const CACHE = 'nexvel-v5';
-const STATIC = ['/', '/index.html', '/app/dashboard'];
+const CACHE = 'nexvel-v6';
+const STATIC = ['/', '/index.html', '/onboarding', '/app/dashboard'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)));

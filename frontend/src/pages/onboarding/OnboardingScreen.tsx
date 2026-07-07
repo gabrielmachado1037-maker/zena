@@ -1,5 +1,6 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
 import { WelcomeSlide } from "./slides/WelcomeSlide";
 import { BenefitsSlide } from "./slides/BenefitsSlide";
 
@@ -10,8 +11,18 @@ import { BenefitsSlide } from "./slides/BenefitsSlide";
  */
 export default function OnboardingScreen() {
   const navigate = useNavigate();
+  const { token: pacienteToken, loading: authLoading } = usePacienteAuth();
   const scroller = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
+
+  // Quem já está logado não fica preso no onboarding — vai direto pra sua área.
+  const nutriToken = typeof localStorage !== "undefined" ? localStorage.getItem("zena_token") : null;
+  const redireciona = !authLoading && (!!pacienteToken || !!nutriToken);
+  useEffect(() => {
+    if (authLoading) return;
+    if (pacienteToken) navigate("/paciente/feed", { replace: true });
+    else if (nutriToken) navigate("/app/dashboard", { replace: true });
+  }, [authLoading, pacienteToken, nutriToken, navigate]);
 
   const onScroll = useCallback(() => {
     const el = scroller.current;
@@ -29,6 +40,9 @@ export default function OnboardingScreen() {
 
   const irCadastro = () => navigate("/login-paciente?tab=register");
   const irLogin = () => navigate("/login-paciente");
+
+  // Evita flash do onboarding enquanto resolve a sessão / redireciona logado.
+  if (authLoading || redireciona) return <div className="min-h-[100dvh] w-full bg-[#0A0A0A]" />;
 
   return (
     <div className="flex min-h-[100dvh] w-full justify-center bg-black">

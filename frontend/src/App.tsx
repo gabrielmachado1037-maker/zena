@@ -67,7 +67,8 @@ function AppRoutes() {
   return (
     <Suspense fallback={<PageSpinner />}>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<Onboarding />} />
+        <Route path="/landing" element={<Landing />} />
         <Route path="/welcome" element={<Welcome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/cadastro" element={<Cadastro />} />
