@@ -434,18 +434,19 @@ router.get("/ligas", async (req: AuthRequest, res: Response) => {
   // Comportamento alimentar — distribuição Seguiu/Adaptou/Pulou entre TODAS as refeições
   // registradas (café/almoço/lanche/jantar) nos últimos 30 dias.
   const REFEICOES_COLS = ["cafeStatus", "almocoStatus", "lancheStatus", "jantarStatus"] as const;
-  const contagem = { seguiu: 0, adaptou: 0, pulou: 0 };
+  const contagem = { seguiu: 0, adaptou: 0, comeu_mal: 0, pulou: 0 };
   for (const r of reg30) {
     for (const col of REFEICOES_COLS) {
       const s = r[col];
-      if (s === "seguiu" || s === "adaptou" || s === "pulou") contagem[s]++;
+      if (s === "seguiu" || s === "adaptou" || s === "comeu_mal" || s === "pulou") contagem[s]++;
     }
   }
-  const totalRefeicoes = contagem.seguiu + contagem.adaptou + contagem.pulou;
+  const totalRefeicoes = contagem.seguiu + contagem.adaptou + contagem.comeu_mal + contagem.pulou;
   const pctRef = (n: number) => (totalRefeicoes ? Math.round((n / totalRefeicoes) * 100) : null);
   const alimentacaoBreakdown = {
     seguiu: pctRef(contagem.seguiu),
     adaptou: pctRef(contagem.adaptou),
+    comeu_mal: pctRef(contagem.comeu_mal),
     pulou: pctRef(contagem.pulou),
     amostra: totalRefeicoes,
   };

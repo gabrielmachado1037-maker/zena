@@ -144,18 +144,19 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     { statusKey: "jantarStatus", refeicao: "jantar", label: "Jantar" },
   ] as const;
   const refeicoesBreakdown = REFS_STATUS.map((r) => {
-    const c = { seguiu: 0, adaptou: 0, pulou: 0 };
+    const c = { seguiu: 0, adaptou: 0, comeu_mal: 0, pulou: 0 };
     for (const x of registrosRef) {
       const s = x[r.statusKey];
-      if (s === "seguiu" || s === "adaptou" || s === "pulou") c[s]++;
+      if (s === "seguiu" || s === "adaptou" || s === "comeu_mal" || s === "pulou") c[s]++;
     }
-    const amostra = c.seguiu + c.adaptou + c.pulou;
+    const amostra = c.seguiu + c.adaptou + c.comeu_mal + c.pulou;
     const pct = (n: number) => (amostra ? Math.round((n / amostra) * 100) : null);
     return {
       refeicao: r.refeicao,
       label: r.label,
       seguiu: pct(c.seguiu),
       adaptou: pct(c.adaptou),
+      comeu_mal: pct(c.comeu_mal),
       pulou: pct(c.pulou),
       amostra,
     };

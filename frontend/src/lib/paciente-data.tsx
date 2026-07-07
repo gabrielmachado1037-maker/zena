@@ -18,6 +18,7 @@ interface ResumoResp {
     cafeStatus: string | null; almocoStatus: string | null; lancheStatus: string | null; jantarStatus: string | null;
     refeicoesNotas: Record<string, { nota?: string; motivo?: string }> | null;
     aguaMl: number | null; aguaMetaMl: number | null; finalizado: boolean;
+    treinoStatus: string | null; treinoMotivo: string | null; sonoFaixa: string | null;
   } | null;
   feitoHoje: boolean;
   conquistas: { id: string; tipo: string; titulo: string; descricao: string | null; createdAt: string }[];
@@ -41,11 +42,17 @@ export interface TodayState {
   refeicoes: Record<"cafe" | "almoco" | "lanche" | "jantar", MealState>;
   aguaMl: number;
   aguaMetaMl: number;
-  treinoOk: boolean;
-  sonoOk: boolean;
+  treinoStatus: string | null;
+  treinoMotivo: string | null;
+  sonoFaixa: string | null;
   humor: string | null;
   xpAlimentacao: number;
+  xpTreino: number;
+  xpSono: number;
 }
+
+export const XP_TREINO: Record<string, number> = { conforme: 3, parcial: 1, nao: 0 };
+export const XP_SONO: Record<string, number> = { menos5: 0, "5a7": 1, "7a9": 2, mais9: 2 };
 interface WeightPoint { date: string; peso: number }
 interface WeightHist { date: string; value: string; delta: string }
 interface PhotoEntry { date: string; front: string; side: string }
@@ -149,7 +156,7 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
         streak: p?.streakAtual ?? 0,
         streakBest: p?.streakMaximo ?? 0,
         todayPoints: rh?.pontosGanhos ?? 0,
-        todayGoal: 12,
+        todayGoal: 13,
         leagueProgress: prog.pct,
       };
 
@@ -157,27 +164,32 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
       const refKeys = ["cafe", "almoco", "lanche", "jantar"] as const;
       const notas = (rh?.refeicoesNotas ?? {}) as Record<string, { nota?: string; motivo?: string }>;
       const statusOf = (k: string) => (rh ? ((rh as any)[`${k}Status`] as string | null) : null);
-      const xpMeal = (s: string | null) => (s === "seguiu" ? 1 : s === "adaptou" ? 0.5 : 0);
+      const xpMeal = (s: string | null) => (s === "seguiu" ? 1 : s === "adaptou" ? 0.75 : 0);
       const xpAlim = refKeys.reduce((sum, k) => sum + xpMeal(statusOf(k)), 0);
       const refeicoes = Object.fromEntries(
         refKeys.map((k) => [k, { status: statusOf(k), nota: notas[k]?.nota, motivo: notas[k]?.motivo }]),
       ) as TodayState["refeicoes"];
+      const xpTreino = XP_TREINO[rh?.treinoStatus ?? ""] ?? 0;
+      const xpSono = XP_SONO[rh?.sonoFaixa ?? ""] ?? 0;
       const today: TodayState = {
         finalizado: !!resumo?.feitoHoje,
         refeicoes,
         aguaMl: rh?.aguaMl ?? 0,
         aguaMetaMl: rh?.aguaMetaMl ?? 3000,
-        treinoOk: !!rh?.treinoOk,
-        sonoOk: !!rh?.sonoOk,
+        treinoStatus: rh?.treinoStatus ?? null,
+        treinoMotivo: rh?.treinoMotivo ?? null,
+        sonoFaixa: rh?.sonoFaixa ?? null,
         humor: rh?.humor ?? null,
         xpAlimentacao: xpAlim,
+        xpTreino,
+        xpSono,
       };
 
       const missions: Mission[] = [
         { id: "alimentacao", icon: Utensils, title: "Alimentação", subtitle: "Registre suas refeições", earned: xpAlim, total: 4, done: xpAlim >= 3 },
-        { id: "treino", icon: Dumbbell, title: "Treino", subtitle: "Registre seu treino", earned: rh?.treinoOk ? 2 : 0, total: 2, done: !!rh?.treinoOk },
+        { id: "treino", icon: Dumbbell, title: "Treino", subtitle: "Como foi seu treino?", earned: xpTreino, total: 3, done: xpTreino > 0 },
         { id: "agua", icon: Droplets, title: "Água", subtitle: "Beba 3L de água", earned: rh?.aguaOk ? 2 : 0, total: 2, done: !!rh?.aguaOk },
-        { id: "sono", icon: Moon, title: "Sono", subtitle: "Durma pelo menos 7h", earned: rh?.sonoOk ? 2 : 0, total: 2, done: !!rh?.sonoOk },
+        { id: "sono", icon: Moon, title: "Sono", subtitle: "Quanto você dormiu?", earned: xpSono, total: 2, done: xpSono > 0 },
         { id: "registro", icon: ClipboardList, title: "Registro diário", subtitle: "Compartilhe seu dia", earned: resumo?.feitoHoje ? 1 : 0, total: 1, done: !!resumo?.feitoHoje },
       ];
 

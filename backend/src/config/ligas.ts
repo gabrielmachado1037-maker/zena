@@ -3,19 +3,25 @@
 
 export const PONTOS = {
   alimentacao: 4, // MÁX da alimentação (0–4, somada por refeição — ver XP_REFEICAO)
-  treino: 2, // treino concluído
+  treino: 3, // MÁX do treino (0/1/3 — ver XP_TREINO)
   agua: 2, // meta de água
-  sono: 2, // dormiu bem
+  sono: 2, // MÁX do sono (0/1/2 por faixa de horas — ver XP_SONO)
   registro_diario: 1, // fechou o dia
   bonus_tudo: 1, // bônus por completar os 4
 };
-// Máximo por dia: 4 (alimentação) + 2 + 2 + 2 (hábitos) + 1 (registro) + 1 (bônus) = 12 pts/dia
+// Máximo por dia: 4 (alim.) + 3 (treino) + 2 (água) + 2 (sono) + 1 (registro) + 1 (bônus) = 13 pts/dia
 
-// Alimentação por refeição — 3 estados. Máx 4 XP (4 refeições × seguiu).
-export const XP_REFEICAO: Record<string, number> = { seguiu: 1, adaptou: 0.5, pulou: 0 };
+// Alimentação por refeição — 4 estados. Máx 4 XP (4 refeições × seguiu).
+// "comeu_mal" e "pulou" valem 0, mas são registros DISTINTOS (análise de padrões).
+export const XP_REFEICAO: Record<string, number> = { seguiu: 1, adaptou: 0.75, comeu_mal: 0, pulou: 0 };
 export const REFEICOES_KEYS = ["cafe", "almoco", "lanche", "jantar"] as const;
 export const ALIMENTACAO_OK_MIN = 3; // XP p/ contar alimentação como "completa" (bônus + nutri)
 export const AGUA_META_ML_PADRAO = 3000; // meta diária de água (ml)
+
+// Treino — 3 estados: conforme (3) / parcial (1) / não consegui (0).
+export const XP_TREINO: Record<string, number> = { conforme: 3, parcial: 1, nao: 0 };
+// Sono — por faixa de horas: <5h (0) / 5–6h59 (1) / 7–9h (2) / >9h (2).
+export const XP_SONO: Record<string, number> = { menos5: 0, "5a7": 1, "7a9": 2, mais9: 2 };
 
 /** Soma o XP de alimentação a partir do estado de cada refeição. */
 export function calcularXpAlimentacao(
@@ -23,6 +29,9 @@ export function calcularXpAlimentacao(
 ): number {
   return REFEICOES_KEYS.reduce((s, k) => s + (XP_REFEICAO[status[k] ?? ""] ?? 0), 0);
 }
+
+export const calcularXpTreino = (status: string | null | undefined): number => XP_TREINO[status ?? ""] ?? 0;
+export const calcularXpSono = (faixa: string | null | undefined): number => XP_SONO[faixa ?? ""] ?? 0;
 
 export interface LigaTier {
   liga: string;
@@ -71,20 +80,21 @@ export function proximaLiga(pontos: number): LigaTier | null {
  */
 export function calcularPontosRegistro(hoje: {
   xpAlimentacao: number;
-  treinoOk: boolean;
+  xpTreino: number;
   aguaOk: boolean;
-  sonoOk: boolean;
+  xpSono: number;
   incluirFechamento?: boolean;
 }): { total: number; detalhes: Record<string, number> } {
   const detalhes: Record<string, number> = {};
   if (hoje.xpAlimentacao > 0) detalhes.alimentacao = hoje.xpAlimentacao;
-  if (hoje.treinoOk) detalhes.treino = PONTOS.treino;
+  if (hoje.xpTreino > 0) detalhes.treino = hoje.xpTreino;
   if (hoje.aguaOk) detalhes.agua = PONTOS.agua;
-  if (hoje.sonoOk) detalhes.sono = PONTOS.sono;
+  if (hoje.xpSono > 0) detalhes.sono = hoje.xpSono;
   if (hoje.incluirFechamento) {
     detalhes.registro_diario = PONTOS.registro_diario;
     const alimentacaoOk = hoje.xpAlimentacao >= ALIMENTACAO_OK_MIN;
-    if (alimentacaoOk && hoje.treinoOk && hoje.aguaOk && hoje.sonoOk) {
+    // Bônus por completar os 4 hábitos (cada um no seu estado "feito")
+    if (alimentacaoOk && hoje.xpTreino > 0 && hoje.aguaOk && hoje.xpSono > 0) {
       detalhes.bonus_tudo = PONTOS.bonus_tudo;
     }
   }

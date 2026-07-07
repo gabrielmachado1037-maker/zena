@@ -60,6 +60,7 @@ export interface RefeicaoBreakdown {
   label: string;
   seguiu: number | null;
   adaptou: number | null;
+  comeu_mal: number | null;
   pulou: number | null;
   amostra: number;
 }

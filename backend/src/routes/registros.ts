@@ -5,13 +5,17 @@ import {
   calcularPontosRegistro,
   calcularLiga,
   calcularXpAlimentacao,
+  calcularXpTreino,
+  calcularXpSono,
   REFEICOES_KEYS,
   AGUA_META_ML_PADRAO,
 } from "../config/ligas";
 import { uploadFoto } from "../lib/supabase";
 
 const HUMORES_VALIDOS = ["otimo", "bom", "neutro", "dificil", "pessimo"];
-const STATUS_VALIDOS = ["seguiu", "adaptou", "pulou"];
+const STATUS_VALIDOS = ["seguiu", "adaptou", "comeu_mal", "pulou"];
+const TREINO_VALIDOS = ["conforme", "parcial", "nao"];
+const SONO_VALIDOS = ["menos5", "5a7", "7a9", "mais9"];
 
 const router = Router();
 router.use(authPacienteMiddleware);
@@ -24,6 +28,12 @@ function inicioDeHoje() {
 
 function normStatus(v: unknown): string | null {
   return typeof v === "string" && STATUS_VALIDOS.includes(v) ? v : null;
+}
+function normTreino(v: unknown): string | null {
+  return typeof v === "string" && TREINO_VALIDOS.includes(v) ? v : null;
+}
+function normFaixa(v: unknown): string | null {
+  return typeof v === "string" && SONO_VALIDOS.includes(v) ? v : null;
 }
 
 /** Sequência + total + liga a creditar ao FECHAR o dia. */
@@ -50,10 +60,11 @@ function calcularFechamentoPaciente(
 router.put("/dia", async (req: PacienteAuthRequest, res: Response) => {
   const {
     cafeStatus, almocoStatus, lancheStatus, jantarStatus,
-    refeicoesNotas, aguaMl, aguaMetaMl, treinoOk, sonoOk,
+    refeicoesNotas, aguaMl, aguaMetaMl, treinoStatus, treinoMotivo, sonoFaixa,
   } = req.body as {
     cafeStatus?: unknown; almocoStatus?: unknown; lancheStatus?: unknown; jantarStatus?: unknown;
-    refeicoesNotas?: unknown; aguaMl?: unknown; aguaMetaMl?: unknown; treinoOk?: unknown; sonoOk?: unknown;
+    refeicoesNotas?: unknown; aguaMl?: unknown; aguaMetaMl?: unknown;
+    treinoStatus?: unknown; treinoMotivo?: unknown; sonoFaixa?: unknown;
   };
 
   const hoje = inicioDeHoje();
@@ -72,13 +83,15 @@ router.put("/dia", async (req: PacienteAuthRequest, res: Response) => {
   const ml = typeof aguaMl === "number" && aguaMl >= 0 ? Math.round(aguaMl) : 0;
   const aguaOk = ml >= metaMl;
   const xpAlim = calcularXpAlimentacao(status);
+  const tStatus = normTreino(treinoStatus);
+  const sFaixa = normFaixa(sonoFaixa);
 
   const dados = {
     // booleanos derivados (mantêm as agregações legadas da nutri funcionando)
     alimentacaoOk: xpAlim >= 3,
-    treinoOk: !!treinoOk,
+    treinoOk: calcularXpTreino(tStatus) > 0,
     aguaOk,
-    sonoOk: !!sonoOk,
+    sonoOk: calcularXpSono(sFaixa) > 0,
     cafeOk: status.cafe ? status.cafe === "seguiu" : null,
     almocoOk: status.almoco ? status.almoco === "seguiu" : null,
     lancheOk: status.lanche ? status.lanche === "seguiu" : null,
@@ -92,6 +105,10 @@ router.put("/dia", async (req: PacienteAuthRequest, res: Response) => {
     // água como progresso
     aguaMl: ml,
     aguaMetaMl: metaMl,
+    // treino (3 estados + motivo) e sono (faixa de horas)
+    treinoStatus: tStatus,
+    treinoMotivo: tStatus === "nao" && typeof treinoMotivo === "string" ? treinoMotivo : null,
+    sonoFaixa: sFaixa,
   };
 
   const registro = await prisma.registro.upsert({
@@ -128,9 +145,9 @@ router.post("/dia/fechar", async (req: PacienteAuthRequest, res: Response) => {
 
   const { total: pontosGanhos, detalhes: pontosDetalhes } = calcularPontosRegistro({
     xpAlimentacao: xpAlim,
-    treinoOk: registro.treinoOk,
+    xpTreino: calcularXpTreino(registro.treinoStatus),
     aguaOk,
-    sonoOk: registro.sonoOk,
+    xpSono: calcularXpSono(registro.sonoFaixa),
     incluirFechamento: true,
   });
 
@@ -204,7 +221,7 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
   if (jaFezCheckin) return res.status(409).json({ error: "Registro já enviado hoje" });
 
   const { total: pontosGanhos, detalhes: pontosDetalhes } = calcularPontosRegistro({
-    xpAlimentacao: xpAlim, treinoOk: !!treinoOk, aguaOk: !!aguaOk, sonoOk: !!sonoOk,
+    xpAlimentacao: xpAlim, xpTreino: treinoOk ? 3 : 0, aguaOk: !!aguaOk, xpSono: sonoOk ? 2 : 0,
     incluirFechamento: true,
   });
 

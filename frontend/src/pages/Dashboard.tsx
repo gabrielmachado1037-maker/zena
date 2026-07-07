@@ -19,7 +19,7 @@ interface LigasResp {
   alertas: { id: string; nome: string; foto: string | null; diasInativo: number; liga: string; ultimoCheckin: string | null }[];
   pedidosAjuste: { registroId: string; pacienteId: string; pacienteNome: string }[];
   desempenhoCategoria: { alimentacao: number; treino: number; agua: number; sono: number };
-  alimentacaoBreakdown: { seguiu: number | null; adaptou: number | null; pulou: number | null; amostra: number };
+  alimentacaoBreakdown: { seguiu: number | null; adaptou: number | null; comeu_mal: number | null; pulou: number | null; amostra: number };
 }
 
 const nf = (n: number) => n.toLocaleString("pt-BR");
@@ -216,14 +216,15 @@ export default function Dashboard() {
 
 /* Distribuição Seguiu / Adaptou / Pulou — barra segmentada + legenda (cor + rótulo) */
 export const ALIM_ESTADOS = [
-  { key: "seguiu" as const, label: "Seguiu", color: "#7CFF5B" },
-  { key: "adaptou" as const, label: "Adaptou", color: "#F8C84B" },
-  { key: "pulou" as const, label: "Pulou", color: "#FF5D5D" },
+  { key: "seguiu" as const, label: "Seguiu", color: "#22C55E" },
+  { key: "adaptou" as const, label: "Adaptou", color: "#84CC16" },
+  { key: "comeu_mal" as const, label: "Comeu mal", color: "#F59E0B" },
+  { key: "pulou" as const, label: "Pulou", color: "#EF4444" },
 ];
 function AlimentacaoBar({
   breakdown,
 }: {
-  breakdown?: { seguiu: number | null; adaptou: number | null; pulou: number | null; amostra: number };
+  breakdown?: { seguiu: number | null; adaptou: number | null; comeu_mal: number | null; pulou: number | null; amostra: number };
 }) {
   if (!breakdown || breakdown.amostra === 0) {
     return <p className="text-body-sm text-nx-on-surface-variant">Sem dados de refeição ainda</p>;

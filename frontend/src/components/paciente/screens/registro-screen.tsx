@@ -1,14 +1,15 @@
 import { useCallback, useRef, useState } from "react"
 import {
-  Check, Flame, TrendingUp, ChevronRight, Dumbbell, Moon,
-  Coffee, Utensils, Cookie, Soup, Replace, CircleSlash, type LucideIcon,
+  Check, Flame, TrendingUp, ChevronRight, Dumbbell, Moon, ChevronDown,
+  Coffee, Utensils, Cookie, Soup, Leaf, Meh, CircleSlash, CircleCheck, CircleDashed, type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { usePacienteData, type MealState, type TodayState } from "@/lib/paciente-data"
+import { usePacienteData, type MealState, type TodayState, XP_TREINO, XP_SONO } from "@/lib/paciente-data"
 import apiPaciente from "@/lib/apiPaciente"
 import {
   ProgressBarNx, LevelUpOverlay, LeagueCrest,
-  WaterProgress, MealSheet, useNxToasts, type MealStatus, type MealDetail,
+  WaterProgress, MealSheet, ChoiceSheet, DaySummarySheet, MOODS,
+  useNxToasts, type MealStatus, type MealDetail, type ChoiceOption, type ChoiceDetail,
 } from "@/components/ui-nx"
 import type { NavigateFn } from "../types"
 
@@ -20,23 +21,47 @@ const REFEICOES = [
 ] as const
 type RefKey = (typeof REFEICOES)[number]["key"]
 
-const XP_MEAL: Record<string, number> = { seguiu: 1, adaptou: 0.5, pulou: 0 }
+const XP_MEAL: Record<string, number> = { seguiu: 1, adaptou: 0.75, comeu_mal: 0, pulou: 0 }
+const MEAL_STYLE: Record<string, { color: string; Badge: LucideIcon }> = {
+  seguiu: { color: "#22C55E", Badge: Check },
+  adaptou: { color: "#84CC16", Badge: Leaf },
+  comeu_mal: { color: "#F59E0B", Badge: Meh },
+  pulou: { color: "#EF4444", Badge: CircleSlash },
+}
 const fmtXp = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })
+const formatL = (ml: number) => `${(ml / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}L`
 
-/* estado editável do dia (sem finalizado) */
+const SONO_OPCOES: ChoiceOption[] = [
+  { value: "menos5", title: "Menos de 5h", xp: "0 XP", tone: "danger" },
+  { value: "5a7", title: "5h a 6h59", xp: "+1 XP", tone: "gold" },
+  { value: "7a9", title: "7h a 9h", xp: "+2 XP", tone: "evo" },
+  { value: "mais9", title: "Mais de 9h", xp: "+2 XP", tone: "water" },
+]
+const SONO_LABEL: Record<string, string> = { menos5: "Menos de 5h", "5a7": "5h a 6h59", "7a9": "7h a 9h", mais9: "Mais de 9h" }
+
+const TREINO_OPCOES: ChoiceOption[] = [
+  { value: "conforme", title: "Treinei conforme planejado", xp: "+3 XP", tone: "evo", icon: CircleCheck },
+  { value: "parcial", title: "Treinei parcialmente", xp: "+1 XP", tone: "gold", icon: CircleDashed },
+  { value: "nao", title: "Não consegui treinar", xp: "0 XP", tone: "danger", icon: CircleSlash },
+]
+const TREINO_LABEL: Record<string, string> = { conforme: "Conforme planejado", parcial: "Parcial", nao: "Não treinou" }
+const TREINO_MOTIVOS = ["Falta de tempo", "Cansaço", "Dor", "Compromissos", "Outro"]
+
 interface DayState {
   refeicoes: Record<RefKey, MealState>
   aguaMl: number
-  treinoOk: boolean
-  sonoOk: boolean
+  treinoStatus: string | null
+  treinoMotivo: string | null
+  sonoFaixa: string | null
 }
 
 function fromToday(t: TodayState): DayState {
   return {
     refeicoes: { ...t.refeicoes },
     aguaMl: t.aguaMl,
-    treinoOk: t.treinoOk,
-    sonoOk: t.sonoOk,
+    treinoStatus: t.treinoStatus,
+    treinoMotivo: t.treinoMotivo,
+    sonoFaixa: t.sonoFaixa,
   }
 }
 
@@ -44,88 +69,48 @@ function xpAlimentacao(ref: Record<RefKey, MealState>) {
   return REFEICOES.reduce((s, r) => s + (XP_MEAL[ref[r.key].status ?? ""] ?? 0), 0)
 }
 
-/* Chip de uma refeição: mostra o estado (seguiu/adaptou/pulou) e abre o sheet ao tocar. */
-function MealChip({
-  icon: Icon,
-  label,
-  status,
-  onClick,
-}: {
-  icon: LucideIcon
-  label: string
-  status: string | null
-  onClick: () => void
+/* Chip de refeição — cor por estado (verde=XP, amarelo/vermelho=zero) */
+function MealChip({ icon: Icon, label, status, onClick }: {
+  icon: LucideIcon; label: string; status: string | null; onClick: () => void
 }) {
-  const style =
-    status === "seguiu"
-      ? { border: "border-nx-evo/50 bg-nx-evo/12", text: "text-nx-evo", Badge: Check }
-      : status === "adaptou"
-        ? { border: "border-nx-gold/50 bg-nx-gold/12", text: "text-nx-gold", Badge: Replace }
-        : status === "pulou"
-          ? { border: "border-nx-danger/45 bg-nx-danger/10", text: "text-nx-danger", Badge: CircleSlash }
-          : { border: "border-nx-border bg-nx-container", text: "text-nx-on-surface-variant", Badge: null }
-  const Badge = style.Badge
+  const s = status ? MEAL_STYLE[status] : null
+  const Badge = s?.Badge
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "relative flex flex-col items-center gap-1.5 rounded-nx-md border py-2.5 transition-all active:scale-95",
-        style.border,
-        !status && "hover:border-nx-outline",
-      )}
-    >
-      {Badge && (
-        <span className="absolute right-1.5 top-1.5">
-          <Badge className={cn("size-3.5", style.text)} strokeWidth={3} />
-        </span>
-      )}
-      <Icon className={cn("size-5", status ? style.text : "text-nx-on-surface-variant")} />
-      <span className={cn("text-label-sm font-semibold", status ? style.text : "text-nx-on-surface-variant")}>
-        {label}
-      </span>
+    <button type="button" onClick={onClick}
+      style={s ? { borderColor: `${s.color}80`, backgroundColor: `${s.color}14` } : undefined}
+      className={cn("relative flex flex-col items-center gap-1.5 rounded-nx-md border py-2.5 transition-all active:scale-95",
+        !s && "border-nx-border bg-nx-container hover:border-nx-outline")}>
+      {Badge && <span className="absolute right-1.5 top-1.5"><Badge className="size-3.5" strokeWidth={3} style={{ color: s!.color }} /></span>}
+      <Icon className={cn("size-5", !s && "text-nx-on-surface-variant")} style={s ? { color: s.color } : undefined} />
+      <span className={cn("text-label-sm font-semibold", !s && "text-nx-on-surface-variant")} style={s ? { color: s.color } : undefined}>{label}</span>
     </button>
   )
 }
 
-/* Missão de 1 toque (Treino / Sono) */
-function ToggleTile({
-  icon: Icon,
-  title,
-  subtitle,
-  points,
-  done,
-  locked,
-  onToggle,
-}: {
-  icon: LucideIcon
-  title: string
-  subtitle: string
-  points: number
-  done: boolean
-  locked?: boolean
-  onToggle: () => void
+/* Tile de missão graduada (Treino / Sono) que abre um bottom sheet */
+function StatusTile({ icon: Icon, title, statusLabel, points, earned, done, registered, locked, onClick }: {
+  icon: LucideIcon; title: string; statusLabel: string | null; points: number
+  earned: number; done: boolean; registered: boolean; locked?: boolean; onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={locked}
-      aria-pressed={done}
-      className={cn(
-        "flex w-full items-center gap-4 rounded-nx-lg border p-4 text-left transition-all",
+    <button type="button" onClick={onClick} disabled={locked}
+      className={cn("flex w-full items-center gap-4 rounded-nx-lg border p-4 text-left transition-all",
         !locked && "active:scale-[0.98]",
-        done ? "border-nx-evo/40 bg-nx-evo/10" : "border-nx-border bg-nx-surface enabled:hover:border-nx-outline",
-      )}
-    >
-      <div className={cn("grid size-12 shrink-0 place-items-center rounded-nx-md transition-colors", done ? "bg-nx-evo/15" : "bg-nx-container-high")}>
+        done ? "border-nx-evo/40 bg-nx-evo/10"
+          : registered ? "border-nx-border bg-nx-surface"
+          : "border-nx-border bg-nx-surface enabled:hover:border-nx-outline")}>
+      <div className={cn("grid size-12 shrink-0 place-items-center rounded-nx-md", done ? "bg-nx-evo/15" : "bg-nx-container-high")}>
         {done ? <Check className="nx-pop size-6 text-nx-evo" strokeWidth={3} /> : <Icon className="size-6 text-nx-on-surface-variant" />}
       </div>
       <div className="min-w-0 flex-1">
         <p className="text-body-lg font-semibold text-nx-on-surface">{title}</p>
-        <p className="truncate text-body-sm text-nx-on-surface-variant">{done ? "Concluída" : subtitle}</p>
+        <p className="truncate text-body-sm text-nx-on-surface-variant">{registered ? statusLabel : "Toque pra registrar"}</p>
       </div>
-      <span className={cn("text-body-md font-bold tabular-nums", done ? "text-nx-evo" : "text-nx-on-surface-variant")}>+{points}</span>
+      {registered ? (
+        <span className={cn("text-body-md font-bold tabular-nums", done ? "text-nx-evo" : "text-nx-on-surface-variant")}>+{earned}</span>
+      ) : (
+        <span className="flex items-center gap-0.5 text-body-sm font-semibold text-nx-evo">até +{points}<ChevronDown className="size-4" /></span>
+      )}
     </button>
   )
 }
@@ -140,16 +125,20 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const [state, setState] = useState<DayState>(() => fromToday(today))
   const [finalizado, setFinalizado] = useState(today.finalizado)
   const [sheetMeal, setSheetMeal] = useState<{ key: RefKey; label: string } | null>(null)
+  const [sheet, setSheet] = useState<"sono" | "treino" | null>(null)
+  const [resumoOpen, setResumoOpen] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState("")
   const [celeb, setCeleb] = useState<Celebracao | null>(null)
   const saveTimer = useRef<number | null>(null)
 
   const xpAlim = xpAlimentacao(state.refeicoes)
+  const xpTreino = XP_TREINO[state.treinoStatus ?? ""] ?? 0
+  const xpSono = XP_SONO[state.sonoFaixa ?? ""] ?? 0
   const aguaOk = state.aguaMl >= metaMl
-  const earnedHabitos = xpAlim + (state.treinoOk ? 2 : 0) + (aguaOk ? 2 : 0) + (state.sonoOk ? 2 : 0)
-  const tudo = xpAlim >= 3 && state.treinoOk && aguaOk && state.sonoOk
-  const totalAoFechar = earnedHabitos + 1 + (tudo ? 1 : 0) // registro_diario + bônus
+  const earnedHabitos = xpAlim + xpTreino + (aguaOk ? 2 : 0) + xpSono
+  const tudo = xpAlim >= 3 && xpTreino > 0 && aguaOk && xpSono > 0
+  const totalAoFechar = earnedHabitos + 1 + (tudo ? 1 : 0)
   const goal = user.todayGoal
 
   function payloadFrom(s: DayState) {
@@ -159,37 +148,24 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
       if (m.nota || m.motivo) notas[r.key] = { nota: m.nota, motivo: m.motivo }
     }
     return {
-      cafeStatus: s.refeicoes.cafe.status,
-      almocoStatus: s.refeicoes.almoco.status,
-      lancheStatus: s.refeicoes.lanche.status,
-      jantarStatus: s.refeicoes.jantar.status,
-      refeicoesNotas: notas,
-      aguaMl: s.aguaMl,
-      aguaMetaMl: metaMl,
-      treinoOk: s.treinoOk,
-      sonoOk: s.sonoOk,
+      cafeStatus: s.refeicoes.cafe.status, almocoStatus: s.refeicoes.almoco.status,
+      lancheStatus: s.refeicoes.lanche.status, jantarStatus: s.refeicoes.jantar.status,
+      refeicoesNotas: notas, aguaMl: s.aguaMl, aguaMetaMl: metaMl,
+      treinoStatus: s.treinoStatus, treinoMotivo: s.treinoMotivo, sonoFaixa: s.sonoFaixa,
     }
   }
 
   const flush = useCallback(async (s: DayState) => {
-    try {
-      await apiPaciente.put("/registros/dia", payloadFrom(s))
-    } catch { /* autosave best-effort */ }
+    try { await apiPaciente.put("/registros/dia", payloadFrom(s)) } catch { /* best-effort */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metaMl])
 
-  // agenda um autosave (debounce) com o snapshot mais recente
   function scheduleSave(next: DayState) {
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => void flush(next), 450)
   }
-
   function apply(mut: (s: DayState) => DayState) {
-    setState((prev) => {
-      const next = mut(prev)
-      scheduleSave(next)
-      return next
-    })
+    setState((prev) => { const next = mut(prev); scheduleSave(next); return next })
   }
 
   function salvarRefeicao(status: MealStatus, detail: MealDetail) {
@@ -197,30 +173,29 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
     const { key, label } = sheetMeal
     apply((s) => ({ ...s, refeicoes: { ...s.refeicoes, [key]: { status, ...detail } } }))
     if (status === "seguiu") push(`Boa! ${label} conforme o plano`, { tone: "evo", xp: 1, icon: <Check className="size-4" strokeWidth={3} /> })
-    else if (status === "adaptou") push(`Anotado — adaptação no ${label.toLowerCase()}`, { tone: "gold", xp: 0.5, icon: <Replace className="size-4" /> })
+    else if (status === "adaptou") push(`Adaptação saudável no ${label.toLowerCase()} 🌱`, { tone: "evo", xp: 0.75, icon: <Leaf className="size-4" /> })
+    else if (status === "comeu_mal") push("Registrado! Vamos seguir em busca do objetivo 💚", { tone: "neutral" })
     else push("Tudo bem, amanhã tem mais 💪", { tone: "neutral" })
+  }
+
+  function salvarTreino(value: string, detail: ChoiceDetail) {
+    apply((s) => ({ ...s, treinoStatus: value, treinoMotivo: value === "nao" ? detail.motivo ?? null : null }))
+    const xp = XP_TREINO[value] ?? 0
+    if (value === "conforme") push("Treino completo! 💪", { tone: "evo", xp, icon: <Dumbbell className="size-4" /> })
+    else if (value === "parcial") push("Treino parcial registrado", { tone: "gold", xp, icon: <Dumbbell className="size-4" /> })
+    else push("Sem treino hoje — amanhã você volta", { tone: "neutral" })
+  }
+  function salvarSono(value: string) {
+    apply((s) => ({ ...s, sonoFaixa: value }))
+    const xp = XP_SONO[value] ?? 0
+    if (xp > 0) push(`Sono registrado · ${SONO_LABEL[value]}`, { tone: "evo", xp, icon: <Moon className="size-4" /> })
+    else push("Sono curto anotado — cuide do descanso", { tone: "neutral" })
   }
 
   function addAgua(delta: number) {
     apply((s) => {
       const next = { ...s, aguaMl: s.aguaMl + delta }
-      const bateuAgora = s.aguaMl < metaMl && next.aguaMl >= metaMl
-      if (bateuAgora) push("Meta de água batida! 💧", { tone: "water", xp: 2, icon: <Check className="size-4" strokeWidth={3} /> })
-      return next
-    })
-  }
-
-  function toggleTreino() {
-    apply((s) => {
-      const next = { ...s, treinoOk: !s.treinoOk }
-      if (next.treinoOk) push("Treino registrado", { tone: "evo", xp: 2, icon: <Dumbbell className="size-4" /> })
-      return next
-    })
-  }
-  function toggleSono() {
-    apply((s) => {
-      const next = { ...s, sonoOk: !s.sonoOk }
-      if (next.sonoOk) push("Sono registrado", { tone: "evo", xp: 2, icon: <Moon className="size-4" /> })
+      if (s.aguaMl < metaMl && next.aguaMl >= metaMl) push("Meta de água batida! 💧", { tone: "water", xp: 2, icon: <Check className="size-4" strokeWidth={3} /> })
       return next
     })
   }
@@ -231,30 +206,33 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
     setErro("")
     try {
       if (saveTimer.current) window.clearTimeout(saveTimer.current)
-      await flush(state) // garante o último estado no servidor
+      await flush(state)
       const { data } = await apiPaciente.post("/registros/dia/fechar")
       const novaLiga = data?.liga ? `${data.liga.liga} ${data.liga.nivel}` : user.league
+      setResumoOpen(false)
       setCeleb({
         pontos: data?.pontosGanhos ?? totalAoFechar,
         streak: data?.streakAtual ?? user.streak,
-        subiu: novaLiga !== user.league,
-        liga: novaLiga,
+        subiu: novaLiga !== user.league, liga: novaLiga,
       })
       setFinalizado(true)
       void reload()
     } catch (e: any) {
-      if (e?.response?.status === 409) setFinalizado(true)
+      if (e?.response?.status === 409) { setFinalizado(true); setResumoOpen(false) }
       else setErro(e?.response?.data?.error || "Não foi possível fechar o dia. Tente de novo.")
     } finally {
       setEnviando(false)
     }
   }
 
+  // valores de recap p/ o Resumo do dia
+  const refeicoesRegistradas = REFEICOES.filter((r) => state.refeicoes[r.key].status).length
+  const missoesConcluidas = [xpAlim >= 3, xpTreino > 0, aguaOk, xpSono > 0].filter(Boolean).length
+  const humorSel = MOODS.find((m) => m.key === today.humor)
+
   const subtitulo = finalizado
     ? "Dia fechado — sequência garantida 🔥"
-    : earnedHabitos > 0
-      ? "Feche o dia pra confirmar suas missões"
-      : "Marque o que você mandou hoje"
+    : earnedHabitos > 0 ? "Feche o dia pra confirmar suas missões" : "Marque o que você mandou hoje"
 
   return (
     <div className="space-y-6 px-5 pb-6 pt-7">
@@ -263,7 +241,7 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
         <p className="mt-0.5 text-body-md text-nx-on-surface-variant">{subtitulo}</p>
       </header>
 
-      {/* Barra de XP do dia — projeção ao vivo */}
+      {/* Barra de XP do dia */}
       <div className="rounded-nx-lg border border-nx-border bg-nx-surface p-4">
         <div className="mb-2 flex items-baseline justify-between">
           <span className="text-label-md uppercase text-nx-on-surface-variant">XP de hoje</span>
@@ -274,7 +252,7 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
         <ProgressBarNx value={goal ? (earnedHabitos / goal) * 100 : 0} tone="evo" celebrate={tudo} />
       </div>
 
-      {/* Alimentação — 4 refeições, cada uma abre o bottom sheet */}
+      {/* Alimentação */}
       <div className={cn("rounded-nx-lg border p-4 transition-colors", xpAlim >= 3 ? "border-nx-evo/40 bg-nx-evo/10" : "border-nx-border bg-nx-surface")}>
         <div className="flex items-center gap-4">
           <div className={cn("grid size-12 shrink-0 place-items-center rounded-nx-md", xpAlim >= 3 ? "bg-nx-evo/15" : "bg-nx-container-high")}>
@@ -290,29 +268,28 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
         </div>
         <div className="mt-3 grid grid-cols-4 gap-2">
           {REFEICOES.map((r) => (
-            <MealChip
-              key={r.key}
-              icon={r.icon}
-              label={r.label}
-              status={state.refeicoes[r.key].status}
-              onClick={() => !finalizado && setSheetMeal({ key: r.key, label: r.label })}
-            />
+            <MealChip key={r.key} icon={r.icon} label={r.label} status={state.refeicoes[r.key].status}
+              onClick={() => !finalizado && setSheetMeal({ key: r.key, label: r.label })} />
           ))}
         </div>
       </div>
 
-      {/* Água — progresso */}
+      {/* Água */}
       <WaterProgress ml={state.aguaMl} metaMl={metaMl} onAdd={addAgua} />
 
-      {/* Treino + Sono */}
+      {/* Treino + Sono (bottom sheets) */}
       <div className="space-y-3">
-        <ToggleTile icon={Dumbbell} title="Treino" subtitle="Registre seu treino" points={2} done={state.treinoOk} locked={finalizado} onToggle={toggleTreino} />
-        <ToggleTile icon={Moon} title="Sono" subtitle="Durma pelo menos 7h" points={2} done={state.sonoOk} locked={finalizado} onToggle={toggleSono} />
+        <StatusTile icon={Dumbbell} title="Treino" points={3} earned={xpTreino} done={xpTreino > 0}
+          registered={!!state.treinoStatus} statusLabel={state.treinoStatus ? TREINO_LABEL[state.treinoStatus] : null}
+          locked={finalizado} onClick={() => setSheet("treino")} />
+        <StatusTile icon={Moon} title="Sono" points={2} earned={xpSono} done={xpSono > 0}
+          registered={!!state.sonoFaixa} statusLabel={state.sonoFaixa ? SONO_LABEL[state.sonoFaixa] : null}
+          locked={finalizado} onClick={() => setSheet("sono")} />
       </div>
 
       {erro && <p className="text-center text-body-sm text-nx-danger">{erro}</p>}
 
-      {/* Fechar o dia (finaliza) */}
+      {/* Fechar o dia */}
       {finalizado ? (
         <div className="flex items-center gap-4 rounded-nx-lg border border-nx-evo/40 bg-nx-evo/10 p-4">
           <div className="grid size-12 shrink-0 place-items-center rounded-nx-md bg-nx-evo/15">
@@ -325,17 +302,10 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           <Flame className="size-6 text-nx-streak" />
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={fecharDia}
-          disabled={enviando}
-          className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-nx-lg py-4 text-body-lg font-semibold transition-all",
-            "bg-nx-evo text-nx-on-evo shadow-nx-evo hover:shadow-nx-evo-strong active:scale-[0.98]",
-            "disabled:opacity-60 disabled:pointer-events-none",
-          )}
-        >
-          {enviando ? "Fechando o dia…" : `Fechar o dia · +${fmtXp(totalAoFechar)} XP`}
+        <button type="button" onClick={() => setResumoOpen(true)}
+          className={cn("flex w-full items-center justify-center gap-2 rounded-nx-lg py-4 text-body-lg font-semibold transition-all",
+            "bg-nx-evo text-nx-on-evo shadow-nx-evo hover:shadow-nx-evo-strong active:scale-[0.98]")}>
+          Fechar o dia · +{fmtXp(totalAoFechar)} XP
         </button>
       )}
 
@@ -353,13 +323,35 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
         </div>
       </button>
 
-      {/* Bottom sheet de refeição */}
+      {/* Sheets */}
       <MealSheet open={!!sheetMeal} meal={sheetMeal} onClose={() => setSheetMeal(null)} onSave={salvarRefeicao} />
+      <ChoiceSheet open={sheet === "sono"} title="Quanto você dormiu hoje?" options={SONO_OPCOES}
+        onClose={() => setSheet(null)} onSave={(v) => salvarSono(v)} />
+      <ChoiceSheet open={sheet === "treino"} title="Como foi seu treino hoje?" options={TREINO_OPCOES}
+        reasonsFor="nao" reasons={TREINO_MOTIVOS} reasonsTitle="O que te impediu?"
+        onClose={() => setSheet(null)} onSave={salvarTreino} />
+
+      <DaySummarySheet
+        open={resumoOpen}
+        onClose={() => setResumoOpen(false)}
+        onConfirm={fecharDia}
+        enviando={enviando}
+        xp={totalAoFechar}
+        missoesConcluidas={missoesConcluidas}
+        missoesTotal={4}
+        alimentacao={`${refeicoesRegistradas}/4 refeições`}
+        treino={state.treinoStatus ? TREINO_LABEL[state.treinoStatus] : "—"}
+        agua={`${formatL(state.aguaMl)} / ${formatL(metaMl)}`}
+        sono={state.sonoFaixa ? SONO_LABEL[state.sonoFaixa] : "—"}
+        humor={humorSel ? `${humorSel.emoji} ${humorSel.label}` : "—"}
+        streak={user.streak}
+        liga={user.league}
+      />
 
       {/* Microfeedback */}
       {toasts}
 
-      {/* Celebração ao fechar o dia */}
+      {/* Celebração */}
       <LevelUpOverlay
         open={!!celeb}
         nivel={celeb?.streak ?? 0}
@@ -367,13 +359,8 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
         eyebrow={celeb?.subiu ? "Nova liga" : "Dia completo"}
         ariaLabel={celeb?.subiu ? `Você subiu para a ${celeb.liga}` : "Dia registrado"}
         bigContent={
-          celeb?.subiu ? (
-            <LeagueCrest liga={celeb.liga.split(" ")[0]} size={92} />
-          ) : (
-            <span className="flex items-baseline gap-1 text-nx-evo">
-              <span className="text-display-lg leading-none tabular-nums">+{fmtXp(celeb?.pontos ?? 0)}</span>
-            </span>
-          )
+          celeb?.subiu ? <LeagueCrest liga={celeb.liga.split(" ")[0]} size={92} />
+          : <span className="flex items-baseline gap-1 text-nx-evo"><span className="text-display-lg leading-none tabular-nums">+{fmtXp(celeb?.pontos ?? 0)}</span></span>
         }
         titulo={celeb?.subiu ? `Liga ${celeb.liga}` : "Dia registrado!"}
         descricao={

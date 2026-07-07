@@ -96,6 +96,7 @@ export default {
         "nx-water": "#49A8FF",              /* hidratação / recuperação */
         "nx-streak": "#FF8A1F",             /* sequência */
         "nx-gold": "#F8C84B",               /* conquista / Liga Ouro */
+        "nx-sleep": "#8B7DFF",              /* sono / descanso */
         "nx-warn": "#FFD34D",               /* atenção */
         "nx-danger": "#FF5D5D",             /* risco / erro */
         "nx-brand": "#7C3AED",              /* marca, institucional, Liga Mestre */

@@ -194,9 +194,10 @@ const SINAL_TONE: Record<string, string> = {
 };
 
 const ALIM_LEGENDA = [
-  { key: "seguiu", label: "Seguiu", color: "#7CFF5B" },
-  { key: "adaptou", label: "Adaptou", color: "#F8C84B" },
-  { key: "pulou", label: "Pulou", color: "#FF5D5D" },
+  { key: "seguiu", label: "Seguiu", color: "#22C55E" },
+  { key: "adaptou", label: "Adaptou", color: "#84CC16" },
+  { key: "comeu_mal", label: "Comeu mal", color: "#F59E0B" },
+  { key: "pulou", label: "Pulou", color: "#EF4444" },
 ] as const;
 
 /* Barra segmentada Seguiu/Adaptou/Pulou de uma refeição (cor + rótulo, nunca só cor). */
