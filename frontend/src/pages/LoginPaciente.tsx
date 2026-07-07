@@ -1,18 +1,26 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type InputHTMLAttributes } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import { Leaf, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { usePacienteAuth } from "../contexts/PacienteAuthContext";
+import { NexvelLogo } from "./onboarding/components/NexvelLogo";
+import { PrimaryButton } from "./onboarding/components/OnbButtons";
+import { cn } from "../lib/utils";
 
+/**
+ * Login / cadastro do paciente — identidade dark + verde da marca (mesmo padrão
+ * do onboarding). Abre na aba certa via ?tab=register. Toda a lógica de auth
+ * preservada (login, register com código de vínculo, navegação, erros, loading).
+ */
 export default function LoginPaciente() {
   const [sp] = useSearchParams();
   const [tab, setTab] = useState<"login" | "register">(sp.get("tab") === "register" ? "register" : "login");
-  const [email, setEmail]   = useState("");
-  const [senha, setSenha]   = useState("");
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
   const [codigo, setCodigo] = useState("");
   const [showSenha, setShowSenha] = useState(false);
-  const [error, setError]   = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, register }   = usePacienteAuth();
+  const { login, register } = usePacienteAuth();
   const navigate = useNavigate();
 
   async function handleLogin(e: FormEvent) {
@@ -37,154 +45,148 @@ export default function LoginPaciente() {
     } finally { setLoading(false); }
   }
 
+  const isLogin = tab === "login";
+
   return (
-    <div className="min-h-screen flex" style={{ background: "#7C3AED" }}>
-      {/* Left panel — visible on lg+ */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16">
-        <div className="flex items-center gap-3">
-          <Leaf className="text-[#A855F7]" size={32} />
-          <span className="text-white font-bold text-3xl tracking-wide">nexvel</span>
-        </div>
-        <div>
-          <h1 className="text-white text-5xl font-bold leading-tight mb-6">
-            seu espaço.<br />
-            <span className="text-[#A855F7]">sua evolução.</span>
-          </h1>
-          <p className="text-white/60 text-lg leading-relaxed">
-            Acompanhe suas consultas, metas e evolução junto com sua nutricionista.
-          </p>
-          <div className="mt-12 space-y-4">
-            {["Veja sua posição no ranking", "Acompanhe suas consultas", "Acesse seu histórico de cobranças"].map((item) => (
-              <div key={item} className="flex items-center gap-3 text-[#A855F7] text-sm">
-                <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "rgba(82,183,136,0.3)" }}>
-                  <div className="w-2 h-2 rounded-full bg-[#A855F7]" />
-                </div>
-                {item}
-              </div>
-            ))}
-          </div>
-        </div>
-        <p className="text-white/30 text-xs">© 2024 Nexvel. Todos os direitos reservados.</p>
-      </div>
+    <div className="flex min-h-[100dvh] w-full justify-center bg-black">
+      {/* fix p/ autofill não clarear o input escuro */}
+      <style>{`.nx-input:-webkit-autofill{-webkit-box-shadow:0 0 0 1000px #141414 inset;-webkit-text-fill-color:#fff;caret-color:#fff}`}</style>
 
-      {/* Right panel */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
-          {/* Mobile logo */}
-          <div className="flex lg:hidden items-center gap-2 mb-6">
-            <Leaf size={22} style={{ color: "#A855F7" }} />
-            <span className="font-bold text-xl" style={{ color: "#7C3AED" }}>nexvel</span>
-          </div>
-
-          {/* Back to nutricionista login */}
-          <Link to="/login" className="flex items-center gap-1.5 text-xs text-[#999] hover:text-[#7C3AED] mb-6 transition-colors">
-            <ArrowLeft size={13} />
+      <div className="relative flex w-full max-w-[440px] flex-col bg-[#0A0A0A] px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+        {/* topo */}
+        <header className="flex items-center justify-between py-2">
+          <button
+            type="button" onClick={() => navigate("/")} aria-label="Voltar"
+            className="grid size-10 place-items-center rounded-full text-[#A1A1AA] transition-colors hover:bg-white/5 hover:text-white active:scale-95"
+          >
+            <ArrowLeft className="size-5" />
+          </button>
+          <Link to="/login" className="text-body-sm font-medium text-[#A1A1AA] transition-colors hover:text-nx-evo">
             Área da nutricionista
           </Link>
+        </header>
 
-          {/* Tabs */}
-          <div className="flex gap-1 rounded-xl p-1 mb-8" style={{ background: "#F9FAF8" }}>
+        <div className="mt-8">
+          <NexvelLogo className="text-[32px]" />
+
+          <h1 className="mt-8 text-[30px] font-extrabold leading-tight tracking-tight text-white">
+            {isLogin ? <>Bem-vindo <span className="text-nx-evo">de volta.</span></> : <>Crie a sua <span className="text-nx-evo">conta.</span></>}
+          </h1>
+          <p className="mt-2 text-body-md text-[#A1A1AA]">
+            {isLogin ? "Entre e continue sua evolução." : "Use o código enviado pela sua nutricionista."}
+          </p>
+
+          {/* Abas */}
+          <div className="mt-7 flex gap-1 rounded-full border border-white/[0.08] bg-[#141414] p-1">
             {(["login", "register"] as const).map((t) => (
               <button
                 key={t}
+                type="button"
                 onClick={() => { setTab(t); setError(""); }}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-                  tab === t ? "bg-white text-[#7C3AED] shadow-sm" : "text-[#999]"
-                }`}
+                aria-pressed={tab === t}
+                className={cn(
+                  "flex-1 rounded-full py-2.5 text-body-sm font-bold transition-all duration-200",
+                  tab === t ? "bg-white/[0.08] text-white shadow-sm" : "text-[#A1A1AA] hover:text-white",
+                )}
               >
                 {t === "login" ? "Entrar" : "Criar conta"}
               </button>
             ))}
           </div>
 
-          {tab === "login" ? (
-            <form onSubmit={handleLogin} className="space-y-4">
+          {/* Formulário */}
+          <form onSubmit={isLogin ? handleLogin : handleRegister} className="mt-6 space-y-4">
+            <Field
+              label="E-mail" type="email" value={email} onChange={setEmail}
+              placeholder="seu@email.com" autoComplete="email"
+            />
+
+            <PasswordField
+              label={isLogin ? "Senha" : "Crie uma senha"}
+              value={senha} onChange={setSenha}
+              show={showSenha} onToggle={() => setShowSenha((s) => !s)}
+              autoComplete={isLogin ? "current-password" : "new-password"}
+            />
+
+            {!isLogin && (
               <div>
-                <h2 className="text-[#111] text-2xl font-bold mb-1">Bem-vindo de volta</h2>
-                <p className="text-[#999] text-sm mb-6">Entre com seu e-mail e senha.</p>
-              </div>
-              <Field label="E-mail" type="email" value={email} onChange={setEmail} placeholder="seu@email.com" />
-              <PasswordField label="Senha" value={senha} onChange={setSenha} show={showSenha} onToggle={() => setShowSenha(!showSenha)} />
-              {error && <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-              <button
-                type="submit" disabled={loading}
-                className="w-full text-white py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-60"
-                style={{ background: "#A855F7" }}
-              >
-                {loading ? "Entrando..." : "Entrar"}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleRegister} className="space-y-4">
-              <div>
-                <h2 className="text-[#111] text-2xl font-bold mb-1">Criar sua conta</h2>
-                <p className="text-[#999] text-sm mb-6">Use o código enviado pela sua nutricionista.</p>
-              </div>
-              <Field label="E-mail cadastrado pela nutricionista" type="email" value={email} onChange={setEmail} placeholder="seu@email.com" />
-              <PasswordField label="Crie uma senha" value={senha} onChange={setSenha} show={showSenha} onToggle={() => setShowSenha(!showSenha)} />
-              <div>
-                <label className="text-sm font-medium text-[#555] mb-1.5 block">Código de vínculo</label>
+                <label className="mb-1.5 block text-body-sm font-medium text-[#A1A1AA]">Código de vínculo</label>
                 <input
-                  type="text"
-                  value={codigo}
+                  type="text" inputMode="numeric" value={codigo}
                   onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="123456"
-                  maxLength={6}
-                  className="w-full px-4 py-3 rounded-xl border text-[#111] text-center text-2xl font-bold tracking-widest focus:outline-none focus:ring-2"
-                  style={{ borderColor: "#A855F7", background: "#F9FAF8" }}
-                  required
+                  placeholder="000000" maxLength={6} required
+                  className="nx-input w-full rounded-2xl border border-white/[0.08] bg-[#141414] py-3.5 text-center text-2xl font-bold tracking-[0.4em] text-white placeholder:tracking-[0.4em] placeholder:text-[#3f3f46] focus:border-nx-evo/60 focus:outline-none focus:ring-2 focus:ring-nx-evo/40"
                 />
-                <p className="text-xs text-[#999] mt-1.5">Código de 6 dígitos fornecido pela sua nutricionista.</p>
+                <p className="mt-1.5 text-body-sm text-[#71717A]">Código de 6 dígitos fornecido pela sua nutricionista.</p>
               </div>
-              {error && <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-              <button
-                type="submit" disabled={loading}
-                className="w-full text-white py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-60"
-                style={{ background: "#A855F7" }}
-              >
-                {loading ? "Criando conta..." : "Criar conta"}
-              </button>
-            </form>
-          )}
+            )}
+
+            {error && (
+              <p className="rounded-xl border border-nx-danger/25 bg-nx-danger/10 px-3.5 py-2.5 text-body-sm font-medium text-nx-danger">
+                {error}
+              </p>
+            )}
+
+            <PrimaryButton type="submit" disabled={loading} className="mt-2">
+              {loading ? (isLogin ? "Entrando…" : "Criando…") : isLogin ? "Entrar" : "Criar conta"}
+            </PrimaryButton>
+          </form>
+
+          {/* alternância textual */}
+          <p className="mt-6 text-center text-body-sm text-[#A1A1AA]">
+            {isLogin ? "Ainda não tem conta? " : "Já tem uma conta? "}
+            <button
+              type="button"
+              onClick={() => { setTab(isLogin ? "register" : "login"); setError(""); }}
+              className="font-bold text-nx-evo transition-colors hover:text-nx-evo-2"
+            >
+              {isLogin ? "Criar conta" : "Entrar"}
+            </button>
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-function Field({ label, type, value, onChange, placeholder }: {
-  label: string; type: string; value: string;
-  onChange: (v: string) => void; placeholder: string;
-}) {
+/* ───────── campos (dark) ───────── */
+const INPUT_CLS =
+  "nx-input w-full rounded-2xl border border-white/[0.08] bg-[#141414] px-4 py-3.5 text-body-md text-white " +
+  "placeholder:text-[#52525b] focus:border-nx-evo/60 focus:outline-none focus:ring-2 focus:ring-nx-evo/40 transition-colors";
+
+function Field({
+  label, value, onChange, ...rest
+}: { label: string; value: string; onChange: (v: string) => void } & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
   return (
     <div>
-      <label className="text-sm font-medium text-[#555] mb-1.5 block">{label}</label>
-      <input
-        type={type} value={value} onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder} required
-        className="w-full px-4 py-3 rounded-xl border text-[#111] placeholder-[#bbb] focus:outline-none focus:ring-2"
-        style={{ borderColor: "#A855F7", background: "#F9FAF8" }}
-      />
+      <label className="mb-1.5 block text-body-sm font-medium text-[#A1A1AA]">{label}</label>
+      <input value={value} onChange={(e) => onChange(e.target.value)} required className={INPUT_CLS} {...rest} />
     </div>
   );
 }
 
-function PasswordField({ label, value, onChange, show, onToggle }: {
-  label: string; value: string; onChange: (v: string) => void; show: boolean; onToggle: () => void;
+function PasswordField({
+  label, value, onChange, show, onToggle, autoComplete,
+}: {
+  label: string; value: string; onChange: (v: string) => void;
+  show: boolean; onToggle: () => void; autoComplete?: string;
 }) {
   return (
     <div>
-      <label className="text-sm font-medium text-[#555] mb-1.5 block">{label}</label>
+      <label className="mb-1.5 block text-body-sm font-medium text-[#A1A1AA]">{label}</label>
       <div className="relative">
         <input
           type={show ? "text" : "password"} value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="••••••••" required minLength={6}
-          className="w-full px-4 py-3 rounded-xl border text-[#111] placeholder-[#bbb] focus:outline-none focus:ring-2"
-          style={{ borderColor: "#A855F7", background: "#F9FAF8" }}
+          placeholder="••••••••" required minLength={6} autoComplete={autoComplete}
+          className={cn(INPUT_CLS, "pr-12")}
         />
-        <button type="button" onClick={onToggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999]">
-          {show ? <EyeOff size={16} /> : <Eye size={16} />}
+        <button
+          type="button" onClick={onToggle}
+          aria-label={show ? "Ocultar senha" : "Mostrar senha"}
+          className="absolute right-3 top-1/2 -translate-y-1/2 grid size-8 place-items-center rounded-lg text-[#A1A1AA] transition-colors hover:text-white"
+        >
+          {show ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       </div>
     </div>
