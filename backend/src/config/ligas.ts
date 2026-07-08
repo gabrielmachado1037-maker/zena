@@ -2,32 +2,89 @@
 // Sistema contínuo/cumulativo — separado do Ciclo (ver config/pontuacao.ts)
 
 export const PONTOS = {
-  alimentacao: 4, // MÁX da alimentação (0–4, somada por refeição — ver XP_REFEICAO)
+  alimentacao: 4, // MÁX da alimentação (0–4, dividido pelas N refeições — ver calcularXpAlimentacao)
   treino: 3, // MÁX do treino (0/1/3 — ver XP_TREINO)
   agua: 2, // meta de água
   sono: 2, // MÁX do sono (0/1/2 por faixa de horas — ver XP_SONO)
   registro_diario: 1, // fechou o dia
-  bonus_tudo: 1, // bônus por completar os 4
 };
-// Máximo por dia: 4 (alim.) + 3 (treino) + 2 (água) + 2 (sono) + 1 (registro) + 1 (bônus) = 13 pts/dia
+// Teto fixo por dia: 4 (alim.) + 3 (treino) + 2 (água) + 2 (sono) + 1 (registro) = 12 XP/dia.
+// Independe do nº de refeições do plano — é isso que garante igualdade nas ligas.
 
-// Alimentação por refeição — 4 estados. Máx 4 XP (4 refeições × seguiu).
-// "comeu_mal" e "pulou" valem 0, mas são registros DISTINTOS (análise de padrões).
+// Alimentação por refeição — 4 estados, usados como FATOR do valor da refeição (4 ÷ N):
+// seguiu = 100% · adaptou = 75% · comeu_mal/pulou = 0. "comeu_mal" e "pulou" valem 0 mas são
+// registros DISTINTOS (análise de padrões). Ex.: 5 refeições → seguiu 0,80 / adaptou 0,60.
 export const XP_REFEICAO: Record<string, number> = { seguiu: 1, adaptou: 0.75, comeu_mal: 0, pulou: 0 };
 export const REFEICOES_KEYS = ["cafe", "almoco", "lanche", "jantar"] as const;
-export const ALIMENTACAO_OK_MIN = 3; // XP p/ contar alimentação como "completa" (bônus + nutri)
+export const ALIMENTACAO_OK_MIN = 3; // XP (0–4) p/ contar alimentação como "completa" (nutri/streak)
 export const AGUA_META_ML_PADRAO = 3000; // meta diária de água (ml)
+
+// ── Plano de missões: refeições configuráveis pela nutri (3–6) ──────────────
+export interface RefeicaoPlano { key: string; label: string }
+export const MIN_REFEICOES = 3;
+export const MAX_REFEICOES = 6;
+
+// Plano padrão (4 refeições) — mantém keys/labels atuais intactos (retrocompat total).
+export const PLANO_REFEICOES_PADRAO: RefeicaoPlano[] = [
+  { key: "cafe", label: "Café" },
+  { key: "almoco", label: "Almoço" },
+  { key: "lanche", label: "Lanche" },
+  { key: "jantar", label: "Jantar" },
+];
+
+// Presets por quantidade. Keys estáveis (base das colunas legadas + refeicoesStatus).
+export const PLANOS_REFEICOES: Record<number, RefeicaoPlano[]> = {
+  3: [
+    { key: "cafe", label: "Café da manhã" },
+    { key: "almoco", label: "Almoço" },
+    { key: "jantar", label: "Jantar" },
+  ],
+  4: PLANO_REFEICOES_PADRAO,
+  5: [
+    { key: "cafe", label: "Café da manhã" },
+    { key: "lanche_manha", label: "Lanche da manhã" },
+    { key: "almoco", label: "Almoço" },
+    { key: "lanche", label: "Lanche da tarde" },
+    { key: "jantar", label: "Jantar" },
+  ],
+  6: [
+    { key: "cafe", label: "Café da manhã" },
+    { key: "lanche_manha", label: "Lanche da manhã" },
+    { key: "almoco", label: "Almoço" },
+    { key: "lanche", label: "Lanche da tarde" },
+    { key: "jantar", label: "Jantar" },
+    { key: "ceia", label: "Ceia" },
+  ],
+};
+
+/** Resolve o plano de refeições de um paciente. Fallback = 4 refeições padrão. */
+export function resolverPlanoRefeicoes(planoRefeicoes: unknown): RefeicaoPlano[] {
+  if (Array.isArray(planoRefeicoes)) {
+    const limpo = planoRefeicoes
+      .filter((r): r is RefeicaoPlano => !!r && typeof r === "object" && typeof (r as any).key === "string" && typeof (r as any).label === "string")
+      .slice(0, MAX_REFEICOES);
+    if (limpo.length >= MIN_REFEICOES) return limpo;
+  }
+  return PLANO_REFEICOES_PADRAO;
+}
 
 // Treino — 3 estados: conforme (3) / parcial (1) / não consegui (0).
 export const XP_TREINO: Record<string, number> = { conforme: 3, parcial: 1, nao: 0 };
 // Sono — por faixa de horas: <5h (0) / 5–6h59 (1) / 7–9h (2) / >9h (2).
 export const XP_SONO: Record<string, number> = { menos5: 0, "5a7": 1, "7a9": 2, mais9: 2 };
 
-/** Soma o XP de alimentação a partir do estado de cada refeição. */
-export function calcularXpAlimentacao(
-  status: Partial<Record<(typeof REFEICOES_KEYS)[number], string | null | undefined>>,
-): number {
-  return REFEICOES_KEYS.reduce((s, k) => s + (XP_REFEICAO[status[k] ?? ""] ?? 0), 0);
+/**
+ * XP de alimentação (0–4) a partir do estado das N refeições do plano.
+ * Cada refeição vale `4 / N`; "adaptou" recebe 75% desse valor. Satura em 4 —
+ * então ter mais refeições NÃO dá vantagem (igualdade nas ligas).
+ * Aceita a lista ordenada de estados das refeições do plano.
+ */
+export function calcularXpAlimentacao(statuses: Array<string | null | undefined>): number {
+  const n = statuses.length;
+  if (n <= 0) return 0;
+  const valorRefeicao = PONTOS.alimentacao / n; // 4 ÷ N
+  const total = statuses.reduce<number>((s, st) => s + valorRefeicao * (XP_REFEICAO[st ?? ""] ?? 0), 0);
+  return Math.min(Math.round(total * 100) / 100, PONTOS.alimentacao);
 }
 
 export const calcularXpTreino = (status: string | null | undefined): number => XP_TREINO[status ?? ""] ?? 0;
@@ -74,9 +131,9 @@ export function proximaLiga(pontos: number): LigaTier | null {
 }
 
 /**
- * Pontos de um dia. `xpAlimentacao` (0–4) já vem somado das refeições.
- * `incluirFechamento` (registro_diario + bônus por completar tudo) só entra ao FECHAR
- * o dia — durante o autosave o registro reflete só o XP dos hábitos, sem creditar liga.
+ * Pontos de um dia. `xpAlimentacao` (0–4) já vem calculado das refeições.
+ * `incluirFechamento` (registro_diario) só entra ao FECHAR o dia — durante o autosave
+ * o registro reflete só o XP dos hábitos, sem creditar liga. Teto fixo de 12 XP/dia.
  */
 export function calcularPontosRegistro(hoje: {
   xpAlimentacao: number;
@@ -92,11 +149,6 @@ export function calcularPontosRegistro(hoje: {
   if (hoje.xpSono > 0) detalhes.sono = hoje.xpSono;
   if (hoje.incluirFechamento) {
     detalhes.registro_diario = PONTOS.registro_diario;
-    const alimentacaoOk = hoje.xpAlimentacao >= ALIMENTACAO_OK_MIN;
-    // Bônus por completar os 4 hábitos (cada um no seu estado "feito")
-    if (alimentacaoOk && hoje.xpTreino > 0 && hoje.aguaOk && hoje.xpSono > 0) {
-      detalhes.bonus_tudo = PONTOS.bonus_tudo;
-    }
   }
   const total = Object.values(detalhes).reduce((a, b) => a + b, 0);
   return { total, detalhes };

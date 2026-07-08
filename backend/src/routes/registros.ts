@@ -9,6 +9,8 @@ import {
   calcularXpSono,
   REFEICOES_KEYS,
   AGUA_META_ML_PADRAO,
+  ALIMENTACAO_OK_MIN,
+  resolverPlanoRefeicoes,
 } from "../config/ligas";
 import { uploadFoto } from "../lib/supabase";
 
@@ -36,6 +38,33 @@ function normFaixa(v: unknown): string | null {
   return typeof v === "string" && SONO_VALIDOS.includes(v) ? v : null;
 }
 
+/** Estado das refeições do plano (ordenado) a partir de um map { key: status }. */
+function statusMapDoPlano(planoKeys: string[], entrada: Record<string, unknown>): Record<string, string | null> {
+  const out: Record<string, string | null> = {};
+  for (const k of planoKeys) out[k] = normStatus(entrada[k]);
+  return out;
+}
+
+/** Lê o estado das refeições de um registro: refeicoesStatus (fonte da verdade) com
+ *  fallback para as colunas legadas cafeStatus…jantarStatus (registros antigos). */
+function statusMapDoRegistro(
+  registro: {
+    refeicoesStatus: unknown;
+    cafeStatus: string | null; almocoStatus: string | null;
+    lancheStatus: string | null; jantarStatus: string | null;
+  },
+  planoKeys: string[],
+): Record<string, string | null> {
+  const rs =
+    registro.refeicoesStatus && typeof registro.refeicoesStatus === "object"
+      ? (registro.refeicoesStatus as Record<string, unknown>)
+      : {
+          cafe: registro.cafeStatus, almoco: registro.almocoStatus,
+          lanche: registro.lancheStatus, jantar: registro.jantarStatus,
+        };
+  return statusMapDoPlano(planoKeys, rs);
+}
+
 /** Sequência + total + liga a creditar ao FECHAR o dia. */
 function calcularFechamentoPaciente(
   paciente: { ultimoCheckin: Date | null; streakAtual: number; streakMaximo: number; pontosTotal: number },
@@ -59,48 +88,57 @@ function calcularFechamentoPaciente(
 // Idempotente: recebe o snapshot atual do dia e faz upsert. 409 se o dia já foi fechado.
 router.put("/dia", async (req: PacienteAuthRequest, res: Response) => {
   const {
-    cafeStatus, almocoStatus, lancheStatus, jantarStatus,
+    refeicoesStatus, cafeStatus, almocoStatus, lancheStatus, jantarStatus,
     refeicoesNotas, aguaMl, aguaMetaMl, treinoStatus, treinoMotivo, sonoFaixa,
   } = req.body as {
+    refeicoesStatus?: unknown;
     cafeStatus?: unknown; almocoStatus?: unknown; lancheStatus?: unknown; jantarStatus?: unknown;
     refeicoesNotas?: unknown; aguaMl?: unknown; aguaMetaMl?: unknown;
     treinoStatus?: unknown; treinoMotivo?: unknown; sonoFaixa?: unknown;
   };
 
   const hoje = inicioDeHoje();
-  const existente = await prisma.registro.findUnique({
-    where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
-  });
+  const [existente, paciente] = await Promise.all([
+    prisma.registro.findUnique({
+      where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
+    }),
+    prisma.paciente.findUnique({ where: { id: req.pacienteId! }, select: { planoRefeicoes: true } }),
+  ]);
   if (existente?.finalizado) return res.status(409).json({ error: "Dia já fechado" });
 
-  const status = {
-    cafe: normStatus(cafeStatus),
-    almoco: normStatus(almocoStatus),
-    lanche: normStatus(lancheStatus),
-    jantar: normStatus(jantarStatus),
-  };
+  // Refeições do plano da paciente (fallback = 4 padrão). Aceita o map { key: status }
+  // ou os 4 campos legados (retrocompat de clientes antigos).
+  const planoKeys = resolverPlanoRefeicoes(paciente?.planoRefeicoes).map((r) => r.key);
+  const entrada: Record<string, unknown> =
+    refeicoesStatus && typeof refeicoesStatus === "object"
+      ? (refeicoesStatus as Record<string, unknown>)
+      : { cafe: cafeStatus, almoco: almocoStatus, lanche: lancheStatus, jantar: jantarStatus };
+  const status = statusMapDoPlano(planoKeys, entrada);
+
   const metaMl = typeof aguaMetaMl === "number" && aguaMetaMl > 0 ? Math.round(aguaMetaMl) : AGUA_META_ML_PADRAO;
   const ml = typeof aguaMl === "number" && aguaMl >= 0 ? Math.round(aguaMl) : 0;
   const aguaOk = ml >= metaMl;
-  const xpAlim = calcularXpAlimentacao(status);
+  const xpAlim = calcularXpAlimentacao(planoKeys.map((k) => status[k]));
   const tStatus = normTreino(treinoStatus);
   const sFaixa = normFaixa(sonoFaixa);
 
   const dados = {
     // booleanos derivados (mantêm as agregações legadas da nutri funcionando)
-    alimentacaoOk: xpAlim >= 3,
+    alimentacaoOk: xpAlim >= ALIMENTACAO_OK_MIN,
     treinoOk: calcularXpTreino(tStatus) > 0,
     aguaOk,
     sonoOk: calcularXpSono(sFaixa) > 0,
+    // colunas legadas espelhadas p/ as 4 keys canônicas (null quando fora do plano)
     cafeOk: status.cafe ? status.cafe === "seguiu" : null,
     almocoOk: status.almoco ? status.almoco === "seguiu" : null,
     lancheOk: status.lanche ? status.lanche === "seguiu" : null,
     jantarOk: status.jantar ? status.jantar === "seguiu" : null,
-    // estado por refeição (3 estados) + notas
-    cafeStatus: status.cafe,
-    almocoStatus: status.almoco,
-    lancheStatus: status.lanche,
-    jantarStatus: status.jantar,
+    cafeStatus: status.cafe ?? null,
+    almocoStatus: status.almoco ?? null,
+    lancheStatus: status.lanche ?? null,
+    jantarStatus: status.jantar ?? null,
+    // estado por refeição (N refeições do plano) — fonte da verdade
+    refeicoesStatus: status as any,
     refeicoesNotas: (refeicoesNotas ?? undefined) as any,
     // água como progresso
     aguaMl: ml,
@@ -136,10 +174,12 @@ router.post("/dia/fechar", async (req: PacienteAuthRequest, res: Response) => {
   if (!registro) return res.status(400).json({ error: "Nada pra fechar hoje" });
   if (registro.finalizado) return res.status(409).json({ error: "Dia já fechado" });
 
-  const xpAlim = calcularXpAlimentacao({
-    cafe: registro.cafeStatus, almoco: registro.almocoStatus,
-    lanche: registro.lancheStatus, jantar: registro.jantarStatus,
-  });
+  const paciente = await prisma.paciente.findUnique({ where: { id: req.pacienteId! } });
+  if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });
+
+  const planoKeys = resolverPlanoRefeicoes(paciente.planoRefeicoes).map((r) => r.key);
+  const status = statusMapDoRegistro(registro, planoKeys);
+  const xpAlim = calcularXpAlimentacao(planoKeys.map((k) => status[k]));
   const aguaOk =
     registro.aguaMl != null && registro.aguaMetaMl != null && registro.aguaMl >= registro.aguaMetaMl;
 
@@ -151,9 +191,6 @@ router.post("/dia/fechar", async (req: PacienteAuthRequest, res: Response) => {
     incluirFechamento: true,
   });
 
-  const paciente = await prisma.paciente.findUnique({ where: { id: req.pacienteId! } });
-  if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });
-
   const { streakAtual, streakMaximo, pontosTotal, liga } = calcularFechamentoPaciente(
     paciente, pontosGanhos, hoje,
   );
@@ -163,7 +200,7 @@ router.post("/dia/fechar", async (req: PacienteAuthRequest, res: Response) => {
       where: { id: registro.id },
       data: {
         finalizado: true,
-        alimentacaoOk: xpAlim >= 3,
+        alimentacaoOk: xpAlim >= ALIMENTACAO_OK_MIN,
         aguaOk,
         pontosGanhos,
         pontosDetalhes,
@@ -207,7 +244,7 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
     lanche: lancheOk ? "seguiu" : temRefeicoes ? "pulou" : null,
     jantar: jantarOk ? "seguiu" : temRefeicoes ? "pulou" : null,
   };
-  const xpAlim = temRefeicoes ? calcularXpAlimentacao(statusLegado) : alimentacaoOk ? 4 : 0;
+  const xpAlim = temRefeicoes ? calcularXpAlimentacao(REFEICOES_KEYS.map((k) => statusLegado[k])) : alimentacaoOk ? 4 : 0;
 
   const hoje = inicioDeHoje();
   const existente = await prisma.registro.findUnique({
@@ -238,7 +275,7 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
       create: {
         pacienteId: req.pacienteId!,
         data: hoje,
-        alimentacaoOk: xpAlim >= 3,
+        alimentacaoOk: xpAlim >= ALIMENTACAO_OK_MIN,
         treinoOk: !!treinoOk,
         aguaOk: !!aguaOk,
         sonoOk: !!sonoOk,
@@ -250,6 +287,7 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
         almocoStatus: statusLegado.almoco,
         lancheStatus: statusLegado.lanche,
         jantarStatus: statusLegado.jantar,
+        refeicoesStatus: temRefeicoes ? (statusLegado as any) : undefined,
         finalizado: true,
         tipoRegistro: tipoRegistro ?? "normal",
         fotoUrl,
@@ -260,7 +298,7 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
         pontosDetalhes,
       },
       update: {
-        alimentacaoOk: xpAlim >= 3,
+        alimentacaoOk: xpAlim >= ALIMENTACAO_OK_MIN,
         treinoOk: !!treinoOk,
         aguaOk: !!aguaOk,
         sonoOk: !!sonoOk,
@@ -272,6 +310,7 @@ router.post("/", async (req: PacienteAuthRequest, res: Response) => {
         almocoStatus: temRefeicoes ? statusLegado.almoco : undefined,
         lancheStatus: temRefeicoes ? statusLegado.lanche : undefined,
         jantarStatus: temRefeicoes ? statusLegado.jantar : undefined,
+        refeicoesStatus: temRefeicoes ? (statusLegado as any) : undefined,
         finalizado: true,
         tipoRegistro: tipoRegistro ?? "normal",
         fotoUrl,
@@ -313,6 +352,7 @@ router.get("/resumo", async (req: PacienteAuthRequest, res: Response) => {
       select: {
         nome: true, pontosTotal: true, ligaAtual: true, ligaNivel: true,
         streakAtual: true, streakMaximo: true, ultimoCheckin: true, diasInativo: true, barraCongelada: true,
+        planoRefeicoes: true,
       },
     }),
     prisma.registro.findUnique({
@@ -327,6 +367,7 @@ router.get("/resumo", async (req: PacienteAuthRequest, res: Response) => {
 
   return res.json({
     paciente,
+    planoRefeicoes: resolverPlanoRefeicoes(paciente?.planoRefeicoes),
     registroHoje,
     feitoHoje: !!registroHoje?.finalizado,
     conquistas,

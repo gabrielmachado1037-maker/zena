@@ -12,7 +12,6 @@ export interface MealDetail {
 interface Opcao {
   status: MealStatus
   titulo: string
-  xp: string
   color: string
   icon: LucideIcon
   flow: "salvar" | "texto" | "motivos"
@@ -22,21 +21,30 @@ interface Opcao {
 
 /* Verde = ganhou XP · amarelo/vermelho = zero. Tons distintos dentro de cada grupo. */
 const OPCOES: Opcao[] = [
-  { status: "seguiu", titulo: "Segui o plano", xp: "+1 XP", color: "#22C55E", icon: CircleCheck, flow: "salvar" },
+  { status: "seguiu", titulo: "Segui o plano", color: "#22C55E", icon: CircleCheck, flow: "salvar" },
   {
-    status: "adaptou", titulo: "Adaptei de forma saudável", xp: "+0,75 XP", color: "#84CC16", icon: Leaf, flow: "texto",
+    status: "adaptou", titulo: "Adaptei de forma saudável", color: "#84CC16", icon: Leaf, flow: "texto",
     campoTitulo: "O que você mudou na refeição? (opcional)",
     placeholder: "Ex.: comi ovo no lugar da tapioca · almocei fora, mas escolhi um prato equilibrado · substituí o peixe por frango grelhado",
   },
   {
-    status: "comeu_mal", titulo: "Comi mal", xp: "0 XP", color: "#F59E0B", icon: Meh, flow: "texto",
+    status: "comeu_mal", titulo: "Comi mal", color: "#F59E0B", icon: Meh, flow: "texto",
     campoTitulo: "O que você comeu? (opcional)",
     placeholder: "Ex.: comi fast food · exagerei na sobremesa · beliscei besteira o dia todo",
   },
-  { status: "pulou", titulo: "Pulei a refeição", xp: "0 XP", color: "#EF4444", icon: CircleSlash, flow: "motivos" },
+  { status: "pulou", titulo: "Pulei a refeição", color: "#EF4444", icon: CircleSlash, flow: "motivos" },
 ]
 
 const MOTIVOS_PULO = ["Falta de tempo", "Não senti fome", "Esqueci", "Outro"] as const
+
+/* Selo de XP por opção. Com `valorRefeicao` (4÷N) o valor é dinâmico; sem ele, fallback estático. */
+const fmtXpMeal = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 })
+function xpLabel(status: MealStatus, valorRefeicao?: number): string {
+  if (valorRefeicao == null) return status === "seguiu" ? "+1 XP" : status === "adaptou" ? "+0,75 XP" : "0 XP"
+  if (status === "seguiu") return `+${fmtXpMeal(valorRefeicao)} XP`
+  if (status === "adaptou") return `+${fmtXpMeal(Math.round(valorRefeicao * 0.75 * 100) / 100)} XP`
+  return "0 XP"
+}
 
 /**
  * Registro de uma refeição em bottom sheet — 4 estados:
@@ -46,11 +54,13 @@ const MOTIVOS_PULO = ["Falta de tempo", "Não senti fome", "Esqueci", "Outro"] a
 export function MealSheet({
   open,
   meal,
+  valorRefeicao,
   onClose,
   onSave,
 }: {
   open: boolean
   meal: { key: string; label: string } | null
+  valorRefeicao?: number
   onClose: () => void
   onSave: (status: MealStatus, detail: MealDetail) => void
 }) {
@@ -113,7 +123,7 @@ export function MealSheet({
             >
               <o.icon className="size-6 shrink-0" strokeWidth={2.2} style={{ color: o.color }} />
               <span className="flex-1 text-body-lg font-semibold text-nx-on-surface">{o.titulo}</span>
-              <span className="shrink-0 text-body-md font-bold tabular-nums" style={{ color: o.color }}>{o.xp}</span>
+              <span className="shrink-0 text-body-md font-bold tabular-nums" style={{ color: o.color }}>{xpLabel(o.status, valorRefeicao)}</span>
             </button>
           ))}
         </div>

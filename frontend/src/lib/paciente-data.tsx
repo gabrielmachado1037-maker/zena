@@ -4,7 +4,7 @@ import {
   Footprints, Medal, Camera, Crown, Award, type LucideIcon,
 } from "lucide-react";
 import apiPaciente from "./apiPaciente";
-import { progressoLiga } from "./ligas";
+import { progressoLiga, calcularXpAlimentacao, resolverPlanoRefeicoes, type RefeicaoPlano } from "./ligas";
 import type { Mission, Challenge, Achievement, RankUser, Measure } from "./nexvel-data";
 
 /* ─────────── shapes das respostas da API ─────────── */
@@ -13,9 +13,11 @@ interface ResumoResp {
     nome: string; pontosTotal: number; ligaAtual: string; ligaNivel: string;
     streakAtual: number; streakMaximo: number; barraCongelada: boolean;
   };
+  planoRefeicoes?: RefeicaoPlano[] | null;
   registroHoje: {
     pontosGanhos: number; alimentacaoOk: boolean; treinoOk: boolean; aguaOk: boolean; sonoOk: boolean; humor: string | null;
     cafeStatus: string | null; almocoStatus: string | null; lancheStatus: string | null; jantarStatus: string | null;
+    refeicoesStatus: Record<string, string | null> | null;
     refeicoesNotas: Record<string, { nota?: string; motivo?: string }> | null;
     aguaMl: number | null; aguaMetaMl: number | null; finalizado: boolean;
     treinoStatus: string | null; treinoMotivo: string | null; sonoFaixa: string | null;
@@ -39,7 +41,8 @@ export interface PacienteUser {
 export interface MealState { status: string | null; nota?: string; motivo?: string }
 export interface TodayState {
   finalizado: boolean;
-  refeicoes: Record<"cafe" | "almoco" | "lanche" | "jantar", MealState>;
+  planoRefeicoes: RefeicaoPlano[];
+  refeicoes: Record<string, MealState>;
   aguaMl: number;
   aguaMetaMl: number;
   treinoStatus: string | null;
@@ -156,23 +159,27 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
         streak: p?.streakAtual ?? 0,
         streakBest: p?.streakMaximo ?? 0,
         todayPoints: rh?.pontosGanhos ?? 0,
-        todayGoal: 13,
+        todayGoal: 12,
         leagueProgress: prog.pct,
       };
 
       // Estado do dia (hidrata a tela Registro a partir do servidor)
-      const refKeys = ["cafe", "almoco", "lanche", "jantar"] as const;
+      const plano = resolverPlanoRefeicoes(resumo?.planoRefeicoes);
+      const planoKeys = plano.map((r) => r.key);
       const notas = (rh?.refeicoesNotas ?? {}) as Record<string, { nota?: string; motivo?: string }>;
-      const statusOf = (k: string) => (rh ? ((rh as any)[`${k}Status`] as string | null) : null);
-      const xpMeal = (s: string | null) => (s === "seguiu" ? 1 : s === "adaptou" ? 0.75 : 0);
-      const xpAlim = refKeys.reduce((sum, k) => sum + xpMeal(statusOf(k)), 0);
+      // Fonte da verdade: refeicoesStatus; fallback p/ colunas legadas (registros antigos).
+      const rawStatus = (rh?.refeicoesStatus ?? null) as Record<string, string | null> | null;
+      const statusOf = (k: string): string | null =>
+        rawStatus ? rawStatus[k] ?? null : rh ? ((rh as any)[`${k}Status`] as string | null) : null;
+      const xpAlim = calcularXpAlimentacao(planoKeys.map(statusOf));
       const refeicoes = Object.fromEntries(
-        refKeys.map((k) => [k, { status: statusOf(k), nota: notas[k]?.nota, motivo: notas[k]?.motivo }]),
+        planoKeys.map((k) => [k, { status: statusOf(k), nota: notas[k]?.nota, motivo: notas[k]?.motivo }]),
       ) as TodayState["refeicoes"];
       const xpTreino = XP_TREINO[rh?.treinoStatus ?? ""] ?? 0;
       const xpSono = XP_SONO[rh?.sonoFaixa ?? ""] ?? 0;
       const today: TodayState = {
         finalizado: !!resumo?.feitoHoje,
+        planoRefeicoes: plano,
         refeicoes,
         aguaMl: rh?.aguaMl ?? 0,
         aguaMetaMl: rh?.aguaMetaMl ?? 3000,

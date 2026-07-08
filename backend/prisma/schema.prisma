@@ -84,6 +84,9 @@ model Paciente {
   ligaNivel         String             @default("III")
   diasInativo       Int                @default(0)
   barraCongelada    Boolean            @default(false)
+  // Plano de missões — refeições configuradas pela nutri: [{ key, label }] (3–6).
+  // null = 4 refeições padrão (café/almoço/lanche/jantar). Alimentação satura em 4 XP.
+  planoRefeicoes    Json?
   medicoes          Medicao[]
   consultas         Consulta[]
   cobrancas         Cobranca[]
@@ -655,6 +658,10 @@ model Registro {
   jantarStatus   String?
   // Notas por refeição: { cafe: { nota?, motivo? }, ... } (o que mudou / por que pulou)
   refeicoesNotas Json?
+  // Estado por refeição para N refeições (3–6): { key: "seguiu|adaptou|comeu_mal|pulou" }.
+  // Fonte da verdade da alimentação quando o plano tem != 4 refeições; para o padrão de 4,
+  // as colunas cafeStatus…jantarStatus continuam espelhadas (retrocompat com agregações).
+  refeicoesStatus Json?
 
   // Água como progresso (ml) em vez de booleano. aguaOk = derivado (aguaMl >= aguaMetaMl).
   aguaMl         Int?

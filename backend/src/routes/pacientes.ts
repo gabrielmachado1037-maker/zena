@@ -4,6 +4,7 @@ import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { planoMiddleware } from "../middleware/plano";
 import { checkModulo } from "../middleware/checkModulo";
 import { gerarFeedAutomatico } from "../lib/feedAutomatico";
+import { PLANOS_REFEICOES, resolverPlanoRefeicoes, MIN_REFEICOES, MAX_REFEICOES } from "../config/ligas";
 
 const router = Router();
 router.use(authMiddleware);
@@ -113,6 +114,37 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
     },
   });
   res.json(updated);
+});
+
+// PUT /:id/plano-missoes — nutri configura o nº de refeições (3–6) do plano da paciente.
+// Aditivo: só troca a estrutura de refeições do plano; não altera registros já feitos.
+// A alimentação continua saturando em 4 XP — mais refeições NÃO dão vantagem na liga.
+router.put("/:id/plano-missoes", async (req: AuthRequest, res: Response) => {
+  const id = req.params["id"] as string;
+  const { numRefeicoes, refeicoes } = req.body as {
+    numRefeicoes?: number; refeicoes?: { key: string; label: string }[];
+  };
+
+  const paciente = await prisma.paciente.findFirst({ where: { id, nutricionistaId: req.nutricionistaId as string } });
+  if (!paciente) return res.status(404).json({ error: "Paciente não encontrada" });
+
+  // Preferência: preset por quantidade (3–6). Também aceita uma lista custom [{key,label}].
+  let plano: { key: string; label: string }[] | null = null;
+  if (typeof numRefeicoes === "number" && PLANOS_REFEICOES[numRefeicoes]) {
+    plano = PLANOS_REFEICOES[numRefeicoes];
+  } else if (Array.isArray(refeicoes) && refeicoes.length >= MIN_REFEICOES) {
+    plano = resolverPlanoRefeicoes(refeicoes);
+  }
+  if (!plano) {
+    return res.status(400).json({ error: `Informe numRefeicoes entre ${MIN_REFEICOES} e ${MAX_REFEICOES}.` });
+  }
+
+  const updated = await prisma.paciente.update({
+    where: { id },
+    data: { planoRefeicoes: plano },
+    select: { id: true, planoRefeicoes: true },
+  });
+  res.json({ planoRefeicoes: updated.planoRefeicoes });
 });
 
 router.post("/:id/medicoes", async (req: AuthRequest, res: Response) => {

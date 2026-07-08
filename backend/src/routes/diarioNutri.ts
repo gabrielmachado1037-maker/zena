@@ -23,6 +23,7 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
       fotoPerfilUrl: true, fotoInicial: true,
       pontosTotal: true, ligaAtual: true, ligaNivel: true,
       streakAtual: true, streakMaximo: true, ultimoCheckin: true, diasInativo: true, barraCongelada: true,
+      planoRefeicoes: true,
     },
   });
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });

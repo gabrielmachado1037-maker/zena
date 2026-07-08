@@ -5,6 +5,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { usePacienteData, type MealState, type TodayState, XP_TREINO, XP_SONO } from "@/lib/paciente-data"
+import { calcularXpAlimentacao, valorRefeicaoXp } from "@/lib/ligas"
 import apiPaciente from "@/lib/apiPaciente"
 import {
   ProgressBarNx, LevelUpOverlay, LeagueCrest,
@@ -13,15 +14,13 @@ import {
 } from "@/components/ui-nx"
 import type { NavigateFn } from "../types"
 
-const REFEICOES = [
-  { key: "cafe", label: "Café", icon: Coffee },
-  { key: "almoco", label: "Almoço", icon: Utensils },
-  { key: "lanche", label: "Lanche", icon: Cookie },
-  { key: "jantar", label: "Jantar", icon: Soup },
-] as const
-type RefKey = (typeof REFEICOES)[number]["key"]
+// Ícone por refeição do plano (keys estáveis vindas do backend). Fallback = Utensils.
+const MEAL_ICONS: Record<string, LucideIcon> = {
+  cafe: Coffee, almoco: Utensils, lanche: Cookie, jantar: Soup,
+  lanche_manha: Cookie, ceia: Moon,
+}
+const iconRefeicao = (key: string): LucideIcon => MEAL_ICONS[key] ?? Utensils
 
-const XP_MEAL: Record<string, number> = { seguiu: 1, adaptou: 0.75, comeu_mal: 0, pulou: 0 }
 const MEAL_STYLE: Record<string, { color: string; Badge: LucideIcon }> = {
   seguiu: { color: "#22C55E", Badge: Check },
   adaptou: { color: "#84CC16", Badge: Leaf },
@@ -48,7 +47,7 @@ const TREINO_LABEL: Record<string, string> = { conforme: "Conforme planejado", p
 const TREINO_MOTIVOS = ["Falta de tempo", "Cansaço", "Dor", "Compromissos", "Outro"]
 
 interface DayState {
-  refeicoes: Record<RefKey, MealState>
+  refeicoes: Record<string, MealState>
   aguaMl: number
   treinoStatus: string | null
   treinoMotivo: string | null
@@ -63,10 +62,6 @@ function fromToday(t: TodayState): DayState {
     treinoMotivo: t.treinoMotivo,
     sonoFaixa: t.sonoFaixa,
   }
-}
-
-function xpAlimentacao(ref: Record<RefKey, MealState>) {
-  return REFEICOES.reduce((s, r) => s + (XP_MEAL[ref[r.key].status ?? ""] ?? 0), 0)
 }
 
 /* Chip de refeição — cor por estado (verde=XP, amarelo/vermelho=zero) */
@@ -121,10 +116,15 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const { today, user, reload } = usePacienteData()
   const { push, node: toasts } = useNxToasts()
 
+  // Plano de missões da paciente (3–6 refeições). Valor de cada refeição = 4 ÷ N.
+  const plano = today.planoRefeicoes
+  const planoKeys = plano.map((r) => r.key)
+  const valorRef = valorRefeicaoXp(plano.length)
+
   const metaMl = today.aguaMetaMl || 3000
   const [state, setState] = useState<DayState>(() => fromToday(today))
   const [finalizado, setFinalizado] = useState(today.finalizado)
-  const [sheetMeal, setSheetMeal] = useState<{ key: RefKey; label: string } | null>(null)
+  const [sheetMeal, setSheetMeal] = useState<{ key: string; label: string } | null>(null)
   const [sheet, setSheet] = useState<"sono" | "treino" | null>(null)
   const [resumoOpen, setResumoOpen] = useState(false)
   const [enviando, setEnviando] = useState(false)
@@ -132,24 +132,25 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const [celeb, setCeleb] = useState<Celebracao | null>(null)
   const saveTimer = useRef<number | null>(null)
 
-  const xpAlim = xpAlimentacao(state.refeicoes)
+  const xpAlim = calcularXpAlimentacao(planoKeys.map((k) => state.refeicoes[k]?.status ?? null))
   const xpTreino = XP_TREINO[state.treinoStatus ?? ""] ?? 0
   const xpSono = XP_SONO[state.sonoFaixa ?? ""] ?? 0
   const aguaOk = state.aguaMl >= metaMl
   const earnedHabitos = xpAlim + xpTreino + (aguaOk ? 2 : 0) + xpSono
   const tudo = xpAlim >= 3 && xpTreino > 0 && aguaOk && xpSono > 0
-  const totalAoFechar = earnedHabitos + 1 + (tudo ? 1 : 0)
+  const totalAoFechar = earnedHabitos + 1 // registro_diario (+1). Teto do dia = 12 XP.
   const goal = user.todayGoal
 
   function payloadFrom(s: DayState) {
     const notas: Record<string, { nota?: string; motivo?: string }> = {}
-    for (const r of REFEICOES) {
-      const m = s.refeicoes[r.key]
-      if (m.nota || m.motivo) notas[r.key] = { nota: m.nota, motivo: m.motivo }
+    const refeicoesStatus: Record<string, string | null> = {}
+    for (const k of planoKeys) {
+      const m = s.refeicoes[k]
+      refeicoesStatus[k] = m?.status ?? null
+      if (m?.nota || m?.motivo) notas[k] = { nota: m.nota, motivo: m.motivo }
     }
     return {
-      cafeStatus: s.refeicoes.cafe.status, almocoStatus: s.refeicoes.almoco.status,
-      lancheStatus: s.refeicoes.lanche.status, jantarStatus: s.refeicoes.jantar.status,
+      refeicoesStatus,
       refeicoesNotas: notas, aguaMl: s.aguaMl, aguaMetaMl: metaMl,
       treinoStatus: s.treinoStatus, treinoMotivo: s.treinoMotivo, sonoFaixa: s.sonoFaixa,
     }
@@ -172,8 +173,8 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
     if (!sheetMeal) return
     const { key, label } = sheetMeal
     apply((s) => ({ ...s, refeicoes: { ...s.refeicoes, [key]: { status, ...detail } } }))
-    if (status === "seguiu") push(`Boa! ${label} conforme o plano`, { tone: "evo", xp: 1, icon: <Check className="size-4" strokeWidth={3} /> })
-    else if (status === "adaptou") push(`Adaptação saudável no ${label.toLowerCase()} 🌱`, { tone: "evo", xp: 0.75, icon: <Leaf className="size-4" /> })
+    if (status === "seguiu") push(`Boa! ${label} conforme o plano`, { tone: "evo", xp: valorRef, icon: <Check className="size-4" strokeWidth={3} /> })
+    else if (status === "adaptou") push(`Adaptação saudável no ${label.toLowerCase()} 🌱`, { tone: "evo", xp: Math.round(valorRef * 0.75 * 100) / 100, icon: <Leaf className="size-4" /> })
     else if (status === "comeu_mal") push("Registrado! Vamos seguir em busca do objetivo 💚", { tone: "neutral" })
     else push("Tudo bem, amanhã tem mais 💪", { tone: "neutral" })
   }
@@ -226,7 +227,8 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   }
 
   // valores de recap p/ o Resumo do dia
-  const refeicoesRegistradas = REFEICOES.filter((r) => state.refeicoes[r.key].status).length
+  const refeicoesRegistradas = planoKeys.filter((k) => state.refeicoes[k]?.status).length
+  const gridColsAlim = plano.length <= 4 ? plano.length : 3
   const missoesConcluidas = [xpAlim >= 3, xpTreino > 0, aguaOk, xpSono > 0].filter(Boolean).length
   const humorSel = MOODS.find((m) => m.key === today.humor)
 
@@ -266,9 +268,9 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
             {fmtXp(xpAlim)}<span className="text-nx-on-surface-variant">/4</span>
           </span>
         </div>
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {REFEICOES.map((r) => (
-            <MealChip key={r.key} icon={r.icon} label={r.label} status={state.refeicoes[r.key].status}
+        <div className="mt-3 grid gap-2" style={{ gridTemplateColumns: `repeat(${gridColsAlim}, minmax(0, 1fr))` }}>
+          {plano.map((r) => (
+            <MealChip key={r.key} icon={iconRefeicao(r.key)} label={r.label} status={state.refeicoes[r.key]?.status ?? null}
               onClick={() => !finalizado && setSheetMeal({ key: r.key, label: r.label })} />
           ))}
         </div>
@@ -324,7 +326,7 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
       </button>
 
       {/* Sheets */}
-      <MealSheet open={!!sheetMeal} meal={sheetMeal} onClose={() => setSheetMeal(null)} onSave={salvarRefeicao} />
+      <MealSheet open={!!sheetMeal} meal={sheetMeal} valorRefeicao={valorRef} onClose={() => setSheetMeal(null)} onSave={salvarRefeicao} />
       <ChoiceSheet open={sheet === "sono"} title="Quanto você dormiu hoje?" options={SONO_OPCOES}
         onClose={() => setSheet(null)} onSave={(v) => salvarSono(v)} />
       <ChoiceSheet open={sheet === "treino"} title="Como foi seu treino hoje?" options={TREINO_OPCOES}
@@ -339,7 +341,7 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
         xp={totalAoFechar}
         missoesConcluidas={missoesConcluidas}
         missoesTotal={4}
-        alimentacao={`${refeicoesRegistradas}/4 refeições`}
+        alimentacao={`${refeicoesRegistradas}/${plano.length} refeições`}
         treino={state.treinoStatus ? TREINO_LABEL[state.treinoStatus] : "—"}
         agua={`${formatL(state.aguaMl)} / ${formatL(metaMl)}`}
         sono={state.sonoFaixa ? SONO_LABEL[state.sonoFaixa] : "—"}

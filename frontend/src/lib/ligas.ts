@@ -56,6 +56,45 @@ export const ICONE_LIGA: Record<string, string> = {
   Bronze: "🥉", Prata: "🥈", Ouro: "🏅", Diamante: "💎", Mestre: "⚔️", "Lendário": "👑",
 };
 
+// ── Alimentação: espelho de config/ligas.ts do backend ─────────────────────
+// Cada refeição vale 4/N; "adaptou" = 75% disso; comeu_mal/pulou = 0. Satura em 4 —
+// ter mais refeições NÃO dá vantagem (igualdade nas ligas). Ex.: 5 refeições → 0,80/refeição.
+export const XP_ALIMENTACAO_MAX = 4;
+export const FATOR_REFEICAO: Record<string, number> = { seguiu: 1, adaptou: 0.75, comeu_mal: 0, pulou: 0 };
+
+export interface RefeicaoPlano { key: string; label: string }
+export const PLANO_REFEICOES_PADRAO: RefeicaoPlano[] = [
+  { key: "cafe", label: "Café" },
+  { key: "almoco", label: "Almoço" },
+  { key: "lanche", label: "Lanche" },
+  { key: "jantar", label: "Jantar" },
+];
+
+/** Resolve o plano de refeições (fallback = 4 padrão). */
+export function resolverPlanoRefeicoes(plano: unknown): RefeicaoPlano[] {
+  if (Array.isArray(plano)) {
+    const limpo = plano
+      .filter((r): r is RefeicaoPlano => !!r && typeof (r as any).key === "string" && typeof (r as any).label === "string")
+      .slice(0, 6);
+    if (limpo.length >= 3) return limpo;
+  }
+  return PLANO_REFEICOES_PADRAO;
+}
+
+/** Valor (XP) de uma refeição dado o nº de refeições do plano. */
+export function valorRefeicaoXp(n: number): number {
+  return n > 0 ? XP_ALIMENTACAO_MAX / n : 0;
+}
+
+/** XP de alimentação (0–4) a partir dos estados ordenados das N refeições. */
+export function calcularXpAlimentacao(statuses: (string | null | undefined)[]): number {
+  const n = statuses.length;
+  if (n <= 0) return 0;
+  const valor = XP_ALIMENTACAO_MAX / n;
+  const total = statuses.reduce<number>((s, st) => s + valor * (FATOR_REFEICAO[st ?? ""] ?? 0), 0);
+  return Math.min(Math.round(total * 100) / 100, XP_ALIMENTACAO_MAX);
+}
+
 // Dias desde o último check-in
 export function diasDesde(iso: string | null): number | null {
   if (!iso) return null;

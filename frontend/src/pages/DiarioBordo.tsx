@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
-import { progressoLiga, diasDesde } from "../lib/ligas";
+import { progressoLiga, diasDesde, resolverPlanoRefeicoes, PLANO_REFEICOES_PADRAO, type RefeicaoPlano } from "../lib/ligas";
 import { gerarInsights, type Insight, type InsightTone } from "../lib/insights";
 import { LeagueCrest, LeagueBadge, ProgressBarNx } from "../components/ui-nx";
 import DesafiosTab from "../components/diario/DesafiosTab";
@@ -34,6 +34,7 @@ interface DiarioData {
     pesoMeta: number | null;
     pontosTotal: number; ligaAtual: string; ligaNivel: string;
     streakAtual: number; streakMaximo: number; ultimoCheckin: string | null;
+    planoRefeicoes?: RefeicaoPlano[] | null;
   };
   registros: Registro[];
   desafios: DesafioProgressoItem[];
@@ -93,6 +94,8 @@ export default function DiarioBordo() {
   const [mesRef, setMesRef] = useState(() => new Date());
   const [selKey, setSelKey] = useState<string | null>(null);
   const [incentivo, setIncentivo] = useState<"idle" | "enviando" | "ok">("idle");
+  const [plano, setPlano] = useState<RefeicaoPlano[]>(PLANO_REFEICOES_PADRAO);
+  const [savingPlano, setSavingPlano] = useState<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -100,6 +103,7 @@ export default function DiarioBordo() {
     api.get<DiarioData>(`/diario/${id}`)
       .then((r) => {
         setData(r.data);
+        setPlano(resolverPlanoRefeicoes(r.data.paciente?.planoRefeicoes));
         const regs = r.data.registros ?? [];
         if (regs.length) {
           const recente = regs.reduce((a, b) => (a.data > b.data ? a : b));
@@ -176,6 +180,17 @@ export default function DiarioBordo() {
       });
       setIncentivo("ok");
     } catch { setIncentivo("idle"); }
+  }
+
+  async function salvarPlano(n: number) {
+    if (!id || savingPlano != null || n === plano.length) return;
+    setSavingPlano(n);
+    try {
+      const { data: r } = await api.put<{ planoRefeicoes: RefeicaoPlano[] }>(`/pacientes/${id}/plano-missoes`, { numRefeicoes: n });
+      setPlano(resolverPlanoRefeicoes(r.planoRefeicoes));
+    } catch { /* mantém o plano atual */ } finally {
+      setSavingPlano(null);
+    }
   }
 
   /* grade do calendário (semana começa na segunda) */
@@ -345,6 +360,39 @@ export default function DiarioBordo() {
                 </div>
               </section>
             )}
+
+            {/* ══════════ Plano de missões — refeições configuráveis ══════════ */}
+            <section className={`${CARD} mt-4 p-5`}>
+              <div className="mb-1 flex items-center gap-2">
+                <Utensils className="size-4 text-nx-evo" />
+                <span className="text-label-md uppercase text-nx-on-surface-variant">Plano de missões · Refeições</span>
+              </div>
+              <p className="mb-4 text-body-sm text-nx-on-surface-variant">
+                Quantas refeições {pac.nome.split(" ")[0]} registra por dia. Os <strong className="text-nx-on-surface">4 XP</strong> da
+                alimentação se dividem entre elas — mais refeições <strong className="text-nx-on-surface">não</strong> dão vantagem na liga.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[3, 4, 5, 6].map((n) => {
+                  const on = plano.length === n;
+                  const loading = savingPlano === n;
+                  return (
+                    <button key={n} onClick={() => salvarPlano(n)} disabled={savingPlano != null}
+                      className={`min-w-[104px] rounded-nx-md border px-4 py-2.5 text-body-sm font-semibold transition-all disabled:opacity-60 ${
+                        on ? "border-nx-evo bg-nx-evo/12 text-nx-evo" : "border-nx-border bg-nx-surface text-nx-on-surface-variant hover:border-nx-outline"
+                      }`}>
+                      {loading ? "Salvando…" : `${n} refeições`}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {plano.map((r) => (
+                  <span key={r.key} className="rounded-full border border-nx-border bg-nx-container px-2.5 py-1 text-label-sm text-nx-on-surface-variant">
+                    {r.label} · {(4 / plano.length).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} XP
+                  </span>
+                ))}
+              </div>
+            </section>
 
             {/* ══════════ Abas (profundidade) ══════════ */}
             <div className="mt-8 border-b border-nx-border">
