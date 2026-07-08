@@ -5,6 +5,7 @@ import { planoMiddleware } from "../middleware/plano";
 import { checkModulo } from "../middleware/checkModulo";
 import { gerarFeedAutomatico } from "../lib/feedAutomatico";
 import { PLANOS_REFEICOES, resolverPlanoRefeicoes, MIN_REFEICOES, MAX_REFEICOES } from "../config/ligas";
+import { gerarRelatorioMensal, gerarInsightsIA } from "../services/relatorioService";
 
 const router = Router();
 router.use(authMiddleware);
@@ -173,6 +174,39 @@ router.put("/:id/plano-missoes", async (req: AuthRequest, res: Response) => {
     sonoMetaHoras: updated.sonoMetaHoras,
     treinoDias: updated.treinoDias,
   });
+});
+
+// GET /:id/relatorio-mensal?inicio=AAAA-MM-DD&fim=AAAA-MM-DD&ia=1
+// Relatório do paciente num intervalo livre (ciclo escolhido pela nutri, ex.: 15→15).
+// Só leitura. ?ia=1 acrescenta a leitura em "voz de nutricionista" (fallback: regras).
+router.get("/:id/relatorio-mensal", async (req: AuthRequest, res: Response) => {
+  const id = req.params["id"] as string;
+
+  const paciente = await prisma.paciente.findFirst({
+    where: { id, nutricionistaId: req.nutricionistaId as string },
+    select: { id: true },
+  });
+  if (!paciente) return res.status(404).json({ error: "Paciente não encontrada" });
+
+  // Datas: default = últimos 30 dias. Aceita YYYY-MM-DD (interpretado em UTC).
+  const hoje = new Date();
+  const fimStr = String(req.query.fim ?? "").trim();
+  const iniStr = String(req.query.inicio ?? "").trim();
+  const fim = fimStr ? new Date(`${fimStr}T00:00:00Z`) : new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate()));
+  const inicio = iniStr ? new Date(`${iniStr}T00:00:00Z`) : new Date(fim.getTime() - 29 * 86_400_000);
+
+  if (isNaN(inicio.getTime()) || isNaN(fim.getTime())) return res.status(400).json({ error: "Datas inválidas." });
+  if (inicio.getTime() > fim.getTime()) return res.status(400).json({ error: "A data inicial deve ser anterior à final." });
+  if (fim.getTime() - inicio.getTime() > 366 * 86_400_000) return res.status(400).json({ error: "Intervalo máximo de 12 meses." });
+
+  const relatorio = await gerarRelatorioMensal(id, inicio, fim);
+  if (!relatorio) return res.status(404).json({ error: "Paciente não encontrada" });
+
+  if (String(req.query.ia ?? "") === "1") {
+    relatorio.insightsIA = await gerarInsightsIA(relatorio);
+  }
+
+  return res.json(relatorio);
 });
 
 router.post("/:id/medicoes", async (req: AuthRequest, res: Response) => {

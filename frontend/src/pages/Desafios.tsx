@@ -258,8 +258,6 @@ function CreateModal({ onClose, onCriado }: { onClose: () => void; onCriado: () 
   const [descricao, setDescricao] = useState("");
   const [categoria, setCategoria] = useState("hidratacao");
   const [icone, setIcone] = useState("🎯");
-  const [metaValor, setMetaValor] = useState("");
-  const [metaUnidade, setMetaUnidade] = useState("");
   const [duracaoDias, setDuracaoDias] = useState("7");
   const [inscreverTodos, setInscreverTodos] = useState(true);
   const [ativar, setAtivar] = useState(true);
@@ -275,8 +273,8 @@ function CreateModal({ onClose, onCriado }: { onClose: () => void; onCriado: () 
       const fim = new Date(hoje.getTime() + dias * 86_400_000);
       await api.post("/desafios", {
         titulo, descricao, categoria, icone,
-        metaValor: metaValor ? Number(metaValor) : null,
-        metaUnidade: metaUnidade || null,
+        metaValor: null,
+        metaUnidade: null,
         duracaoDias: dias,
         dataInicio: ativar ? hoje.toISOString() : null,
         dataFim: ativar ? fim.toISOString() : null,
@@ -310,10 +308,6 @@ function CreateModal({ onClose, onCriado }: { onClose: () => void; onCriado: () 
             <option value="custom">Personalizado</option>
           </select>
         </label>
-        <div className="grid grid-cols-2 gap-3">
-          <Campo label="Meta (valor)" value={metaValor} onChange={setMetaValor} type="number" />
-          <Campo label="Unidade" value={metaUnidade} onChange={setMetaUnidade} placeholder="L/dia" />
-        </div>
         <div>
           <span className="text-label-md text-nx-on-surface-variant">Duração</span>
           <div className="mt-1 flex gap-2">

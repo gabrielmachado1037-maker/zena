@@ -5,7 +5,7 @@ import {
   Utensils, Droplet, Dumbbell, Moon, CheckCircle2, XCircle, Sparkles,
   Lightbulb, AlertTriangle, BadgeCheck, Flame, Send, SlidersHorizontal,
   TrendingDown, TrendingUp, Target, ShieldAlert, ShieldCheck,
-  CalendarClock, CalendarDays, Sparkle, type LucideIcon,
+  CalendarClock, CalendarDays, Sparkle, FileBarChart2, type LucideIcon,
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
@@ -221,10 +221,15 @@ export default function DiarioBordo() {
   return (
     <div className="min-h-screen bg-nx-bg-lowest text-nx-on-surface font-sans">
       <main className="mx-auto max-w-6xl px-4 py-6 pb-24 md:px-8 lg:pb-8">
-        {/* Voltar */}
-        <button onClick={() => navigate("/app/pacientes")} className="mb-4 flex items-center gap-1 text-body-sm text-nx-on-surface-variant hover:text-nx-on-surface">
-          <ChevronLeft size={18} /> Pacientes
-        </button>
+        {/* Voltar + relatório */}
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <button onClick={() => navigate("/app/pacientes")} className="flex items-center gap-1 text-body-sm text-nx-on-surface-variant hover:text-nx-on-surface">
+            <ChevronLeft size={18} /> Pacientes
+          </button>
+          <button onClick={() => navigate(`/app/pacientes/${id}/relatorio`)} className="flex items-center gap-2 rounded-xl border border-nx-border px-3.5 py-2 text-body-sm font-medium text-nx-on-surface hover:bg-nx-surface-hover transition-colors">
+            <FileBarChart2 size={16} className="text-nx-evo" /> Relatório mensal
+          </button>
+        </div>
 
         {loading ? (
           <div className="grid gap-4 lg:grid-cols-3">

@@ -21,6 +21,7 @@ const AreaPaciente  = lazy(() => import("./pages/AreaPaciente"));
 const Dashboard     = lazy(() => import("./pages/Dashboard"));
 const Pacientes     = lazy(() => import("./pages/Pacientes"));
 const DiarioBordo   = lazy(() => import("./pages/DiarioBordo"));
+const RelatorioMensal = lazy(() => import("./pages/RelatorioMensal"));
 const Cobrancas     = lazy(() => import("./pages/Cobrancas"));
 const Horarios      = lazy(() => import("./pages/Horarios"));
 const Billing       = lazy(() => import("./pages/Billing"));
@@ -92,6 +93,7 @@ function AppRoutes() {
           <Route path="pacientes" element={<Pacientes />} />
           <Route path="pacientes/:id" element={<DiarioBordo />} />
           <Route path="pacientes/:id/diario" element={<DiarioBordo />} />
+          <Route path="pacientes/:id/relatorio" element={<RelatorioMensal />} />
           <Route path="cobrancas" element={<RotaProtegida modulo="financeiro"><Cobrancas /></RotaProtegida>} />
           <Route path="horarios" element={<RotaProtegida modulo="agenda"><Horarios /></RotaProtegida>} />
           <Route path="billing" element={<Billing />} />

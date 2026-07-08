@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { ButtonNx } from "./Button";
+import { playCelebrationSound } from "@/lib/celebration-sound";
 
 interface LevelUpOverlayProps {
   open: boolean;
@@ -28,6 +29,11 @@ export function LevelUpOverlay({
   eyebrow = "Novo nível", bigContent, ctaLabel = "Continuar evoluindo", ariaLabel,
 }: LevelUpOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Som de conquista — em toda celebração. Falha em silêncio se o áudio for bloqueado.
+  useEffect(() => {
+    if (open) playCelebrationSound();
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;

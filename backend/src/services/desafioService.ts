@@ -1,6 +1,7 @@
 import prisma from "../lib/prisma";
 import { calcularLiga } from "../config/ligas";
 import { adesaoMinimaDe, diaCumpreDesafio } from "../config/desafios";
+import { enviarNotificacao } from "../routes/notificacoes";
 
 const DIA = 86_400_000;
 const inicioDoDia = (d: Date) => {
@@ -69,7 +70,10 @@ async function processarProgresso(prog: ProgComDesafio, hoje: Date): Promise<voi
   if (!venceu) return;
 
   // Recompensa: XP bônus + medalha + liga (transação).
-  const pac = await prisma.paciente.findUnique({ where: { id: prog.pacienteId }, select: { pontosTotal: true } });
+  const pac = await prisma.paciente.findUnique({
+    where: { id: prog.pacienteId },
+    select: { pontosTotal: true, nome: true, nutricionistaId: true },
+  });
   if (!pac) return;
   const novoTotal = pac.pontosTotal + d.pontosBonus;
   const liga = calcularLiga(novoTotal);
@@ -89,6 +93,14 @@ async function processarProgresso(prog: ProgComDesafio, hoje: Date): Promise<voi
       },
     }),
   ]);
+
+  // Notifica a nutricionista da conclusão (push — fire-and-forget, não bloqueia o fluxo).
+  enviarNotificacao(
+    pac.nutricionistaId,
+    "🏆 Desafio concluído",
+    `${pac.nome} concluiu o desafio "${d.titulo}".`,
+    `/app/pacientes/${prog.pacienteId}`,
+  ).catch((e) => console.error("[desafio] notificar nutri", e));
 }
 
 /** Processa os desafios ativos de um paciente (chamado ao fechar o dia). */
