@@ -68,7 +68,7 @@ function agruparMotivos(textos: string[], limite = 4): Array<{ motivo: string; v
 export interface RelatorioMensal {
   paciente: { id: string; nome: string; telefone: string | null };
   periodo: { inicio: string; fim: string; dias: number };
-  resumo: { diasRegistrados: number; aderenciaPct: number; xpPeriodo: number; ligaAtual: string; streakMaximo: number };
+  resumo: { diasRegistrados: number; aderenciaPct: number; desafiosCumpridos: number; xpPeriodo: number; ligaAtual: string; streakMaximo: number };
   refeicoes: Array<{ key: string; label: string; total: number; seguiu: number; adaptou: number; comeuMal: number; pulou: number; problemaPct: number }>;
   treino: { conforme: number; parcial: number; nao: number; faltas: number; motivos: Array<{ motivo: string; vezes: number }> };
   sono: { meta: number; diasComDado: number; mediaHoras: number; diasAbaixoMeta: number };
@@ -101,7 +101,7 @@ export async function gerarRelatorioMensal(
   });
   if (!paciente) return null;
 
-  const [registros, conquistas, medicoes] = await Promise.all([
+  const [registros, conquistas, medicoes, desafiosCumpridos] = await Promise.all([
     prisma.registro.findMany({
       where: { pacienteId, finalizado: true, data: { gte: ini, lte: end } },
       orderBy: { data: "asc" },
@@ -121,6 +121,9 @@ export async function gerarRelatorioMensal(
       where: { pacienteId, data: { gte: ini, lte: end } },
       orderBy: { data: "asc" },
       select: { data: true, peso: true },
+    }),
+    prisma.desafioProgresso.count({
+      where: { pacienteId, concluido: true, encerradoEm: { gte: ini, lt: fimExclusivo } },
     }),
   ]);
 
@@ -207,6 +210,7 @@ export async function gerarRelatorioMensal(
     resumo: {
       diasRegistrados,
       aderenciaPct: pct(diasRegistrados, diasPeriodo),
+      desafiosCumpridos,
       xpPeriodo: Math.round(xpPeriodo),
       ligaAtual: paciente.ligaAtual,
       streakMaximo: paciente.streakMaximo,
