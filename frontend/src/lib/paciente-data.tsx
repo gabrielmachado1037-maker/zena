@@ -27,7 +27,7 @@ interface ResumoResp {
   conquistas: { id: string; tipo: string; titulo: string; descricao: string | null; createdAt: string }[];
 }
 interface RankResp { pos: number; nome: string; fotoPerfilUrl: string | null; pontosTotal: number; ligaAtual: string; ligaNivel: string; isMe: boolean }
-interface DesafioResp { id: string; titulo: string; descricao: string | null; tipo: string; duracaoDias: number; dataFim: string | null; progresso: number; concluido: boolean; pontosBonus?: number }
+interface DesafioResp { id: string; titulo: string; descricao: string | null; tipo: string; duracaoDias: number; dataFim: string | null; progresso: number; diasCumpridos: number; adesaoMinima: number; concluido: boolean; encerrado?: boolean; pontosBonus?: number }
 interface EvolucaoResp {
   fotos: { id: string; data: string; fotoUrl: string | null }[];
   medicoes: { data: string; peso: number; cintura?: number | null; quadril?: number | null; braco?: number | null; coxa?: number | null }[];
@@ -212,22 +212,28 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
         { id: "registro", icon: ClipboardList, title: "Registro diário", subtitle: "Compartilhe seu dia", earned: resumo?.feitoHoje ? 1 : 0, total: 1, done: !!resumo?.feitoHoje },
       ];
 
-      const challenges: Challenge[] = desafiosRaw.map((d) => {
-        const st = DESAFIO_STYLE[d.tipo] ?? DESAFIO_STYLE.custom;
-        let remaining = "Concluído";
-        if (!d.concluido) {
-          if (d.dataFim) {
-            const dias = Math.max(0, Math.ceil((new Date(d.dataFim).getTime() - Date.now()) / 86_400_000));
-            remaining = `Faltam ${dias} dias`;
-          } else remaining = `${d.duracaoDias} dias`;
-        }
-        return {
-          id: d.id, icon: st.icon, title: d.titulo, description: d.descricao ?? "",
-          progress: Math.round(d.progresso), remaining, color: st.color,
-          status: d.concluido ? "concluido" : "ativo",
-          xp: d.pontosBonus, tipo: d.tipo,
-        };
-      });
+      const challenges: Challenge[] = desafiosRaw
+        // Esconde desafios encerrados sem vitória (não entram em "Concluídos").
+        .filter((d) => !(d.encerrado && !d.concluido))
+        .map((d) => {
+          const st = DESAFIO_STYLE[d.tipo] ?? DESAFIO_STYLE.custom;
+          const min = d.adesaoMinima ?? d.duracaoDias;
+          const bateuMeta = d.diasCumpridos >= min;
+          let remaining: string;
+          if (d.concluido || bateuMeta) remaining = "Meta concluída";
+          else {
+            const faltam = Math.max(0, min - d.diasCumpridos);
+            remaining = `Faltam ${faltam} dia${faltam > 1 ? "s" : ""}`;
+          }
+          return {
+            id: d.id, icon: st.icon, title: d.titulo, description: d.descricao ?? "",
+            progress: d.duracaoDias ? Math.round((d.diasCumpridos / d.duracaoDias) * 100) : Math.round(d.progresso),
+            remaining, color: st.color,
+            status: d.concluido ? "concluido" : "ativo",
+            xp: d.pontosBonus, tipo: d.tipo,
+            diasCumpridos: d.diasCumpridos, duracaoDias: d.duracaoDias,
+          };
+        });
 
       const achievements: Achievement[] = (resumo?.conquistas ?? []).map((c) => ({
         id: c.id, icon: CONQUISTA_ICON[c.tipo] ?? Award, tipo: c.tipo,

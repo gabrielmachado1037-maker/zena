@@ -250,6 +250,9 @@ function TemplateCard({ t, onAtivar }: { t: TemplateDesafio; onAtivar: () => voi
 }
 
 /* ───────── modal criar ───────── */
+const RECOMPENSA_XP: Record<number, number> = { 7: 5, 14: 10, 21: 15 };
+const ADESAO_MIN: Record<number, number> = { 7: 6, 14: 12, 21: 18 };
+
 function CreateModal({ onClose, onCriado }: { onClose: () => void; onCriado: () => void }) {
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -311,7 +314,20 @@ function CreateModal({ onClose, onCriado }: { onClose: () => void; onCriado: () 
           <Campo label="Meta (valor)" value={metaValor} onChange={setMetaValor} type="number" />
           <Campo label="Unidade" value={metaUnidade} onChange={setMetaUnidade} placeholder="L/dia" />
         </div>
-        <Campo label="Duração (dias)" value={duracaoDias} onChange={setDuracaoDias} type="number" />
+        <div>
+          <span className="text-label-md text-nx-on-surface-variant">Duração</span>
+          <div className="mt-1 flex gap-2">
+            {[7, 14, 21].map((d) => (
+              <button key={d} type="button" onClick={() => setDuracaoDias(String(d))}
+                className={`flex-1 rounded-xl border px-3 py-2.5 text-body-sm font-semibold transition-colors ${
+                  Number(duracaoDias) === d ? "border-nx-evo bg-nx-evo/12 text-nx-evo" : "border-nx-border bg-nx-container text-nx-on-surface-variant hover:border-nx-outline"
+                }`}>{d} dias</button>
+            ))}
+          </div>
+          <p className="mt-1.5 text-label-sm text-nx-on-surface-variant">
+            Recompensa <span className="font-semibold text-nx-evo">+{RECOMPENSA_XP[Number(duracaoDias)] ?? 0} XP</span> ao concluir · aderência mín. {ADESAO_MIN[Number(duracaoDias)] ?? 0} dias.
+          </p>
+        </div>
         <label className="flex items-center gap-2.5 text-body-sm text-nx-on-surface-variant cursor-pointer">
           <input type="checkbox" checked={inscreverTodos} onChange={(e) => setInscreverTodos(e.target.checked)} className="accent-nx-evo size-4" />
           Inscrever todos os pacientes ativos

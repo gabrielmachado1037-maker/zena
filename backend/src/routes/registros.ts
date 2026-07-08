@@ -17,6 +17,8 @@ import {
   ehDiaDeTreino,
 } from "../config/ligas";
 import { uploadFoto } from "../lib/supabase";
+import { adesaoMinimaDe } from "../config/desafios";
+import { processarDesafiosDoPaciente } from "../services/desafioService";
 
 const HUMORES_VALIDOS = ["otimo", "bom", "neutro", "dificil", "pessimo"];
 const STATUS_VALIDOS = ["seguiu", "adaptou", "comeu_mal", "pulou"];
@@ -239,6 +241,9 @@ router.post("/dia/fechar", async (req: PacienteAuthRequest, res: Response) => {
     }),
   ]);
 
+  // Após o dia fechado, recalcula/finaliza os desafios ativos do paciente.
+  await processarDesafiosDoPaciente(req.pacienteId!, hoje).catch((e) => console.error("[desafio] fechar", e));
+
   return res.status(201).json({ pontosGanhos, pontosTotal, liga, streakAtual });
 });
 
@@ -457,20 +462,29 @@ router.get("/evolucao", async (req: PacienteAuthRequest, res: Response) => {
   return res.json({ fotos, medicoes, humores });
 });
 
-// GET /api/registros/desafios — desafios ativos do nutricionista + progresso do paciente
+// GET /api/registros/desafios — desafios em que o paciente está inscrito + seu progresso.
 router.get("/desafios", async (req: PacienteAuthRequest, res: Response) => {
-  const [desafios, progressos] = await Promise.all([
-    prisma.desafio.findMany({
-      where: { nutricionistaId: req.nutricionistaId!, status: "ativo" },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.desafioProgresso.findMany({ where: { pacienteId: req.pacienteId! } }),
-  ]);
-  const progMap = new Map(progressos.map((p) => [p.desafioId, p]));
-  const result = desafios.map((d) => {
-    const prog = progMap.get(d.id);
-    return { ...d, progresso: prog?.progresso ?? 0, concluido: prog?.concluido ?? false };
+  const progressos = await prisma.desafioProgresso.findMany({
+    where: { pacienteId: req.pacienteId! },
+    include: { desafio: true },
+    orderBy: { createdAt: "desc" },
   });
+  const result = progressos.map((p) => ({
+    id: p.desafio.id,
+    titulo: p.desafio.titulo,
+    descricao: p.desafio.descricao,
+    tipo: p.desafio.tipo,
+    icone: p.desafio.icone,
+    duracaoDias: p.desafio.duracaoDias,
+    dataInicio: p.desafio.dataInicio,
+    dataFim: p.desafio.dataFim,
+    pontosBonus: p.desafio.pontosBonus,
+    progresso: p.progresso,
+    diasCumpridos: p.diasCumpridos,
+    adesaoMinima: adesaoMinimaDe(p.desafio.duracaoDias),
+    concluido: p.concluido,
+    encerrado: p.encerradoEm != null,
+  }));
   return res.json(result);
 });
 

@@ -2,9 +2,22 @@ import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { enviarNotificacaoPaciente } from "./notificacoes";
+import { duracaoValida, recompensaDe, DURACOES_DESAFIO, MAX_DESAFIOS_ATIVOS } from "../config/desafios";
 
 const router = Router();
 router.use(authMiddleware);
+
+/** Dado um conjunto de pacientes, retorna só os que estão abaixo do limite de desafios ativos. */
+async function filtrarSobLimite(ids: string[]): Promise<string[]> {
+  if (!ids.length) return [];
+  const grupos = await prisma.desafioProgresso.groupBy({
+    by: ["pacienteId"],
+    where: { pacienteId: { in: ids }, concluido: false, encerradoEm: null },
+    _count: { _all: true },
+  });
+  const ativos = new Map(grupos.map((g) => [g.pacienteId, g._count._all]));
+  return ids.filter((pid) => (ativos.get(pid) ?? 0) < MAX_DESAFIOS_ATIVOS);
+}
 
 /**
  * Centro de Desafios (nutricionista). Reutiliza os models Desafio/DesafioProgresso.
@@ -120,15 +133,19 @@ router.post("/", async (req: AuthRequest, res: Response) => {
   const id = req.nutricionistaId!;
   const {
     titulo, descricao, categoria, tipo, metaValor, metaUnidade,
-    dataInicio, dataFim, duracaoDias, icone, pontosBonus, status,
+    dataInicio, dataFim, duracaoDias, icone, status,
     inscreverTodos, pacienteIds,
   } = req.body;
 
   if (!titulo?.trim()) return res.status(400).json({ error: "Título é obrigatório" });
 
-  const inicio = dataInicio ? new Date(dataInicio) : null;
-  let fim = dataFim ? new Date(dataFim) : null;
-  if (!fim && inicio && duracaoDias) fim = new Date(inicio.getTime() + Number(duracaoDias) * DIA);
+  // Duração restrita a 7/14/21; recompensa derivada da duração (nunca manual).
+  const dur = Number(duracaoDias);
+  if (!duracaoValida(dur)) {
+    return res.status(400).json({ error: `Duração deve ser ${DURACOES_DESAFIO.join(", ")} dias.` });
+  }
+  const inicio = dataInicio ? new Date(dataInicio) : new Date();
+  const fim = dataFim ? new Date(dataFim) : new Date(inicio.getTime() + dur * DIA);
 
   const desafio = await prisma.desafio.create({
     data: {
@@ -138,29 +155,30 @@ router.post("/", async (req: AuthRequest, res: Response) => {
       tipo: categoria || tipo || "custom",
       metaValor: metaValor != null ? Number(metaValor) : null,
       metaUnidade: metaUnidade?.trim() || null,
-      duracaoDias: duracaoDias ? Number(duracaoDias) : 7,
+      duracaoDias: dur,
       dataInicio: inicio,
       dataFim: fim,
       icone: icone || "🎯",
-      pontosBonus: pontosBonus ? Number(pontosBonus) : 0,
+      pontosBonus: recompensaDe(dur),
       status: status || "rascunho",
     },
   });
 
-  // Inscrição inicial de participantes (opcional)
+  // Inscrição inicial (opcional), respeitando o limite de desafios ativos por paciente.
   let ids: string[] = Array.isArray(pacienteIds) ? pacienteIds : [];
   if (inscreverTodos) {
     const ativos = await prisma.paciente.findMany({ where: { nutricionistaId: id, ativo: true }, select: { id: true } });
     ids = ativos.map((p) => p.id);
   }
-  if (ids.length) {
+  const elegiveis = await filtrarSobLimite(ids);
+  if (elegiveis.length) {
     await prisma.desafioProgresso.createMany({
-      data: ids.map((pid) => ({ desafioId: desafio.id, pacienteId: pid })),
+      data: elegiveis.map((pid) => ({ desafioId: desafio.id, pacienteId: pid })),
       skipDuplicates: true,
     });
   }
 
-  res.status(201).json({ id: desafio.id });
+  res.status(201).json({ id: desafio.id, inscritos: elegiveis.length, ignoradosLimite: ids.length - elegiveis.length });
 });
 
 /** PATCH /api/desafios/:id — atualiza campos ou executa ação (ativar|encerrar). */
@@ -213,13 +231,14 @@ router.post("/:id/participantes", async (req: AuthRequest, res: Response) => {
   }
   if (!ids.length) return res.status(400).json({ error: "Nenhum paciente informado" });
 
-  // Só pacientes desta nutri (multi-tenant)
+  // Só pacientes desta nutri (multi-tenant) e abaixo do limite de desafios ativos.
   const validos = await prisma.paciente.findMany({ where: { id: { in: ids }, nutricionistaId: id }, select: { id: true } });
+  const elegiveis = await filtrarSobLimite(validos.map((p) => p.id));
   const r = await prisma.desafioProgresso.createMany({
-    data: validos.map((p) => ({ desafioId: dono.id, pacienteId: p.id })),
+    data: elegiveis.map((pid) => ({ desafioId: dono.id, pacienteId: pid })),
     skipDuplicates: true,
   });
-  res.json({ inscritos: r.count });
+  res.json({ inscritos: r.count, ignoradosLimite: validos.length - elegiveis.length });
 });
 
 /** PUT /api/desafios/:id/progresso — atualiza o progresso de um participante. */

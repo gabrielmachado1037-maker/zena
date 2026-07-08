@@ -53,7 +53,7 @@ function EventCard({ c, onResgatar }: { c: Challenge; onResgatar: (c: Challenge)
         <div>
           <ProgressBarNx value={c.progress} tone={t.tone} celebrate={done} aria-label={`Progresso do desafio ${c.title}`} />
           <div className="mt-1.5 flex items-center justify-between text-body-sm">
-            <span className="font-semibold tabular-nums" style={{ color: t.accent }}>{c.progress}%</span>
+            <span className="font-semibold tabular-nums" style={{ color: t.accent }}>{c.duracaoDias ? `${c.diasCumpridos ?? 0}/${c.duracaoDias} dias` : `${c.progress}%`}</span>
             {!done && <span className="text-nx-on-surface-variant">{c.remaining}</span>}
           </div>
         </div>

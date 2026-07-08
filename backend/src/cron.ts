@@ -3,6 +3,7 @@ import prisma from "./lib/prisma";
 import { emailTrialExpirando } from "./lib/email";
 import { enviarNotificacao, enviarNotificacaoPaciente } from "./routes/notificacoes";
 import { calcularProgressoCiclo, encerrarCiclo, notificarAquecimento, notificarUltimasHoras } from "./services/cicloService";
+import { finalizarDesafiosVencidos } from "./services/desafioService";
 import {
   calcularLiga,
   DIAS_ATE_CONGELAR,
@@ -183,6 +184,17 @@ export function initCron() {
       }
     } catch (e) {
       console.error("Cron ciclos error:", e);
+    }
+  }, TZ);
+
+  // Daily at 00:02 BRT: finalizar desafios cujo período terminou (credita XP + medalha).
+  cron.schedule("2 0 * * *", async () => {
+    try {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      await finalizarDesafiosVencidos(hoje);
+    } catch (e) {
+      console.error("Cron desafios error:", e);
     }
   }, TZ);
 

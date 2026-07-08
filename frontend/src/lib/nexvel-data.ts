@@ -204,6 +204,8 @@ export type Challenge = {
   status: "ativo" | "concluido"
   xp?: number
   tipo?: string
+  diasCumpridos?: number
+  duracaoDias?: number
 }
 
 export const challenges: Challenge[] = [
