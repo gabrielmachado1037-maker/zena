@@ -23,4 +23,5 @@ export { MealSheet } from "./MealSheet";
 export type { MealStatus, MealDetail } from "./MealSheet";
 export { ChoiceSheet } from "./ChoiceSheet";
 export type { ChoiceOption, ChoiceDetail, ChoiceTone } from "./ChoiceSheet";
+export { SleepSheet } from "./SleepSheet";
 export { DaySummarySheet } from "./DaySummarySheet";

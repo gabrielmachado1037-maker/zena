@@ -95,6 +95,17 @@ export function calcularXpAlimentacao(statuses: (string | null | undefined)[]): 
   return Math.min(Math.round(total * 100) / 100, XP_ALIMENTACAO_MAX);
 }
 
+// ── Sono: espelho de config/ligas.ts do backend ───────────────────────────
+export const SONO_META_HORAS_PADRAO = 8;
+/** XP de sono (0–2) por tolerância vs a meta: ±1h = 2 · até 2h = 1 · além = 0. */
+export function calcularXpSonoMeta(horas: number | null | undefined, metaHoras: number): number {
+  if (typeof horas !== "number" || !isFinite(horas) || horas <= 0) return 0;
+  const diff = Math.abs(horas - metaHoras);
+  if (diff <= 1) return 2;
+  if (diff <= 2) return 1;
+  return 0;
+}
+
 // Dias desde o último check-in
 export function diasDesde(iso: string | null): number | null {
   if (!iso) return null;

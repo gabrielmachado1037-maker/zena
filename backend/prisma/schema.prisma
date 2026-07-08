@@ -87,6 +87,11 @@ model Paciente {
   // Plano de missões — refeições configuradas pela nutri: [{ key, label }] (3–6).
   // null = 4 refeições padrão (café/almoço/lanche/jantar). Alimentação satura em 4 XP.
   planoRefeicoes    Json?
+  // Metas configuradas pela nutri (null = padrão). Água em ml; sono em horas;
+  // treinoDias = dias da semana com missão de treino (0=domingo..6=sábado; vazio = todo dia).
+  aguaMetaMl        Int?
+  sonoMetaHoras     Int?
+  treinoDias        Int[]              @default([])
   medicoes          Medicao[]
   consultas         Consulta[]
   cobrancas         Cobranca[]
@@ -673,6 +678,9 @@ model Registro {
   treinoMotivo   String?
   // Sono por faixa de horas: "menos5" (0) | "5a7" (1) | "7a9" (2) | "mais9" (2). sonoOk = XP > 0.
   sonoFaixa      String?
+  // Horas dormidas informadas pelo paciente. Pontua por tolerância vs Paciente.sonoMetaHoras
+  // (±1h = 2 XP · até 2h = 1 · além = 0). Registros antigos sem este campo usam sonoFaixa.
+  sonoHoras      Float?
 
   // O dia foi fechado (finalizado) — só então credita registro_diario + bônus + streak.
   // Antes disso o registro é editável (autosave) e não pontua na liga.

@@ -4,7 +4,7 @@ import {
   Footprints, Medal, Camera, Crown, Award, type LucideIcon,
 } from "lucide-react";
 import apiPaciente from "./apiPaciente";
-import { progressoLiga, calcularXpAlimentacao, resolverPlanoRefeicoes, type RefeicaoPlano } from "./ligas";
+import { progressoLiga, calcularXpAlimentacao, resolverPlanoRefeicoes, calcularXpSonoMeta, SONO_META_HORAS_PADRAO, type RefeicaoPlano } from "./ligas";
 import type { Mission, Challenge, Achievement, RankUser, Measure } from "./nexvel-data";
 
 /* ─────────── shapes das respostas da API ─────────── */
@@ -14,13 +14,14 @@ interface ResumoResp {
     streakAtual: number; streakMaximo: number; barraCongelada: boolean;
   };
   planoRefeicoes?: RefeicaoPlano[] | null;
+  metas?: { aguaMl: number; sonoHoras: number; treinoDiaHoje: boolean } | null;
   registroHoje: {
     pontosGanhos: number; alimentacaoOk: boolean; treinoOk: boolean; aguaOk: boolean; sonoOk: boolean; humor: string | null;
     cafeStatus: string | null; almocoStatus: string | null; lancheStatus: string | null; jantarStatus: string | null;
     refeicoesStatus: Record<string, string | null> | null;
     refeicoesNotas: Record<string, { nota?: string; motivo?: string }> | null;
     aguaMl: number | null; aguaMetaMl: number | null; finalizado: boolean;
-    treinoStatus: string | null; treinoMotivo: string | null; sonoFaixa: string | null;
+    treinoStatus: string | null; treinoMotivo: string | null; sonoFaixa: string | null; sonoHoras: number | null;
   } | null;
   feitoHoje: boolean;
   conquistas: { id: string; tipo: string; titulo: string; descricao: string | null; createdAt: string }[];
@@ -47,7 +48,10 @@ export interface TodayState {
   aguaMetaMl: number;
   treinoStatus: string | null;
   treinoMotivo: string | null;
+  treinoDiaHoje: boolean;
   sonoFaixa: string | null;
+  sonoHoras: number | null;
+  sonoMetaHoras: number;
   humor: string | null;
   xpAlimentacao: number;
   xpTreino: number;
@@ -175,28 +179,36 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
       const refeicoes = Object.fromEntries(
         planoKeys.map((k) => [k, { status: statusOf(k), nota: notas[k]?.nota, motivo: notas[k]?.motivo }]),
       ) as TodayState["refeicoes"];
-      const xpTreino = XP_TREINO[rh?.treinoStatus ?? ""] ?? 0;
-      const xpSono = XP_SONO[rh?.sonoFaixa ?? ""] ?? 0;
+      // Metas configuradas pela nutri (fallback = padrão do sistema).
+      const metas = resumo?.metas ?? { aguaMl: 3000, sonoHoras: SONO_META_HORAS_PADRAO, treinoDiaHoje: true };
+      const sonoHorasVal = rh?.sonoHoras ?? null;
+      const xpSono = calcularXpSonoMeta(sonoHorasVal, metas.sonoHoras);
+      // Dia de descanso (fora dos dias de treino da nutri): treino creditado automaticamente.
+      const xpTreino = metas.treinoDiaHoje ? (XP_TREINO[rh?.treinoStatus ?? ""] ?? 0) : 3;
       const today: TodayState = {
         finalizado: !!resumo?.feitoHoje,
         planoRefeicoes: plano,
         refeicoes,
         aguaMl: rh?.aguaMl ?? 0,
-        aguaMetaMl: rh?.aguaMetaMl ?? 3000,
+        aguaMetaMl: metas.aguaMl,
         treinoStatus: rh?.treinoStatus ?? null,
         treinoMotivo: rh?.treinoMotivo ?? null,
+        treinoDiaHoje: metas.treinoDiaHoje,
         sonoFaixa: rh?.sonoFaixa ?? null,
+        sonoHoras: sonoHorasVal,
+        sonoMetaHoras: metas.sonoHoras,
         humor: rh?.humor ?? null,
         xpAlimentacao: xpAlim,
         xpTreino,
         xpSono,
       };
 
+      const metaLabelL = (metas.aguaMl / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
       const missions: Mission[] = [
         { id: "alimentacao", icon: Utensils, title: "Alimentação", subtitle: "Registre suas refeições", earned: xpAlim, total: 4, done: xpAlim >= 3 },
-        { id: "treino", icon: Dumbbell, title: "Treino", subtitle: "Como foi seu treino?", earned: xpTreino, total: 3, done: xpTreino > 0 },
-        { id: "agua", icon: Droplets, title: "Água", subtitle: "Beba 3L de água", earned: rh?.aguaOk ? 2 : 0, total: 2, done: !!rh?.aguaOk },
-        { id: "sono", icon: Moon, title: "Sono", subtitle: "Quanto você dormiu?", earned: xpSono, total: 2, done: xpSono > 0 },
+        { id: "treino", icon: Dumbbell, title: "Treino", subtitle: metas.treinoDiaHoje ? "Como foi seu treino?" : "Dia de descanso", earned: xpTreino, total: 3, done: xpTreino > 0 },
+        { id: "agua", icon: Droplets, title: "Água", subtitle: `Beba ${metaLabelL}L de água`, earned: rh?.aguaOk ? 2 : 0, total: 2, done: !!rh?.aguaOk },
+        { id: "sono", icon: Moon, title: "Sono", subtitle: `Meta: ${metas.sonoHoras}h de sono`, earned: xpSono, total: 2, done: xpSono > 0 },
         { id: "registro", icon: ClipboardList, title: "Registro diário", subtitle: "Compartilhe seu dia", earned: resumo?.feitoHoje ? 1 : 0, total: 1, done: !!resumo?.feitoHoje },
       ];
 

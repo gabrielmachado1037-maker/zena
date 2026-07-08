@@ -116,35 +116,63 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
   res.json(updated);
 });
 
-// PUT /:id/plano-missoes — nutri configura o nº de refeições (3–6) do plano da paciente.
-// Aditivo: só troca a estrutura de refeições do plano; não altera registros já feitos.
-// A alimentação continua saturando em 4 XP — mais refeições NÃO dão vantagem na liga.
+// PUT /:id/plano-missoes — nutri configura o plano de missões da paciente:
+// nº de refeições (3–6), meta de água (ml), meta de sono (horas) e dias de treino.
+// Aditivo: só atualiza os campos enviados; não altera registros já feitos.
 router.put("/:id/plano-missoes", async (req: AuthRequest, res: Response) => {
   const id = req.params["id"] as string;
-  const { numRefeicoes, refeicoes } = req.body as {
+  const { numRefeicoes, refeicoes, aguaMetaMl, sonoMetaHoras, treinoDias } = req.body as {
     numRefeicoes?: number; refeicoes?: { key: string; label: string }[];
+    aguaMetaMl?: number; sonoMetaHoras?: number; treinoDias?: number[];
   };
 
   const paciente = await prisma.paciente.findFirst({ where: { id, nutricionistaId: req.nutricionistaId as string } });
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrada" });
 
-  // Preferência: preset por quantidade (3–6). Também aceita uma lista custom [{key,label}].
-  let plano: { key: string; label: string }[] | null = null;
-  if (typeof numRefeicoes === "number" && PLANOS_REFEICOES[numRefeicoes]) {
-    plano = PLANOS_REFEICOES[numRefeicoes];
-  } else if (Array.isArray(refeicoes) && refeicoes.length >= MIN_REFEICOES) {
-    plano = resolverPlanoRefeicoes(refeicoes);
+  const data: { planoRefeicoes?: { key: string; label: string }[]; aguaMetaMl?: number; sonoMetaHoras?: number; treinoDias?: number[] } = {};
+
+  if (numRefeicoes !== undefined || refeicoes !== undefined) {
+    // Preferência: preset por quantidade (3–6). Também aceita lista custom [{key,label}].
+    let plano: { key: string; label: string }[] | null = null;
+    if (typeof numRefeicoes === "number" && PLANOS_REFEICOES[numRefeicoes]) plano = PLANOS_REFEICOES[numRefeicoes];
+    else if (Array.isArray(refeicoes) && refeicoes.length >= MIN_REFEICOES) plano = resolverPlanoRefeicoes(refeicoes);
+    if (!plano) return res.status(400).json({ error: `Informe numRefeicoes entre ${MIN_REFEICOES} e ${MAX_REFEICOES}.` });
+    data.planoRefeicoes = plano;
   }
-  if (!plano) {
-    return res.status(400).json({ error: `Informe numRefeicoes entre ${MIN_REFEICOES} e ${MAX_REFEICOES}.` });
+  if (aguaMetaMl !== undefined) {
+    if (typeof aguaMetaMl !== "number" || aguaMetaMl < 500 || aguaMetaMl > 8000) {
+      return res.status(400).json({ error: "Meta de água inválida (500–8000 ml)." });
+    }
+    data.aguaMetaMl = Math.round(aguaMetaMl);
+  }
+  if (sonoMetaHoras !== undefined) {
+    if (typeof sonoMetaHoras !== "number" || sonoMetaHoras < 4 || sonoMetaHoras > 12) {
+      return res.status(400).json({ error: "Meta de sono inválida (4–12 h)." });
+    }
+    data.sonoMetaHoras = Math.round(sonoMetaHoras);
+  }
+  if (treinoDias !== undefined) {
+    if (!Array.isArray(treinoDias) || treinoDias.some((d) => typeof d !== "number" || d < 0 || d > 6)) {
+      return res.status(400).json({ error: "Dias de treino inválidos (0–6)." });
+    }
+    data.treinoDias = Array.from(new Set(treinoDias.map((d) => Math.round(d)))).sort((a, b) => a - b);
+  }
+
+  if (Object.keys(data).length === 0) {
+    return res.status(400).json({ error: "Nada para atualizar." });
   }
 
   const updated = await prisma.paciente.update({
     where: { id },
-    data: { planoRefeicoes: plano },
-    select: { id: true, planoRefeicoes: true },
+    data,
+    select: { planoRefeicoes: true, aguaMetaMl: true, sonoMetaHoras: true, treinoDias: true },
   });
-  res.json({ planoRefeicoes: updated.planoRefeicoes });
+  res.json({
+    planoRefeicoes: updated.planoRefeicoes,
+    aguaMetaMl: updated.aguaMetaMl,
+    sonoMetaHoras: updated.sonoMetaHoras,
+    treinoDias: updated.treinoDias,
+  });
 });
 
 router.post("/:id/medicoes", async (req: AuthRequest, res: Response) => {

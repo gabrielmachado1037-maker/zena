@@ -4,12 +4,12 @@ import {
   Coffee, Utensils, Cookie, Soup, Leaf, Meh, CircleSlash, CircleCheck, CircleDashed, type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { usePacienteData, type MealState, type TodayState, XP_TREINO, XP_SONO } from "@/lib/paciente-data"
-import { calcularXpAlimentacao, valorRefeicaoXp } from "@/lib/ligas"
+import { usePacienteData, type MealState, type TodayState, XP_TREINO } from "@/lib/paciente-data"
+import { calcularXpAlimentacao, valorRefeicaoXp, calcularXpSonoMeta } from "@/lib/ligas"
 import apiPaciente from "@/lib/apiPaciente"
 import {
   ProgressBarNx, LevelUpOverlay, LeagueCrest,
-  WaterProgress, MealSheet, ChoiceSheet, DaySummarySheet, MOODS,
+  WaterProgress, MealSheet, ChoiceSheet, SleepSheet, DaySummarySheet, MOODS,
   useNxToasts, type MealStatus, type MealDetail, type ChoiceOption, type ChoiceDetail,
 } from "@/components/ui-nx"
 import type { NavigateFn } from "../types"
@@ -29,14 +29,7 @@ const MEAL_STYLE: Record<string, { color: string; Badge: LucideIcon }> = {
 }
 const fmtXp = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 })
 const formatL = (ml: number) => `${(ml / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}L`
-
-const SONO_OPCOES: ChoiceOption[] = [
-  { value: "menos5", title: "Menos de 5h", xp: "0 XP", tone: "danger" },
-  { value: "5a7", title: "5h a 6h59", xp: "+1 XP", tone: "gold" },
-  { value: "7a9", title: "7h a 9h", xp: "+2 XP", tone: "evo" },
-  { value: "mais9", title: "Mais de 9h", xp: "+2 XP", tone: "water" },
-]
-const SONO_LABEL: Record<string, string> = { menos5: "Menos de 5h", "5a7": "5h a 6h59", "7a9": "7h a 9h", mais9: "Mais de 9h" }
+const fmtHoras = (h: number) => (Number.isInteger(h) ? `${h}h` : `${Math.floor(h)}h30`)
 
 const TREINO_OPCOES: ChoiceOption[] = [
   { value: "conforme", title: "Treinei conforme planejado", xp: "+3 XP", tone: "evo", icon: CircleCheck },
@@ -51,7 +44,7 @@ interface DayState {
   aguaMl: number
   treinoStatus: string | null
   treinoMotivo: string | null
-  sonoFaixa: string | null
+  sonoHoras: number | null
 }
 
 function fromToday(t: TodayState): DayState {
@@ -60,7 +53,7 @@ function fromToday(t: TodayState): DayState {
     aguaMl: t.aguaMl,
     treinoStatus: t.treinoStatus,
     treinoMotivo: t.treinoMotivo,
-    sonoFaixa: t.sonoFaixa,
+    sonoHoras: t.sonoHoras,
   }
 }
 
@@ -120,6 +113,8 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const plano = today.planoRefeicoes
   const planoKeys = plano.map((r) => r.key)
   const valorRef = valorRefeicaoXp(plano.length)
+  const metaSono = today.sonoMetaHoras
+  const diaDeTreino = today.treinoDiaHoje
 
   const metaMl = today.aguaMetaMl || 3000
   const [state, setState] = useState<DayState>(() => fromToday(today))
@@ -133,8 +128,9 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const saveTimer = useRef<number | null>(null)
 
   const xpAlim = calcularXpAlimentacao(planoKeys.map((k) => state.refeicoes[k]?.status ?? null))
-  const xpTreino = XP_TREINO[state.treinoStatus ?? ""] ?? 0
-  const xpSono = XP_SONO[state.sonoFaixa ?? ""] ?? 0
+  // Dia de descanso: treino creditado automaticamente (+3), missão não aparece.
+  const xpTreino = diaDeTreino ? (XP_TREINO[state.treinoStatus ?? ""] ?? 0) : 3
+  const xpSono = calcularXpSonoMeta(state.sonoHoras, metaSono)
   const aguaOk = state.aguaMl >= metaMl
   const earnedHabitos = xpAlim + xpTreino + (aguaOk ? 2 : 0) + xpSono
   const tudo = xpAlim >= 3 && xpTreino > 0 && aguaOk && xpSono > 0
@@ -151,8 +147,8 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
     }
     return {
       refeicoesStatus,
-      refeicoesNotas: notas, aguaMl: s.aguaMl, aguaMetaMl: metaMl,
-      treinoStatus: s.treinoStatus, treinoMotivo: s.treinoMotivo, sonoFaixa: s.sonoFaixa,
+      refeicoesNotas: notas, aguaMl: s.aguaMl,
+      treinoStatus: s.treinoStatus, treinoMotivo: s.treinoMotivo, sonoHoras: s.sonoHoras,
     }
   }
 
@@ -186,11 +182,11 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
     else if (value === "parcial") push("Treino parcial registrado", { tone: "gold", xp, icon: <Dumbbell className="size-4" /> })
     else push("Sem treino hoje — amanhã você volta", { tone: "neutral" })
   }
-  function salvarSono(value: string) {
-    apply((s) => ({ ...s, sonoFaixa: value }))
-    const xp = XP_SONO[value] ?? 0
-    if (xp > 0) push(`Sono registrado · ${SONO_LABEL[value]}`, { tone: "evo", xp, icon: <Moon className="size-4" /> })
-    else push("Sono curto anotado — cuide do descanso", { tone: "neutral" })
+  function salvarSono(horas: number) {
+    apply((s) => ({ ...s, sonoHoras: horas }))
+    const xp = calcularXpSonoMeta(horas, metaSono)
+    if (xp > 0) push(`Sono registrado · ${fmtHoras(horas)}`, { tone: "evo", xp, icon: <Moon className="size-4" /> })
+    else push("Sono fora da meta anotado — cuide do descanso", { tone: "neutral" })
   }
 
   function addAgua(delta: number) {
@@ -281,11 +277,24 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
 
       {/* Treino + Sono (bottom sheets) */}
       <div className="space-y-3">
-        <StatusTile icon={Dumbbell} title="Treino" points={3} earned={xpTreino} done={xpTreino > 0}
-          registered={!!state.treinoStatus} statusLabel={state.treinoStatus ? TREINO_LABEL[state.treinoStatus] : null}
-          locked={finalizado} onClick={() => setSheet("treino")} />
+        {diaDeTreino ? (
+          <StatusTile icon={Dumbbell} title="Treino" points={3} earned={xpTreino} done={xpTreino > 0}
+            registered={!!state.treinoStatus} statusLabel={state.treinoStatus ? TREINO_LABEL[state.treinoStatus] : null}
+            locked={finalizado} onClick={() => setSheet("treino")} />
+        ) : (
+          <div className="flex items-center gap-4 rounded-nx-lg border border-nx-evo/40 bg-nx-evo/10 p-4">
+            <div className="grid size-12 shrink-0 place-items-center rounded-nx-md bg-nx-evo/15">
+              <Dumbbell className="size-6 text-nx-evo" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-body-lg font-semibold text-nx-on-surface">Treino · dia de descanso</p>
+              <p className="truncate text-body-sm text-nx-on-surface-variant">Hoje não tem treino no seu plano — XP creditado</p>
+            </div>
+            <span className="text-body-md font-bold tabular-nums text-nx-evo">+3</span>
+          </div>
+        )}
         <StatusTile icon={Moon} title="Sono" points={2} earned={xpSono} done={xpSono > 0}
-          registered={!!state.sonoFaixa} statusLabel={state.sonoFaixa ? SONO_LABEL[state.sonoFaixa] : null}
+          registered={state.sonoHoras != null} statusLabel={state.sonoHoras != null ? fmtHoras(state.sonoHoras) : null}
           locked={finalizado} onClick={() => setSheet("sono")} />
       </div>
 
@@ -327,8 +336,8 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
 
       {/* Sheets */}
       <MealSheet open={!!sheetMeal} meal={sheetMeal} valorRefeicao={valorRef} onClose={() => setSheetMeal(null)} onSave={salvarRefeicao} />
-      <ChoiceSheet open={sheet === "sono"} title="Quanto você dormiu hoje?" options={SONO_OPCOES}
-        onClose={() => setSheet(null)} onSave={(v) => salvarSono(v)} />
+      <SleepSheet open={sheet === "sono"} metaHoras={metaSono} valorInicial={state.sonoHoras}
+        onClose={() => setSheet(null)} onSave={salvarSono} />
       <ChoiceSheet open={sheet === "treino"} title="Como foi seu treino hoje?" options={TREINO_OPCOES}
         reasonsFor="nao" reasons={TREINO_MOTIVOS} reasonsTitle="O que te impediu?"
         onClose={() => setSheet(null)} onSave={salvarTreino} />
@@ -342,9 +351,9 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
         missoesConcluidas={missoesConcluidas}
         missoesTotal={4}
         alimentacao={`${refeicoesRegistradas}/${plano.length} refeições`}
-        treino={state.treinoStatus ? TREINO_LABEL[state.treinoStatus] : "—"}
+        treino={diaDeTreino ? (state.treinoStatus ? TREINO_LABEL[state.treinoStatus] : "—") : "Dia de descanso"}
         agua={`${formatL(state.aguaMl)} / ${formatL(metaMl)}`}
-        sono={state.sonoFaixa ? SONO_LABEL[state.sonoFaixa] : "—"}
+        sono={state.sonoHoras != null ? fmtHoras(state.sonoHoras) : "—"}
         humor={humorSel ? `${humorSel.emoji} ${humorSel.label}` : "—"}
         streak={user.streak}
         liga={user.league}

@@ -8,9 +8,13 @@ import {
   calcularXpTreino,
   calcularXpSono,
   REFEICOES_KEYS,
-  AGUA_META_ML_PADRAO,
   ALIMENTACAO_OK_MIN,
+  PONTOS,
   resolverPlanoRefeicoes,
+  resolverAguaMetaMl,
+  resolverSonoMetaHoras,
+  calcularXpSonoMeta,
+  ehDiaDeTreino,
 } from "../config/ligas";
 import { uploadFoto } from "../lib/supabase";
 
@@ -89,12 +93,12 @@ function calcularFechamentoPaciente(
 router.put("/dia", async (req: PacienteAuthRequest, res: Response) => {
   const {
     refeicoesStatus, cafeStatus, almocoStatus, lancheStatus, jantarStatus,
-    refeicoesNotas, aguaMl, aguaMetaMl, treinoStatus, treinoMotivo, sonoFaixa,
+    refeicoesNotas, aguaMl, treinoStatus, treinoMotivo, sonoFaixa, sonoHoras,
   } = req.body as {
     refeicoesStatus?: unknown;
     cafeStatus?: unknown; almocoStatus?: unknown; lancheStatus?: unknown; jantarStatus?: unknown;
-    refeicoesNotas?: unknown; aguaMl?: unknown; aguaMetaMl?: unknown;
-    treinoStatus?: unknown; treinoMotivo?: unknown; sonoFaixa?: unknown;
+    refeicoesNotas?: unknown; aguaMl?: unknown;
+    treinoStatus?: unknown; treinoMotivo?: unknown; sonoFaixa?: unknown; sonoHoras?: unknown;
   };
 
   const hoje = inicioDeHoje();
@@ -102,7 +106,10 @@ router.put("/dia", async (req: PacienteAuthRequest, res: Response) => {
     prisma.registro.findUnique({
       where: { pacienteId_data: { pacienteId: req.pacienteId!, data: hoje } },
     }),
-    prisma.paciente.findUnique({ where: { id: req.pacienteId! }, select: { planoRefeicoes: true } }),
+    prisma.paciente.findUnique({
+      where: { id: req.pacienteId! },
+      select: { planoRefeicoes: true, aguaMetaMl: true, sonoMetaHoras: true },
+    }),
   ]);
   if (existente?.finalizado) return res.status(409).json({ error: "Dia já fechado" });
 
@@ -115,19 +122,22 @@ router.put("/dia", async (req: PacienteAuthRequest, res: Response) => {
       : { cafe: cafeStatus, almoco: almocoStatus, lanche: lancheStatus, jantar: jantarStatus };
   const status = statusMapDoPlano(planoKeys, entrada);
 
-  const metaMl = typeof aguaMetaMl === "number" && aguaMetaMl > 0 ? Math.round(aguaMetaMl) : AGUA_META_ML_PADRAO;
+  // Meta de água = configuração da nutri (fallback 3000). Sono pontua por tolerância vs meta.
+  const metaMl = resolverAguaMetaMl(paciente?.aguaMetaMl);
   const ml = typeof aguaMl === "number" && aguaMl >= 0 ? Math.round(aguaMl) : 0;
   const aguaOk = ml >= metaMl;
   const xpAlim = calcularXpAlimentacao(planoKeys.map((k) => status[k]));
   const tStatus = normTreino(treinoStatus);
   const sFaixa = normFaixa(sonoFaixa);
+  const sHoras = typeof sonoHoras === "number" && sonoHoras > 0 && sonoHoras <= 24 ? sonoHoras : null;
+  const xpSono = sHoras != null ? calcularXpSonoMeta(sHoras, resolverSonoMetaHoras(paciente?.sonoMetaHoras)) : calcularXpSono(sFaixa);
 
   const dados = {
     // booleanos derivados (mantêm as agregações legadas da nutri funcionando)
     alimentacaoOk: xpAlim >= ALIMENTACAO_OK_MIN,
     treinoOk: calcularXpTreino(tStatus) > 0,
     aguaOk,
-    sonoOk: calcularXpSono(sFaixa) > 0,
+    sonoOk: xpSono > 0,
     // colunas legadas espelhadas p/ as 4 keys canônicas (null quando fora do plano)
     cafeOk: status.cafe ? status.cafe === "seguiu" : null,
     almocoOk: status.almoco ? status.almoco === "seguiu" : null,
@@ -143,10 +153,11 @@ router.put("/dia", async (req: PacienteAuthRequest, res: Response) => {
     // água como progresso
     aguaMl: ml,
     aguaMetaMl: metaMl,
-    // treino (3 estados + motivo) e sono (faixa de horas)
+    // treino (3 estados + motivo) e sono (horas informadas + faixa legada)
     treinoStatus: tStatus,
     treinoMotivo: tStatus === "nao" && typeof treinoMotivo === "string" ? treinoMotivo : null,
     sonoFaixa: sFaixa,
+    sonoHoras: sHoras,
   };
 
   const registro = await prisma.registro.upsert({
@@ -182,12 +193,19 @@ router.post("/dia/fechar", async (req: PacienteAuthRequest, res: Response) => {
   const xpAlim = calcularXpAlimentacao(planoKeys.map((k) => status[k]));
   const aguaOk =
     registro.aguaMl != null && registro.aguaMetaMl != null && registro.aguaMl >= registro.aguaMetaMl;
+  const xpSono =
+    registro.sonoHoras != null
+      ? calcularXpSonoMeta(registro.sonoHoras, resolverSonoMetaHoras(paciente.sonoMetaHoras))
+      : calcularXpSono(registro.sonoFaixa);
+  // Dia de descanso (fora dos dias de treino da nutri): treino é creditado automaticamente.
+  const diaDeTreino = ehDiaDeTreino(paciente.treinoDias, hoje.getDay());
+  const xpTreino = diaDeTreino ? calcularXpTreino(registro.treinoStatus) : PONTOS.treino;
 
   const { total: pontosGanhos, detalhes: pontosDetalhes } = calcularPontosRegistro({
     xpAlimentacao: xpAlim,
-    xpTreino: calcularXpTreino(registro.treinoStatus),
+    xpTreino,
     aguaOk,
-    xpSono: calcularXpSono(registro.sonoFaixa),
+    xpSono,
     incluirFechamento: true,
   });
 
@@ -352,7 +370,7 @@ router.get("/resumo", async (req: PacienteAuthRequest, res: Response) => {
       select: {
         nome: true, pontosTotal: true, ligaAtual: true, ligaNivel: true,
         streakAtual: true, streakMaximo: true, ultimoCheckin: true, diasInativo: true, barraCongelada: true,
-        planoRefeicoes: true,
+        planoRefeicoes: true, aguaMetaMl: true, sonoMetaHoras: true, treinoDias: true,
       },
     }),
     prisma.registro.findUnique({
@@ -368,6 +386,11 @@ router.get("/resumo", async (req: PacienteAuthRequest, res: Response) => {
   return res.json({
     paciente,
     planoRefeicoes: resolverPlanoRefeicoes(paciente?.planoRefeicoes),
+    metas: {
+      aguaMl: resolverAguaMetaMl(paciente?.aguaMetaMl),
+      sonoHoras: resolverSonoMetaHoras(paciente?.sonoMetaHoras),
+      treinoDiaHoje: ehDiaDeTreino(paciente?.treinoDias, hoje.getDay()),
+    },
     registroHoje,
     feitoHoje: !!registroHoje?.finalizado,
     conquistas,

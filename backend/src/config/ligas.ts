@@ -68,6 +68,37 @@ export function resolverPlanoRefeicoes(planoRefeicoes: unknown): RefeicaoPlano[]
   return PLANO_REFEICOES_PADRAO;
 }
 
+// ── Metas configuráveis pela nutri (água/sono/treino) ──────────────────────
+export const SONO_META_HORAS_PADRAO = 8; // meta de sono quando a nutri não definiu
+
+/** Meta de água em ml (nutri). Fallback = 3000. */
+export function resolverAguaMetaMl(v: unknown): number {
+  return typeof v === "number" && v > 0 ? Math.round(v) : AGUA_META_ML_PADRAO;
+}
+
+/** Meta de sono em horas (nutri). Fallback = 8. */
+export function resolverSonoMetaHoras(v: unknown): number {
+  return typeof v === "number" && v > 0 ? v : SONO_META_HORAS_PADRAO;
+}
+
+/**
+ * XP de sono (0–2) por tolerância vs a meta da nutri:
+ * dentro de ±1h da meta = 2 · até 2h de diferença = 1 · além = 0.
+ */
+export function calcularXpSonoMeta(horas: number | null | undefined, metaHoras: number): number {
+  if (typeof horas !== "number" || !isFinite(horas) || horas <= 0) return 0;
+  const diff = Math.abs(horas - metaHoras);
+  if (diff <= 1) return 2;
+  if (diff <= 2) return 1;
+  return 0;
+}
+
+/** Hoje é dia de treino? `dias` = 0..6 (0=domingo). Vazio/null = todo dia é dia de treino. */
+export function ehDiaDeTreino(dias: number[] | null | undefined, weekday: number): boolean {
+  if (!Array.isArray(dias) || dias.length === 0) return true;
+  return dias.includes(weekday);
+}
+
 // Treino — 3 estados: conforme (3) / parcial (1) / não consegui (0).
 export const XP_TREINO: Record<string, number> = { conforme: 3, parcial: 1, nao: 0 };
 // Sono — por faixa de horas: <5h (0) / 5–6h59 (1) / 7–9h (2) / >9h (2).

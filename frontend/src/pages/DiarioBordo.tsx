@@ -35,6 +35,7 @@ interface DiarioData {
     pontosTotal: number; ligaAtual: string; ligaNivel: string;
     streakAtual: number; streakMaximo: number; ultimoCheckin: string | null;
     planoRefeicoes?: RefeicaoPlano[] | null;
+    aguaMetaMl?: number | null; sonoMetaHoras?: number | null; treinoDias?: number[] | null;
   };
   registros: Registro[];
   desafios: DesafioProgressoItem[];
@@ -95,7 +96,10 @@ export default function DiarioBordo() {
   const [selKey, setSelKey] = useState<string | null>(null);
   const [incentivo, setIncentivo] = useState<"idle" | "enviando" | "ok">("idle");
   const [plano, setPlano] = useState<RefeicaoPlano[]>(PLANO_REFEICOES_PADRAO);
-  const [savingPlano, setSavingPlano] = useState<number | null>(null);
+  const [aguaMeta, setAguaMeta] = useState(3000);
+  const [sonoMeta, setSonoMeta] = useState(8);
+  const [treinoDias, setTreinoDias] = useState<number[]>([]);
+  const [savingCfg, setSavingCfg] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -104,6 +108,9 @@ export default function DiarioBordo() {
       .then((r) => {
         setData(r.data);
         setPlano(resolverPlanoRefeicoes(r.data.paciente?.planoRefeicoes));
+        setAguaMeta(r.data.paciente?.aguaMetaMl ?? 3000);
+        setSonoMeta(r.data.paciente?.sonoMetaHoras ?? 8);
+        setTreinoDias(r.data.paciente?.treinoDias ?? []);
         const regs = r.data.registros ?? [];
         if (regs.length) {
           const recente = regs.reduce((a, b) => (a.data > b.data ? a : b));
@@ -182,16 +189,23 @@ export default function DiarioBordo() {
     } catch { setIncentivo("idle"); }
   }
 
-  async function salvarPlano(n: number) {
-    if (!id || savingPlano != null || n === plano.length) return;
-    setSavingPlano(n);
+  async function salvarCfg(body: Record<string, unknown>) {
+    if (!id || savingCfg) return;
+    setSavingCfg(true);
     try {
-      const { data: r } = await api.put<{ planoRefeicoes: RefeicaoPlano[] }>(`/pacientes/${id}/plano-missoes`, { numRefeicoes: n });
+      const { data: r } = await api.put<{
+        planoRefeicoes: RefeicaoPlano[]; aguaMetaMl: number | null; sonoMetaHoras: number | null; treinoDias: number[] | null;
+      }>(`/pacientes/${id}/plano-missoes`, body);
       setPlano(resolverPlanoRefeicoes(r.planoRefeicoes));
-    } catch { /* mantém o plano atual */ } finally {
-      setSavingPlano(null);
+      if (r.aguaMetaMl != null) setAguaMeta(r.aguaMetaMl);
+      if (r.sonoMetaHoras != null) setSonoMeta(r.sonoMetaHoras);
+      if (Array.isArray(r.treinoDias)) setTreinoDias(r.treinoDias);
+    } catch { /* mantém a config atual */ } finally {
+      setSavingCfg(false);
     }
   }
+  const toggleTreinoDia = (d: number) =>
+    salvarCfg({ treinoDias: treinoDias.includes(d) ? treinoDias.filter((x) => x !== d) : [...treinoDias, d] });
 
   /* grade do calendário (semana começa na segunda) */
   const y = mesRef.getFullYear(), m = mesRef.getMonth();
@@ -361,36 +375,68 @@ export default function DiarioBordo() {
               </section>
             )}
 
-            {/* ══════════ Plano de missões — refeições configuráveis ══════════ */}
+            {/* ══════════ Plano de missões — configurável pela nutri ══════════ */}
             <section className={`${CARD} mt-4 p-5`}>
-              <div className="mb-1 flex items-center gap-2">
-                <Utensils className="size-4 text-nx-evo" />
-                <span className="text-label-md uppercase text-nx-on-surface-variant">Plano de missões · Refeições</span>
+              <div className="mb-4 flex items-center gap-2">
+                <SlidersHorizontal className="size-4 text-nx-evo" />
+                <span className="text-label-md uppercase text-nx-on-surface-variant">Plano de missões de {pac.nome.split(" ")[0]}</span>
               </div>
-              <p className="mb-4 text-body-sm text-nx-on-surface-variant">
-                Quantas refeições {pac.nome.split(" ")[0]} registra por dia. Os <strong className="text-nx-on-surface">4 XP</strong> da
-                alimentação se dividem entre elas — mais refeições <strong className="text-nx-on-surface">não</strong> dão vantagem na liga.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {[3, 4, 5, 6].map((n) => {
-                  const on = plano.length === n;
-                  const loading = savingPlano === n;
-                  return (
-                    <button key={n} onClick={() => salvarPlano(n)} disabled={savingPlano != null}
-                      className={`min-w-[104px] rounded-nx-md border px-4 py-2.5 text-body-sm font-semibold transition-all disabled:opacity-60 ${
-                        on ? "border-nx-evo bg-nx-evo/12 text-nx-evo" : "border-nx-border bg-nx-surface text-nx-on-surface-variant hover:border-nx-outline"
-                      }`}>
-                      {loading ? "Salvando…" : `${n} refeições`}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                {plano.map((r) => (
-                  <span key={r.key} className="rounded-full border border-nx-border bg-nx-container px-2.5 py-1 text-label-sm text-nx-on-surface-variant">
-                    {r.label} · {(4 / plano.length).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} XP
-                  </span>
-                ))}
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                {/* Refeições */}
+                <div>
+                  <p className="mb-2 flex items-center gap-1.5 text-body-sm font-semibold text-nx-on-surface"><Utensils className="size-4 text-nx-evo" /> Refeições por dia</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[3, 4, 5, 6].map((n) => (
+                      <button key={n} onClick={() => salvarCfg({ numRefeicoes: n })} disabled={savingCfg}
+                        className={`min-w-[52px] rounded-nx-md border px-3 py-2 text-body-sm font-semibold transition-all disabled:opacity-60 ${
+                          plano.length === n ? "border-nx-evo bg-nx-evo/12 text-nx-evo" : "border-nx-border bg-nx-surface text-nx-on-surface-variant hover:border-nx-outline"
+                        }`}>{n}</button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-label-sm text-nx-on-surface-variant">Os 4 XP da alimentação se dividem entre elas ({(4 / plano.length).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} cada).</p>
+                </div>
+
+                {/* Água */}
+                <div>
+                  <p className="mb-2 flex items-center gap-1.5 text-body-sm font-semibold text-nx-on-surface"><Droplet className="size-4 text-nx-water" /> Meta de água</p>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => salvarCfg({ aguaMetaMl: Math.max(1000, aguaMeta - 250) })} disabled={savingCfg || aguaMeta <= 1000}
+                      className="grid size-9 place-items-center rounded-nx-md border border-nx-border bg-nx-surface text-nx-on-surface disabled:opacity-40">−</button>
+                    <span className="w-16 text-center text-body-lg font-bold tabular-nums text-nx-on-surface">{(aguaMeta / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}L</span>
+                    <button onClick={() => salvarCfg({ aguaMetaMl: Math.min(6000, aguaMeta + 250) })} disabled={savingCfg || aguaMeta >= 6000}
+                      className="grid size-9 place-items-center rounded-nx-md border border-nx-border bg-nx-surface text-nx-on-surface disabled:opacity-40">+</button>
+                  </div>
+                  <p className="mt-2 text-label-sm text-nx-on-surface-variant">+2 XP ao bater a meta.</p>
+                </div>
+
+                {/* Sono */}
+                <div>
+                  <p className="mb-2 flex items-center gap-1.5 text-body-sm font-semibold text-nx-on-surface"><Moon className="size-4 text-nx-sleep" /> Meta de sono</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[6, 7, 8, 9, 10].map((h) => (
+                      <button key={h} onClick={() => salvarCfg({ sonoMetaHoras: h })} disabled={savingCfg}
+                        className={`min-w-[48px] rounded-nx-md border px-3 py-2 text-body-sm font-semibold transition-all disabled:opacity-60 ${
+                          sonoMeta === h ? "border-nx-evo bg-nx-evo/12 text-nx-evo" : "border-nx-border bg-nx-surface text-nx-on-surface-variant hover:border-nx-outline"
+                        }`}>{h}h</button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-label-sm text-nx-on-surface-variant">±1h da meta = 2 XP · até 2h = 1 XP.</p>
+                </div>
+
+                {/* Treino */}
+                <div>
+                  <p className="mb-2 flex items-center gap-1.5 text-body-sm font-semibold text-nx-on-surface"><Dumbbell className="size-4 text-nx-streak" /> Dias de treino</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[{ d: 1, l: "Seg" }, { d: 2, l: "Ter" }, { d: 3, l: "Qua" }, { d: 4, l: "Qui" }, { d: 5, l: "Sex" }, { d: 6, l: "Sáb" }, { d: 0, l: "Dom" }].map(({ d, l }) => (
+                      <button key={d} onClick={() => toggleTreinoDia(d)} disabled={savingCfg}
+                        className={`min-w-[44px] rounded-nx-md border px-2.5 py-2 text-label-md font-semibold transition-all disabled:opacity-60 ${
+                          treinoDias.includes(d) ? "border-nx-evo bg-nx-evo/12 text-nx-evo" : "border-nx-border bg-nx-surface text-nx-on-surface-variant hover:border-nx-outline"
+                        }`}>{l}</button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-label-sm text-nx-on-surface-variant">{treinoDias.length === 0 ? "Sem dias marcados = missão de treino todo dia." : "Nos outros dias o treino é creditado automaticamente."}</p>
+                </div>
               </div>
             </section>
 
