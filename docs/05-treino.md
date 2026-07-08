@@ -1,0 +1,43 @@
+# 05 · Treino
+
+> **Status:** 🟥 Estrutura (a preencher)
+> **Módulo:** `05-treino`
+> **Atualizado em:** —
+> **Docs relacionados:** —
+
+<!--
+  PADRÃO: seguir docs/_MODELO.md.
+  Regra de ouro: NÃO inventar. Preencher só ao desenvolver o módulo e
+  descrever apenas o que existe no código real do Nexvel.
+  Seção que não se aplicar → marcar "N/A".
+-->
+
+## 1. Objetivo
+_A preencher._
+
+## 2. Visão Geral
+_A preencher._
+
+## 3. Fluxo
+_A preencher._
+
+## 4. Regras de Negócio
+_A preencher._
+
+## 5. Interface
+_A preencher._
+
+## 6. Experiência do Usuário
+_A preencher._
+
+## 7. Integrações
+_A preencher._
+
+## 8. Casos Especiais
+_A preencher._
+
+## 9. Observações Técnicas
+_A preencher._
+
+## 10. Melhorias Futuras
+_A preencher._
