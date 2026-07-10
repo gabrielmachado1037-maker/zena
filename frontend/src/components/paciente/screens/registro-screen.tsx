@@ -5,10 +5,10 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { usePacienteData, type MealState, type TodayState, XP_TREINO } from "@/lib/paciente-data"
-import { calcularXpAlimentacao, valorRefeicaoXp, calcularXpSonoMeta } from "@/lib/ligas"
+import { calcularXpAlimentacao, valorRefeicaoXp, calcularXpSonoMeta, CORES_LIGA } from "@/lib/ligas"
 import apiPaciente from "@/lib/apiPaciente"
 import {
-  ProgressBarNx, LevelUpOverlay, LeagueCrest,
+  ProgressBarNx, LevelUpOverlay, LeagueEmblem,
   WaterProgress, MealSheet, ChoiceSheet, SleepSheet, DaySummarySheet, MOODS,
   useNxToasts, type MealStatus, type MealDetail, type ChoiceOption, type ChoiceDetail,
 } from "@/components/ui-nx"
@@ -370,7 +370,7 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
         eyebrow={celeb?.subiu ? "Nova liga" : "Dia completo"}
         ariaLabel={celeb?.subiu ? `Você subiu para a ${celeb.liga}` : "Dia registrado"}
         bigContent={
-          celeb?.subiu ? <LeagueCrest liga={celeb.liga.split(" ")[0]} size={92} />
+          celeb?.subiu ? <span className="inline-flex" style={{ filter: `drop-shadow(0 0 22px ${CORES_LIGA[celeb.liga.split(" ")[0]] ?? "#7CFF5B"}66)` }}><LeagueEmblem liga={celeb.liga.split(" ")[0]} size={92} /></span>
           : <span className="flex items-baseline gap-1 text-nx-evo"><span className="text-display-lg leading-none tabular-nums">+{fmtXp(celeb?.pontos ?? 0)}</span></span>
         }
         titulo={celeb?.subiu ? `Liga ${celeb.liga}` : "Dia registrado!"}

@@ -3,8 +3,12 @@ import { useNavigate } from "react-router-dom"
 import { ChevronLeft, ChevronsUp, ChevronsDown, ShieldCheck } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { usePacienteData } from "@/lib/paciente-data"
-import { LeagueCrest, LEAGUE_FROM_NOME } from "@/components/ui-nx"
+import { LeagueEmblem, LEAGUE_FROM_NOME } from "@/components/ui-nx"
+import { CORES_LIGA } from "@/lib/ligas"
 import type { RankUser } from "@/lib/nexvel-data"
+
+/** Glow por liga (igual à aba Ligas do nutri) para os brasões de destaque. */
+const glow = (liga: string, blur = 14) => ({ filter: `drop-shadow(0 0 ${blur}px ${CORES_LIGA[liga] ?? "#7CFF5B"}55)` })
 
 const TIERS = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"] as const
 const nf = (n: number) => n.toLocaleString("pt-BR")
@@ -113,7 +117,7 @@ export function LigasScreen() {
       {/* Hero da liga */}
       <div className="rounded-nx-xl border border-nx-border bg-nx-surface p-5">
         <div className="flex items-center gap-4">
-          <LeagueCrest liga={tierAtual} size={76} />
+          <span className="inline-flex shrink-0" style={glow(tierAtual)}><LeagueEmblem liga={tierAtual} size={76} /></span>
           <div className="min-w-0 flex-1">
             <p className="text-label-md uppercase text-nx-on-surface-variant">Sua liga</p>
             <p className="text-headline-md text-nx-on-surface">{user.league}</p>
@@ -137,7 +141,7 @@ export function LigasScreen() {
               "Você atingiu a liga máxima 👑"
             )}
           </p>
-          {temProxima && <LeagueCrest liga={nextKey} size={28} animated={false} className="shrink-0 opacity-70" />}
+          {temProxima && <LeagueEmblem liga={nextKey} size={28} className="shrink-0 opacity-70" />}
         </div>
       </div>
 
@@ -152,7 +156,7 @@ export function LigasScreen() {
               <Fragment key={tier}>
                 {i > 0 && <span className={cn("h-px w-3 shrink-0", passado || atual ? "bg-nx-evo/50" : "bg-nx-border")} />}
                 <div className="flex shrink-0 flex-col items-center gap-1">
-                  <LeagueCrest liga={tier} size={atual ? 52 : 40} animated={atual} className={cn(!atual && !passado && "opacity-35", passado && "opacity-70")} />
+                  <LeagueEmblem liga={tier} size={atual ? 52 : 40} className={cn("transition-transform", atual && "scale-105", !atual && !passado && "opacity-35", passado && "opacity-70")} />
                   <span className={cn("text-label-sm font-medium", atual ? "text-nx-on-surface" : "text-nx-on-surface-variant")}>{tier}</span>
                 </div>
               </Fragment>
@@ -174,7 +178,7 @@ export function LigasScreen() {
 
         {n === 0 ? (
           <div className="rounded-nx-lg border border-nx-border bg-nx-surface p-8 text-center">
-            <LeagueCrest liga={tierAtual} size={64} className="mx-auto" />
+            <span className="mx-auto block w-fit" style={glow(tierAtual)}><LeagueEmblem liga={tierAtual} size={64} /></span>
             <p className="mt-3 text-body-md text-nx-on-surface-variant">Você é pioneiro nesta liga.</p>
             <p className="mt-1 text-body-sm text-nx-on-surface-variant">Continue evoluindo pra defender o topo.</p>
           </div>

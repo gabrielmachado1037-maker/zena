@@ -6,7 +6,8 @@ import {
 import { cn } from "@/lib/utils"
 import { usePacienteData } from "@/lib/paciente-data"
 import { usePacienteAuth } from "@/contexts/PacienteAuthContext"
-import { LeagueFrame, LeagueBadge, LeagueCrest } from "@/components/ui-nx"
+import { LeagueFrame, LeagueBadge, LeagueEmblem } from "@/components/ui-nx"
+import { CORES_LIGA } from "@/lib/ligas"
 import type { NavigateFn, Screen } from "../types"
 
 /* Catálogo de conquistas — dá o efeito de COLEÇÃO (o que falta desbloquear aparece). */
@@ -69,8 +70,8 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
               </span>
             )}
           </LeagueFrame>
-          <span className="absolute -bottom-3 -right-2">
-            <LeagueCrest liga={ligaKey} size={46} />
+          <span className="absolute -bottom-3 -right-2" style={{ filter: `drop-shadow(0 0 10px ${CORES_LIGA[ligaKey] ?? "#7CFF5B"}55)` }}>
+            <LeagueEmblem liga={ligaKey} size={46} />
           </span>
         </div>
         <h1 className="mt-5 text-headline-lg text-nx-on-surface">{user.name}</h1>

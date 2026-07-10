@@ -6,11 +6,12 @@ import {
   CardNx,
   ChipNx,
   ProgressBarNx,
-  LeagueCrest,
+  LeagueEmblem,
   LEAGUE_FROM_NOME,
   MoodPicker,
   useNxToasts,
 } from "@/components/ui-nx"
+import { CORES_LIGA } from "@/lib/ligas"
 import type { NavigateFn } from "../types"
 
 /* Anel de progresso animado (SVG) — usado compacto no card "Missão de hoje". */
@@ -165,7 +166,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: NavigateFn }) {
       <button type="button" onClick={() => onNavigate("ligas")} className="block w-full text-left">
         <CardNx accent="gold" className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
-            <LeagueCrest liga={ligaKey} size={54} />
+            <span className="inline-flex shrink-0" style={{ filter: `drop-shadow(0 0 12px ${CORES_LIGA[ligaKey] ?? "#7CFF5B"}55)` }}><LeagueEmblem liga={ligaKey} size={54} /></span>
             <div className="flex-1">
               <p className="text-label-md uppercase text-nx-on-surface-variant">Sua liga</p>
               <p className="text-headline-md text-nx-on-surface">{user.league}</p>
@@ -184,7 +185,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: NavigateFn }) {
             </span>
             {temProxima ? (
               <span className="flex shrink-0 items-center gap-1 opacity-70">
-                <LeagueCrest liga={nextKey} size={30} animated={false} />
+                <LeagueEmblem liga={nextKey} size={30} />
                 <ChevronRight className="size-4 text-nx-outline" />
               </span>
             ) : (

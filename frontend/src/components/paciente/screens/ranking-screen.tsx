@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom"
 import { Crown, ChevronRight, ChevronsUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { usePacienteData } from "@/lib/paciente-data"
-import { LeagueCrest } from "@/components/ui-nx"
+import { LeagueEmblem } from "@/components/ui-nx"
 import type { RankUser } from "@/lib/nexvel-data"
 
 const nf = (n: number) => n.toLocaleString("pt-BR")
@@ -80,7 +80,7 @@ function RankRow({ u }: { u: RankUser }) {
         </p>
         {u.league && <p className="truncate text-body-sm text-nx-on-surface-variant">{u.league}</p>}
       </div>
-      <LeagueCrest liga={ligaDe(u.league)} size={22} animated={false} className="shrink-0" />
+      <LeagueEmblem liga={ligaDe(u.league)} size={22} className="shrink-0" />
       <span className="shrink-0 text-body-sm font-bold tabular-nums text-nx-on-surface">{nf(u.points)} <span className="text-nx-on-surface-variant">XP</span></span>
     </div>
   )
@@ -147,7 +147,7 @@ export function RankingScreen() {
             onClick={() => navigate("/paciente/ligas")}
             className="flex w-full items-center gap-3 rounded-nx-md border border-nx-border bg-nx-surface p-3 text-left transition-colors hover:border-nx-outline"
           >
-            <LeagueCrest liga={ligaDe(user.league)} size={34} animated={false} />
+            <LeagueEmblem liga={ligaDe(user.league)} size={34} />
             <div className="min-w-0 flex-1">
               <p className="text-body-md font-semibold text-nx-on-surface">Sua liga · {ligaDe(user.league)}</p>
               <p className="truncate text-body-sm text-nx-on-surface-variant">Disputa de promoção e queda</p>
