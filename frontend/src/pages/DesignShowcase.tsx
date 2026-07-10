@@ -9,7 +9,7 @@ import {
   StatTileNx,
   XpBarNx,
   LevelUpOverlay,
-  LeagueCrest,
+  LeagueEmblem,
   LeagueBadge,
 } from "../components/ui-nx";
 import type { LeagueKey } from "../components/ui-nx";
@@ -131,7 +131,7 @@ export default function DesignShowcase() {
           <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
             {LIGAS.map((liga) => (
               <div key={liga} className="flex flex-col items-center gap-2">
-                <LeagueCrest liga={liga} size={84} />
+                <LeagueEmblem liga={liga} size={84} />
                 <LeagueBadge liga={liga} />
               </div>
             ))}
