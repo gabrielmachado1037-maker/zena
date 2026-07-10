@@ -10,7 +10,7 @@ import {
   User,
   type LucideIcon,
 } from "lucide-react";
-import { ButtonNx, LeagueBadge, LeagueCrest } from "../ui-nx";
+import { ButtonNx, LeagueBadge, LeagueEmblem } from "../ui-nx";
 import Avatar from "./Avatar";
 import {
   enviarMensagem,
@@ -222,7 +222,7 @@ export default function CommPanel({ conversa, situacao, onEnviado, onLida, onVer
         <div className="relative flex-shrink-0">
           <Avatar url={conversa.avatarUrl} nome={conversa.nome} className="size-14 rounded-full text-base" />
           <div className="absolute -bottom-1.5 -right-1.5">
-            <LeagueCrest liga={ligaNome} size={26} animated={false} />
+            <LeagueEmblem liga={ligaNome} size={26} />
           </div>
         </div>
         <div className="min-w-0 flex-1">

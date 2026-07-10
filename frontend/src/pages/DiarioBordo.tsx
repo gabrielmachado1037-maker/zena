@@ -9,9 +9,9 @@ import {
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
-import { progressoLiga, diasDesde, resolverPlanoRefeicoes, PLANO_REFEICOES_PADRAO, type RefeicaoPlano } from "../lib/ligas";
+import { progressoLiga, diasDesde, resolverPlanoRefeicoes, PLANO_REFEICOES_PADRAO, CORES_LIGA, type RefeicaoPlano } from "../lib/ligas";
 import { gerarInsights, type Insight, type InsightTone } from "../lib/insights";
-import { LeagueCrest, LeagueBadge, ProgressBarNx } from "../components/ui-nx";
+import { LeagueEmblem, LeagueBadge, ProgressBarNx } from "../components/ui-nx";
 import DesafiosTab from "../components/diario/DesafiosTab";
 import LigaPontosTab from "../components/diario/LigaPontosTab";
 import EvolucaoTab from "../components/diario/EvolucaoTab";
@@ -249,7 +249,7 @@ export default function DiarioBordo() {
               <div className={`${CARD} flex gap-4 p-5 lg:col-span-2`}>
                 <div className="relative shrink-0">
                   <Avatar src={pac.fotoPerfilUrl} nome={pac.nome} tamanho={64} />
-                  <span className="absolute -bottom-2 -right-2"><LeagueCrest liga={ligaKey} size={34} /></span>
+                  <span className="absolute -bottom-2 -right-2" style={{ filter: `drop-shadow(0 0 8px ${CORES_LIGA[ligaKey] ?? "#7CFF5B"}55)` }}><LeagueEmblem liga={ligaKey} size={34} /></span>
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -278,7 +278,7 @@ export default function DiarioBordo() {
                   {rankPos != null && <span className="text-label-md font-bold text-nx-gold">#{rankPos}</span>}
                 </div>
                 <div className="flex items-center gap-3">
-                  <LeagueCrest liga={ligaKey} size={48} />
+                  <span className="inline-flex shrink-0" style={{ filter: `drop-shadow(0 0 10px ${CORES_LIGA[ligaKey] ?? "#7CFF5B"}55)` }}><LeagueEmblem liga={ligaKey} size={48} /></span>
                   <div className="min-w-0 flex-1">
                     <p className="text-body-lg font-bold tabular-nums text-nx-on-surface">{pac.pontosTotal.toLocaleString("pt-BR")} XP</p>
                     <div className="mt-1.5"><ProgressBarNx value={prog?.pct ?? 0} tone="gold" /></div>

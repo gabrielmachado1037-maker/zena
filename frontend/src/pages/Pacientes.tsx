@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
-import { LeagueCrest } from "../components/ui-nx";
+import { LeagueEmblem } from "../components/ui-nx";
 import { progressoLiga, diasDesde } from "../lib/ligas";
 
 interface Paciente {
@@ -27,7 +27,7 @@ interface Paciente {
 const LIGAS_FILTRO = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"];
 type StatusFiltro = "todos" | "ativo" | "risco" | "inativo";
 
-/* Cor de progresso por liga — acompanha o brasão (mesma paleta do LeagueCrest). */
+/* Cor de progresso por liga — acompanha o brasão (mesma paleta do LeagueEmblem). */
 const LIGA_COR: Record<string, string> = {
   Bronze: "#C77B3C",
   Prata: "#C2C9D2",
@@ -263,7 +263,7 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
           <div className="mt-2.5"><StatusChip label={status.label} cor={status.cor} /></div>
         </div>
         <div className="flex shrink-0 flex-col items-center gap-1">
-          <LeagueCrest liga={p.ligaAtual} size={54} animated={false} />
+          <span className="inline-flex" style={{ filter: `drop-shadow(0 0 12px ${cor}55)` }}><LeagueEmblem liga={p.ligaAtual} size={54} /></span>
           <span className="text-label-sm font-bold leading-none" style={{ color: cor }}>{p.ligaAtual} {p.ligaNivel}</span>
         </div>
       </div>
