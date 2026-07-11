@@ -152,19 +152,24 @@ const CSS = `
 .rp-empty{ font-size:11.5px; color:var(--muted); }
 .rp-iaslot{ min-height:52px; display:flex; align-items:center; font-size:11.5px; color:#9AA0A6; font-style:italic; }
 @media print{
-  @page{ size:A4; margin:9mm; }
+  @page{ size:A4; margin:10mm; }
   html,body{ background:#fff !important; }
-  /* isola o documento: nada do app-shell (sidebar, cards de instalação, controles) sai no PDF */
+  /* isola o documento: some com controles/nav fixa. O menu lateral do desktop já é
+     display:none na largura de página (<1024px), então não ocupa espaço nem desloca o doc. */
   body *{ visibility:hidden !important; }
   .rp, .rp *{ visibility:visible !important; }
-  .no-print, .no-print *{ visibility:hidden !important; display:none !important; }
-  main{ overflow:visible !important; display:block !important; }
-  .rp{ position:absolute !important; left:0 !important; top:0 !important; width:100% !important;
-    margin:0 !important; padding:0 !important; background:#fff !important; }
-  .rp main{ padding:0 !important; max-width:none !important; margin:0 !important; }
-  .rp-doc{ box-shadow:none !important; border-radius:0 !important; width:auto !important; max-width:none !important; }
+  .no-print, .no-print *{ display:none !important; }
+  /* o documento flui no topo DENTRO da área imprimível (respeita as margens @page).
+     Nada de position:absolute — isso fazia width:100% valer a página inteira e cortar à direita. */
+  main{ overflow:visible !important; padding:0 !important; }
+  .rp{ padding:0 !important; background:#fff !important; }
+  .rp main{ max-width:none !important; margin:0 !important; padding:0 !important; }
+  .rp-doc{ box-shadow:none !important; border-radius:0 !important; width:100% !important; max-width:100% !important; }
+  .rp-pad{ padding:0 !important; }
+  .rp-pac{ gap:14px !important; }
+  .rp-stat{ min-width:104px !important; }
   .rp *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-  .rp-cols, .rp-foot, .rp-pac, .rp-inds{ break-inside:avoid; }
+  .rp-cols, .rp-foot, .rp-pac, .rp-inds, .rp-tbl tr{ break-inside:avoid; }
 }
 `;
 
