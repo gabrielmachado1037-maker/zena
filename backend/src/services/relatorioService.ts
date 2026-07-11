@@ -1,5 +1,5 @@
 import prisma from "../lib/prisma";
-import { resolverAguaMetaMl, resolverSonoMetaHoras } from "../config/ligas";
+import { resolverAguaMetaMl, resolverSonoMetaHoras, calcularLiga, LIGAS } from "../config/ligas";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Relatório do paciente por intervalo livre (ex.: ciclo 15→15 escolhido pela nutri).
@@ -65,10 +65,27 @@ function agruparMotivos(textos: string[], limite = 4): Array<{ motivo: string; v
   return [...mapa.values()].sort((a, b) => b.vezes - a.vezes).slice(0, limite);
 }
 
+/** Uma linha da tabela dia-a-dia (roll-up por dia; null = sem dado nesse dia). */
+export interface DiaRelatorio {
+  data: string;                                          // ISO AAAA-MM-DD
+  alimentacao: "seguiu" | "adaptou" | "pulou" | null;    // roll-up do dia
+  aguaMl: number | null;
+  sonoHoras: number | null;
+  treino: "sim" | "nao" | null;
+  humor: string | null;
+  checkin: boolean;                                      // dia teve check-in finalizado
+}
+
 export interface RelatorioMensal {
-  paciente: { id: string; nome: string; telefone: string | null };
+  paciente: { id: string; nome: string; telefone: string | null; foto: string | null; objetivo: string | null; nutricionista: string | null };
   periodo: { inicio: string; fim: string; dias: number };
-  resumo: { diasRegistrados: number; aderenciaPct: number; desafiosCumpridos: number; xpPeriodo: number; ligaAtual: string; streakMaximo: number };
+  resumo: {
+    diasRegistrados: number; aderenciaPct: number; desafiosCumpridos: number; xpPeriodo: number;
+    ligaAtual: string; ligaNivel: string; streakMaximo: number; streakAtual: number;
+    pontosTotal: number; xpParaProxima: number; proximaLiga: string | null;
+  };
+  dias: DiaRelatorio[];
+  mesAnterior: { aderenciaPct: number } | null;
   refeicoes: Array<{ key: string; label: string; total: number; seguiu: number; adaptou: number; comeuMal: number; pulou: number; problemaPct: number }>;
   treino: { conforme: number; parcial: number; nao: number; faltas: number; motivos: Array<{ motivo: string; vezes: number }> };
   sono: { meta: number; diasComDado: number; mediaHoras: number; diasAbaixoMeta: number };
@@ -96,7 +113,9 @@ export async function gerarRelatorioMensal(
     where: { id: pacienteId },
     select: {
       id: true, nome: true, telefone: true, planoRefeicoes: true,
-      aguaMetaMl: true, sonoMetaHoras: true, ligaAtual: true, streakMaximo: true,
+      aguaMetaMl: true, sonoMetaHoras: true, ligaAtual: true, ligaNivel: true, streakMaximo: true,
+      objetivo: true, fotoPerfilUrl: true, pontosTotal: true, streakAtual: true,
+      nutricionista: { select: { nome: true } },
     },
   });
   if (!paciente) return null;
@@ -204,8 +223,42 @@ export async function gerarRelatorioMensal(
     ? { inicial: medicoes[0].peso, final: medicoes[medicoes.length - 1].peso, delta: Math.round((medicoes[medicoes.length - 1].peso - medicoes[0].peso) * 10) / 10 }
     : null;
 
+  // ─── Tabela dia-a-dia (uma linha por dia do período, inclusive dias sem check-in) ──
+  const regByDay = new Map<string, RegistroLite>();
+  for (const reg of registros as RegistroLite[]) regByDay.set(reg.data.toISOString().slice(0, 10), reg);
+
+  const dias: DiaRelatorio[] = [];
+  for (let t = ini.getTime(); t <= end.getTime(); t += DIA) {
+    const iso = new Date(t).toISOString().slice(0, 10);
+    const reg = regByDay.get(iso);
+    if (!reg) { dias.push({ data: iso, alimentacao: null, aguaMl: null, sonoHoras: null, treino: null, humor: null, checkin: false }); continue; }
+    // Roll-up da alimentação do dia: qualquer pulou/comeu mal → "pulou"; só adaptações → "adaptou"; tudo ok → "seguiu".
+    const st = statusDasRefeicoes(reg, planoKeys);
+    let comDado = 0, adaptouN = 0, ruimN = 0;
+    for (const k of planoKeys) { const s = st[k]; if (!s) continue; comDado++; if (s === "adaptou") adaptouN++; else if (s === "comeu_mal" || s === "pulou") ruimN++; }
+    const alimentacao: DiaRelatorio["alimentacao"] = comDado === 0 ? null : ruimN > 0 ? "pulou" : adaptouN > 0 ? "adaptou" : "seguiu";
+    const treino: DiaRelatorio["treino"] = reg.treinoStatus == null ? null : reg.treinoStatus === "nao" ? "nao" : "sim";
+    dias.push({ data: iso, alimentacao, aguaMl: reg.aguaMl ?? null, sonoHoras: reg.sonoHoras ?? null, treino, humor: reg.humor ?? null, checkin: true });
+  }
+
+  // ─── XP para a próxima LIGA (topo da liga atual) e nome dela ──────────────────
+  const tierAtual = calcularLiga(paciente.pontosTotal);
+  const ligaTiers = LIGAS.filter((t) => t.liga === tierAtual.liga);
+  const ligaAte = ligaTiers[ligaTiers.length - 1].ate;
+  const xpParaProxima = ligaAte != null ? Math.max(0, Math.round(ligaAte - paciente.pontosTotal)) : 0;
+  const proximaLiga = ligaAte != null ? (LIGAS.find((t) => t.de === ligaAte)?.liga ?? null) : null;
+
+  // ─── Aderência do período ANTERIOR (mesma duração), para o Δ de evolução ─────
+  const prevEnd = new Date(ini.getTime() - DIA);
+  const prevIni = new Date(prevEnd.getTime() - (diasPeriodo - 1) * DIA);
+  const prevCount = await prisma.registro.count({ where: { pacienteId, finalizado: true, data: { gte: prevIni, lte: prevEnd } } });
+  const mesAnterior = prevCount > 0 ? { aderenciaPct: pct(prevCount, diasPeriodo) } : null;
+
   const relatorio: RelatorioMensal = {
-    paciente: { id: paciente.id, nome: paciente.nome, telefone: paciente.telefone },
+    paciente: {
+      id: paciente.id, nome: paciente.nome, telefone: paciente.telefone,
+      foto: paciente.fotoPerfilUrl, objetivo: paciente.objetivo, nutricionista: paciente.nutricionista?.nome ?? null,
+    },
     periodo: { inicio: ini.toISOString().slice(0, 10), fim: end.toISOString().slice(0, 10), dias: diasPeriodo },
     resumo: {
       diasRegistrados,
@@ -213,8 +266,15 @@ export async function gerarRelatorioMensal(
       desafiosCumpridos,
       xpPeriodo: Math.round(xpPeriodo),
       ligaAtual: paciente.ligaAtual,
+      ligaNivel: paciente.ligaNivel,
       streakMaximo: paciente.streakMaximo,
+      streakAtual: paciente.streakAtual,
+      pontosTotal: Math.round(paciente.pontosTotal),
+      xpParaProxima,
+      proximaLiga,
     },
+    dias,
+    mesAnterior,
     refeicoes: refAgg.map((r) => ({
       key: r.key, label: r.label, total: r.total,
       seguiu: r.seguiu, adaptou: r.adaptou, comeuMal: r.comeuMal, pulou: r.pulou,
