@@ -20,19 +20,53 @@ export const FILTROS: FiltroDef[] = [
   { id: "treinos", tipo: "treino", icon: Dumbbell, cor: "text-nx-evo", label: "Check-ins completos" },
 ];
 
+export type StatusGeral = "excelente" | "atencao" | "critico";
+
 export interface Registro {
   id: string;
   pacienteId: string;
   paciente: string;
   liga: Liga; // moldura + badge
   ligaLabel: string; // "OURO" | "MESTRE" | …
+  ligaNome: string | null; // "Ouro" (emblema + cor)
+  ligaNivel: string | null; // "I" | "II" | "III"
+  xp: number;
+  streak: number;
   avatar: string | null;
   horario: string; // "14:20" (hoje) ou "dd/mm"
+  hoje: boolean;
+  ontem: boolean;
+  dataIso: string;
+  // Resumo do registro (dados já existentes, apenas expostos)
+  status: StatusGeral;
+  habitosOk: number;
+  habitosTotal: number;
+  alimentacaoPct: number | null;
+  aguaMl: number | null;
+  aguaMetaMl: number | null;
+  sonoHoras: number | null;
+  sonoFaixa: string | null;
+  treino: "feito" | "nao" | null;
+  humor: string | null;
   tipoTexto: string;
   tipo: TipoRegistro; // define borda/chip/botões
   texto?: string | null; // descrição/motivo (opcional)
   imagem?: string | null; // foto do check-in (opcional)
   revisado: boolean;
+}
+
+// Paciente ativo sem nenhum check-in no período (filtro "Sem registro").
+export interface SemRegistro {
+  pacienteId: string;
+  paciente: string;
+  avatar: string | null;
+  liga: Liga;
+  ligaLabel: string;
+  ligaNome: string | null;
+  ligaNivel: string | null;
+  xp: number;
+  streak: number;
+  dias: number | null; // dias desde o último check-in (null = nunca)
 }
 
 export interface AlertaRadar {
@@ -49,6 +83,7 @@ export interface FeedData {
   resumo: { registros: number; alertas: number };
   radar: AlertaRadar[];
   comunidade: { pct: number; deltaSemana: number };
+  semRegistro: SemRegistro[];
 }
 
 /* ── API ── */

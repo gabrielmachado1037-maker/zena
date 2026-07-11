@@ -220,6 +220,9 @@ body,
   background: #2A2F38;
   border-radius: 10px;
 }
+/* Esconde a scrollbar mantendo o scroll (linha de filtros da tela de Registros) */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* ══ Nexvel DS v0.2 — Recompensa & progresso (verde = evolução) ══
    "Nenhum clique termina em silêncio." Utilitários leves para XP, level-up e brilho. */

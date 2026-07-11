@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { MessagesSquare } from "lucide-react";
 import { getConversas, type Conversa } from "../lib/mensagens";
 import { deriveSituacao, type Situacao } from "../lib/comunicacao";
@@ -11,6 +11,8 @@ import CommPanel from "../components/mensagens/CommPanel";
 // parabenizar / cobrar retorno / incentivar / agendar consulta), com rascunho pronto pra enviar.
 export default function Mensagens() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const alvoInicial = searchParams.get("paciente"); // deep-link vindo dos Registros Diários
   const [conversas, setConversas] = useState<Conversa[]>([]);
   const [loading, setLoading] = useState(true);
   const [selId, setSelId] = useState<string | null>(null);
@@ -55,11 +57,13 @@ export default function Mensagens() {
     setPainelSituacao(c ? deriveSituacao(c) : null);
   }
 
-  // Seleciona a primeira da fila assim que ela existe.
+  // Seleciona o paciente do deep-link (?paciente=), ou a primeira da fila, assim que existir.
   useEffect(() => {
-    if (!selId && ordenadas.length > 0) selecionar(ordenadas[0].id);
+    if (selId || ordenadas.length === 0) return;
+    const preferido = (alvoInicial && ordenadas.find((c) => c.id === alvoInicial)) || ordenadas[0];
+    selecionar(preferido.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ordenadas, selId]);
+  }, [ordenadas, selId, alvoInicial]);
 
   const conversa = useMemo(() => conversas.find((c) => c.id === selId) ?? null, [conversas, selId]);
 

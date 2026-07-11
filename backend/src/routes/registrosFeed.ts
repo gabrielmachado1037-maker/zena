@@ -20,6 +20,25 @@ const LIGA_FRAME: Record<string, string> = {
 const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
 const isoDia = (d: Date | string) => new Date(d).toISOString().slice(0, 10);
 
+// Adesão alimentar do dia (%), a partir dos estados por refeição JÁ gravados no registro.
+// Sem novo cálculo de negócio: só conta seguiu/adaptou sobre o total com dado. null = sem dado.
+function alimentacaoPctDe(r: {
+  refeicoesStatus: unknown;
+  cafeStatus: string | null; almocoStatus: string | null; lancheStatus: string | null; jantarStatus: string | null;
+}): number | null {
+  let statuses: string[] = [];
+  const rs = r.refeicoesStatus;
+  if (rs && typeof rs === "object" && !Array.isArray(rs)) {
+    statuses = Object.values(rs as Record<string, unknown>).filter((v): v is string => typeof v === "string");
+  }
+  if (statuses.length === 0) {
+    statuses = [r.cafeStatus, r.almocoStatus, r.lancheStatus, r.jantarStatus].filter((v): v is string => typeof v === "string");
+  }
+  if (statuses.length === 0) return null;
+  const ader = statuses.filter((s) => s === "seguiu" || s === "adaptou").length;
+  return Math.round((ader / statuses.length) * 100);
+}
+
 // Stub = registro só de humor (sem check-in real) → não é log clínico pra revisar.
 function ehStub(r: {
   alimentacaoOk: boolean; treinoOk: boolean; aguaOk: boolean; sonoOk: boolean;
@@ -37,17 +56,30 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   desde.setHours(0, 0, 0, 0);
   desde.setDate(desde.getDate() - (dias - 1));
   const hojeIso = isoDia(new Date());
+  const ontem = new Date(); ontem.setDate(ontem.getDate() - 1);
+  const ontemIso = isoDia(ontem);
+  const agoraMs = Date.now();
 
   const [registrosRaw, ativos] = await Promise.all([
     prisma.registro.findMany({
       where: { data: { gte: desde }, paciente: { nutricionistaId } },
       orderBy: { createdAt: "desc" },
       take: 120,
-      include: { paciente: { select: { id: true, nome: true, fotoPerfilUrl: true, ligaAtual: true } } },
+      include: {
+        paciente: {
+          select: {
+            id: true, nome: true, fotoPerfilUrl: true,
+            ligaAtual: true, ligaNivel: true, pontosTotal: true, streakAtual: true,
+          },
+        },
+      },
     }),
     prisma.paciente.findMany({
       where: { nutricionistaId, ativo: true },
-      select: { id: true, nome: true, ultimoCheckin: true },
+      select: {
+        id: true, nome: true, ultimoCheckin: true, fotoPerfilUrl: true,
+        ligaAtual: true, ligaNivel: true, pontosTotal: true, streakAtual: true,
+      },
     }),
   ]);
 
@@ -72,8 +104,14 @@ router.get("/", async (req: AuthRequest, res: Response) => {
       }
 
       const dt = new Date(r.createdAt);
-      const hoje = isoDia(r.data) === hojeIso;
+      const diaIso = isoDia(r.data);
+      const hoje = diaIso === hojeIso;
       const horario = hoje ? `${pad(dt.getHours())}:${pad(dt.getMinutes())}` : `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}`;
+
+      // Status geral 🟢🟡🔴 derivado dos hábitos já gravados (sem nova pontuação):
+      // 4/4 = excelente · 2–3 = atenção · ≤1 ou pediu ajuste = crítico.
+      const status = ok >= 4 && !r.pediuAjuste ? "excelente" : ok <= 1 || r.pediuAjuste ? "critico" : "atencao";
+      const treino = r.treinoStatus == null ? null : r.treinoStatus === "nao" ? "nao" : "feito";
 
       return {
         id: r.id,
@@ -82,8 +120,25 @@ router.get("/", async (req: AuthRequest, res: Response) => {
         avatar: r.paciente.fotoPerfilUrl,
         liga: LIGA_FRAME[r.paciente.ligaAtual] ?? "silver",
         ligaLabel: (r.paciente.ligaAtual ?? "").toUpperCase(),
+        ligaNome: r.paciente.ligaAtual ?? null,
+        ligaNivel: r.paciente.ligaNivel ?? null,
+        xp: Math.round(r.paciente.pontosTotal),
+        streak: r.paciente.streakAtual,
         horario,
         hoje,
+        ontem: diaIso === ontemIso,
+        dataIso: diaIso,
+        // status + resumo do registro (dados já existentes, só expostos)
+        status,
+        habitosOk: ok,
+        habitosTotal: 4,
+        alimentacaoPct: alimentacaoPctDe(r),
+        aguaMl: r.aguaMl ?? null,
+        aguaMetaMl: r.aguaMetaMl ?? null,
+        sonoHoras: r.sonoHoras ?? null,
+        sonoFaixa: r.sonoFaixa ?? null,
+        treino,
+        humor: r.humor ?? null,
         tipo,
         tipoTexto,
         texto: r.pediuAjuste ? (r.motivoAjuste ?? r.descricao ?? null) : (r.descricao ?? null),
@@ -134,7 +189,25 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   ]);
   const deltaSemana = semAnterior > 0 ? Math.round(((semAtual - semAnterior) / semAnterior) * 100) : (semAtual > 0 ? 100 : 0);
 
-  res.json({ registros: registros.slice(0, 60), resumo, radar: radar.slice(0, 6), comunidade: { pct, deltaSemana } });
+  // Pacientes ativos SEM nenhum check-in real no período (filtro "Sem registro").
+  const comRegistro = new Set(registrosRaw.filter((r) => !ehStub(r)).map((r) => r.paciente.id));
+  const semRegistro = ativos
+    .filter((p) => !comRegistro.has(p.id))
+    .map((p) => ({
+      pacienteId: p.id,
+      paciente: p.nome,
+      avatar: p.fotoPerfilUrl,
+      liga: LIGA_FRAME[p.ligaAtual] ?? "silver",
+      ligaLabel: (p.ligaAtual ?? "").toUpperCase(),
+      ligaNome: p.ligaAtual ?? null,
+      ligaNivel: p.ligaNivel ?? null,
+      xp: Math.round(p.pontosTotal),
+      streak: p.streakAtual,
+      dias: p.ultimoCheckin ? Math.floor((agoraMs - new Date(p.ultimoCheckin).getTime()) / 86_400_000) : null,
+    }))
+    .sort((a, b) => (b.dias ?? 9999) - (a.dias ?? 9999));
+
+  res.json({ registros: registros.slice(0, 60), resumo, radar: radar.slice(0, 6), comunidade: { pct, deltaSemana }, semRegistro });
 });
 
 // POST /api/registros-feed/:id/validar — marca o registro como revisado pela nutri.
