@@ -16,6 +16,9 @@ const NAV = [
   { icon: BarChart3, label: "Insights" },
   { icon: Settings, label: "Configurações" },
 ];
+// Cor de identidade de cada liga = matiz dominante da própria arte 3D do emblema
+// (lendário roxo, mestre vermelho, diamante azul, ouro, prata, bronze). Usada
+// no rótulo E no glow, pra emblema + texto + halo ficarem na mesma cor.
 const LIGAS = [
   { nome: "Lendário", cor: "#A855F7", n: 2 },
   { nome: "Mestre", cor: "#F0483E", n: 6 },
@@ -81,7 +84,9 @@ export function DashboardPreview() {
               <div className="grid grid-cols-6 gap-1">
                 {LIGAS.map((l) => (
                   <div key={l.nome} className="flex flex-col items-center gap-1 text-center">
-                    <LeagueEmblem liga={l.nome} size={38} />
+                    <span style={{ filter: `drop-shadow(0 0 6px ${l.cor}66)` }}>
+                      <LeagueEmblem liga={l.nome} size={38} />
+                    </span>
                     <span className="text-[8.5px] font-bold leading-none" style={{ color: l.cor }}>{l.nome}</span>
                     <span className="text-[13px] font-extrabold leading-none text-white">{l.n}</span>
                     <span className="text-[7.5px] text-[#8b8b93]">pacientes</span>
