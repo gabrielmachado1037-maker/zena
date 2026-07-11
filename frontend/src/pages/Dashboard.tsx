@@ -8,6 +8,7 @@ import { useFetch } from "../hooks/useFetch";
 import Avatar from "../components/Avatar";
 import AccountSheet from "../components/AccountSheet";
 import { useAuth } from "../contexts/AuthContext";
+import { CORES_LIGA } from "../lib/ligas";
 
 /* ───────── shapes reais da API ───────── */
 type Risco = "risco" | "atencao" | "ok";
@@ -37,11 +38,6 @@ interface LigasResp {
 }
 
 const nf = (n: number) => n.toLocaleString("pt-BR");
-
-const LIGA_COR: Record<string, string> = {
-  Bronze: "#C77B3C", Prata: "#C2C9D2", Ouro: "#F8C84B",
-  Diamante: "#8FE3FF", Mestre: "#A855F7", "Lendário": "#F8C84B",
-};
 
 const HABITO = {
   alimentacao: { label: "Alimentação", Icon: Utensils, cor: "#7CFF5B" },
@@ -326,7 +322,7 @@ function AcaoBtn({ Icon, label, onClick }: { Icon: typeof MessageSquare; label: 
 
 function PacienteRow({ p, onOpen, navigate }: { p: PacienteLinha; onOpen: () => void; navigate: (to: string) => void }) {
   const ins = insightDe(p);
-  const ligaCor = LIGA_COR[p.liga] ?? "#9CA3AF";
+  const ligaCor = CORES_LIGA[p.liga] ?? "#9CA3AF";
   const diasCls = p.diasInativo >= 3 ? "text-nx-danger" : p.diasInativo >= 1 ? "text-nx-streak" : "text-nx-on-surface-variant";
   const dif = p.maiorDificuldade;
   const difCor = dif ? (HABITO[dif.habito as keyof typeof HABITO]?.cor ?? "#9CA3AF") : "#9CA3AF";
@@ -420,7 +416,7 @@ function LigasDistribuicao({ dados }: { dados?: LigasResp["distribuicaoLigas"] }
   return (
     <div className="space-y-3">
       {arr.map((d) => {
-        const cor = LIGA_COR[d.liga] ?? d.cor;
+        const cor = CORES_LIGA[d.liga] ?? d.cor;
         return (
           <div key={d.liga} className="flex items-center gap-3">
             <span className="flex w-24 shrink-0 items-center gap-1.5 text-body-sm text-nx-on-surface">
@@ -454,7 +450,7 @@ function SubiramSemana({ itens, onOpen }: { itens?: LigasResp["subiramSemana"]; 
           className="flex w-full items-center gap-3 rounded-nx-md border border-nx-border bg-nx-container/40 px-3 py-2.5 text-left transition-colors hover:border-nx-outline">
           <Avatar src={p.foto} nome={p.nome} tamanho={34} />
           <span className="min-w-0 flex-1 truncate text-body-md font-semibold text-nx-on-surface">{p.nome}</span>
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-body-sm font-medium" style={{ color: LIGA_COR[p.liga] ?? "#F8C84B" }}>
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-body-sm font-medium" style={{ color: CORES_LIGA[p.liga] ?? "#F8C84B" }}>
             <TrendingUp className="size-3.5" /> {p.liga} {p.ligaNivel}
           </span>
         </button>

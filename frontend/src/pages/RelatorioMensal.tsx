@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useFetch } from "../hooks/useFetch";
 import { gerarUrlWhatsApp } from "../lib/utils";
+import { CORES_LIGA } from "../lib/ligas";
 
 /* ───────── tipos (espelham o backend relatorioService) ───────── */
 interface DiaRel {
@@ -44,7 +45,6 @@ interface Relatorio {
 const HUMOR_EMOJI: Record<string, string> = { otimo: "😄", bom: "🙂", neutro: "😐", dificil: "😕", pessimo: "😣" };
 const HUMOR_LABEL: Record<string, string> = { otimo: "Ótimo", bom: "Bom", neutro: "Neutro", dificil: "Difícil", pessimo: "Péssimo" };
 const HUMOR_SCORE: Record<string, number> = { otimo: 5, bom: 4, neutro: 3, dificil: 2, pessimo: 1 };
-const LIGA_COR: Record<string, string> = { Bronze: "#C77B3C", Prata: "#9CA3AF", Ouro: "#E8A419", Diamante: "#3B9EDB", Mestre: "#8B5CF6", "Lendário": "#E8A419" };
 
 /* cores dos hábitos (documento claro) */
 const C = { green: "#16A34A", greenSoft: "#DCFCE7", amber: "#D97706", amberSoft: "#FEF3C7", red: "#DC2626", redSoft: "#FEE2E2", water: "#2563EB", waterSoft: "#DBEAFE", sleep: "#7C3AED", sleepSoft: "#EDE9FE", ink: "#111827", muted: "#6B7280", line: "#E5E7EB", soft: "#F7F7F5" };
@@ -316,7 +316,7 @@ export default function RelatorioMensal() {
     window.print();
   }
 
-  const ligaCor = rel ? (LIGA_COR[rel.resumo.ligaAtual] ?? "#E8A419") : "#E8A419";
+  const ligaCor = rel ? (CORES_LIGA[rel.resumo.ligaAtual] ?? "#E8A419") : "#E8A419";
   const xpPct = rel && rel.resumo.xpParaProxima > 0 ? Math.round((rel.resumo.pontosTotal / (rel.resumo.pontosTotal + rel.resumo.xpParaProxima)) * 100) : 100;
 
   return (

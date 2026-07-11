@@ -8,7 +8,7 @@ import {
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
 import { LeagueEmblem } from "../components/ui-nx";
-import { progressoLiga, diasDesde } from "../lib/ligas";
+import { progressoLiga, diasDesde, CORES_LIGA } from "../lib/ligas";
 
 interface Paciente {
   id: string;
@@ -27,16 +27,8 @@ interface Paciente {
 const LIGAS_FILTRO = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"];
 type StatusFiltro = "todos" | "ativo" | "risco" | "inativo";
 
-/* Cor de progresso por liga — acompanha o brasão (mesma paleta do LeagueEmblem). */
-const LIGA_COR: Record<string, string> = {
-  Bronze: "#C77B3C",
-  Prata: "#C2C9D2",
-  Ouro: "#F8C84B",
-  Diamante: "#8FE3FF",
-  Mestre: "#A855F7",
-  "Lendário": "#F8C84B",
-};
-const corLiga = (l: string) => LIGA_COR[l] ?? "#7CFF5B";
+/* Cor de progresso por liga — acompanha o brasão (CORES_LIGA = arte do LeagueEmblem). */
+const corLiga = (l: string) => CORES_LIGA[l] ?? "#7CFF5B";
 const nf = (n: number) => n.toLocaleString("pt-BR");
 
 /* Status derivado só dos dados que já existem — mesma regra de risco dos filtros. */

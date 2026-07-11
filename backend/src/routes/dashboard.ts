@@ -8,8 +8,8 @@ router.use(authMiddleware);
 
 const LIGA_ORDEM = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"];
 const LIGA_CORES: Record<string, string> = {
-  Bronze: "#CD7F32", Prata: "#9CA3AF", Ouro: "#F59E0B",
-  Diamante: "#60A5FA", Mestre: "#A855F7", "Lendário": "#F97316",
+  Bronze: "#C77B3C", Prata: "#C2C9D2", Ouro: "#F8C84B",
+  Diamante: "#54B3F0", Mestre: "#F0483E", "Lendário": "#A855F7",
 };
 const MESES_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
