@@ -1,17 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Leaf, Eye, EyeOff, CheckCircle, ArrowLeft } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { Eye, EyeOff, ArrowLeft, UserPlus } from "lucide-react";
 import api from "../lib/api";
+import { ProLogo, PrimaryBtn, INPUT_DARK } from "./nutri-landing/components/shared";
+import { Constellation } from "./nutri-landing/components/Constellation";
 
-const BENEFICIOS = [
-  "29 dias grátis, sem cartão de crédito",
-  "Pacientes ilimitadas",
-  "Portal digital para cada paciente",
-  "PDF profissional com 1 clique",
-  "Agenda e cobranças integradas",
-];
-
+/** Cadastro da nutricionista (NEXVEL NUTRITION PRO), dark + verde — casa com /login e /nutri. */
 export default function Cadastro() {
   const [nome, setNome] = useState("");
   const [crn, setCrn] = useState("");
@@ -21,7 +15,6 @@ export default function Cadastro() {
   const [showSenha, setShowSenha] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e: FormEvent) {
@@ -47,151 +40,94 @@ export default function Cadastro() {
   }
 
   return (
-    <div className="min-h-screen bg-nexvel-green-dark flex">
-      {/* Painel esquerdo */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-16">
-        <div className="flex items-center gap-3">
-          <Leaf className="text-nexvel-mint" size={32} />
-          <span className="text-white font-bold text-3xl tracking-wide">nexvel</span>
-        </div>
-        <div>
-          <p className="text-nexvel-mint/70 text-sm font-medium mb-3 uppercase tracking-widest">29 dias grátis</p>
-          <h1 className="text-white text-5xl font-bold leading-tight mb-6">
-            Seu consultório.<br />
-            <span className="text-nexvel-green-light">Do jeito certo.</span>
-          </h1>
-          <p className="text-nexvel-mint/70 text-lg leading-relaxed mb-10">
-            Junte-se a nutricionistas que já economizam horas toda semana com a Nexvel.
+    <div className="relative flex min-h-[100dvh] w-full items-center justify-center overflow-hidden bg-[#0A0A0A] px-5 py-10">
+      {/* fix autofill escuro */}
+      <style>{`.nx-input:-webkit-autofill{-webkit-box-shadow:0 0 0 1000px #0B0F0C inset;-webkit-text-fill-color:#fff;caret-color:#fff}`}</style>
+
+      {/* fundo constelação */}
+      <Constellation className="pointer-events-none absolute inset-0 size-full opacity-90" />
+
+      <div className="relative z-10 w-full max-w-[460px]">
+        <Link to="/" className="mb-6 inline-flex items-center gap-1.5 text-body-sm text-[#A1A1AA] transition-colors hover:text-white">
+          <ArrowLeft size={16} /> Voltar ao início
+        </Link>
+
+        {/* Marca + selo */}
+        <div className="flex flex-col items-center text-center">
+          <ProLogo size="text-[30px]" className="[&_p]:text-center" />
+          <span className="mt-6 grid size-14 place-items-center rounded-2xl border border-nx-evo/30 bg-nx-evo/10">
+            <UserPlus className="size-7 text-nx-evo" strokeWidth={2} />
+          </span>
+          <h1 className="mt-6 text-[28px] font-extrabold tracking-tight text-white">Criar sua conta grátis</h1>
+          <p className="mx-auto mt-2 max-w-[38ch] text-body-md leading-relaxed text-[#A1A1AA]">
+            Teste gratuito por <span className="font-semibold text-nx-evo">14 dias</span> · Sem cartão · Cancele quando quiser.
           </p>
-          <div className="space-y-4">
-            {BENEFICIOS.map((b) => (
-              <div key={b} className="flex items-center gap-3">
-                <CheckCircle size={18} className="text-nexvel-green-light flex-shrink-0" />
-                <span className="text-nexvel-mint text-sm">{b}</span>
-              </div>
-            ))}
-          </div>
         </div>
-        <p className="text-nexvel-mint/40 text-xs">© {new Date().getFullYear()} Nexvel. Todos os direitos reservados.</p>
-      </div>
 
-      {/* Painel direito */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl">
-          {/* Mobile logo */}
-          <div className="flex lg:hidden items-center gap-2 mb-6">
-            <Leaf className="text-nexvel-green-mid" size={24} />
-            <span className="text-nexvel-green-dark font-bold text-xl">nexvel</span>
-          </div>
-
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1.5 text-xs text-nexvel-text-light hover:text-nexvel-green-dark mb-6 transition-colors"
-          >
-            <ArrowLeft size={14} /> Voltar ao início
-          </Link>
-
-          <h2 className="text-2xl font-bold text-nexvel-text-dark mb-1">Criar sua conta grátis</h2>
-          <p className="text-nexvel-text-light text-sm mb-6">
-            29 dias grátis · Sem cartão · Cancele quando quiser
-          </p>
-
+        {/* Card de cadastro */}
+        <div className="mt-8 rounded-[20px] border border-white/[0.06] bg-[#111311] p-6 shadow-2xl sm:p-7">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-nexvel-text-mid mb-1.5 block">Nome completo</label>
-              <input
-                type="text"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Dra. Ana Silva"
-                className="w-full px-4 py-3 rounded-xl border border-nexvel-mint/50 bg-nexvel-cream text-nexvel-text-dark placeholder-nexvel-text-light focus:outline-none focus:ring-2 focus:ring-nexvel-green-light text-sm"
-                required
-                autoFocus
-              />
+              <label className="mb-1.5 block text-body-sm font-medium text-[#A1A1AA]">Nome completo</label>
+              <input type="text" value={nome} onChange={(e) => setNome(e.target.value)}
+                placeholder="Seu nome completo" autoComplete="name" className={INPUT_DARK} required autoFocus />
             </div>
+
             <div>
-              <label className="text-sm font-medium text-nexvel-text-mid mb-1.5 block">CRN</label>
-              <input
-                type="text"
-                value={crn}
-                onChange={(e) => setCrn(e.target.value)}
-                placeholder="CRN-3 12345"
-                className="w-full px-4 py-3 rounded-xl border border-nexvel-mint/50 bg-nexvel-cream text-nexvel-text-dark placeholder-nexvel-text-light focus:outline-none focus:ring-2 focus:ring-nexvel-green-light text-sm"
-                required
-              />
+              <label className="mb-1.5 block text-body-sm font-medium text-[#A1A1AA]">CRN</label>
+              <input type="text" value={crn} onChange={(e) => setCrn(e.target.value)}
+                placeholder="CRN-3 12345" className={INPUT_DARK} required />
             </div>
+
             <div>
-              <label className="text-sm font-medium text-nexvel-text-mid mb-1.5 block">
-                Nome do consultório <span className="text-nexvel-text-light font-normal">(opcional)</span>
+              <label className="mb-1.5 block text-body-sm font-medium text-[#A1A1AA]">
+                Nome do consultório <span className="font-normal text-[#52525b]">(opcional)</span>
               </label>
-              <input
-                type="text"
-                value={nomeConsultorio}
-                onChange={(e) => setNomeConsultorio(e.target.value)}
-                placeholder="Clínica NutriVida ou Dra. Ana Souza"
-                className="w-full px-4 py-3 rounded-xl border border-nexvel-mint/50 bg-nexvel-cream text-nexvel-text-dark placeholder-nexvel-text-light focus:outline-none focus:ring-2 focus:ring-nexvel-green-light text-sm"
-              />
+              <input type="text" value={nomeConsultorio} onChange={(e) => setNomeConsultorio(e.target.value)}
+                placeholder="Clínica NutriVida" className={INPUT_DARK} />
             </div>
+
             <div>
-              <label className="text-sm font-medium text-nexvel-text-mid mb-1.5 block">E-mail profissional</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="sua@email.com"
-                className="w-full px-4 py-3 rounded-xl border border-nexvel-mint/50 bg-nexvel-cream text-nexvel-text-dark placeholder-nexvel-text-light focus:outline-none focus:ring-2 focus:ring-nexvel-green-light text-sm"
-                required
-              />
+              <label className="mb-1.5 block text-body-sm font-medium text-[#A1A1AA]">E-mail profissional</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com" autoComplete="email" className={INPUT_DARK} required />
             </div>
+
             <div>
-              <label className="text-sm font-medium text-nexvel-text-mid mb-1.5 block">Senha</label>
+              <label className="mb-1.5 block text-body-sm font-medium text-[#A1A1AA]">Senha</label>
               <div className="relative">
-                <input
-                  type={showSenha ? "text" : "password"}
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  placeholder="mínimo 6 caracteres"
-                  className="w-full px-4 py-3 rounded-xl border border-nexvel-mint/50 bg-nexvel-cream text-nexvel-text-dark placeholder-nexvel-text-light focus:outline-none focus:ring-2 focus:ring-nexvel-green-light text-sm"
-                  required
-                  minLength={6}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowSenha(!showSenha)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-nexvel-text-light hover:text-nexvel-text-mid"
-                >
-                  {showSenha ? <EyeOff size={16} /> : <Eye size={16} />}
+                <input type={showSenha ? "text" : "password"} value={senha} onChange={(e) => setSenha(e.target.value)}
+                  placeholder="mínimo 6 caracteres" autoComplete="new-password" minLength={6}
+                  className={`${INPUT_DARK} pr-12`} required />
+                <button type="button" onClick={() => setShowSenha((s) => !s)}
+                  aria-label={showSenha ? "Ocultar senha" : "Mostrar senha"}
+                  className="absolute right-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-[#A1A1AA] transition-colors hover:text-white">
+                  {showSenha ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
             {error && (
-              <p className="text-red-500 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+              <p className="rounded-xl border border-nx-danger/25 bg-nx-danger/10 px-3.5 py-2.5 text-body-sm font-medium text-nx-danger">{error}</p>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-nexvel-green-dark hover:bg-nexvel-green-mid text-white py-3 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 mt-2"
-            >
-              {loading ? "Criando conta..." : "Criar conta grátis →"}
-            </button>
+            <PrimaryBtn type="submit" disabled={loading} className="mt-1 w-full">
+              {loading ? "Criando conta…" : "Criar conta grátis →"}
+            </PrimaryBtn>
           </form>
-
-          <p className="text-center text-xs text-nexvel-text-light mt-6">
-            Já tem conta?{" "}
-            <Link to="/login" className="text-nexvel-green-mid hover:text-nexvel-green-dark font-medium">
-              Entrar
-            </Link>
-          </p>
-
-          <p className="text-center text-xs text-nexvel-text-light/60 mt-4 leading-relaxed">
-            Ao criar uma conta você concorda com nossos{" "}
-            <Link to="/termos" className="underline hover:text-nexvel-green-dark">Termos de Uso</Link>
-            {" "}e{" "}
-            <Link to="/privacidade" className="underline hover:text-nexvel-green-dark">Política de Privacidade</Link>.
-          </p>
         </div>
+
+        <p className="mt-6 text-center text-body-sm text-[#A1A1AA]">
+          Já tem conta?{" "}
+          <Link to="/login" className="font-bold text-nx-evo hover:text-nx-evo-2">Entrar</Link>
+        </p>
+
+        <p className="mx-auto mt-4 max-w-[40ch] text-center text-body-sm leading-relaxed text-[#52525b]">
+          Ao criar uma conta você concorda com nossos{" "}
+          <Link to="/termos" className="underline underline-offset-2 hover:text-[#A1A1AA]">Termos de Uso</Link>
+          {" "}e{" "}
+          <Link to="/privacidade" className="underline underline-offset-2 hover:text-[#A1A1AA]">Política de Privacidade</Link>.
+        </p>
       </div>
     </div>
   );
