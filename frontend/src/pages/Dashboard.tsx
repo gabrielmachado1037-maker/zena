@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { useFetch } from "../hooks/useFetch";
 import Avatar from "../components/Avatar";
+import AccountSheet from "../components/AccountSheet";
+import { useAuth } from "../contexts/AuthContext";
 
 /* ───────── shapes reais da API ───────── */
 type Risco = "risco" | "atencao" | "ok";
@@ -72,8 +74,10 @@ const TONE_TEXT: Record<Risco, string> = {
 /* ───────── página ───────── */
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { nutricionista } = useAuth();
   const { data, loading, error, refetch } = useFetch<LigasResp>("/dashboard/ligas");
   const [filtro, setFiltro] = useState<"todos" | "criticos" | "hoje">("todos");
+  const [contaOpen, setContaOpen] = useState(false);
 
   const k = data?.kpis;
   const primeiroNome = (data?.nutri?.nome ?? "").trim().split(/\s+/)[0] || "";
@@ -98,17 +102,27 @@ export default function Dashboard() {
     <div className="min-h-screen bg-nx-bg-lowest text-nx-on-surface font-sans">
       <main className="mx-auto max-w-6xl px-4 py-6 pb-24 md:px-6 lg:pb-8">
         {/* Boas-vindas */}
-        <header className="mb-7">
-          <h1 className="text-headline-lg text-nx-on-surface">
-            {saudacao()}{primeiroNome ? `, ${primeiroNome}` : ""} 👋
-          </h1>
-          <p className="mt-1 text-body-md text-nx-on-surface-variant">
-            {loading ? "Carregando o pulso da clínica…"
-              : k
-                ? <>Hoje, <span className="font-semibold text-nx-on-surface">{k.checkinsHoje}</span> de {k.pacientesAtivos} pacientes já registraram
-                    {data && ` · aderência ${data.aderenciaSemana.atual}% na semana`}.</>
-                : "Resumo da sua carteira de pacientes."}
-          </p>
+        <header className="mb-7 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-headline-lg text-nx-on-surface">
+              {saudacao()}{primeiroNome ? `, ${primeiroNome}` : ""} 👋
+            </h1>
+            <p className="mt-1 text-body-md text-nx-on-surface-variant">
+              {loading ? "Carregando o pulso da clínica…"
+                : k
+                  ? <>Hoje, <span className="font-semibold text-nx-on-surface">{k.checkinsHoje}</span> de {k.pacientesAtivos} pacientes já registraram
+                      {data && ` · aderência ${data.aderenciaSemana.atual}% na semana`}.</>
+                  : "Resumo da sua carteira de pacientes."}
+            </p>
+          </div>
+          {/* Avatar de conta — apenas mobile (desktop já tem no menu lateral) */}
+          <button
+            onClick={() => setContaOpen(true)}
+            aria-label="Abrir menu da conta"
+            className="lg:hidden shrink-0 rounded-full ring-1 ring-nx-border hover:ring-nx-evo/50 transition-all active:scale-95"
+          >
+            <Avatar src={nutricionista?.foto} nome={nutricionista?.nome ?? ""} tamanho={42} className="rounded-full" />
+          </button>
         </header>
 
         {/* 3 indicadores com tendência */}
@@ -220,6 +234,8 @@ export default function Dashboard() {
           </div>
         </section>
       </main>
+
+      <AccountSheet open={contaOpen} onClose={() => setContaOpen(false)} />
     </div>
   );
 }
