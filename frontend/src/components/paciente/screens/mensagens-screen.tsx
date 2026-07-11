@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react"
-import { ChevronLeft, Send, Stethoscope } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { ChevronLeft, RotateCw, Send, Stethoscope } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   getMensagensNutri, enviarMensagemNutri, formatHora, rotuloDia,
@@ -35,19 +35,22 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const fimRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  useEffect(() => {
-    let vivo = true
-    getMensagensNutri()
-      .then((t) => {
-        if (!vivo) return
-        setMsgs(t.mensagens)
-        setNutriNome(t.nutriNome)
-        setNutriAvatar(t.nutriAvatarUrl)
-      })
-      .catch(() => vivo && setErro(true))
-      .finally(() => vivo && setLoading(false))
-    return () => { vivo = false }
+  const carregar = useCallback(async () => {
+    setLoading(true)
+    setErro(false)
+    try {
+      const t = await getMensagensNutri()
+      setMsgs(t.mensagens)
+      setNutriNome(t.nutriNome)
+      setNutriAvatar(t.nutriAvatarUrl)
+    } catch {
+      setErro(true)
+    } finally {
+      setLoading(false)
+    }
   }, [])
+
+  useEffect(() => { carregar() }, [carregar])
 
   useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: loading ? "auto" : "smooth" })
@@ -82,6 +85,7 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
     try {
       const salva = await enviarMensagemNutri(t)
       setMsgs((prev) => prev.map((m) => (m.id === otimista.id ? salva : m)))
+      setErro(false) // enviou → a conversa existe, some com o estado de erro de carga
     } catch {
       setMsgs((prev) => prev.filter((m) => m.id !== otimista.id))
       setTexto(t)
@@ -104,7 +108,9 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
     el.style.height = Math.min(el.scrollHeight, 120) + "px"
   }
 
+  const temNome = nutriNome !== "Sua nutricionista"
   const primeiroNome = nutriNome.split(" ")[0]
+  const placeholder = temNome ? `Mensagem para ${primeiroNome}…` : "Escreva sua mensagem…"
 
   return (
     <div className="flex flex-col h-[calc(100dvh-6rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))]">
@@ -130,7 +136,20 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
         {loading ? (
           <p className="mt-8 text-center text-body-sm text-nx-on-surface-variant">Carregando conversa…</p>
         ) : erro ? (
-          <p className="mt-8 text-center text-body-sm text-nx-danger">Não foi possível carregar as mensagens.</p>
+          <div className="mt-10 flex flex-col items-center px-6 text-center">
+            <p className="text-body-md text-nx-on-surface">Não foi possível carregar o histórico.</p>
+            <p className="mt-1 text-body-sm text-nx-on-surface-variant">
+              A conexão pode ter demorado. Você ainda pode escrever abaixo.
+            </p>
+            <button
+              type="button"
+              onClick={carregar}
+              className="mt-4 inline-flex items-center gap-2 rounded-nx-lg border border-nx-border px-4 py-2 text-body-sm font-medium text-nx-on-surface transition-colors hover:bg-nx-container-high"
+            >
+              <RotateCw className="size-4" />
+              Tentar de novo
+            </button>
+          </div>
         ) : msgs.length === 0 ? (
           <div className="mt-10 flex flex-col items-center px-6 text-center">
             <NutriAvatar url={nutriAvatar} size={64} />
@@ -200,8 +219,8 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
             onChange={autoGrow}
             onKeyDown={onKeyDown}
             rows={1}
-            placeholder={`Mensagem para ${primeiroNome}…`}
-            disabled={loading || erro}
+            placeholder={placeholder}
+            disabled={loading}
             className="max-h-[120px] min-h-[42px] flex-1 resize-none rounded-nx-lg border border-nx-border bg-nx-container px-3.5 py-2.5 text-body-md text-nx-on-surface placeholder:text-nx-on-surface-variant focus:border-nx-evo focus:outline-none disabled:opacity-50"
           />
           <button
