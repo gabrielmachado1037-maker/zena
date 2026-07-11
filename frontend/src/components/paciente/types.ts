@@ -7,7 +7,7 @@ export type Screen =
   | "progresso"
   | "evolucao"
   | "configuracoes"
-  | "consultas"
+  | "mensagens"
   | "ligas"
 
 export type Tab = "home" | "registro" | "desafios" | "ranking" | "perfil"

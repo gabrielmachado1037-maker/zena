@@ -1,6 +1,6 @@
 import {
   Flame, Zap, Medal, Trophy, Camera, Crown, Lock,
-  CalendarDays, Settings, TrendingUp, HelpCircle, LogOut, ChevronRight,
+  MessageCircle, Settings, TrendingUp, HelpCircle, LogOut, ChevronRight,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -50,7 +50,7 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const missoesFeitas = missions.filter((m) => m.done).length
 
   const menu: { icon: LucideIcon; label: string; screen?: Screen; action?: () => void }[] = [
-    { icon: CalendarDays, label: "Consultas", screen: "consultas" },
+    { icon: MessageCircle, label: "Mensagens da nutri", screen: "mensagens" },
     { icon: TrendingUp, label: "Minha evolução", screen: "evolucao" },
     { icon: Settings, label: "Configurações", screen: "configuracoes" },
     { icon: HelpCircle, label: "Ajuda e suporte", action: () => { window.location.href = "mailto:suporte@nexvel.com.br" } },

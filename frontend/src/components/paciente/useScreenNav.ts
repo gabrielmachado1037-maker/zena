@@ -10,7 +10,7 @@ const ROUTES: Record<Screen, string> = {
   progresso: "/paciente/progresso",
   evolucao: "/paciente/evolucao",
   configuracoes: "/paciente/configuracoes",
-  consultas: "/paciente/consultas",
+  mensagens: "/paciente/mensagens",
   ligas: "/paciente/ligas",
 }
 

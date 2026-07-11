@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
 import { uploadFeedFoto, uploadAvatarPaciente } from "../lib/supabase";
+import { enviarNotificacao } from "./notificacoes";
 import bcrypt from "bcryptjs";
 
 const router = Router();
@@ -369,6 +370,76 @@ router.delete("/push/subscribe", async (req: PacienteAuthRequest, res: Response)
     await prisma.pushSubscriptionPaciente.deleteMany({ where: { endpoint, pacienteId: req.pacienteId! } });
   }
   return res.json({ ok: true });
+});
+
+// ─── Mensagens com a nutri ───────────────────────────────────────────────────
+// Mesma conversa (MensagemChat) usada na tela de Mensagens da nutri — aqui pela
+// ótica do paciente: "paciente" = eu, "nutri" = a profissional.
+
+// GET /api/paciente-app/mensagens — thread do paciente + dados da nutri.
+// Marca como lidas as mensagens que a nutri enviou.
+router.get("/mensagens", async (req: PacienteAuthRequest, res: Response) => {
+  const pacienteId = req.pacienteId!;
+  const nutricionistaId = req.nutricionistaId!;
+
+  const [nutri, mensagens] = await Promise.all([
+    prisma.nutricionista.findUnique({
+      where: { id: nutricionistaId },
+      select: { nome: true, foto: true },
+    }),
+    prisma.mensagemChat.findMany({
+      where: { nutricionistaId, pacienteId },
+      orderBy: { criadoEm: "asc" },
+    }),
+  ]);
+
+  // Marca como lidas as mensagens que a nutri mandou (o paciente acabou de abrir).
+  await prisma.mensagemChat.updateMany({
+    where: { nutricionistaId, pacienteId, autor: "nutri", lida: false },
+    data: { lida: true },
+  });
+
+  res.json({
+    nutriNome: nutri?.nome ?? "Sua nutricionista",
+    nutriAvatarUrl: nutri?.foto ?? null,
+    mensagens: mensagens.map((m) => ({
+      id: m.id,
+      autor: m.autor,
+      conteudo: m.conteudo,
+      anexoUrl: m.anexoUrl,
+      criadoEm: m.criadoEm,
+    })),
+  });
+});
+
+// POST /api/paciente-app/mensagens — paciente envia uma mensagem à nutri.
+router.post("/mensagens", async (req: PacienteAuthRequest, res: Response) => {
+  const pacienteId = req.pacienteId!;
+  const nutricionistaId = req.nutricionistaId!;
+  const conteudo = String(req.body?.conteudo ?? "").trim();
+
+  if (!conteudo) return res.status(400).json({ error: "Mensagem vazia" });
+  if (conteudo.length > 2000) return res.status(400).json({ error: "Mensagem muito longa" });
+
+  // lida:false → aparece como não-lida no inbox da nutri (naoLidoCount).
+  const msg = await prisma.mensagemChat.create({
+    data: { nutricionistaId, pacienteId, autor: "paciente", conteudo, lida: false },
+  });
+
+  // Push best-effort pra nutri (ignora silenciosamente se não houver VAPID/subscription).
+  try {
+    const paciente = await prisma.paciente.findUnique({
+      where: { id: pacienteId },
+      select: { nome: true },
+    });
+    const nome = paciente?.nome?.split(" ")[0] ?? "Um paciente";
+    const previa = conteudo.length > 80 ? conteudo.slice(0, 77) + "..." : conteudo;
+    await enviarNotificacao(nutricionistaId, `Nova mensagem de ${nome}`, previa, "/app/mensagens");
+  } catch {
+    /* silencioso */
+  }
+
+  res.json({ id: msg.id, autor: msg.autor, conteudo: msg.conteudo, anexoUrl: msg.anexoUrl, criadoEm: msg.criadoEm });
 });
 
 export default router;
