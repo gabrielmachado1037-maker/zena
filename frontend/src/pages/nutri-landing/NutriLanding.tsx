@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { TrendingUp, Trophy, MessageCircle, Star, ArrowRight, type LucideIcon } from "lucide-react";
+import { TrendingUp, Trophy, MessageCircle, Star, ArrowRight, User, type LucideIcon } from "lucide-react";
 import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
 import Avatar from "../../components/Avatar";
 import { ProLogo, PrimaryBtn } from "./components/shared";
@@ -37,7 +37,16 @@ export default function NutriLanding() {
         style={{ background: "radial-gradient(58% 100% at 68% 0%, rgba(124,255,91,0.13), transparent 70%)" }} />
 
       <div className="relative mx-auto max-w-[1440px] px-6 py-10 lg:px-12 lg:py-14">
-        <header className="mb-14 lg:mb-20"><ProLogo /></header>
+        <header className="mb-14 flex items-center justify-between gap-4 lg:mb-20">
+          <ProLogo />
+          <button
+            type="button"
+            onClick={() => navigate("/login-paciente")}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/12 bg-white/[0.02] px-4 py-2 text-body-sm font-medium text-[#A1A1AA] transition-colors hover:border-white/25 hover:text-white active:scale-[0.98]"
+          >
+            <User className="size-4" strokeWidth={2} /> Sou paciente
+          </button>
+        </header>
 
         <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-16">
           {/* Coluna esquerda — a mensagem */}
