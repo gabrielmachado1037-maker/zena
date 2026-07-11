@@ -4,8 +4,8 @@ import {
   Search, RefreshCw, MessageCircle, Flame, Clock, CheckCircle2,
   Utensils, Droplet, Moon, Dumbbell, Smile, CircleSlash,
 } from "lucide-react";
-import { getRegistrosFeed, type FeedData, type Registro, type SemRegistro, type StatusGeral } from "../lib/registros";
-import { LeagueEmblem } from "../components/ui-nx";
+import { getRegistrosFeed, type FeedData, type Registro, type SemRegistro } from "../lib/registros";
+import { LeagueEmblem, BottomSheetNx } from "../components/ui-nx";
 import { CORES_LIGA } from "../lib/ligas";
 
 // Tela "Registros Diários" — central rápida do nutri: em <3s dá pra ver quem está bem
@@ -23,12 +23,31 @@ const FILTROS: { id: FiltroId; label: string }[] = [
 const HUMOR_EMOJI: Record<string, string> = { otimo: "😄", bom: "🙂", neutro: "😐", dificil: "😕", pessimo: "😣" };
 const HUMOR_LABEL: Record<string, string> = { otimo: "Excelente", bom: "Bom", neutro: "Neutro", dificil: "Ruim", pessimo: "Ruim" };
 const SONO_FAIXA: Record<string, string> = { menos5: "< 5h", "5a7": "5–7h", "7a9": "7–9h", mais9: "9h+" };
+const HUMOR_SCORE: Record<string, number> = { otimo: 100, bom: 80, neutro: 60, dificil: 35, pessimo: 20 };
 
-const STATUS: Record<StatusGeral, { label: string; dot: string; text: string; ring: string; bg: string }> = {
-  excelente: { label: "Excelente", dot: "bg-nx-evo", text: "text-nx-evo", ring: "border-nx-evo/30", bg: "bg-nx-evo/10" },
-  atencao: { label: "Atenção", dot: "bg-nx-warn", text: "text-nx-warn", ring: "border-nx-warn/30", bg: "bg-nx-warn/10" },
-  critico: { label: "Crítico", dot: "bg-nx-danger", text: "text-nx-danger", ring: "border-nx-danger/30", bg: "bg-nx-danger/10" },
-};
+/* ───────── Score do dia (0–100) ─────────
+   Apenas apresentação: combina os dados que o registro JÁ possui. Sem novo dado,
+   sem tocar em serviço/API/banco. Cada dimensão vira 0–100 e o final é a média das 6. */
+function subScores(r: Registro) {
+  const alimentacao = r.alimentacaoPct ?? 0;
+  const metaAgua = r.aguaMetaMl && r.aguaMetaMl > 0 ? r.aguaMetaMl : 2000;
+  const agua = r.aguaMl == null ? 0 : Math.min(100, Math.round((r.aguaMl / metaAgua) * 100));
+  let sono = 0;
+  if (r.sonoHoras != null) sono = r.sonoHoras >= 7 ? 100 : r.sonoHoras >= 6 ? 78 : r.sonoHoras >= 5 ? 55 : 30;
+  else if (r.sonoFaixa) sono = ({ menos5: 30, "5a7": 65, "7a9": 100, mais9: 88 } as Record<string, number>)[r.sonoFaixa] ?? 0;
+  const treino = r.treino === "feito" ? 100 : 0;
+  const humor = r.humor ? HUMOR_SCORE[r.humor] ?? 0 : 0;
+  const checkin = r.habitosTotal > 0 ? Math.round((r.habitosOk / r.habitosTotal) * 100) : 0;
+  const final = Math.round((alimentacao + agua + sono + treino + humor + checkin) / 6);
+  return { alimentacao, agua, sono, treino, humor, checkin, final };
+}
+
+// ≥85 verde · 60–84 amarelo · <60 vermelho
+function scoreCor(s: number) {
+  if (s >= 85) return { dot: "bg-nx-evo", text: "text-nx-evo", ring: "border-nx-evo/30", bg: "bg-nx-evo/10", hex: "#7CFF5B" };
+  if (s >= 60) return { dot: "bg-nx-warn", text: "text-nx-warn", ring: "border-nx-warn/30", bg: "bg-nx-warn/10", hex: "#FFD34D" };
+  return { dot: "bg-nx-danger", text: "text-nx-danger", ring: "border-nx-danger/30", bg: "bg-nx-danger/10", hex: "#FF5D5D" };
+}
 
 function iniciais(nome: string) {
   return nome.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
@@ -49,8 +68,9 @@ function Metric({ icon: Icon, value, cor }: { icon: typeof Utensils; value: stri
 }
 
 /* ───────── card de registro ───────── */
-function RegistroCard({ r, onChat }: { r: Registro; onChat: (id: string) => void }) {
-  const st = STATUS[r.status];
+function RegistroCard({ r, onChat, onScore }: { r: Registro; onChat: (id: string) => void; onScore: (r: Registro) => void }) {
+  const score = subScores(r).final;
+  const sc = scoreCor(score);
   const ligaCor = (r.ligaNome && CORES_LIGA[r.ligaNome]) || "#7CFF5B";
   const alimCor = r.alimentacaoPct == null ? "#5B616B" : r.alimentacaoPct >= 75 ? "#7CFF5B" : r.alimentacaoPct >= 50 ? "#FFD34D" : "#FF5D5D";
   const aguaCor = r.aguaMl != null && r.aguaMetaMl != null && r.aguaMl >= r.aguaMetaMl ? "#7CFF5B" : "#49A8FF";
@@ -85,10 +105,14 @@ function RegistroCard({ r, onChat }: { r: Registro; onChat: (id: string) => void
           </div>
         </div>
 
-        <div className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full border ${st.ring} ${st.bg}`}>
-          <span className={`w-2 h-2 rounded-full ${st.dot}`} />
-          <span className={`text-label-sm font-bold ${st.text}`}>{st.label}</span>
-        </div>
+        <button
+          onClick={() => onScore(r)}
+          aria-label={`Score ${score} de 100 — ver detalhes`}
+          className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full border transition-all hover:brightness-110 active:scale-95 ${sc.ring} ${sc.bg}`}
+        >
+          <span className={`w-2 h-2 rounded-full ${sc.dot}`} />
+          <span className={`text-label-sm font-bold ${sc.text}`}>Score {score}</span>
+        </button>
       </div>
 
       {/* Resumo: indicadores */}
@@ -153,8 +177,67 @@ function SemRegistroCard({ p, onChat }: { p: SemRegistro; onChat: (id: string) =
   );
 }
 
+/* ───────── bottom sheet do Score ───────── */
+function SheetRow({ icon: Icon, label, value, pct }: { icon: typeof Utensils; label: string; value: string; pct: number | null }) {
+  const cor = pct == null ? "#E7E9EC" : scoreCor(pct).hex;
+  return (
+    <div className="flex items-center gap-3 px-4 py-3">
+      <Icon size={17} className="shrink-0 text-nx-on-surface-variant" />
+      <span className="text-body-sm text-nx-on-surface w-24 shrink-0">{label}</span>
+      {pct != null && (
+        <div className="flex-1 h-1.5 rounded-full bg-nx-container-high overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: cor }} />
+        </div>
+      )}
+      <span className="ml-auto text-body-sm font-bold shrink-0" style={{ color: cor }}>{value}</span>
+    </div>
+  );
+}
+
+function ScoreSheet({ reg, onClose }: { reg: Registro | null; onClose: () => void }) {
+  const b = reg ? subScores(reg) : null;
+  const sc = b ? scoreCor(b.final) : null;
+  return (
+    <BottomSheetNx open={!!reg} onClose={onClose} title="Score do dia" ariaLabel="Detalhes do score do dia">
+      {reg && b && sc && (
+        <div className="pb-1">
+          {/* Cabeçalho: score grande + paciente */}
+          <div className="flex items-center gap-3 pb-4">
+            <div className={`grid place-items-center w-14 h-14 rounded-2xl border ${sc.ring} ${sc.bg}`}>
+              <span className="text-headline-md font-extrabold leading-none" style={{ color: sc.hex }}>{b.final}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-body-md text-nx-on-surface truncate">{reg.paciente}</p>
+              <p className="text-label-sm text-nx-on-surface-variant">
+                {reg.ligaNome ?? reg.ligaLabel}{reg.ligaNivel ? ` ${reg.ligaNivel}` : ""} · check-in {reg.horario}
+              </p>
+            </div>
+          </div>
+
+          {/* Dimensões */}
+          <div className="divide-y divide-nx-border rounded-xl border border-nx-border overflow-hidden">
+            <SheetRow icon={Utensils} label="Alimentação" value={`${b.alimentacao}%`} pct={b.alimentacao} />
+            <SheetRow icon={Droplet} label="Água" value={`${b.agua}%`} pct={b.agua} />
+            <SheetRow icon={Moon} label="Sono" value={`${b.sono}%`} pct={b.sono} />
+            <SheetRow icon={Dumbbell} label="Treino" value={reg.treino === "feito" ? "Feito" : "Não Feito"} pct={null} />
+            <SheetRow icon={Smile} label="Humor" value={reg.humor ? (HUMOR_LABEL[reg.humor] ?? "—") : "—"} pct={null} />
+            <SheetRow icon={CheckCircle2} label="Check-in" value={reg.habitosOk >= reg.habitosTotal ? "Completo" : "Incompleto"} pct={null} />
+          </div>
+
+          {/* Score Final */}
+          <div className={`mt-4 flex items-center justify-between rounded-xl border px-4 py-3.5 ${sc.ring} ${sc.bg}`}>
+            <span className="text-body-md font-bold text-nx-on-surface">Score Final</span>
+            <span className="text-headline-md font-extrabold leading-none" style={{ color: sc.hex }}>{b.final}<span className="text-body-md text-nx-on-surface-variant font-semibold">/100</span></span>
+          </div>
+        </div>
+      )}
+    </BottomSheetNx>
+  );
+}
+
 export default function Feed() {
   const navigate = useNavigate();
+  const [sheetReg, setSheetReg] = useState<Registro | null>(null);
   const [data, setData] = useState<FeedData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -205,7 +288,7 @@ export default function Feed() {
     return list.filter((r) => {
       if (filtro === "hoje" && !r.hoje) return false;
       if (filtro === "ontem" && !r.ontem) return false;
-      if (filtro === "atencao" && r.status === "excelente") return false;
+      if (filtro === "atencao" && subScores(r).final >= 85) return false;
       if (q && ![r.paciente, r.ligaNome ?? "", r.tipoTexto].some((s) => s.toLowerCase().includes(q))) return false;
       return true;
     });
@@ -224,7 +307,7 @@ export default function Feed() {
       hoje: rs.filter((r) => r.hoje).length,
       ontem: rs.filter((r) => r.ontem).length,
       sem: data?.semRegistro.length ?? 0,
-      atencao: rs.filter((r) => r.status !== "excelente").length,
+      atencao: rs.filter((r) => subScores(r).final < 85).length,
     } as Record<FiltroId, number>;
   }, [data]);
 
@@ -320,10 +403,12 @@ export default function Feed() {
           <div className="space-y-3">
             {mostrarSem
               ? semRegistro.map((p) => <SemRegistroCard key={p.pacienteId} p={p} onChat={onChat} />)
-              : registros.map((r) => <RegistroCard key={r.id} r={r} onChat={onChat} />)}
+              : registros.map((r) => <RegistroCard key={r.id} r={r} onChat={onChat} onScore={setSheetReg} />)}
           </div>
         )}
       </div>
+
+      <ScoreSheet reg={sheetReg} onClose={() => setSheetReg(null)} />
     </div>
   );
 }
