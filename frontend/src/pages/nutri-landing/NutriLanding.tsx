@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { TrendingUp, Trophy, MessageCircle, Star, ArrowRight, type LucideIcon } from "lucide-react";
+import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
 import Avatar from "../../components/Avatar";
 import { ProLogo, PrimaryBtn } from "./components/shared";
 import { DashboardPreview } from "./DashboardPreview";
@@ -14,6 +16,20 @@ const RESULTADOS: { icon: LucideIcon; label: string }[] = [
 /** TELA 1 — Landing / entrada da área do nutricionista (NEXVEL NUTRITION PRO). */
 export default function NutriLanding() {
   const navigate = useNavigate();
+  const { token: pacienteToken, loading: authLoading } = usePacienteAuth();
+
+  // Porta de entrada (/) — quem já está logado não fica na landing: vai direto pra sua área.
+  const nutriToken = typeof localStorage !== "undefined" ? localStorage.getItem("zena_token") : null;
+  const redireciona = !authLoading && (!!pacienteToken || !!nutriToken);
+  useEffect(() => {
+    if (authLoading) return;
+    if (pacienteToken) navigate("/paciente/feed", { replace: true });
+    else if (nutriToken) navigate("/app/dashboard", { replace: true });
+  }, [authLoading, pacienteToken, nutriToken, navigate]);
+
+  // Evita flash da landing enquanto resolve a sessão / redireciona logado.
+  if (authLoading || redireciona) return <div className="min-h-[100dvh] w-full bg-[#0A0A0A]" />;
+
   return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#0A0A0A] text-white">
       {/* glow verde no topo */}
