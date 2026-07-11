@@ -1,14 +1,14 @@
-import { useNavigate, Link } from "react-router-dom";
-import { BarChart3, Trophy, Users, ShieldCheck, Star, ArrowRight, type LucideIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { TrendingUp, Trophy, MessageCircle, Star, ArrowRight, type LucideIcon } from "lucide-react";
 import Avatar from "../../components/Avatar";
 import { ProLogo, PrimaryBtn } from "./components/shared";
 import { DashboardPreview } from "./DashboardPreview";
 
-const BENEFICIOS = [
-  { icon: BarChart3, titulo: "Acompanhe tudo em tempo real", desc: "Veja aderência, hábitos, evolução e insights importantes de cada paciente." },
-  { icon: Trophy, titulo: "Gamificação que gera resultados", desc: "Ligas, desafios e recompensas que impulsionam consistência e motivação." },
-  { icon: Users, titulo: "Comunicação que aproxima", desc: "Envie mensagens, oriente e mantenha seus pacientes sempre engajados." },
-  { icon: ShieldCheck, titulo: "Segurança e privacidade", desc: "Dados protegidos com tecnologia avançada e total privacidade." },
+/** Resultados (foco no que o nutri alcança — não é lista de funcionalidades). */
+const RESULTADOS: { icon: LucideIcon; label: string }[] = [
+  { icon: TrendingUp, label: "Mais aderência ao plano" },
+  { icon: Trophy, label: "Resultados que aparecem" },
+  { icon: MessageCircle, label: "Pacientes mais engajados" },
 ];
 
 /** TELA 1 — Landing / entrada da área do nutricionista (NEXVEL NUTRITION PRO). */
@@ -17,24 +17,42 @@ export default function NutriLanding() {
   return (
     <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#0A0A0A] text-white">
       {/* glow verde no topo */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px]"
-        style={{ background: "radial-gradient(60% 100% at 72% 0%, rgba(124,255,91,0.12), transparent 70%)" }} />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[460px]"
+        style={{ background: "radial-gradient(58% 100% at 68% 0%, rgba(124,255,91,0.13), transparent 70%)" }} />
 
-      <div className="relative mx-auto max-w-[1440px] px-6 py-10 lg:px-12">
-        <header className="mb-10"><ProLogo /></header>
+      <div className="relative mx-auto max-w-[1440px] px-6 py-10 lg:px-12 lg:py-14">
+        <header className="mb-14 lg:mb-20"><ProLogo /></header>
 
-        <div className="grid items-start gap-12 lg:grid-cols-2 lg:gap-16">
-          {/* Coluna esquerda */}
+        <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-16">
+          {/* Coluna esquerda — a mensagem */}
           <div className="max-w-xl">
-            <h1 className="text-[40px] font-extrabold leading-[1.08] tracking-tight text-white text-balance lg:text-[46px]">
-              A evolução dos seus pacientes, em um <span className="text-nx-evo">novo nível.</span>
+            <h1 className="text-[36px] font-extrabold leading-[1.06] tracking-tight text-white text-balance sm:text-[44px] lg:text-[52px]">
+              Faça seus pacientes seguirem o plano com{" "}
+              <span className="text-nx-evo">mais consistência.</span>
             </h1>
-            <p className="mt-5 max-w-lg text-body-lg leading-relaxed text-[#A1A1AA]">
-              A plataforma completa para nutricionistas que querem acompanhar, gamificar e gerar resultados reais na vida dos seus pacientes.
+
+            <p className="mt-6 text-body-lg font-semibold text-white sm:text-[19px]">
+              Teste gratuito por <span className="text-nx-evo">14 dias.</span>
+            </p>
+            <p className="mt-1.5 text-body-md text-[#A1A1AA]">
+              Sem cartão de crédito • Cancele quando quiser.
             </p>
 
-            <div className="mt-9 space-y-6">
-              {BENEFICIOS.map((b) => <Feature key={b.titulo} {...b} />)}
+            {/* Ações principais */}
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <PrimaryBtn
+                onClick={() => navigate("/cadastro")}
+                className="h-14 w-full px-8 text-body-lg sm:w-auto"
+              >
+                Começar teste gratuito <ArrowRight className="size-5" />
+              </PrimaryBtn>
+              <button
+                type="button"
+                onClick={() => navigate("/login")}
+                className="inline-flex h-14 w-full items-center justify-center rounded-xl border border-white/12 bg-white/[0.02] px-8 text-body-lg font-semibold text-white transition-colors hover:border-white/25 hover:bg-white/[0.05] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 sm:w-auto"
+              >
+                Entrar
+              </button>
             </div>
 
             <SocialProof />
@@ -46,31 +64,22 @@ export default function NutriLanding() {
           </div>
         </div>
 
-        {/* CTA central */}
-        <div className="mt-14 flex flex-col items-center gap-4">
-          <PrimaryBtn onClick={() => navigate("/login")} className="h-14 px-10 text-body-lg">
-            Entrar na plataforma <ArrowRight className="size-5" />
-          </PrimaryBtn>
-          <p className="text-body-md text-[#A1A1AA]">
-            Já tem uma conta?{" "}
-            <Link to="/login" className="font-bold text-nx-evo hover:text-nx-evo-2">Entrar</Link>
-          </p>
+        {/* Resultados — faixa enxuta, ícones minimalistas */}
+        <div className="mt-16 grid gap-4 sm:grid-cols-3 lg:mt-20">
+          {RESULTADOS.map((r) => <Resultado key={r.label} {...r} />)}
         </div>
       </div>
     </div>
   );
 }
 
-function Feature({ icon: Icon, titulo, desc }: { icon: LucideIcon; titulo: string; desc: string }) {
+function Resultado({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
   return (
-    <div className="flex items-start gap-4">
+    <div className="flex items-center gap-3.5 rounded-2xl border border-white/[0.06] bg-[#111311] px-5 py-4 transition-colors hover:border-nx-evo/25">
       <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-nx-evo/10">
         <Icon className="size-5 text-nx-evo" strokeWidth={2} />
       </span>
-      <div>
-        <h3 className="text-body-lg font-bold text-white">{titulo}</h3>
-        <p className="mt-1 max-w-md text-body-md leading-snug text-[#A1A1AA]">{desc}</p>
-      </div>
+      <p className="text-body-lg font-semibold text-white">{label}</p>
     </div>
   );
 }
@@ -78,24 +87,24 @@ function Feature({ icon: Icon, titulo, desc }: { icon: LucideIcon; titulo: strin
 function SocialProof() {
   const nomes = ["Marcos", "Julia", "Rafael", "Camila"];
   return (
-    <div className="mt-10 rounded-2xl border border-white/[0.06] bg-[#111311] p-5">
-      <p className="text-body-md text-[#A1A1AA]">
-        Mais de <span className="font-bold text-white">2.500 nutricionistas</span> já confiam na Nexvel
-      </p>
-      <div className="mt-4 flex items-center gap-4">
-        <div className="flex -space-x-2.5">
-          {nomes.map((n) => (
-            <span key={n} className="rounded-full ring-2 ring-[#111311]"><Avatar nome={n} tamanho={34} /></span>
-          ))}
-        </div>
-        <div>
+    <div className="mt-12 flex flex-wrap items-center gap-x-5 gap-y-3">
+      <div className="flex -space-x-2.5">
+        {nomes.map((n) => (
+          <span key={n} className="rounded-full ring-2 ring-[#0A0A0A]"><Avatar nome={n} tamanho={34} /></span>
+        ))}
+      </div>
+      <div>
+        <div className="flex items-center gap-1.5">
           <div className="flex gap-0.5">
             {Array.from({ length: 5 }).map((_, i) => (
               <Star key={i} className="size-4 text-nx-gold" fill="#F8C84B" strokeWidth={0} />
             ))}
           </div>
-          <p className="mt-0.5 text-body-sm text-[#A1A1AA]"><span className="font-semibold text-white">4.9/5</span> na avaliação dos nutricionistas</p>
+          <span className="text-body-sm font-semibold text-white">4.9/5</span>
         </div>
+        <p className="mt-0.5 text-body-sm text-[#A1A1AA]">
+          Mais de <span className="font-semibold text-white">2.500 nutricionistas</span> já confiam na Nexvel
+        </p>
       </div>
     </div>
   );
