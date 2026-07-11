@@ -114,7 +114,7 @@ export default function PacienteLayout() {
 
   return (
     <PacienteDataProvider>
-      <div className="nexvel-dash min-h-screen pb-24" style={{ background: BG }}>
+      <div className="nexvel-dash min-h-[100dvh] pt-[env(safe-area-inset-top)] pb-[calc(6rem_+_env(safe-area-inset-bottom))]" style={{ background: BG }}>
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 10 }}

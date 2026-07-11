@@ -46,7 +46,7 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen" style={{ background: "#09090B" }}>
       <DashboardSidebar />
-      <main className="flex-1 min-w-0 overflow-auto pb-16 lg:pb-0" style={{ background: "#09090B" }}>
+      <main className="flex-1 min-w-0 overflow-auto pt-[env(safe-area-inset-top)] pb-[calc(4rem_+_env(safe-area-inset-bottom))] lg:pt-0 lg:pb-0" style={{ background: "#09090B" }}>
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 8 }}
@@ -58,7 +58,7 @@ export default function Layout() {
       </main>
       {/* Banner de instalação — aparece acima da nav mobile */}
       {isInstallable && !installDismissed && (
-        <div className="fixed bottom-16 left-0 right-0 z-30 px-3 pb-2 md:hidden">
+        <div className="fixed bottom-[calc(4rem_+_env(safe-area-inset-bottom))] left-0 right-0 z-30 px-3 pb-2 md:hidden">
           {iosHint ? (
             <div className="bg-nx-container border border-nx-border rounded-nx-lg p-4 shadow-nx-card">
               <p className="text-nx-on-surface font-semibold text-sm mb-1">Instalar no iPhone</p>
