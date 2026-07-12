@@ -37,6 +37,7 @@ model Nutricionista {
   // LGPD: registro de consentimento no cadastro.
   aceiteTermosEm       DateTime?
   aceiteTermosVersao   String?
+  emailVerificado      Boolean             @default(false)
   pacientes            Paciente[]
   horarios             HorarioDisponivel[]
   lembretes            Lembrete[]
@@ -54,6 +55,15 @@ model Nutricionista {
 }
 
 model TokenRedefinicao {
+  id              String   @id @default(cuid())
+  nutricionistaId String
+  token           String   @unique
+  expiresAt       DateTime
+  usado           Boolean  @default(false)
+  criadoEm        DateTime @default(now())
+}
+
+model TokenVerificacaoEmail {
   id              String   @id @default(cuid())
   nutricionistaId String
   token           String   @unique

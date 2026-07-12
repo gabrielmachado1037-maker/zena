@@ -5,7 +5,7 @@ import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import prisma from "../lib/prisma";
-import { emailBoasVindas, emailRecuperacaoSenha } from "../lib/email";
+import { emailBoasVindas, emailRecuperacaoSenha, emailVerificacao } from "../lib/email";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { uploadFoto } from "../lib/supabase";
 import { validateBody } from "../middleware/validate";
@@ -27,6 +27,10 @@ const loginSchema = z.object({
   senha: z.string({ error: "Informe a senha." }).min(1, "Informe a senha."),
 });
 
+const verificarEmailSchema = z.object({
+  token: z.string({ error: "Token inválido." }).min(1, "Token inválido."),
+});
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -45,6 +49,14 @@ const emailLimiter = rateLimit({
 
 // Versão vigente dos Termos/Privacidade aceitos no cadastro (LGPD).
 const TERMOS_VERSAO = "2026-07-12";
+
+// Gera um token de verificação (24h) e dispara o e-mail (best-effort).
+async function criarEnviarVerificacao(nutricionistaId: string, email: string, nome: string) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24); // 24 horas
+  await prisma.tokenVerificacaoEmail.create({ data: { nutricionistaId, token, expiresAt } });
+  emailVerificacao(email, token, nome).catch(console.error);
+}
 
 router.post("/register", validateBody(registerSchema), async (req: Request, res: Response) => {
   const { nome, email, senha, crn, nomeConsultorio, aceiteTermos } = req.body;
@@ -73,9 +85,10 @@ router.post("/register", validateBody(registerSchema), async (req: Request, res:
   });
 
   emailBoasVindas(nome, email).catch(console.error);
+  await criarEnviarVerificacao(nutri.id, email, nome);
 
   const token = jwt.sign({ id: nutri.id }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: null, subscriptionStatus: "trial", modulosAtivos: [] } });
+  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: null, subscriptionStatus: "trial", modulosAtivos: [], emailVerificado: false } });
 });
 
 router.post("/login", loginLimiter, validateBody(loginSchema), async (req: Request, res: Response) => {
@@ -88,7 +101,30 @@ router.post("/login", loginLimiter, validateBody(loginSchema), async (req: Reque
   if (!ok) return res.status(401).json({ error: "Credenciais inválidas" });
 
   const token = jwt.sign({ id: nutri.id }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: nutri.foto ?? null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: nutri.planoSlug ?? null, subscriptionStatus: nutri.subscriptionStatus ?? "trial", modulosAtivos: nutri.modulosAtivos ?? [] } });
+  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: nutri.foto ?? null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: nutri.planoSlug ?? null, subscriptionStatus: nutri.subscriptionStatus ?? "trial", modulosAtivos: nutri.modulosAtivos ?? [], emailVerificado: nutri.emailVerificado } });
+});
+
+// POST /verificar-email — consome o token e marca o e-mail como verificado.
+router.post("/verificar-email", validateBody(verificarEmailSchema), async (req: Request, res: Response) => {
+  const { token } = req.body;
+  const registro = await prisma.tokenVerificacaoEmail.findUnique({ where: { token } });
+  if (!registro || registro.usado || registro.expiresAt < new Date()) {
+    return res.status(400).json({ error: "Link inválido ou expirado" });
+  }
+  await prisma.$transaction([
+    prisma.nutricionista.update({ where: { id: registro.nutricionistaId }, data: { emailVerificado: true } }),
+    prisma.tokenVerificacaoEmail.update({ where: { token }, data: { usado: true } }),
+  ]);
+  res.json({ ok: true });
+});
+
+// POST /reenviar-verificacao — reenvia o e-mail de verificação (autenticado, rate-limit).
+router.post("/reenviar-verificacao", emailLimiter, authMiddleware, async (req: AuthRequest, res: Response) => {
+  const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId as string } });
+  if (!nutri) return res.status(404).json({ error: "Não encontrado" });
+  if (nutri.emailVerificado) return res.json({ ok: true, jaVerificado: true });
+  await criarEnviarVerificacao(nutri.id, nutri.email, nutri.nome);
+  res.json({ ok: true });
 });
 
 router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) => {
@@ -131,7 +167,7 @@ router.post("/redefinir-senha", async (req: Request, res: Response) => {
 router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
   const nutri = await prisma.nutricionista.findUnique({
     where: { id: req.nutricionistaId as string },
-    select: { id: true, nome: true, email: true, crn: true, nomeConsultorio: true, logoConsultorio: true, enderecoConsultorio: true },
+    select: { id: true, nome: true, email: true, crn: true, nomeConsultorio: true, logoConsultorio: true, enderecoConsultorio: true, emailVerificado: true },
   });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
   res.json(nutri);
