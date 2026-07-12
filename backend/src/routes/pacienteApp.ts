@@ -3,10 +3,41 @@ import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
 import { uploadFeedFoto, uploadAvatarPaciente, deleteFotoPorUrl } from "../lib/supabase";
 import { enviarNotificacao } from "./notificacoes";
+import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { validateBody } from "../middleware/validate";
 
 const router = Router();
 router.use(authPacienteMiddleware);
+
+const feedSchema = z.object({
+  mensagem: z.string({ error: "Mensagem é obrigatória." }).trim().min(1, "Mensagem é obrigatória."),
+  categoria: z.string().optional(),
+  privacidade: z.string().optional(),
+  fotoBase64: z.string().optional(),
+});
+const fotoPerfilSchema = z.object({
+  fotoBase64: z.string({ error: "Imagem inválida" }).min(1, "Imagem inválida"),
+});
+const perfilSchema = z.object({
+  nome: z.string().optional(),
+  senhaAtual: z.string().optional(),
+  novaSenha: z.string().optional(),
+  postPublicoPadrao: z.boolean().optional(),
+});
+const comentarioSchema = z.object({
+  texto: z.string({ error: "Texto obrigatório" }).trim().min(1, "Texto obrigatório").max(500, "Máximo 500 caracteres"),
+});
+const pushSubscribeSchema = z.object({
+  endpoint: z.string({ error: "Subscription inválida" }).min(1, "Subscription inválida"),
+  keys: z.object({
+    p256dh: z.string({ error: "Subscription inválida" }).min(1, "Subscription inválida"),
+    auth: z.string({ error: "Subscription inválida" }).min(1, "Subscription inválida"),
+  }, { error: "Subscription inválida" }),
+});
+const mensagemSchema = z.object({
+  conteudo: z.string({ error: "Mensagem vazia" }).trim().min(1, "Mensagem vazia").max(2000, "Mensagem muito longa"),
+});
 
 // ─── Feed ──────────────────────────────────────────────────────────────────────
 
@@ -38,7 +69,7 @@ router.get("/feed", async (req: PacienteAuthRequest, res: Response) => {
 });
 
 // POST /api/paciente-app/feed
-router.post("/feed", async (req: PacienteAuthRequest, res: Response) => {
+router.post("/feed", validateBody(feedSchema), async (req: PacienteAuthRequest, res: Response) => {
   const { mensagem, categoria = "MOMENTO", privacidade, fotoBase64 } = req.body as {
     mensagem: string;
     categoria?: string;
@@ -218,7 +249,7 @@ router.get("/me", async (req: PacienteAuthRequest, res: Response) => {
 });
 
 // PUT /api/paciente-app/foto-perfil
-router.put("/foto-perfil", async (req: PacienteAuthRequest, res: Response) => {
+router.put("/foto-perfil", validateBody(fotoPerfilSchema), async (req: PacienteAuthRequest, res: Response) => {
   const { fotoBase64 } = req.body as { fotoBase64: string };
   if (!fotoBase64?.startsWith("data:image/")) {
     return res.status(400).json({ error: "Imagem inválida" });
@@ -261,7 +292,7 @@ router.get("/frase-motivacional", async (_req: PacienteAuthRequest, res: Respons
 });
 
 // PUT /api/paciente-app/perfil
-router.put("/perfil", async (req: PacienteAuthRequest, res: Response) => {
+router.put("/perfil", validateBody(perfilSchema), async (req: PacienteAuthRequest, res: Response) => {
   const { nome, senhaAtual, novaSenha, postPublicoPadrao } = req.body as {
     nome?: string;
     senhaAtual?: string;
@@ -348,7 +379,7 @@ router.get("/feed/:id/comentarios", async (req: PacienteAuthRequest, res: Respon
 });
 
 // POST /api/paciente-app/feed/:id/comentarios
-router.post("/feed/:id/comentarios", async (req: PacienteAuthRequest, res: Response) => {
+router.post("/feed/:id/comentarios", validateBody(comentarioSchema), async (req: PacienteAuthRequest, res: Response) => {
   const { texto } = req.body as { texto: string };
   if (!texto?.trim()) return res.status(400).json({ error: "Texto obrigatório" });
   if (texto.length > 500) return res.status(400).json({ error: "Máximo 500 caracteres" });
@@ -382,7 +413,7 @@ router.post("/feed/:id/comentarios", async (req: PacienteAuthRequest, res: Respo
 // ─── Push notifications (paciente) ────────────────────────────────────────────
 
 // POST /api/paciente-app/push/subscribe
-router.post("/push/subscribe", async (req: PacienteAuthRequest, res: Response) => {
+router.post("/push/subscribe", validateBody(pushSubscribeSchema), async (req: PacienteAuthRequest, res: Response) => {
   const { endpoint, keys } = req.body as { endpoint: string; keys: { p256dh: string; auth: string } };
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     return res.status(400).json({ error: "Subscription inválida" });
@@ -445,7 +476,7 @@ router.get("/mensagens", async (req: PacienteAuthRequest, res: Response) => {
 });
 
 // POST /api/paciente-app/mensagens — paciente envia uma mensagem à nutri.
-router.post("/mensagens", async (req: PacienteAuthRequest, res: Response) => {
+router.post("/mensagens", validateBody(mensagemSchema), async (req: PacienteAuthRequest, res: Response) => {
   const pacienteId = req.pacienteId!;
   const nutricionistaId = req.nutricionistaId!;
   const conteudo = String(req.body?.conteudo ?? "").trim();
