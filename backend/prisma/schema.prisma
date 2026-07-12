@@ -34,6 +34,9 @@ model Nutricionista {
   logoConsultorio      String?
   enderecoConsultorio  String?
   codigoVinculo        String?             @unique
+  // LGPD: registro de consentimento no cadastro.
+  aceiteTermosEm       DateTime?
+  aceiteTermosVersao   String?
   pacientes            Paciente[]
   horarios             HorarioDisponivel[]
   lembretes            Lembrete[]
@@ -120,6 +123,8 @@ model Paciente {
   conquistas            Conquista[]
   mensagensNutri        MensagemNutri[]
   mensagensChat         MensagemChat[]
+  // LGPD: marca quando os dados pessoais foram anonimizados a pedido do titular.
+  anonimizadoEm         DateTime?
   createdAt                DateTime           @default(now())
 
   @@index([nutricionistaId])

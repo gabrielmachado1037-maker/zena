@@ -27,10 +27,19 @@ const emailLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Versão vigente dos Termos/Privacidade aceitos no cadastro (LGPD).
+const TERMOS_VERSAO = "2026-07-12";
+
 router.post("/register", async (req: Request, res: Response) => {
-  const { nome, email, senha, crn, nomeConsultorio } = req.body;
+  const { nome, email, senha, crn, nomeConsultorio, aceiteTermos } = req.body;
   if (!nome || !email || !senha || !crn) {
     return res.status(400).json({ error: "Campos obrigatórios faltando" });
+  }
+  if (!aceiteTermos) {
+    return res.status(400).json({ error: "É necessário aceitar os Termos de Uso e a Política de Privacidade." });
+  }
+  if (String(senha).length < 6) {
+    return res.status(400).json({ error: "A senha deve ter ao menos 6 caracteres." });
   }
 
   const existe = await prisma.nutricionista.findUnique({ where: { email } });
@@ -41,7 +50,10 @@ router.post("/register", async (req: Request, res: Response) => {
   trialEnd.setDate(trialEnd.getDate() + 14);
 
   const nutri = await prisma.nutricionista.create({
-    data: { nome, email, senha: hash, crn, trialEnd, nomeConsultorio: nomeConsultorio || null },
+    data: {
+      nome, email, senha: hash, crn, trialEnd, nomeConsultorio: nomeConsultorio || null,
+      aceiteTermosEm: new Date(), aceiteTermosVersao: TERMOS_VERSAO,
+    },
   });
 
   emailBoasVindas(nome, email).catch(console.error);

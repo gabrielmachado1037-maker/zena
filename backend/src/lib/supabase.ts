@@ -57,3 +57,22 @@ export async function deleteFoto(path: string) {
     body: JSON.stringify({ prefixes: [path] }),
   });
 }
+
+/**
+ * Remove um objeto do storage a partir da URL pública salva no banco
+ * (`.../object/public/<bucket>/<path>`). Best-effort — usado na anonimização (LGPD).
+ */
+export async function deleteFotoPorUrl(publicUrl: string): Promise<void> {
+  const m = publicUrl.match(/\/object\/public\/([^/]+)\/(.+)$/);
+  if (!m) return;
+  const [, bucket, path] = m;
+  const url = `${process.env.SUPABASE_URL}/storage/v1/object/${bucket}`;
+  await fetch(url, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ prefixes: [path] }),
+  });
+}
