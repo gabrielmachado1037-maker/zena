@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff, ArrowLeft, UserPlus } from "lucide-react";
 import api from "../lib/api";
+import { useAuth } from "../contexts/AuthContext";
 import { ProLogo, PrimaryBtn, INPUT_DARK } from "./nutri-landing/components/shared";
 import { Constellation } from "./nutri-landing/components/Constellation";
 
@@ -17,6 +18,7 @@ export default function Cadastro() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { setSession } = useAuth();
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -32,10 +34,7 @@ export default function Cadastro() {
     setLoading(true);
     try {
       const res = await api.post("/auth/register", { nome, email, senha, crn, nomeConsultorio: nomeConsultorio || undefined, aceiteTermos: aceito });
-      const { token, nutricionista } = res.data;
-      localStorage.setItem("zena_token", token);
-      localStorage.setItem("zena_user", JSON.stringify(nutricionista));
-      api.defaults.headers.Authorization = `Bearer ${token}`;
+      setSession(res.data.token, res.data.nutricionista);
       navigate("/app/dashboard");
     } catch (err: any) {
       setError(err.response?.data?.error || "Erro ao criar conta. Tente novamente.");

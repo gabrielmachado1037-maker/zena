@@ -48,7 +48,7 @@ export async function emailBoasVindas(nome: string, email: string) {
     subject: "Bem-vinda à Nexvel! 🌿",
     html: base(
       `Olá, ${nome}! 🌿`,
-      `<p>Seu período de teste de <strong>29 dias grátis</strong> começa agora. Nenhum cartão necessário.</p>
+      `<p>Seu período de teste de <strong>14 dias grátis</strong> começa agora. Nenhum cartão necessário.</p>
        <p>Com a Nexvel você vai:</p>
        <ul style="color:#4a4a4a;line-height:2">
          <li>Enviar planos alimentares em PDF profissional</li>

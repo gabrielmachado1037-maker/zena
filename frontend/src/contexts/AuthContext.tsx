@@ -20,6 +20,7 @@ interface AuthContextType {
   nutricionista: Nutricionista | null;
   token: string | null;
   login: (email: string, senha: string) => Promise<void>;
+  setSession: (token: string, nutricionista: Nutricionista) => void;
   logout: () => void;
   updateAvatar: (foto: string) => void;
   updateNutricionista: (patch: Partial<Nutricionista>) => void;
@@ -45,14 +46,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
-  async function login(email: string, senha: string) {
-    const res = await api.post("/auth/login", { email, senha });
-    const { token: t, nutricionista: n } = res.data;
+  // Popula a sessão a partir de um token + nutricionista (login OU cadastro).
+  function setSession(t: string, n: Nutricionista) {
     setToken(t);
     setNutricionista(n);
     api.defaults.headers.Authorization = `Bearer ${t}`;
     localStorage.setItem("zena_token", t);
     localStorage.setItem("zena_user", JSON.stringify(n));
+  }
+
+  async function login(email: string, senha: string) {
+    const res = await api.post("/auth/login", { email, senha });
+    setSession(res.data.token, res.data.nutricionista);
   }
 
   function logout() {
@@ -84,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ nutricionista, token, login, logout, updateAvatar, updateNutricionista, loading }}>
+    <AuthContext.Provider value={{ nutricionista, token, login, setSession, logout, updateAvatar, updateNutricionista, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -35,7 +35,7 @@ export default function Termos() {
 
           <Section titulo="4. Planos e pagamentos">
             <ul className="list-disc pl-5 space-y-2">
-              <li><strong>Trial:</strong> 29 dias gratuitos sem necessidade de cartão.</li>
+              <li><strong>Trial:</strong> 14 dias gratuitos sem necessidade de cartão.</li>
               <li><strong>Plano Mensal:</strong> R$ 69/mês, cobrado mensalmente via Stripe.</li>
               <li><strong>Plano Anual:</strong> R$ 708/ano (equivalente a R$ 59/mês), cobrado anualmente.</li>
               <li>Os preços podem ser alterados mediante aviso prévio de 30 dias por e-mail.</li>
