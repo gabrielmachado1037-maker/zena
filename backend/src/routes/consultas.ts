@@ -1,11 +1,26 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { checkModulo } from "../middleware/checkModulo";
 
 const router = Router();
 router.use(authMiddleware);
 router.use(checkModulo("agenda"));
+
+const criarConsultaSchema = z.object({
+  pacienteId: z.string({ error: "Paciente é obrigatório." }).min(1, "Paciente é obrigatório."),
+  data: z.string({ error: "Data é obrigatória." }).min(1, "Data é obrigatória."),
+  tipo: z.string().optional().nullable(),
+  notas: z.string().optional().nullable(),
+});
+const patchConsultaSchema = z.object({
+  status: z.string().optional().nullable(),
+  data: z.string().optional().nullable(),
+  notas: z.string().optional().nullable(),
+  tipo: z.string().optional().nullable(),
+});
 
 router.get("/", async (req: AuthRequest, res: Response) => {
   const { inicio, fim } = req.query;
@@ -24,7 +39,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   res.json(consultas);
 });
 
-router.post("/", async (req: AuthRequest, res: Response) => {
+router.post("/", validateBody(criarConsultaSchema), async (req: AuthRequest, res: Response) => {
   const { pacienteId, data, tipo, notas } = req.body;
   const paciente = await prisma.paciente.findFirst({
     where: { id: pacienteId, nutricionistaId: req.nutricionistaId },
@@ -43,7 +58,7 @@ router.post("/", async (req: AuthRequest, res: Response) => {
   res.json(consulta);
 });
 
-router.patch("/:id", async (req: AuthRequest, res: Response) => {
+router.patch("/:id", validateBody(patchConsultaSchema), async (req: AuthRequest, res: Response) => {
   const id = req.params["id"] as string;
   const consulta = await prisma.consulta.findFirst({
     where: { id, paciente: { nutricionistaId: req.nutricionistaId } },

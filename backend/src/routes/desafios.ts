@@ -1,11 +1,52 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { enviarNotificacaoPaciente } from "./notificacoes";
 import { duracaoValida, recompensaDe, DURACOES_DESAFIO, MAX_DESAFIOS_ATIVOS } from "../config/desafios";
 
 const router = Router();
 router.use(authMiddleware);
+
+/* ── Schemas lenientes (titulo/duracao/pacienteId têm 400 próprio nas rotas) ── */
+const numOpt = () => z.union([z.string(), z.number()]).optional().nullable();
+const criarDesafioSchema = z.object({
+  titulo: z.string().optional().nullable(),
+  descricao: z.string().optional().nullable(),
+  categoria: z.string().optional().nullable(),
+  tipo: z.string().optional().nullable(),
+  metaValor: numOpt(),
+  metaUnidade: z.string().optional().nullable(),
+  dataInicio: z.string().optional().nullable(),
+  duracaoDias: numOpt(),
+  icone: z.string().optional().nullable(),
+  status: z.string().optional().nullable(),
+  inscreverTodos: z.boolean().optional(),
+  pacienteIds: z.array(z.string()).optional(),
+});
+const patchDesafioSchema = z.object({
+  acao: z.string().optional().nullable(),
+  titulo: z.string().optional().nullable(),
+  descricao: z.string().optional().nullable(),
+  categoria: z.string().optional().nullable(),
+  metaValor: numOpt(),
+  metaUnidade: z.string().optional().nullable(),
+  dataInicio: z.string().optional().nullable(),
+  dataFim: z.string().optional().nullable(),
+  icone: z.string().optional().nullable(),
+  pontosBonus: numOpt(),
+  status: z.string().optional().nullable(),
+});
+const participantesSchema = z.object({
+  pacienteIds: z.array(z.string()).optional(),
+  todos: z.boolean().optional(),
+});
+const progressoSchema = z.object({
+  pacienteId: z.string().optional().nullable(),
+  progresso: numOpt(),
+  concluido: z.boolean().optional().nullable(),
+});
 
 /** Dado um conjunto de pacientes, retorna só os que estão abaixo do limite de desafios ativos. */
 async function filtrarSobLimite(ids: string[]): Promise<string[]> {
@@ -129,7 +170,7 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
 });
 
 /** POST /api/desafios — cria desafio. Opcional: inscrever todos os pacientes ativos. */
-router.post("/", async (req: AuthRequest, res: Response) => {
+router.post("/", validateBody(criarDesafioSchema), async (req: AuthRequest, res: Response) => {
   const id = req.nutricionistaId!;
   const {
     titulo, descricao, categoria, tipo, metaValor, metaUnidade,
@@ -183,7 +224,7 @@ router.post("/", async (req: AuthRequest, res: Response) => {
 });
 
 /** PATCH /api/desafios/:id — atualiza campos ou executa ação (ativar|encerrar). */
-router.patch("/:id", async (req: AuthRequest, res: Response) => {
+router.patch("/:id", validateBody(patchDesafioSchema), async (req: AuthRequest, res: Response) => {
   const id = req.nutricionistaId!;
   const dono = await prisma.desafio.findFirst({ where: { id: (req.params.id as string), nutricionistaId: id }, select: { id: true, dataInicio: true } });
   if (!dono) return res.status(404).json({ error: "Desafio não encontrado" });
@@ -220,7 +261,7 @@ router.delete("/:id", async (req: AuthRequest, res: Response) => {
 });
 
 /** POST /api/desafios/:id/participantes — inscreve pacientes (lista ou todos os ativos). */
-router.post("/:id/participantes", async (req: AuthRequest, res: Response) => {
+router.post("/:id/participantes", validateBody(participantesSchema), async (req: AuthRequest, res: Response) => {
   const id = req.nutricionistaId!;
   const dono = await prisma.desafio.findFirst({ where: { id: (req.params.id as string), nutricionistaId: id }, select: { id: true } });
   if (!dono) return res.status(404).json({ error: "Desafio não encontrado" });
@@ -243,7 +284,7 @@ router.post("/:id/participantes", async (req: AuthRequest, res: Response) => {
 });
 
 /** PUT /api/desafios/:id/progresso — atualiza o progresso de um participante. */
-router.put("/:id/progresso", async (req: AuthRequest, res: Response) => {
+router.put("/:id/progresso", validateBody(progressoSchema), async (req: AuthRequest, res: Response) => {
   const id = req.nutricionistaId!;
   const { pacienteId, progresso, concluido } = req.body;
   if (!pacienteId || progresso == null) return res.status(400).json({ error: "pacienteId e progresso são obrigatórios" });

@@ -1,6 +1,8 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { planoMiddleware } from "../middleware/plano";
 import { checkModulo } from "../middleware/checkModulo";
 import { gerarFeedAutomatico } from "../lib/feedAutomatico";
@@ -26,6 +28,64 @@ router.param("id", async (req, res, next, id) => {
     return;
   }
   next();
+});
+
+/* ── Schemas (required só onde DB/rota exige; a validação de negócio de cada rota é mantida) ── */
+const num = () => z.union([z.string(), z.number()]);
+const criarPacienteSchema = z.object({
+  nome: z.string({ error: "Nome é obrigatório." }).trim().min(1, "Nome é obrigatório."),
+  email: z.string().optional().nullable(),
+  telefone: z.string().optional().nullable(),
+  objetivo: z.string().optional().nullable(),
+  dataInicio: z.string({ error: "Data de início é obrigatória." }).min(1, "Data de início é obrigatória."),
+  pesoMeta: num().optional().nullable(),
+});
+const atualizarPacienteSchema = z.object({
+  nome: z.string().optional().nullable(),
+  email: z.string().optional().nullable(),
+  telefone: z.string().optional().nullable(),
+  objetivo: z.string().optional().nullable(),
+  pesoMeta: num().optional().nullable(),
+  ativo: z.boolean().optional(),
+  dataNascimento: z.string().optional().nullable(),
+  sexo: z.string().optional().nullable(),
+  altura: num().optional().nullable(),
+});
+const planoMissoesSchema = z.object({
+  numRefeicoes: z.number().optional(),
+  refeicoes: z.array(z.object({ key: z.string(), label: z.string() })).optional(),
+  aguaMetaMl: z.number().optional(),
+  sonoMetaHoras: z.number().optional(),
+  treinoDias: z.array(z.number()).optional(),
+});
+const medicaoNutriSchema = z.object({
+  data: z.string({ error: "Data é obrigatória." }).min(1, "Data é obrigatória."),
+  peso: z.union([z.string(), z.number()], { error: "Peso é obrigatório." }),
+  gordura: num().optional().nullable(),
+  musculo: num().optional().nullable(),
+  cintura: num().optional().nullable(),
+  quadril: num().optional().nullable(),
+  braco: num().optional().nullable(),
+  coxa: num().optional().nullable(),
+  laudo: z.string().optional().nullable(),
+  observacoes: z.string().optional().nullable(),
+});
+const consultaSchema = z.object({
+  data: z.string({ error: "Data é obrigatória." }).min(1, "Data é obrigatória."),
+  status: z.string().optional().nullable(),
+  notas: z.string().optional().nullable(),
+});
+const consultaPatchSchema = z.object({
+  status: z.string().optional().nullable(),
+  notas: z.string().optional().nullable(),
+});
+const contatoSchema = z.object({
+  tipo: z.string().optional().nullable(),
+  resumo: z.string().optional().nullable(),
+  data: z.string({ error: "Data é obrigatória." }).min(1, "Data é obrigatória."),
+});
+const fotoInicialSchema = z.object({
+  fotoInicial: z.string().optional().nullable(),
 });
 
 router.get("/", async (req: AuthRequest, res: Response) => {
@@ -98,7 +158,7 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
   res.json(paciente);
 });
 
-router.post("/", async (req: AuthRequest, res: Response) => {
+router.post("/", validateBody(criarPacienteSchema), async (req: AuthRequest, res: Response) => {
   const { nome, email, telefone, objetivo, dataInicio, pesoMeta } = req.body;
   const paciente = await prisma.paciente.create({
     data: {
@@ -114,7 +174,7 @@ router.post("/", async (req: AuthRequest, res: Response) => {
   res.json(paciente);
 });
 
-router.put("/:id", async (req: AuthRequest, res: Response) => {
+router.put("/:id", validateBody(atualizarPacienteSchema), async (req: AuthRequest, res: Response) => {
   const id = req.params["id"] as string;
   const { nome, email, telefone, objetivo, pesoMeta, ativo, dataNascimento, sexo, altura } = req.body;
   const paciente = await prisma.paciente.findFirst({ where: { id, nutricionistaId: req.nutricionistaId as string } });
@@ -135,7 +195,7 @@ router.put("/:id", async (req: AuthRequest, res: Response) => {
 // PUT /:id/plano-missoes — nutri configura o plano de missões da paciente:
 // nº de refeições (3–6), meta de água (ml), meta de sono (horas) e dias de treino.
 // Aditivo: só atualiza os campos enviados; não altera registros já feitos.
-router.put("/:id/plano-missoes", async (req: AuthRequest, res: Response) => {
+router.put("/:id/plano-missoes", validateBody(planoMissoesSchema), async (req: AuthRequest, res: Response) => {
   const id = req.params["id"] as string;
   const { numRefeicoes, refeicoes, aguaMetaMl, sonoMetaHoras, treinoDias } = req.body as {
     numRefeicoes?: number; refeicoes?: { key: string; label: string }[];
@@ -224,7 +284,7 @@ router.get("/:id/relatorio-mensal", async (req: AuthRequest, res: Response) => {
   return res.json(relatorio);
 });
 
-router.post("/:id/medicoes", async (req: AuthRequest, res: Response) => {
+router.post("/:id/medicoes", validateBody(medicaoNutriSchema), async (req: AuthRequest, res: Response) => {
   const pacienteId      = req.params["id"] as string;
   const nutricionistaId = req.nutricionistaId as string;
   const { data, peso, gordura, musculo, cintura, quadril, braco, coxa, laudo, observacoes } = req.body;
@@ -250,7 +310,7 @@ router.post("/:id/medicoes", async (req: AuthRequest, res: Response) => {
     .catch(err => console.error("[feedAutomatico]", err));
 });
 
-router.post("/:id/consultas", async (req: AuthRequest, res: Response) => {
+router.post("/:id/consultas", validateBody(consultaSchema), async (req: AuthRequest, res: Response) => {
   const pacienteId = req.params["id"] as string;
   const { data, status, notas } = req.body;
   const consulta = await prisma.consulta.create({
@@ -259,7 +319,7 @@ router.post("/:id/consultas", async (req: AuthRequest, res: Response) => {
   res.json(consulta);
 });
 
-router.patch("/:id/consultas/:consultaId", async (req: AuthRequest, res: Response) => {
+router.patch("/:id/consultas/:consultaId", validateBody(consultaPatchSchema), async (req: AuthRequest, res: Response) => {
   const pacienteId = req.params["id"] as string;
   const consultaId = req.params["consultaId"] as string;
   // A consulta precisa pertencer a este paciente (que já é desta nutri via middleware).
@@ -277,7 +337,7 @@ router.patch("/:id/consultas/:consultaId", async (req: AuthRequest, res: Respons
 });
 
 // Registros de contato manual
-router.post("/:id/contatos", async (req: AuthRequest, res: Response) => {
+router.post("/:id/contatos", validateBody(contatoSchema), async (req: AuthRequest, res: Response) => {
   const pacienteId = req.params["id"] as string;
   const { tipo, resumo, data } = req.body;
 
@@ -296,7 +356,7 @@ router.post("/:id/contatos", async (req: AuthRequest, res: Response) => {
 });
 
 // Upload foto inicial (nutritionist sets the before photo)
-router.patch("/:id/foto-inicial", async (req: AuthRequest, res: Response) => {
+router.patch("/:id/foto-inicial", validateBody(fotoInicialSchema), async (req: AuthRequest, res: Response) => {
   const id = req.params["id"] as string;
   const { fotoInicial } = req.body;
 
