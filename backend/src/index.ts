@@ -1,3 +1,5 @@
+import "./instrument"; // Sentry — precisa ser o primeiro import
+import * as Sentry from "@sentry/node";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -101,6 +103,9 @@ app.use("/api/desafios", desafiosRouter);
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 
 initCron();
+
+// Captura os erros no Sentry (no-op sem SENTRY_DSN) — depois das rotas, antes do handler final.
+Sentry.setupExpressErrorHandler(app);
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
