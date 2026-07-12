@@ -41,7 +41,8 @@ if (missing.length > 0) {
   process.exit(1);
 }
 if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length < 64) {
-  console.warn("[STARTUP] ENCRYPTION_KEY não configurada — chaves Asaas serão salvas sem criptografia.");
+  console.error("[STARTUP] ENCRYPTION_KEY ausente ou inválida (esperado 64 caracteres hex). Configure-a para não salvar segredos em texto puro.");
+  process.exit(1);
 }
 
 const app = express();
