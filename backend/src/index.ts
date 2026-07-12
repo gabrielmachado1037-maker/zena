@@ -103,8 +103,9 @@ initCron();
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  // Log completo fica no servidor; ao cliente, só mensagem genérica (não vaza internals).
   console.error("[ERROR]", err.message, err.stack);
-  res.status(500).json({ error: err.message });
+  res.status(500).json({ error: "Erro interno do servidor." });
 });
 
 app.listen(PORT, () => console.log(`Zena backend rodando na porta ${PORT}`));

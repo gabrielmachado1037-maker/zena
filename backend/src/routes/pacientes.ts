@@ -13,6 +13,21 @@ router.use(planoMiddleware);
 // Prontuário completo (/:id e subrotas) exige módulo 'prontuario'
 router.use("/:id", checkModulo("prontuario"));
 
+// Isolamento multi-tenant: o paciente (:id) TEM que ser desta nutricionista.
+// router.param dispara para TODA rota /:id (defesa em profundidade contra IDOR).
+router.param("id", async (req, res, next, id) => {
+  const r = req as AuthRequest;
+  const dono = await prisma.paciente.findFirst({
+    where: { id: String(id), nutricionistaId: r.nutricionistaId as string },
+    select: { id: true },
+  });
+  if (!dono) {
+    res.status(404).json({ error: "Paciente não encontrada" });
+    return;
+  }
+  next();
+});
+
 router.get("/", async (req: AuthRequest, res: Response) => {
   const now = new Date();
   const page = Math.max(1, parseInt(String(req.query.page ?? "1")));
@@ -245,7 +260,14 @@ router.post("/:id/consultas", async (req: AuthRequest, res: Response) => {
 });
 
 router.patch("/:id/consultas/:consultaId", async (req: AuthRequest, res: Response) => {
+  const pacienteId = req.params["id"] as string;
   const consultaId = req.params["consultaId"] as string;
+  // A consulta precisa pertencer a este paciente (que já é desta nutri via middleware).
+  const existente = await prisma.consulta.findFirst({
+    where: { id: consultaId, pacienteId },
+    select: { id: true },
+  });
+  if (!existente) return res.status(404).json({ error: "Consulta não encontrada" });
   const { status, notas } = req.body;
   const consulta = await prisma.consulta.update({
     where: { id: consultaId },
