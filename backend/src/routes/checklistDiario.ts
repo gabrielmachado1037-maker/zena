@@ -1,13 +1,21 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
 import { processarChecklist } from "../services/cicloService";
+import { validateBody } from "../middleware/validate";
 
 const router = Router();
 router.use(authPacienteMiddleware);
 
+const checklistSchema = z.object({
+  refeicoesOk: z.boolean().optional(),
+  aguaOk: z.boolean().optional(),
+  treinoOk: z.boolean().optional(),
+});
+
 // POST /api/checklist
-router.post("/", async (req: PacienteAuthRequest, res: Response) => {
+router.post("/", validateBody(checklistSchema), async (req: PacienteAuthRequest, res: Response) => {
   const { refeicoesOk, aguaOk, treinoOk } = req.body as {
     refeicoesOk: boolean;
     aguaOk: boolean;

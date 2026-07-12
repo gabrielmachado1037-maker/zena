@@ -1,8 +1,41 @@
 import { Router, Request, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { uploadFoto, UploadError } from "../lib/supabase";
+import { validateBody } from "../middleware/validate";
 
 const router = Router();
+
+const checkinSchema = z.object({
+  humor: z.string({ error: "humor e adesao são obrigatórios" }).trim().min(1, "humor e adesao são obrigatórios"),
+  adesao: z.number({ error: "humor e adesao são obrigatórios" }),
+  peso: z.union([z.number(), z.string()]).optional().nullable(),
+  foto: z.string().optional().nullable(),
+  nota: z.string().optional().nullable(),
+});
+
+const agendarSchema = z.object({
+  data: z.string({ error: "data e hora são obrigatórios" }).trim().min(1, "data e hora são obrigatórios"),
+  hora: z.string({ error: "data e hora são obrigatórios" }).trim().min(1, "data e hora são obrigatórios"),
+});
+
+// Só os campos do modelo Anamnese; z.object descarta chaves desconhecidas (evita mass-assignment no upsert).
+const anamneseSchema = z.object({
+  queixaPrincipal: z.string().optional().nullable(),
+  historicoDieta: z.string().optional().nullable(),
+  restricoes: z.string().optional().nullable(),
+  medicamentos: z.string().optional().nullable(),
+  condicoesSaude: z.string().optional().nullable(),
+  nivelAtividade: z.string().optional().nullable(),
+  horasSono: z.number().int().optional().nullable(),
+  nivelEstresse: z.number().int().optional().nullable(),
+  refeicoesDia: z.number().int().optional().nullable(),
+  comeCozinha: z.boolean().optional().nullable(),
+  comeForaCasa: z.number().int().optional().nullable(),
+  consumoAgua: z.number().optional().nullable(),
+  motivacao: z.string().optional().nullable(),
+  expectativas: z.string().optional().nullable(),
+});
 
 function getISOWeekData(date: Date): { semana: number; ano: number } {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -37,16 +70,12 @@ router.get("/paciente/:link", async (req: Request, res: Response) => {
   res.json({ ...paciente, consultas: proximasConsultas });
 });
 
-router.post("/paciente/:link/checkin", async (req: Request, res: Response) => {
+router.post("/paciente/:link/checkin", validateBody(checkinSchema), async (req: Request, res: Response) => {
   const link = req.params["link"] as string;
   const paciente = await prisma.paciente.findUnique({ where: { linkUnico: link } });
   if (!paciente) return res.status(404).json({ error: "Link inválido" });
 
   const { humor, adesao, peso, foto, nota } = req.body;
-
-  if (!humor || adesao === undefined) {
-    return res.status(400).json({ error: "humor e adesao são obrigatórios" });
-  }
 
   if (foto && foto.length > 1100000) {
     return res.status(400).json({ error: "Foto muito grande. Tente uma foto menor." });
@@ -89,6 +118,10 @@ router.patch("/paciente/:link/consulta/:consultaId/confirmar", async (req: Reque
   const paciente = await prisma.paciente.findUnique({ where: { linkUnico: link } });
   if (!paciente) return res.status(404).json({ error: "Link inválido" });
 
+  // Escopo: a consulta precisa ser do próprio paciente do link (evita IDOR por id de consulta).
+  const alvo = await prisma.consulta.findFirst({ where: { id: consultaId, pacienteId: paciente.id } });
+  if (!alvo) return res.status(404).json({ error: "Consulta não encontrada" });
+
   const consulta = await prisma.consulta.update({
     where: { id: consultaId },
     data: { status: "confirmada" },
@@ -101,6 +134,10 @@ router.patch("/paciente/:link/consulta/:consultaId/remarcar", async (req: Reques
   const consultaId = req.params["consultaId"] as string;
   const paciente = await prisma.paciente.findUnique({ where: { linkUnico: link } });
   if (!paciente) return res.status(404).json({ error: "Link inválido" });
+
+  // Escopo: a consulta precisa ser do próprio paciente do link (evita IDOR por id de consulta).
+  const alvo = await prisma.consulta.findFirst({ where: { id: consultaId, pacienteId: paciente.id } });
+  if (!alvo) return res.status(404).json({ error: "Consulta não encontrada" });
 
   const consulta = await prisma.consulta.update({
     where: { id: consultaId },
@@ -123,7 +160,12 @@ router.post("/paciente/:link/anamnese", async (req: Request, res: Response) => {
   const paciente = await prisma.paciente.findUnique({ where: { linkUnico: link } });
   if (!paciente) return res.status(404).json({ error: "Link inválido" });
 
-  const data = req.body;
+  // Valida + descarta chaves fora do modelo (defense-in-depth contra mass-assignment no spread).
+  const parsed = anamneseSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Dados inválidos." });
+  }
+  const data = parsed.data;
   const anamnese = await prisma.anamnese.upsert({
     where: { pacienteId: paciente.id },
     update: data,
@@ -183,13 +225,12 @@ router.get("/paciente/:link/horarios-disponiveis", async (req: Request, res: Res
   res.json(slotsLivres);
 });
 
-router.post("/paciente/:link/agendar", async (req: Request, res: Response) => {
+router.post("/paciente/:link/agendar", validateBody(agendarSchema), async (req: Request, res: Response) => {
   const link = req.params["link"] as string;
   const paciente = await prisma.paciente.findUnique({ where: { linkUnico: link } });
   if (!paciente) return res.status(404).json({ error: "Link inválido" });
 
   const { data, hora } = req.body;
-  if (!data || !hora) return res.status(400).json({ error: "data e hora são obrigatórios" });
 
   const dataHora = new Date(`${data}T${hora}:00`);
   if (isNaN(dataHora.getTime())) return res.status(400).json({ error: "Data inválida" });
