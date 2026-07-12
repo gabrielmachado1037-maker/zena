@@ -34,7 +34,7 @@ export default function Cadastro() {
     setLoading(true);
     try {
       const res = await api.post("/auth/register", { nome, email, senha, crn, nomeConsultorio: nomeConsultorio || undefined, aceiteTermos: aceito });
-      setSession(res.data.token, res.data.nutricionista);
+      setSession(res.data.token, res.data.nutricionista, res.data.refreshToken);
       navigate("/app/dashboard");
     } catch (err: any) {
       setError(err.response?.data?.error || "Erro ao criar conta. Tente novamente.");

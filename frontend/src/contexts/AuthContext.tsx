@@ -20,7 +20,7 @@ interface AuthContextType {
   nutricionista: Nutricionista | null;
   token: string | null;
   login: (email: string, senha: string) => Promise<void>;
-  setSession: (token: string, nutricionista: Nutricionista) => void;
+  setSession: (token: string, nutricionista: Nutricionista, refreshToken?: string) => void;
   logout: () => void;
   updateAvatar: (foto: string) => void;
   updateNutricionista: (patch: Partial<Nutricionista>) => void;
@@ -47,25 +47,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Popula a sessão a partir de um token + nutricionista (login OU cadastro).
-  function setSession(t: string, n: Nutricionista) {
+  function setSession(t: string, n: Nutricionista, refreshToken?: string) {
     setToken(t);
     setNutricionista(n);
     api.defaults.headers.Authorization = `Bearer ${t}`;
     localStorage.setItem("zena_token", t);
     localStorage.setItem("zena_user", JSON.stringify(n));
+    if (refreshToken) localStorage.setItem("zena_refresh", refreshToken);
   }
 
   async function login(email: string, senha: string) {
     const res = await api.post("/auth/login", { email, senha });
-    setSession(res.data.token, res.data.nutricionista);
+    setSession(res.data.token, res.data.nutricionista, res.data.refreshToken);
   }
 
   function logout() {
+    // Revoga o refresh no servidor (best-effort; não bloqueia a saída).
+    const rt = localStorage.getItem("zena_refresh");
+    if (rt) api.post("/auth/logout", { refreshToken: rt }).catch(() => {});
     setToken(null);
     setNutricionista(null);
     delete api.defaults.headers.Authorization;
     localStorage.removeItem("zena_token");
     localStorage.removeItem("zena_user");
+    localStorage.removeItem("zena_refresh");
     sessionStorage.clear();
     window.location.href = "/login";
   }

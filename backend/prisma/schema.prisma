@@ -72,6 +72,19 @@ model TokenVerificacaoEmail {
   criadoEm        DateTime @default(now())
 }
 
+model RefreshToken {
+  id              String   @id @default(cuid())
+  nutricionistaId String
+  tokenHash       String   @unique
+  familyId        String
+  revogado        Boolean  @default(false)
+  expiresAt       DateTime
+  criadoEm        DateTime @default(now())
+
+  @@index([nutricionistaId])
+  @@index([familyId])
+}
+
 model Paciente {
   id                String             @id @default(cuid())
   nome              String

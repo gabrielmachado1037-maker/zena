@@ -31,6 +31,28 @@ const verificarEmailSchema = z.object({
   token: z.string({ error: "Token inválido." }).min(1, "Token inválido."),
 });
 
+const refreshSchema = z.object({
+  refreshToken: z.string({ error: "Sessão inválida." }).min(1, "Sessão inválida."),
+});
+
+// ── Tokens: access curto (30min) + refresh longo (30d) revogável, rotacionado ──
+const ACCESS_TTL = "30m";
+const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+const hashToken = (t: string) => crypto.createHash("sha256").update(t).digest("hex");
+
+// Emite um par access+refresh; persiste só o HASH do refresh. familyId liga a
+// cadeia de rotações (reuso de um refresh já rotacionado derruba a família toda).
+async function emitirParTokens(nutricionistaId: string, familyId?: string) {
+  const accessToken = jwt.sign({ id: nutricionistaId }, JWT_SECRET, { expiresIn: ACCESS_TTL });
+  const refreshToken = crypto.randomBytes(48).toString("hex");
+  const fam = familyId ?? crypto.randomBytes(16).toString("hex");
+  await prisma.refreshToken.create({
+    data: { nutricionistaId, tokenHash: hashToken(refreshToken), familyId: fam, expiresAt: new Date(Date.now() + REFRESH_TTL_MS) },
+  });
+  return { accessToken, refreshToken };
+}
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -87,8 +109,8 @@ router.post("/register", validateBody(registerSchema), async (req: Request, res:
   emailBoasVindas(nome, email).catch(console.error);
   await criarEnviarVerificacao(nutri.id, email, nome);
 
-  const token = jwt.sign({ id: nutri.id }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: null, subscriptionStatus: "trial", modulosAtivos: [], emailVerificado: false } });
+  const { accessToken, refreshToken } = await emitirParTokens(nutri.id);
+  res.json({ token: accessToken, refreshToken, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: null, subscriptionStatus: "trial", modulosAtivos: [], emailVerificado: false } });
 });
 
 router.post("/login", loginLimiter, validateBody(loginSchema), async (req: Request, res: Response) => {
@@ -100,8 +122,37 @@ router.post("/login", loginLimiter, validateBody(loginSchema), async (req: Reque
   const ok = await bcrypt.compare(senha, nutri.senha);
   if (!ok) return res.status(401).json({ error: "Credenciais inválidas" });
 
-  const token = jwt.sign({ id: nutri.id }, JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: nutri.foto ?? null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: nutri.planoSlug ?? null, subscriptionStatus: nutri.subscriptionStatus ?? "trial", modulosAtivos: nutri.modulosAtivos ?? [], emailVerificado: nutri.emailVerificado } });
+  const { accessToken, refreshToken } = await emitirParTokens(nutri.id);
+  res.json({ token: accessToken, refreshToken, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: nutri.foto ?? null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: nutri.planoSlug ?? null, subscriptionStatus: nutri.subscriptionStatus ?? "trial", modulosAtivos: nutri.modulosAtivos ?? [], emailVerificado: nutri.emailVerificado } });
+});
+
+// POST /auth/refresh — troca um refresh válido por um novo par (rotação + detecção de reuso).
+router.post("/refresh", validateBody(refreshSchema), async (req: Request, res: Response) => {
+  const { refreshToken } = req.body;
+  const registro = await prisma.refreshToken.findUnique({ where: { tokenHash: hashToken(refreshToken) } });
+
+  if (!registro || registro.expiresAt < new Date()) {
+    return res.status(401).json({ error: "Sessão expirada." });
+  }
+  if (registro.revogado) {
+    // Refresh já rotacionado sendo reapresentado = provável roubo → derruba a família toda.
+    await prisma.refreshToken.updateMany({ where: { familyId: registro.familyId }, data: { revogado: true } });
+    return res.status(401).json({ error: "Sessão inválida." });
+  }
+
+  // Rotaciona: revoga o atual e emite um novo par na mesma família.
+  await prisma.refreshToken.update({ where: { id: registro.id }, data: { revogado: true } });
+  const par = await emitirParTokens(registro.nutricionistaId, registro.familyId);
+  res.json({ token: par.accessToken, refreshToken: par.refreshToken });
+});
+
+// POST /auth/logout — revoga o refresh apresentado (best-effort; sempre 200).
+router.post("/logout", async (req: Request, res: Response) => {
+  const rt = req.body?.refreshToken;
+  if (typeof rt === "string" && rt) {
+    await prisma.refreshToken.updateMany({ where: { tokenHash: hashToken(rt) }, data: { revogado: true } });
+  }
+  res.json({ ok: true });
 });
 
 // POST /verificar-email — consome o token e marca o e-mail como verificado.
