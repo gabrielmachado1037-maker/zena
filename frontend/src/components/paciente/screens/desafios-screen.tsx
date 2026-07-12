@@ -106,7 +106,7 @@ function EventCard({
                 {bateuMeta ? (
                   <span className="font-semibold text-nx-evo">Recompensa garantida! 🎉</span>
                 ) : (
-                  <>Faltam <span className="font-semibold" style={{ color: t.accent }}>{faltamRecompensa} dia{faltamRecompensa !== 1 ? "s" : ""}</span> para receber a recompensa.</>
+                  <>Complete mais <span className="font-semibold" style={{ color: t.accent }}>{faltamRecompensa} dia{faltamRecompensa !== 1 ? "s" : ""}</span> para receber sua recompensa.</>
                 )}
               </p>
             </div>
@@ -134,27 +134,32 @@ function EventCard({
               )}
             </div>
 
-            {/* Botão só para desafios manuais (custom) */}
-            {c.manual && (
-              c.hojeConcluido ? (
-                <button
-                  type="button"
-                  disabled
-                  className="flex w-full items-center justify-center gap-2 rounded-nx-md border border-nx-border bg-nx-container-low py-2.5 text-body-md font-semibold text-nx-on-surface-variant opacity-70"
-                >
-                  <Check className="size-4" /> Hoje já concluído
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={marcando}
-                  onClick={() => onCumprir(c)}
-                  className="flex w-full items-center justify-center gap-2 rounded-nx-md py-2.5 text-body-md font-bold text-[#0A0A0A] transition-opacity disabled:opacity-60"
-                  style={{ background: t.accent }}
-                >
-                  <Zap className="size-4" /> {marcando ? "Marcando…" : "Cumprir desafio de hoje"}
-                </button>
-              )
+            {/* Sugestão: hábito já detectado nos registros — mas a confirmação continua manual */}
+            {!c.hojeConcluido && c.sugestao && (
+              <div className="flex items-center gap-2 rounded-nx-md border border-nx-evo/30 bg-nx-evo/8 px-3 py-2 text-body-sm text-nx-evo">
+                <Check className="size-4 shrink-0" />
+                <span>Você já cumpriu este hábito hoje.</span>
+              </div>
+            )}
+
+            {/* Confirmação diária — todo desafio ativo, uma vez por dia */}
+            {c.hojeConcluido ? (
+              <button
+                type="button"
+                disabled
+                className="flex w-full items-center justify-center gap-2 rounded-nx-md border border-nx-border bg-nx-container-low py-2.5 text-body-md font-semibold text-nx-on-surface-variant opacity-70"
+              >
+                <Check className="size-4" /> Hoje concluído
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={marcando}
+                onClick={() => onCumprir(c)}
+                className="flex w-full items-center justify-center gap-2 rounded-nx-md bg-nx-evo py-2.5 text-body-md font-bold text-[#0A0A0A] shadow-[0_0_16px_rgba(124,255,91,0.35)] transition-opacity disabled:opacity-60"
+              >
+                <Zap className="size-4" /> {marcando ? "Confirmando…" : c.sugestao ? "Concluir agora" : "Concluir hoje"}
+              </button>
             )}
           </>
         )}
@@ -221,29 +226,20 @@ export function DesafiosScreen() {
     }
   }
 
-  // Marca o dia de hoje num desafio manual (custom) — usa o backend, sem sistema paralelo.
+  // Confirma o dia de hoje — a conclusão é sempre manual (backend, sem sistema paralelo).
   async function cumprir(c: Challenge) {
     if (marcandoId) return
     setMarcandoId(c.id)
     try {
-      const { data } = await apiPaciente.post<{ jaMarcado?: boolean; streak?: number; diasCumpridos?: number; adesaoMinima?: number }>(
+      const { data } = await apiPaciente.post<{ jaMarcado?: boolean }>(
         `/registros/desafios/${c.id}/cumprir-hoje`,
       )
       await reload()
       if (!data?.jaMarcado) {
-        const streak = data?.streak ?? 0
-        const feitos = data?.diasCumpridos ?? 0
-        const min = data?.adesaoMinima ?? c.adesaoMinima ?? 0
-        const faltam = Math.max(0, min - feitos)
-        push(
-          faltam > 0
-            ? `Concluído hoje! 🔥 ${streak} dia${streak !== 1 ? "s" : ""} · faltam ${faltam}`
-            : "Concluído! Recompensa garantida 🎉",
-          { tone: "gold", icon: <Check className="size-4" /> },
-        )
+        push("Parabéns! Mais um dia concluído.", { tone: "evo", icon: <Check className="size-4" /> })
       }
     } catch {
-      push("Não foi possível marcar agora. Tente de novo.", { tone: "neutral" })
+      push("Não foi possível confirmar agora. Tente de novo.", { tone: "neutral" })
     } finally {
       setMarcandoId(null)
     }

@@ -488,8 +488,10 @@ router.get("/desafios", async (req: PacienteAuthRequest, res: Response) => {
       adesaoMinima: adesaoMinimaDe(p.desafio.duracaoDias),
       concluido: p.concluido,
       encerrado: p.encerradoEm != null,
-      // Visão diária da tela do paciente:
-      manual: ehCustom(p.desafio.tipo),
+      // Visão diária da tela do paciente (conclusão sempre manual):
+      manual: true,
+      auto: !ehCustom(p.desafio.tipo),
+      sugestao: det.sugestaoHoje,
       streak: det.streak,
       hojeConcluido: det.hojeConcluido,
       dias: det.dias,
@@ -498,8 +500,8 @@ router.get("/desafios", async (req: PacienteAuthRequest, res: Response) => {
   return res.json(result);
 });
 
-// POST /api/registros/desafios/:id/cumprir-hoje — marca HOJE num desafio MANUAL (custom).
-// Idempotente (não marca 2x/dia). Desafios automáticos são concluídos pelos registros.
+// POST /api/registros/desafios/:id/cumprir-hoje — o paciente confirma HOJE (todos os tipos).
+// Conclusão é sempre manual. Idempotente (não marca 2x/dia).
 router.post("/desafios/:id/cumprir-hoje", async (req: PacienteAuthRequest, res: Response) => {
   const desafioId = String(req.params.id);
   const prog = await prisma.desafioProgresso.findFirst({
@@ -507,9 +509,6 @@ router.post("/desafios/:id/cumprir-hoje", async (req: PacienteAuthRequest, res: 
     include: { desafio: true },
   });
   if (!prog) return res.status(404).json({ error: "Desafio não encontrado" });
-  if (!ehCustom(prog.desafio.tipo)) {
-    return res.status(400).json({ error: "Este desafio é concluído automaticamente pelos seus registros." });
-  }
   if (prog.concluido || prog.encerradoEm) return res.status(409).json({ error: "Desafio já encerrado." });
 
   const win = janelaDesafio(prog.desafio);

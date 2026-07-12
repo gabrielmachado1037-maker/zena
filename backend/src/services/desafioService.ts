@@ -57,19 +57,12 @@ const noPeriodo = (s: string, inicio: Date, fim: Date): boolean => {
 };
 
 /**
- * Conta os dias cumpridos na janela [inicio, fim).
- * Tipos automáticos: dias fechados cujos registros batem a regra (reusa os registros).
- * Custom (manual): quantidade de marcações manuais dentro da janela.
+ * Conta os dias CONFIRMADOS manualmente na janela [inicio, fim).
+ * A conclusão é sempre manual (todos os tipos): o paciente confirma cada dia na
+ * aba Desafios. Os registros nunca concluem — servem só de sugestão na tela.
  */
-async function contarDiasCumpridos(pacienteId: string, tipo: string, inicio: Date, fim: Date, diasManuais: string[]): Promise<number> {
-  if (ehCustom(tipo)) {
-    return diasManuais.reduce((n, s) => n + (noPeriodo(s, inicioDoDia(inicio), inicioDoDia(fim)) ? 1 : 0), 0);
-  }
-  const regs = await prisma.registro.findMany({
-    where: { pacienteId, finalizado: true, data: { gte: inicioDoDia(inicio), lt: inicioDoDia(fim) } },
-    select: { alimentacaoOk: true, treinoOk: true, aguaOk: true, sonoOk: true },
-  });
-  return regs.reduce((n, r) => n + (diaCumpreDesafio(tipo, r) ? 1 : 0), 0);
+function contarDiasCumpridos(inicio: Date, fim: Date, diasManuais: string[]): number {
+  return diasManuais.reduce((n, s) => n + (noPeriodo(s, inicioDoDia(inicio), inicioDoDia(fim)) ? 1 : 0), 0);
 }
 
 export interface DiaDesafio { dia: number; status: "done" | "today" | "pending" | "missed" }
@@ -77,14 +70,17 @@ export interface DesafioDetalhe {
   dias: DiaDesafio[];
   streak: number;
   hojeConcluido: boolean;
+  /** Tipo automático cujo registro de hoje já cumpre o hábito, mas ainda não foi confirmado. */
+  sugestaoHoje: boolean;
   diasCumpridos: number;
   progresso: number;
 }
 
 /**
  * Monta a visão diária (calendário + sequência + status de hoje) para a TELA do paciente.
- * "Hoje" conta em tempo real: automático = registro de hoje (mesmo não-fechado) já bate a regra;
- * custom = data de hoje presente nas marcações manuais. XP/finalização seguem no motor (inalterados).
+ * Conclusão é sempre manual: o calendário/sequência/hoje vêm das confirmações (diasManuais).
+ * Para tipos automáticos, o registro de hoje que já cumpre o hábito vira apenas SUGESTÃO
+ * ("Você já cumpriu este hábito hoje") — não conclui sozinho.
  */
 export async function montarDesafioDetalhe(
   prog: { pacienteId: string; diasManuais: string[]; desafio: { tipo: string; duracaoDias: number; dataInicio: Date | null; dataFim: Date | null } },
@@ -93,44 +89,30 @@ export async function montarDesafioDetalhe(
   const d = prog.desafio;
   const N = d.duracaoDias;
   const win = janelaDesafio(d);
-  if (!win) return { dias: [], streak: 0, hojeConcluido: false, diasCumpridos: 0, progresso: 0 };
+  if (!win) return { dias: [], streak: 0, hojeConcluido: false, sugestaoHoje: false, diasCumpridos: 0, progresso: 0 };
 
   const idxDe = (dt: Date) => Math.round((inicioDoDia(dt).getTime() - win.inicio.getTime()) / DIA);
-  const custom = ehCustom(d.tipo);
   const cumpridos = new Set<number>();
 
-  if (custom) {
-    for (const s of prog.diasManuais) {
-      const i = idxDe(new Date(s + "T00:00:00"));
-      if (i >= 0 && i < N) cumpridos.add(i);
-    }
-  } else {
-    const regs = await prisma.registro.findMany({
-      where: { pacienteId: prog.pacienteId, finalizado: true, data: { gte: win.inicio, lt: win.fim } },
-      select: { data: true, alimentacaoOk: true, treinoOk: true, aguaOk: true, sonoOk: true },
-    });
-    for (const r of regs) {
-      if (!diaCumpreDesafio(d.tipo, r)) continue;
-      const i = idxDe(r.data);
-      if (i >= 0 && i < N) cumpridos.add(i);
-    }
+  // Só as confirmações manuais contam (todos os tipos).
+  for (const s of prog.diasManuais) {
+    const i = idxDe(new Date(s + "T00:00:00"));
+    if (i >= 0 && i < N) cumpridos.add(i);
   }
 
-  // Hoje ao vivo (item 3: conta ao atingir a meta, sem depender de fechar o dia).
   const hoje0 = inicioDoDia(hoje);
   const idxHoje = idxDe(hoje0);
-  let hojeConcluido = cumpridos.has(idxHoje);
-  if (idxHoje >= 0 && idxHoje < N && !hojeConcluido) {
-    if (custom) {
-      hojeConcluido = prog.diasManuais.includes(ymdLocal(hoje0));
-    } else {
-      const reg = await prisma.registro.findFirst({
-        where: { pacienteId: prog.pacienteId, data: { gte: hoje0, lt: new Date(hoje0.getTime() + DIA) } },
-        select: { alimentacaoOk: true, treinoOk: true, aguaOk: true, sonoOk: true },
-      });
-      if (reg && diaCumpreDesafio(d.tipo, reg)) hojeConcluido = true;
-    }
-    if (hojeConcluido) cumpridos.add(idxHoje);
+  const hojeNaJanela = idxHoje >= 0 && idxHoje < N;
+  const hojeConcluido = hojeNaJanela && cumpridos.has(idxHoje);
+
+  // Sugestão (não conclui): tipo automático cujo registro de hoje já cumpre o hábito.
+  let sugestaoHoje = false;
+  if (hojeNaJanela && !hojeConcluido && !ehCustom(d.tipo)) {
+    const reg = await prisma.registro.findFirst({
+      where: { pacienteId: prog.pacienteId, data: { gte: hoje0, lt: new Date(hoje0.getTime() + DIA) } },
+      select: { alimentacaoOk: true, treinoOk: true, aguaOk: true, sonoOk: true },
+    });
+    if (reg && diaCumpreDesafio(d.tipo, reg)) sugestaoHoje = true;
   }
 
   const dias: DiaDesafio[] = [];
@@ -153,7 +135,7 @@ export async function montarDesafioDetalhe(
   }
 
   const diasCumpridos = cumpridos.size;
-  return { dias, streak, hojeConcluido, diasCumpridos, progresso: Math.round((diasCumpridos / N) * 100) };
+  return { dias, streak, hojeConcluido, sugestaoHoje, diasCumpridos, progresso: Math.round((diasCumpridos / N) * 100) };
 }
 
 /**
@@ -168,7 +150,7 @@ async function processarProgresso(prog: ProgComDesafio, hoje: Date): Promise<voi
 
   const inicio = inicioDoDia(d.dataInicio);
   const fim = d.dataFim ? inicioDoDia(d.dataFim) : new Date(inicio.getTime() + d.duracaoDias * DIA);
-  const dias = await contarDiasCumpridos(prog.pacienteId, d.tipo, inicio, fim, prog.diasManuais);
+  const dias = contarDiasCumpridos(inicio, fim, prog.diasManuais);
   const pct = Math.min(100, Math.round((dias / d.duracaoDias) * 100));
   const janelaAcabou = inicioDoDia(hoje).getTime() >= fim.getTime();
 

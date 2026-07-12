@@ -27,7 +27,7 @@ interface ResumoResp {
   conquistas: { id: string; tipo: string; titulo: string; descricao: string | null; createdAt: string }[];
 }
 interface RankResp { pos: number; nome: string; fotoPerfilUrl: string | null; pontosTotal: number; ligaAtual: string; ligaNivel: string; isMe: boolean }
-interface DesafioResp { id: string; titulo: string; descricao: string | null; tipo: string; duracaoDias: number; dataFim: string | null; progresso: number; diasCumpridos: number; adesaoMinima: number; concluido: boolean; encerrado?: boolean; pontosBonus?: number; manual?: boolean; streak?: number; hojeConcluido?: boolean; dias?: { dia: number; status: "done" | "today" | "pending" | "missed" }[] }
+interface DesafioResp { id: string; titulo: string; descricao: string | null; tipo: string; duracaoDias: number; dataFim: string | null; progresso: number; diasCumpridos: number; adesaoMinima: number; concluido: boolean; encerrado?: boolean; pontosBonus?: number; manual?: boolean; auto?: boolean; sugestao?: boolean; streak?: number; hojeConcluido?: boolean; dias?: { dia: number; status: "done" | "today" | "pending" | "missed" }[] }
 interface EvolucaoResp {
   fotos: { id: string; data: string; fotoUrl: string | null }[];
   medicoes: { data: string; peso: number; cintura?: number | null; quadril?: number | null; braco?: number | null; coxa?: number | null }[];
@@ -223,7 +223,7 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
           if (d.concluido || bateuMeta) remaining = "Meta concluída";
           else {
             const faltam = Math.max(0, min - d.diasCumpridos);
-            remaining = `Faltam ${faltam} dia${faltam > 1 ? "s" : ""}`;
+            remaining = `Faltam ${faltam} check-in${faltam > 1 ? "s" : ""} para concluir`;
           }
           return {
             id: d.id, icon: st.icon, title: d.titulo, description: d.descricao ?? "",
@@ -232,7 +232,8 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
             status: d.concluido ? "concluido" : "ativo",
             xp: d.pontosBonus, tipo: d.tipo,
             diasCumpridos: d.diasCumpridos, duracaoDias: d.duracaoDias,
-            adesaoMinima: min, streak: d.streak ?? 0, manual: d.manual ?? false,
+            adesaoMinima: min, streak: d.streak ?? 0, manual: d.manual ?? true,
+            auto: d.auto ?? false, sugestao: d.sugestao ?? false,
             hojeConcluido: d.hojeConcluido ?? false, dias: d.dias ?? [],
           };
         });

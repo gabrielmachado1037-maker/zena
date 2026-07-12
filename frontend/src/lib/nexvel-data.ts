@@ -209,6 +209,10 @@ export type Challenge = {
   adesaoMinima?: number
   streak?: number
   manual?: boolean
+  /** Tipo automático (água/treino/sono/alimentação) — mostra sugestão a partir dos registros. */
+  auto?: boolean
+  /** Registro de hoje já cumpre o hábito, mas ainda não foi confirmado na aba. */
+  sugestao?: boolean
   hojeConcluido?: boolean
   dias?: { dia: number; status: "done" | "today" | "pending" | "missed" }[]
 }
