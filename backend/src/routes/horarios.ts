@@ -1,11 +1,19 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { checkModulo } from "../middleware/checkModulo";
 
 const router = Router();
 router.use(authMiddleware);
 router.use(checkModulo("agenda"));
+
+const horarioSchema = z.object({
+  diaSemana: z.number({ error: "diaSemana e hora são obrigatórios" }),
+  hora: z.string({ error: "diaSemana e hora são obrigatórios" }).min(1, "diaSemana e hora são obrigatórios"),
+  duracaoMinutos: z.number().optional().nullable(),
+});
 
 router.get("/", async (req: AuthRequest, res: Response) => {
   const horarios = await prisma.horarioDisponivel.findMany({
@@ -15,7 +23,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   res.json(horarios);
 });
 
-router.post("/", async (req: AuthRequest, res: Response) => {
+router.post("/", validateBody(horarioSchema), async (req: AuthRequest, res: Response) => {
   const { diaSemana, hora, duracaoMinutos } = req.body;
   try {
     const horario = await prisma.horarioDisponivel.upsert({

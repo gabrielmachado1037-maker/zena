@@ -1,6 +1,8 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { checkModulo } from "../middleware/checkModulo";
 import { uploadFeedFoto } from "../lib/supabase";
 import { enviarNotificacaoPaciente } from "./notificacoes";
@@ -11,6 +13,21 @@ router.use(checkModulo("feed"));
 
 const CATEGORIAS_VALIDAS = ["REFEICAO", "TREINO", "MOMENTO"];
 const PRIVACIDADES_VALIDAS = ["PUBLICO", "APENAS_NUTRI"];
+
+const muralSchema = z.object({
+  mensagem: z.string({ error: "Mensagem é obrigatória" }).trim().min(1, "Mensagem é obrigatória"),
+});
+const feedPostSchema = z.object({
+  pacienteId: z.string({ error: "pacienteId e mensagem são obrigatórios" }).min(1, "pacienteId e mensagem são obrigatórios"),
+  mensagem: z.string({ error: "pacienteId e mensagem são obrigatórios" }).trim().min(1, "pacienteId e mensagem são obrigatórios"),
+  categoria: z.string().optional(),
+  privacidade: z.string().optional(),
+  fotoBase64: z.string().optional().nullable(),
+});
+const curtirSchema = z.object({ delta: z.number().optional() });
+const comentarioSchema = z.object({
+  texto: z.string({ error: "Texto obrigatório" }).trim().min(1, "Texto obrigatório").max(500, "Máximo 500 caracteres"),
+});
 
 // GET /api/feed?page=1&limit=20&categoria=REFEICAO
 router.get("/", async (req: AuthRequest, res: Response) => {
@@ -53,7 +70,7 @@ const INCLUDE_POST = {
 } as const;
 
 // POST /api/feed/mural — publica um aviso da nutri no Mural (sem paciente-alvo).
-router.post("/mural", async (req: AuthRequest, res: Response) => {
+router.post("/mural", validateBody(muralSchema), async (req: AuthRequest, res: Response) => {
   const nutricionistaId = req.nutricionistaId!;
   const { mensagem } = req.body as { mensagem: string };
   if (!mensagem?.trim()) return res.status(400).json({ error: "Mensagem é obrigatória" });
@@ -109,7 +126,7 @@ router.get("/engajadores", async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/feed — body: { pacienteId, mensagem, categoria?, privacidade?, fotoBase64? }
-router.post("/", async (req: AuthRequest, res: Response) => {
+router.post("/", validateBody(feedPostSchema), async (req: AuthRequest, res: Response) => {
   const nutricionistaId = req.nutricionistaId!;
   const { pacienteId, mensagem, categoria = "MOMENTO", privacidade = "PUBLICO", fotoBase64 } = req.body as {
     pacienteId: string;
@@ -169,7 +186,7 @@ router.post("/", async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/feed/:id/curtir  — body: { delta: 1 | -1 }
-router.post("/:id/curtir", async (req: AuthRequest, res: Response) => {
+router.post("/:id/curtir", validateBody(curtirSchema), async (req: AuthRequest, res: Response) => {
   const id    = String(req.params.id);
   const delta = req.body.delta === -1 ? -1 : 1;
 
@@ -214,10 +231,8 @@ router.get("/:id/comentarios", async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/feed/:id/comentarios
-router.post("/:id/comentarios", async (req: AuthRequest, res: Response) => {
+router.post("/:id/comentarios", validateBody(comentarioSchema), async (req: AuthRequest, res: Response) => {
   const { texto } = req.body as { texto: string };
-  if (!texto?.trim()) return res.status(400).json({ error: "Texto obrigatório" });
-  if (texto.length > 500) return res.status(400).json({ error: "Máximo 500 caracteres" });
 
   const post = await prisma.feedPost.findFirst({
     where: { id: String(req.params.id), nutricionistaId: req.nutricionistaId! },

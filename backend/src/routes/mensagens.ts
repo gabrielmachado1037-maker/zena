@@ -1,11 +1,23 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { enviarNotificacaoPaciente } from "./notificacoes";
 import { uploadImagemChat, UploadError } from "../lib/supabase";
 
 const router = Router();
 router.use(authMiddleware);
+
+const enviarMensagemSchema = z.object({
+  conteudo: z.string().optional().nullable(),
+  anexoBase64: z.string().optional().nullable(),
+});
+const mensagemLegadoSchema = z.object({
+  pacienteId: z.string({ error: "pacienteId é obrigatório" }).min(1, "pacienteId é obrigatório"),
+  template: z.string().optional().nullable(),
+  textoEnviado: z.string().optional().nullable(),
+});
 
 /* ───────────────────────── Chat bidirecional (tela Mensagens) ───────────────────────── */
 
@@ -112,7 +124,7 @@ router.get("/thread/:pacienteId", async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/mensagens/thread/:pacienteId — nutri envia uma mensagem (persiste + notifica paciente).
-router.post("/thread/:pacienteId", async (req: AuthRequest, res: Response) => {
+router.post("/thread/:pacienteId", validateBody(enviarMensagemSchema), async (req: AuthRequest, res: Response) => {
   const nutricionistaId = req.nutricionistaId as string;
   const pacienteId = req.params["pacienteId"] as string;
   const conteudo = String(req.body?.conteudo ?? "").trim();
@@ -172,7 +184,7 @@ router.patch("/thread/:pacienteId/lida", async (req: AuthRequest, res: Response)
 
 /* ───────────────────────── Legado: log de WhatsApp (mantido, não usado pelo front novo) ───────────────────────── */
 
-router.post("/", async (req: AuthRequest, res: Response) => {
+router.post("/", validateBody(mensagemLegadoSchema), async (req: AuthRequest, res: Response) => {
   const { pacienteId, template, textoEnviado } = req.body;
 
   const paciente = await prisma.paciente.findFirst({

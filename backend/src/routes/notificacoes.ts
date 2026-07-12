@@ -1,9 +1,20 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import webpush from "web-push";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 
 const router = Router();
+
+const subscribeSchema = z.object({
+  endpoint: z.string({ error: "Subscription inválida" }).min(1, "Subscription inválida"),
+  keys: z.object({
+    p256dh: z.string({ error: "Subscription inválida" }).min(1, "Subscription inválida"),
+    auth: z.string({ error: "Subscription inválida" }).min(1, "Subscription inválida"),
+  }, { error: "Subscription inválida" }),
+});
+const unsubscribeSchema = z.object({ endpoint: z.string().optional().nullable() });
 
 // Configure VAPID (noop if keys not set — notifications silently disabled)
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -20,14 +31,11 @@ router.get("/vapid-public-key", (_req, res) => {
 });
 
 // POST /api/notificacoes/subscribe — salva subscription
-router.post("/subscribe", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post("/subscribe", authMiddleware, validateBody(subscribeSchema), async (req: AuthRequest, res: Response) => {
   const { endpoint, keys } = req.body as {
     endpoint: string;
     keys: { p256dh: string; auth: string };
   };
-  if (!endpoint || !keys?.p256dh || !keys?.auth) {
-    return res.status(400).json({ error: "Subscription inválida" });
-  }
   await prisma.pushSubscription.upsert({
     where:  { endpoint },
     create: { nutricionistaId: req.nutricionistaId!, endpoint, p256dh: keys.p256dh, auth: keys.auth },
@@ -37,7 +45,7 @@ router.post("/subscribe", authMiddleware, async (req: AuthRequest, res: Response
 });
 
 // DELETE /api/notificacoes/subscribe — remove subscription
-router.delete("/subscribe", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.delete("/subscribe", authMiddleware, validateBody(unsubscribeSchema), async (req: AuthRequest, res: Response) => {
   const { endpoint } = req.body as { endpoint: string };
   if (endpoint) {
     await prisma.pushSubscription.deleteMany({ where: { endpoint, nutricionistaId: req.nutricionistaId! } });
