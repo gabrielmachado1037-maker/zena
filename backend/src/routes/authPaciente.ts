@@ -3,8 +3,21 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
+
+const registerSchema = z.object({
+  email: z.email({ error: "E-mail inválido." }),
+  senha: z.string({ error: "A senha deve ter ao menos 6 caracteres." }).min(6, "A senha deve ter ao menos 6 caracteres."),
+  codigoVinculo: z.string({ error: "Informe o código de vínculo." }).trim().min(1, "Informe o código de vínculo."),
+});
+
+const loginSchema = z.object({
+  email: z.string({ error: "Informe o e-mail." }).trim().min(1, "Informe o e-mail."),
+  senha: z.string({ error: "Informe a senha." }).min(1, "Informe a senha."),
+});
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -28,7 +41,7 @@ const registerLimiter = rateLimit({
 });
 
 // POST /api/auth/paciente/register
-router.post("/register", registerLimiter, async (req: Request, res: Response) => {
+router.post("/register", registerLimiter, validateBody(registerSchema), async (req: Request, res: Response) => {
   const { email, senha, codigoVinculo } = req.body;
   if (!email || !senha || !codigoVinculo) {
     return res.status(400).json({ error: "Email, senha e código de vínculo são obrigatórios." });
@@ -79,7 +92,7 @@ router.post("/register", registerLimiter, async (req: Request, res: Response) =>
 });
 
 // POST /api/auth/paciente/login
-router.post("/login", loginLimiter, async (req: Request, res: Response) => {
+router.post("/login", loginLimiter, validateBody(loginSchema), async (req: Request, res: Response) => {
   const { email, senha } = req.body;
   if (!email || !senha) {
     return res.status(400).json({ error: "Email e senha são obrigatórios." });

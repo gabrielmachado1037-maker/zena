@@ -3,13 +3,29 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import rateLimit from "express-rate-limit";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { emailBoasVindas, emailRecuperacaoSenha } from "../lib/email";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { uploadFoto } from "../lib/supabase";
+import { validateBody } from "../middleware/validate";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
+
+const registerSchema = z.object({
+  nome: z.string({ error: "Informe o nome." }).trim().min(1, "Informe o nome."),
+  email: z.email({ error: "E-mail inválido." }),
+  senha: z.string({ error: "A senha deve ter ao menos 6 caracteres." }).min(6, "A senha deve ter ao menos 6 caracteres."),
+  crn: z.string({ error: "Informe o CRN." }).trim().min(1, "Informe o CRN."),
+  nomeConsultorio: z.string().trim().optional(),
+  aceiteTermos: z.literal(true, { error: "É necessário aceitar os Termos de Uso e a Política de Privacidade." }),
+});
+
+const loginSchema = z.object({
+  email: z.string({ error: "Informe o e-mail." }).trim().min(1, "Informe o e-mail."),
+  senha: z.string({ error: "Informe a senha." }).min(1, "Informe a senha."),
+});
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -30,7 +46,7 @@ const emailLimiter = rateLimit({
 // Versão vigente dos Termos/Privacidade aceitos no cadastro (LGPD).
 const TERMOS_VERSAO = "2026-07-12";
 
-router.post("/register", async (req: Request, res: Response) => {
+router.post("/register", validateBody(registerSchema), async (req: Request, res: Response) => {
   const { nome, email, senha, crn, nomeConsultorio, aceiteTermos } = req.body;
   if (!nome || !email || !senha || !crn) {
     return res.status(400).json({ error: "Campos obrigatórios faltando" });
@@ -62,7 +78,7 @@ router.post("/register", async (req: Request, res: Response) => {
   res.json({ token, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: null, subscriptionStatus: "trial", modulosAtivos: [] } });
 });
 
-router.post("/login", loginLimiter, async (req: Request, res: Response) => {
+router.post("/login", loginLimiter, validateBody(loginSchema), async (req: Request, res: Response) => {
   const { email, senha } = req.body;
 
   const nutri = await prisma.nutricionista.findUnique({ where: { email } });
