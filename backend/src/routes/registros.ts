@@ -1,6 +1,8 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import {
   calcularPontosRegistro,
   calcularLiga,
@@ -27,6 +29,57 @@ const SONO_VALIDOS = ["menos5", "5a7", "7a9", "mais9"];
 
 const router = Router();
 router.use(authPacienteMiddleware);
+
+/* ── Schemas (lenientes: validam tipos; a normalização de negócio segue em cada rota) ── */
+const diaSchema = z.object({
+  refeicoesStatus: z.record(z.string(), z.unknown()).optional().nullable(),
+  cafeStatus: z.string().optional().nullable(),
+  almocoStatus: z.string().optional().nullable(),
+  lancheStatus: z.string().optional().nullable(),
+  jantarStatus: z.string().optional().nullable(),
+  refeicoesNotas: z.record(z.string(), z.unknown()).optional().nullable(),
+  aguaMl: z.number().optional().nullable(),
+  treinoStatus: z.string().optional().nullable(),
+  treinoMotivo: z.string().optional().nullable(),
+  sonoFaixa: z.string().optional().nullable(),
+  sonoHoras: z.number().optional().nullable(),
+});
+
+const registroLegadoSchema = z.object({
+  alimentacaoOk: z.boolean().optional(),
+  treinoOk: z.boolean().optional(),
+  aguaOk: z.boolean().optional(),
+  sonoOk: z.boolean().optional(),
+  cafeOk: z.boolean().optional(),
+  almocoOk: z.boolean().optional(),
+  lancheOk: z.boolean().optional(),
+  jantarOk: z.boolean().optional(),
+  tipoRegistro: z.string().optional(),
+  fotoUrl: z.string().optional(),
+  descricao: z.string().optional(),
+  humor: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+const ajusteSchema = z.object({ motivo: z.string().max(1000).optional().nullable() });
+
+const medicaoSchema = z.object({
+  peso: z.number({ error: "Peso inválido" }),
+  cintura: z.number().optional().nullable(),
+  quadril: z.number().optional().nullable(),
+  braco: z.number().optional().nullable(),
+  coxa: z.number().optional().nullable(),
+});
+
+const fotoEvolucaoSchema = z.object({
+  fotoBase64: z.string({ error: "Imagem inválida" }).min(1, "Imagem inválida"),
+  tipo: z.string().optional().nullable(),
+});
+
+const humorSchema = z.object({
+  humor: z.string({ error: "Humor inválido" }).min(1, "Humor inválido"),
+  observacoes: z.string().optional().nullable(),
+});
 
 function inicioDeHoje() {
   const hoje = new Date();
@@ -92,7 +145,7 @@ function calcularFechamentoPaciente(
 // PUT /api/registros/dia — AUTOSAVE do dia (refeições, água, treino, sono).
 // Persiste o estado imediatamente, mas NÃO credita liga/streak (isso é o "fechar o dia").
 // Idempotente: recebe o snapshot atual do dia e faz upsert. 409 se o dia já foi fechado.
-router.put("/dia", async (req: PacienteAuthRequest, res: Response) => {
+router.put("/dia", validateBody(diaSchema), async (req: PacienteAuthRequest, res: Response) => {
   const {
     refeicoesStatus, cafeStatus, almocoStatus, lancheStatus, jantarStatus,
     refeicoesNotas, aguaMl, treinoStatus, treinoMotivo, sonoFaixa, sonoHoras,
@@ -248,7 +301,7 @@ router.post("/dia/fechar", async (req: PacienteAuthRequest, res: Response) => {
 });
 
 // POST /api/registros — LEGADO (one-shot). Fecha o dia num único envio (retrocompat).
-router.post("/", async (req: PacienteAuthRequest, res: Response) => {
+router.post("/", validateBody(registroLegadoSchema), async (req: PacienteAuthRequest, res: Response) => {
   const {
     alimentacaoOk, treinoOk, aguaOk, sonoOk,
     cafeOk, almocoOk, lancheOk, jantarOk,
@@ -537,7 +590,7 @@ router.post("/desafios/:id/cumprir-hoje", async (req: PacienteAuthRequest, res: 
 });
 
 // POST /api/registros/pedir-ajuste — paciente sinaliza que precisa de ajuste no plano.
-router.post("/pedir-ajuste", async (req: PacienteAuthRequest, res: Response) => {
+router.post("/pedir-ajuste", validateBody(ajusteSchema), async (req: PacienteAuthRequest, res: Response) => {
   const { motivo } = req.body as { motivo?: string };
   const hoje = inicioDeHoje();
 
@@ -566,7 +619,7 @@ router.post("/pedir-ajuste", async (req: PacienteAuthRequest, res: Response) => 
 });
 
 // POST /api/registros/:id/ajuste — paciente pede ajuste no plano a partir de um registro
-router.post("/:id/ajuste", async (req: PacienteAuthRequest, res: Response) => {
+router.post("/:id/ajuste", validateBody(ajusteSchema), async (req: PacienteAuthRequest, res: Response) => {
   const { motivo } = req.body as { motivo?: string };
   const registro = await prisma.registro.findFirst({
     where: { id: String(req.params.id), pacienteId: req.pacienteId! },
@@ -581,7 +634,7 @@ router.post("/:id/ajuste", async (req: PacienteAuthRequest, res: Response) => {
 });
 
 // POST /api/registros/medicao — paciente registra o próprio peso (e opcionalmente medidas)
-router.post("/medicao", async (req: PacienteAuthRequest, res: Response) => {
+router.post("/medicao", validateBody(medicaoSchema), async (req: PacienteAuthRequest, res: Response) => {
   const { peso, cintura, quadril, braco, coxa } = req.body as {
     peso: number; cintura?: number; quadril?: number; braco?: number; coxa?: number;
   };
@@ -604,7 +657,7 @@ router.post("/medicao", async (req: PacienteAuthRequest, res: Response) => {
 });
 
 // POST /api/registros/foto-evolucao — paciente envia uma foto de evolução
-router.post("/foto-evolucao", async (req: PacienteAuthRequest, res: Response) => {
+router.post("/foto-evolucao", validateBody(fotoEvolucaoSchema), async (req: PacienteAuthRequest, res: Response) => {
   const { fotoBase64, tipo } = req.body as { fotoBase64: string; tipo?: string };
   if (!fotoBase64?.startsWith("data:image/")) {
     return res.status(400).json({ error: "Imagem inválida" });
@@ -623,7 +676,7 @@ router.post("/foto-evolucao", async (req: PacienteAuthRequest, res: Response) =>
 });
 
 // PUT /api/registros/humor — paciente registra o humor do dia (upsert no registro de hoje)
-router.put("/humor", async (req: PacienteAuthRequest, res: Response) => {
+router.put("/humor", validateBody(humorSchema), async (req: PacienteAuthRequest, res: Response) => {
   const { humor, observacoes } = req.body as { humor: string; observacoes?: string };
   if (!HUMORES_VALIDOS.includes(humor)) {
     return res.status(400).json({ error: "Humor inválido" });
