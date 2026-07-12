@@ -1,0 +1,87 @@
+name: Backup Neon → Supabase
+
+# Backup lógico diário do banco (dados de saúde — LGPD). Roda desacoplado do app,
+# faz pg_dump do Neon, comprime e envia para um bucket privado no Supabase Storage,
+# mantendo os últimos RETENTION_DAYS dias.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # 06:00 UTC diariamente (~03:00 BRT)
+  workflow_dispatch: {}    # botão "Run workflow" para rodar manualmente
+
+concurrency:
+  group: backup-neon
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RETENTION_DAYS: "30"
+      BUCKET: db-backups
+    steps:
+      - name: Instalar pg_dump 18 (servidor Neon roda PostgreSQL 18)
+        run: |
+          set -euo pipefail
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-18
+
+      - name: Gerar dump comprimido
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NEON_DATABASE_URL:-}" ]; then echo "Secret NEON_DATABASE_URL ausente."; exit 1; fi
+          STAMP=$(date -u +%Y-%m-%d_%H%M)
+          FILE="nexvel-${STAMP}.sql.gz"
+          # Usa o binário 18 explicitamente (cliente >= servidor, requisito do pg_dump).
+          /usr/lib/postgresql/18/bin/pg_dump "$NEON_DATABASE_URL" --no-owner --no-privileges --format=plain | gzip -9 > "$FILE"
+          SIZE=$(du -h "$FILE" | cut -f1)
+          echo "Backup gerado: $FILE ($SIZE)"
+          echo "FILE=$FILE" >> "$GITHUB_ENV"
+
+      - name: Enviar para o Supabase Storage (bucket privado)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          set -euo pipefail
+          # Garante o bucket privado (ignora erro se já existir).
+          curl -s -X POST "$SUPABASE_URL/storage/v1/bucket" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"id\":\"$BUCKET\",\"name\":\"$BUCKET\",\"public\":false}" > /dev/null || true
+          # Upload (x-upsert permite reexecução no mesmo dia).
+          code=$(curl -s -o /tmp/up.json -w "%{http_code}" -X POST \
+            "$SUPABASE_URL/storage/v1/object/$BUCKET/$FILE" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "Content-Type: application/gzip" \
+            -H "x-upsert: true" \
+            --data-binary "@$FILE")
+          if [ "$code" != "200" ]; then echo "Falha no upload ($code):"; cat /tmp/up.json; exit 1; fi
+          echo "Upload OK → $BUCKET/$FILE"
+
+      - name: Rotação (remove backups mais antigos que RETENTION_DAYS)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d "-${RETENTION_DAYS} days" +%s)
+          list=$(curl -s -X POST "$SUPABASE_URL/storage/v1/object/list/$BUCKET" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"prefix":"","limit":1000,"sortBy":{"column":"created_at","order":"asc"}}')
+          echo "$list" | jq -r '.[]? | [.name, .created_at] | @tsv' | while IFS=$'\t' read -r name created; do
+            [ -z "$name" ] && continue
+            ts=$(date -u -d "$created" +%s 2>/dev/null || echo 0)
+            if [ "$ts" -gt 0 ] && [ "$ts" -lt "$cutoff" ]; then
+              echo "Removendo antigo: $name ($created)"
+              curl -s -X DELETE "$SUPABASE_URL/storage/v1/object/$BUCKET/$name" \
+                -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" > /dev/null
+            fi
+          done
+          echo "Rotação concluída."
