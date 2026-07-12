@@ -206,8 +206,9 @@ router.put("/:id/encerrar", authMiddleware, checkModulo("gamificacao"), async (r
 // PUT /api/ciclos/:id/mensagem-nutri
 router.put("/:id/mensagem-nutri", authMiddleware, checkModulo("gamificacao"), validateBody(mensagemNutriSchema), async (req: AuthRequest, res: Response) => {
   const { pacienteId, mensagem } = req.body as { pacienteId: string; mensagem: string };
+  // Escopo por nutri: o ciclo (via relação) tem que ser desta nutricionista (evita IDOR por cicloId).
   const result = await prisma.relatorioCiclo.updateMany({
-    where: { cicloId: req.params.id as string, pacienteId },
+    where: { cicloId: req.params.id as string, pacienteId, ciclo: { nutricionistaId: req.nutricionistaId! } },
     data: { mensagemNutri: mensagem },
   });
   return res.json({ ok: true, updated: result.count });
