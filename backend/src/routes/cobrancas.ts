@@ -1,11 +1,21 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { checkModulo } from "../middleware/checkModulo";
 
 const router = Router();
 router.use(authMiddleware);
 router.use(checkModulo("financeiro"));
+
+const criarCobrancaSchema = z.object({
+  pacienteId: z.string({ error: "Paciente é obrigatório." }).min(1, "Paciente é obrigatório."),
+  valor: z.union([z.string(), z.number()], { error: "Valor é obrigatório." }),
+  vencimento: z.string({ error: "Vencimento é obrigatório." }).min(1, "Vencimento é obrigatório."),
+  metodo: z.string().optional().nullable(),
+  descricao: z.string().optional().nullable(),
+});
 
 router.get("/resumo", async (req: AuthRequest, res: Response) => {
   const now = new Date();
@@ -55,7 +65,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   res.json(cobrancas);
 });
 
-router.post("/", async (req: AuthRequest, res: Response) => {
+router.post("/", validateBody(criarCobrancaSchema), async (req: AuthRequest, res: Response) => {
   const { pacienteId, valor, vencimento, metodo, descricao } = req.body;
 
   const paciente = await prisma.paciente.findFirst({

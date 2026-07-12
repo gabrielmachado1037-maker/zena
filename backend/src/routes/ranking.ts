@@ -1,6 +1,8 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { checkModulo } from "../middleware/checkModulo";
 import { enviarNotificacao } from "./notificacoes";
 import { calcularLiga } from "../config/ligas";
@@ -8,6 +10,20 @@ import { calcularLiga } from "../config/ligas";
 const router = Router();
 router.use(authMiddleware);
 router.use(checkModulo("ranking"));
+
+const rankingAtualizarSchema = z.object({
+  periodo: z.string().optional().nullable(),
+  ano: z.union([z.string(), z.number()]).optional().nullable(),
+  semana: z.union([z.string(), z.number()]).optional().nullable(),
+  mes: z.union([z.string(), z.number()]).optional().nullable(),
+});
+const rankingConfigSchema = z.object({
+  pesoPesoMeta: z.number({ error: "Configuração inválida." }),
+  pesoHabitosConsecutivos: z.number({ error: "Configuração inválida." }),
+  pesoMetasSemanais: z.number({ error: "Configuração inválida." }),
+  diasConsecutivosAlvo: z.number({ error: "Configuração inválida." }),
+  metasSemanaisAlvo: z.number({ error: "Configuração inválida." }),
+});
 
 // Ordem/estilo das 6 ligas (espelha frontend/src/lib/ligas.ts)
 const LIGA_ORDEM = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"] as const;
@@ -129,7 +145,7 @@ async function calcularRanking(nutricionistaId: string, periodo: string, semana:
 // ─── Routes (specific before parameterized) ───────────────────────────────────
 
 // POST /api/ranking/atualizar — recalcula e persiste no banco
-router.post("/atualizar", async (req: AuthRequest, res: Response) => {
+router.post("/atualizar", validateBody(rankingAtualizarSchema), async (req: AuthRequest, res: Response) => {
   const nutricionistaId = req.nutricionistaId!;
   const now    = new Date();
   const periodo = (req.body.periodo as string) || "semanal";
@@ -200,7 +216,7 @@ router.get("/config", async (req: AuthRequest, res: Response) => {
 });
 
 // PUT /api/ranking/config
-router.put("/config", async (req: AuthRequest, res: Response) => {
+router.put("/config", validateBody(rankingConfigSchema), async (req: AuthRequest, res: Response) => {
   const { pesoPesoMeta, pesoHabitosConsecutivos, pesoMetasSemanais, diasConsecutivosAlvo, metasSemanaisAlvo } = req.body as {
     pesoPesoMeta: number; pesoHabitosConsecutivos: number; pesoMetasSemanais: number;
     diasConsecutivosAlvo: number; metasSemanaisAlvo: number;

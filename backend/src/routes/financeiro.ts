@@ -1,11 +1,21 @@
 import { Router, Request, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { checkModulo } from "../middleware/checkModulo";
 import { criarOuBuscarCliente, criarCobrancaPix, cancelarCobranca } from "../lib/asaas";
 import { encrypt, decrypt } from "../lib/crypto";
 
 const router = Router();
+
+const planoCobrancaSchema = z.object({
+  valor: z.union([z.string(), z.number()], { error: "Valor é obrigatório." }),
+  periodicidade: z.string().optional().nullable(),
+  diaVencimento: z.union([z.string(), z.number()], { error: "Dia de vencimento é obrigatório." }),
+  ativo: z.boolean().optional().nullable(),
+});
+const asaasKeySchema = z.object({ asaasApiKey: z.string().optional().nullable() });
 
 // Webhook sem JWT — autenticado pelo token Asaas no header
 router.post("/asaas-webhook", async (req: Request, res: Response) => {
@@ -88,7 +98,7 @@ router.get("/plano/:pacienteId", async (req: AuthRequest, res: Response) => {
   res.json(plano || null);
 });
 
-router.put("/plano/:pacienteId", async (req: AuthRequest, res: Response) => {
+router.put("/plano/:pacienteId", validateBody(planoCobrancaSchema), async (req: AuthRequest, res: Response) => {
   const pacienteId = req.params["pacienteId"] as string;
   const paciente = await prisma.paciente.findFirst({ where: { id: pacienteId, nutricionistaId: req.nutricionistaId! } });
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrada" });
@@ -150,7 +160,7 @@ router.delete("/cobrar/:cobrancaId/pix", async (req: AuthRequest, res: Response)
 });
 
 // Salvar chave Asaas do nutricionista (criptografada)
-router.put("/asaas-key", async (req: AuthRequest, res: Response) => {
+router.put("/asaas-key", validateBody(asaasKeySchema), async (req: AuthRequest, res: Response) => {
   const { asaasApiKey } = req.body;
   await prisma.nutricionista.update({
     where: { id: req.nutricionistaId! },

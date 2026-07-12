@@ -1,11 +1,22 @@
 import { Router, Response, Request } from "express";
+import { z } from "zod";
 import Stripe from "stripe";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { criarClienteNexvel, criarAssinaturaPix, cancelarAssinatura } from "../lib/asaas";
 import { MODULOS_POR_PLANO } from "../middleware/checkModulo";
 
 const router = Router();
+
+const planoBodySchema = z.object({
+  plano_slug: z.string().optional().nullable(),
+  tipo: z.string().optional().nullable(),
+  periodo: z.string().optional().nullable(),
+});
+const upgradeSchema = z.object({
+  novo_plano_slug: z.string({ error: "Plano inválido" }).min(1, "Plano inválido"),
+});
 
 function getStripe(): Stripe | null {
   if (!process.env.STRIPE_SECRET_KEY) return null;
@@ -79,7 +90,7 @@ router.get("/status", authMiddleware, async (req: AuthRequest, res: Response) =>
 
 // ── POST /billing/checkout (Stripe) ──────────────────────────────────────────
 
-router.post("/checkout", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post("/checkout", authMiddleware, validateBody(planoBodySchema), async (req: AuthRequest, res: Response) => {
   const stripe = getStripe();
   if (!stripe) return res.status(503).json({ error: "Pagamentos por cartão não configurados" });
 
@@ -116,7 +127,7 @@ router.post("/checkout", authMiddleware, async (req: AuthRequest, res: Response)
 
 // ── POST /billing/checkout-pix (Asaas) ───────────────────────────────────────
 
-router.post("/checkout-pix", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post("/checkout-pix", authMiddleware, validateBody(planoBodySchema), async (req: AuthRequest, res: Response) => {
   if (!process.env.NEXVEL_ASAAS_API_KEY) {
     return res.status(503).json({ error: "Pagamento via Pix não configurado ainda." });
   }
@@ -165,7 +176,7 @@ router.post("/checkout-pix", authMiddleware, async (req: AuthRequest, res: Respo
 
 // ── POST /billing/upgrade ─────────────────────────────────────────────────────
 
-router.post("/upgrade", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.post("/upgrade", authMiddleware, validateBody(upgradeSchema), async (req: AuthRequest, res: Response) => {
   const { novo_plano_slug } = req.body as { novo_plano_slug: string };
   if (!MODULOS_POR_PLANO[novo_plano_slug]) {
     return res.status(400).json({ error: "Plano inválido" });

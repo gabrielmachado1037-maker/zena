@@ -1,12 +1,21 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { planoMiddleware } from "../middleware/plano";
 import { uploadFoto, deleteFoto, BUCKET } from "../lib/supabase";
 
 const router = Router();
 router.use(authMiddleware);
 router.use(planoMiddleware);
+
+const M = "Campos obrigatórios: data, tipo, imagem";
+const fotoSchema = z.object({
+  data: z.string({ error: M }).min(1, M),
+  tipo: z.string({ error: M }).min(1, M),
+  imagem: z.string({ error: M }).min(1, M),
+});
 
 router.get("/:pacienteId/meta", async (req: AuthRequest, res: Response) => {
   const paciente = await prisma.paciente.findFirst({
@@ -31,9 +40,8 @@ router.get("/:fotoId/imagem", async (req: AuthRequest, res: Response) => {
   res.json({ imagem: foto.imagem });
 });
 
-router.post("/:pacienteId", async (req: AuthRequest, res: Response) => {
+router.post("/:pacienteId", validateBody(fotoSchema), async (req: AuthRequest, res: Response) => {
   const { data, tipo, imagem } = req.body as { data: string; tipo: string; imagem: string };
-  if (!data || !tipo || !imagem) return res.status(400).json({ error: "Campos obrigatórios: data, tipo, imagem" });
 
   const pacienteId = String(req.params.pacienteId);
   const paciente = await prisma.paciente.findFirst({

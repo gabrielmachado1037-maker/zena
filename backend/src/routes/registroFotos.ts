@@ -1,10 +1,21 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { uploadFoto, deleteFoto } from "../lib/supabase";
 
 const router = Router();
 router.use(authMiddleware);
+
+const registroFotoSchema = z.object({
+  mes: z.union([z.string(), z.number()], { error: "mes e ano são obrigatórios" }),
+  ano: z.union([z.string(), z.number()], { error: "mes e ano são obrigatórios" }),
+  frente: z.string().optional().nullable(),
+  perfil: z.string().optional().nullable(),
+  costas: z.string().optional().nullable(),
+  observacoes: z.string().optional().nullable(),
+});
 
 router.get("/:pacienteId", async (req: AuthRequest, res: Response) => {
   const { pacienteId } = req.params as { pacienteId: string };
@@ -20,7 +31,7 @@ router.get("/:pacienteId", async (req: AuthRequest, res: Response) => {
   res.json(registros);
 });
 
-router.post("/:pacienteId", async (req: AuthRequest, res: Response) => {
+router.post("/:pacienteId", validateBody(registroFotoSchema), async (req: AuthRequest, res: Response) => {
   const { pacienteId } = req.params as { pacienteId: string };
   const { mes, ano, frente, perfil, costas, observacoes } = req.body as {
     mes: number; ano: number;
@@ -64,7 +75,10 @@ router.post("/:pacienteId", async (req: AuthRequest, res: Response) => {
 
 router.delete("/:registroId", async (req: AuthRequest, res: Response) => {
   const { registroId } = req.params as { registroId: string };
-  const registro = await prisma.registroFotos.findUnique({ where: { id: registroId } });
+  // Escopo por nutri (evita IDOR: apagar registro/fotos de outra clínica por id).
+  const registro = await prisma.registroFotos.findFirst({
+    where: { id: registroId, paciente: { nutricionistaId: req.nutricionistaId! } },
+  });
   if (!registro) return res.status(404).json({ error: "Registro não encontrado" });
 
   const base = `${registro.pacienteId}/${registro.ano}/${registro.mes}`;
