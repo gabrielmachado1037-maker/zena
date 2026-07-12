@@ -2,7 +2,7 @@ import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { enviarNotificacaoPaciente } from "./notificacoes";
-import { uploadImagemChat } from "../lib/supabase";
+import { uploadImagemChat, UploadError } from "../lib/supabase";
 
 const router = Router();
 router.use(authMiddleware);
@@ -132,7 +132,8 @@ router.post("/thread/:pacienteId", async (req: AuthRequest, res: Response) => {
     }
     try {
       anexoUrl = await uploadImagemChat(`chat/${nutricionistaId}/${pacienteId}/${Date.now()}.jpg`, anexoBase64);
-    } catch {
+    } catch (e) {
+      if (e instanceof UploadError) return res.status(400).json({ error: e.message });
       return res.status(502).json({ error: "Falha ao enviar o anexo. Tente novamente." });
     }
   }

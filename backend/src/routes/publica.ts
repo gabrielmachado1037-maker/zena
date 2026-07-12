@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/prisma";
-import { uploadFoto } from "../lib/supabase";
+import { uploadFoto, UploadError } from "../lib/supabase";
 
 const router = Router();
 
@@ -59,8 +59,9 @@ router.post("/paciente/:link/checkin", async (req: Request, res: Response) => {
   if (foto) {
     try {
       fotoUrl = await uploadFoto(`checkins/${paciente.id}/${semana}-${ano}.jpg`, foto);
-    } catch {
-      // Supabase not configured or unreachable — skip photo, keep check-in
+    } catch (e) {
+      if (e instanceof UploadError) return res.status(400).json({ error: e.message });
+      // Supabase indisponível — segue sem foto, mantém o check-in
     }
   }
 

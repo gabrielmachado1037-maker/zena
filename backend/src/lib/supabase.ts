@@ -20,30 +20,62 @@ async function uploadBuffer(bucket: string, path: string, buffer: Buffer, conten
   return `${process.env.SUPABASE_URL}/storage/v1/object/public/${bucket}/${path}`;
 }
 
+// Limite de imagem: ~6MB binário (fica sob o limite de 10mb do body JSON já com base64).
+const TAMANHO_MAX_MB = 6;
+
+/** Erro de validação de upload — vira 400 (client error) no handler global. */
+export class UploadError extends Error {
+  status = 400;
+  expose = true;
+  constructor(message: string) {
+    super(message);
+    this.name = "UploadError";
+  }
+}
+
+/** Detecta o tipo REAL pela assinatura (magic bytes) — ignora o mime declarado. */
+function sniffTipoImagem(b: Buffer): "image/jpeg" | "image/png" | "image/webp" | null {
+  if (b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b.length >= 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
+  if (b.length >= 12 && b.toString("ascii", 0, 4) === "RIFF" && b.toString("ascii", 8, 12) === "WEBP") return "image/webp";
+  return null;
+}
+
+/**
+ * Valida e decodifica uma imagem base64 (com ou sem data URL).
+ * Confere tamanho e tipo REAL (JPEG/PNG/WebP) por magic bytes. Lança UploadError (→ 400).
+ */
+export function decodeImagem(base64: string): { buffer: Buffer; contentType: string } {
+  if (typeof base64 !== "string" || base64.length === 0) throw new UploadError("Imagem ausente.");
+  const raw = base64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "");
+  const buffer = Buffer.from(raw, "base64");
+  if (buffer.length === 0) throw new UploadError("Imagem inválida ou vazia.");
+  if (buffer.length > TAMANHO_MAX_MB * 1024 * 1024) {
+    throw new UploadError(`Imagem muito grande (máx ${TAMANHO_MAX_MB}MB).`);
+  }
+  const contentType = sniffTipoImagem(buffer);
+  if (!contentType) throw new UploadError("Formato não suportado. Envie JPEG, PNG ou WebP.");
+  return { buffer, contentType };
+}
+
 export async function uploadFoto(path: string, base64: string): Promise<string> {
-  const data = base64.replace(/^data:image\/\w+;base64,/, "");
-  return uploadBuffer(BUCKET, path, Buffer.from(data, "base64"));
+  const { buffer, contentType } = decodeImagem(base64);
+  return uploadBuffer(BUCKET, path, buffer, contentType);
 }
 
 export async function uploadFeedFoto(path: string, base64: string): Promise<string> {
-  const match = base64.match(/^data:(image\/\w+);base64,/);
-  const contentType = match?.[1] ?? "image/jpeg";
-  const data = base64.replace(/^data:image\/\w+;base64,/, "");
-  return uploadBuffer(BUCKET_FEED, path, Buffer.from(data, "base64"), contentType);
+  const { buffer, contentType } = decodeImagem(base64);
+  return uploadBuffer(BUCKET_FEED, path, buffer, contentType);
 }
 
 export async function uploadAvatarPaciente(path: string, base64: string): Promise<string> {
-  const match = base64.match(/^data:(image\/\w+);base64,/);
-  const contentType = match?.[1] ?? "image/jpeg";
-  const data = base64.replace(/^data:image\/\w+;base64,/, "");
-  return uploadBuffer(BUCKET_AVATAR_PACIENTE, path, Buffer.from(data, "base64"), contentType);
+  const { buffer, contentType } = decodeImagem(base64);
+  return uploadBuffer(BUCKET_AVATAR_PACIENTE, path, buffer, contentType);
 }
 
 export async function uploadImagemChat(path: string, base64: string): Promise<string> {
-  const match = base64.match(/^data:(image\/\w+);base64,/);
-  const contentType = match?.[1] ?? "image/jpeg";
-  const data = base64.replace(/^data:image\/\w+;base64,/, "");
-  return uploadBuffer(BUCKET, path, Buffer.from(data, "base64"), contentType);
+  const { buffer, contentType } = decodeImagem(base64);
+  return uploadBuffer(BUCKET, path, buffer, contentType);
 }
 
 export async function deleteFoto(path: string) {

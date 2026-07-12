@@ -109,7 +109,13 @@ Sentry.setupExpressErrorHandler(app);
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  // Log completo fica no servidor; ao cliente, só mensagem genérica (não vaza internals).
+  // Erros de cliente explícitos (ex.: UploadError) — 4xx com mensagem segura para o usuário.
+  const e = err as Error & { status?: number; statusCode?: number; expose?: boolean };
+  const status = e.status ?? e.statusCode;
+  if (typeof status === "number" && status >= 400 && status < 500 && e.expose) {
+    return res.status(status).json({ error: err.message });
+  }
+  // Demais erros: log completo no servidor, mensagem genérica ao cliente (não vaza internals).
   console.error("[ERROR]", err.message, err.stack);
   res.status(500).json({ error: "Erro interno do servidor." });
 });

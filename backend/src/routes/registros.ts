@@ -16,7 +16,7 @@ import {
   calcularXpSonoMeta,
   ehDiaDeTreino,
 } from "../config/ligas";
-import { uploadFoto } from "../lib/supabase";
+import { uploadFoto, UploadError } from "../lib/supabase";
 import { adesaoMinimaDe, recompensaDe } from "../config/desafios";
 import { processarDesafiosDoPaciente, montarDesafioDetalhe, ehCustom, janelaDesafio, ymdLocal } from "../services/desafioService";
 
@@ -612,7 +612,8 @@ router.post("/foto-evolucao", async (req: PacienteAuthRequest, res: Response) =>
   let imagem: string;
   try {
     imagem = await uploadFoto(`evolucao/${req.pacienteId!}/${Date.now()}.jpg`, fotoBase64);
-  } catch {
+  } catch (e) {
+    if (e instanceof UploadError) return res.status(400).json({ error: e.message });
     return res.status(502).json({ error: "Falha ao enviar a imagem. Tente novamente." });
   }
   const foto = await prisma.fotoEvolucao.create({
