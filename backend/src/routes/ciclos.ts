@@ -1,10 +1,25 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest, authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { checkModulo } from "../middleware/checkModulo";
 import { calcularProgressoCiclo, calcularStatusCiclo, encerrarCiclo } from "../services/cicloService";
 
 const router = Router();
+
+const criarCicloSchema = z.object({
+  titulo: z.string().optional().nullable(),
+  dataInicio: z.string({ error: "dataInicio e dataFim são obrigatórios" }).min(1, "dataInicio e dataFim são obrigatórios"),
+  dataFim: z.string({ error: "dataInicio e dataFim são obrigatórios" }).min(1, "dataInicio e dataFim são obrigatórios"),
+  premioDescricao: z.string().optional().nullable(),
+  premioTipo: z.string().optional().nullable(),
+});
+// pacienteId obrigatório: sem ele o updateMany atingiria TODOS os participantes do ciclo.
+const mensagemNutriSchema = z.object({
+  pacienteId: z.string({ error: "pacienteId é obrigatório" }).min(1, "pacienteId é obrigatório"),
+  mensagem: z.string({ error: "Mensagem é obrigatória" }),
+});
 
 // ─── Rotas do paciente (antes das /:id para evitar conflito) ──────────────────
 
@@ -111,7 +126,7 @@ router.get("/", authMiddleware, checkModulo("gamificacao"), async (req: AuthRequ
 });
 
 // POST /api/ciclos
-router.post("/", authMiddleware, checkModulo("gamificacao"), async (req: AuthRequest, res: Response) => {
+router.post("/", authMiddleware, checkModulo("gamificacao"), validateBody(criarCicloSchema), async (req: AuthRequest, res: Response) => {
   const { titulo, dataInicio, dataFim, premioDescricao, premioTipo } = req.body as {
     titulo?: string;
     dataInicio: string;
@@ -189,7 +204,7 @@ router.put("/:id/encerrar", authMiddleware, checkModulo("gamificacao"), async (r
 });
 
 // PUT /api/ciclos/:id/mensagem-nutri
-router.put("/:id/mensagem-nutri", authMiddleware, checkModulo("gamificacao"), async (req: AuthRequest, res: Response) => {
+router.put("/:id/mensagem-nutri", authMiddleware, checkModulo("gamificacao"), validateBody(mensagemNutriSchema), async (req: AuthRequest, res: Response) => {
   const { pacienteId, mensagem } = req.body as { pacienteId: string; mensagem: string };
   const result = await prisma.relatorioCiclo.updateMany({
     where: { cicloId: req.params.id as string, pacienteId },

@@ -1,11 +1,18 @@
 import { Router, Response } from "express";
+import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { validateBody } from "../middleware/validate";
 import { planoMiddleware } from "../middleware/plano";
 
 const router = Router();
 router.use(authMiddleware);
 router.use(planoMiddleware);
+
+const mensagemDiarioSchema = z.object({
+  tipo: z.string().optional().nullable(),
+  conteudo: z.string({ error: "Mensagem vazia" }).trim().min(1, "Mensagem vazia"),
+});
 
 async function pacienteDoNutri(id: string, nutricionistaId: string) {
   return prisma.paciente.findFirst({ where: { id, nutricionistaId } });
@@ -48,7 +55,7 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
 });
 
 // POST /api/diario/:id/mensagem — nutricionista envia mensagem ao paciente
-router.post("/:id/mensagem", async (req: AuthRequest, res: Response) => {
+router.post("/:id/mensagem", validateBody(mensagemDiarioSchema), async (req: AuthRequest, res: Response) => {
   const id = String(req.params.id);
   const nutricionistaId = req.nutricionistaId as string;
   const { tipo, conteudo } = req.body as { tipo?: string; conteudo?: string };
