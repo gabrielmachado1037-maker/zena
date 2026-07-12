@@ -206,6 +206,11 @@ export type Challenge = {
   tipo?: string
   diasCumpridos?: number
   duracaoDias?: number
+  adesaoMinima?: number
+  streak?: number
+  manual?: boolean
+  hojeConcluido?: boolean
+  dias?: { dia: number; status: "done" | "today" | "pending" | "missed" }[]
 }
 
 export const challenges: Challenge[] = [

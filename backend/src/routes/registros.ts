@@ -18,7 +18,7 @@ import {
 } from "../config/ligas";
 import { uploadFoto } from "../lib/supabase";
 import { adesaoMinimaDe } from "../config/desafios";
-import { processarDesafiosDoPaciente } from "../services/desafioService";
+import { processarDesafiosDoPaciente, montarDesafioDetalhe, ehCustom, janelaDesafio, ymdLocal } from "../services/desafioService";
 
 const HUMORES_VALIDOS = ["otimo", "bom", "neutro", "dificil", "pessimo"];
 const STATUS_VALIDOS = ["seguiu", "adaptou", "comeu_mal", "pulou"];
@@ -469,23 +469,72 @@ router.get("/desafios", async (req: PacienteAuthRequest, res: Response) => {
     include: { desafio: true },
     orderBy: { createdAt: "desc" },
   });
-  const result = progressos.map((p) => ({
-    id: p.desafio.id,
-    titulo: p.desafio.titulo,
-    descricao: p.desafio.descricao,
-    tipo: p.desafio.tipo,
-    icone: p.desafio.icone,
-    duracaoDias: p.desafio.duracaoDias,
-    dataInicio: p.desafio.dataInicio,
-    dataFim: p.desafio.dataFim,
-    pontosBonus: p.desafio.pontosBonus,
-    progresso: p.progresso,
-    diasCumpridos: p.diasCumpridos,
-    adesaoMinima: adesaoMinimaDe(p.desafio.duracaoDias),
-    concluido: p.concluido,
-    encerrado: p.encerradoEm != null,
+  const hoje = inicioDeHoje();
+  const result = await Promise.all(progressos.map(async (p) => {
+    const det = await montarDesafioDetalhe({ pacienteId: p.pacienteId, diasManuais: p.diasManuais, desafio: p.desafio }, hoje);
+    return {
+      id: p.desafio.id,
+      titulo: p.desafio.titulo,
+      descricao: p.desafio.descricao,
+      tipo: p.desafio.tipo,
+      icone: p.desafio.icone,
+      duracaoDias: p.desafio.duracaoDias,
+      dataInicio: p.desafio.dataInicio,
+      dataFim: p.desafio.dataFim,
+      pontosBonus: p.desafio.pontosBonus,
+      // Progresso "ao vivo" (inclui hoje) para a tela; a finalização/XP segue no motor.
+      progresso: det.progresso,
+      diasCumpridos: det.diasCumpridos,
+      adesaoMinima: adesaoMinimaDe(p.desafio.duracaoDias),
+      concluido: p.concluido,
+      encerrado: p.encerradoEm != null,
+      // Visão diária da tela do paciente:
+      manual: ehCustom(p.desafio.tipo),
+      streak: det.streak,
+      hojeConcluido: det.hojeConcluido,
+      dias: det.dias,
+    };
   }));
   return res.json(result);
+});
+
+// POST /api/registros/desafios/:id/cumprir-hoje — marca HOJE num desafio MANUAL (custom).
+// Idempotente (não marca 2x/dia). Desafios automáticos são concluídos pelos registros.
+router.post("/desafios/:id/cumprir-hoje", async (req: PacienteAuthRequest, res: Response) => {
+  const desafioId = String(req.params.id);
+  const prog = await prisma.desafioProgresso.findFirst({
+    where: { desafioId, pacienteId: req.pacienteId! },
+    include: { desafio: true },
+  });
+  if (!prog) return res.status(404).json({ error: "Desafio não encontrado" });
+  if (!ehCustom(prog.desafio.tipo)) {
+    return res.status(400).json({ error: "Este desafio é concluído automaticamente pelos seus registros." });
+  }
+  if (prog.concluido || prog.encerradoEm) return res.status(409).json({ error: "Desafio já encerrado." });
+
+  const win = janelaDesafio(prog.desafio);
+  const hoje = inicioDeHoje();
+  if (!win || hoje.getTime() < win.inicio.getTime() || hoje.getTime() >= win.fim.getTime()) {
+    return res.status(400).json({ error: "Fora do período do desafio." });
+  }
+
+  const ymd = ymdLocal(hoje);
+  const jaMarcado = prog.diasManuais.includes(ymd);
+  if (!jaMarcado) {
+    const novos = [...prog.diasManuais, ymd];
+    const dias = novos.filter((s) => {
+      const dt = new Date(s + "T00:00:00");
+      return dt.getTime() >= win.inicio.getTime() && dt.getTime() < win.fim.getTime();
+    }).length;
+    await prisma.desafioProgresso.update({
+      where: { id: prog.id },
+      data: { diasManuais: novos, diasCumpridos: dias, progresso: Math.min(100, Math.round((dias / prog.desafio.duracaoDias) * 100)) },
+    });
+    prog.diasManuais = novos;
+  }
+
+  const det = await montarDesafioDetalhe({ pacienteId: prog.pacienteId, diasManuais: prog.diasManuais, desafio: prog.desafio }, hoje);
+  return res.json({ ok: true, jaMarcado, adesaoMinima: adesaoMinimaDe(prog.desafio.duracaoDias), ...det });
 });
 
 // POST /api/registros/pedir-ajuste — paciente sinaliza que precisa de ajuste no plano.

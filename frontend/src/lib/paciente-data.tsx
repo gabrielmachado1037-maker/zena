@@ -27,7 +27,7 @@ interface ResumoResp {
   conquistas: { id: string; tipo: string; titulo: string; descricao: string | null; createdAt: string }[];
 }
 interface RankResp { pos: number; nome: string; fotoPerfilUrl: string | null; pontosTotal: number; ligaAtual: string; ligaNivel: string; isMe: boolean }
-interface DesafioResp { id: string; titulo: string; descricao: string | null; tipo: string; duracaoDias: number; dataFim: string | null; progresso: number; diasCumpridos: number; adesaoMinima: number; concluido: boolean; encerrado?: boolean; pontosBonus?: number }
+interface DesafioResp { id: string; titulo: string; descricao: string | null; tipo: string; duracaoDias: number; dataFim: string | null; progresso: number; diasCumpridos: number; adesaoMinima: number; concluido: boolean; encerrado?: boolean; pontosBonus?: number; manual?: boolean; streak?: number; hojeConcluido?: boolean; dias?: { dia: number; status: "done" | "today" | "pending" | "missed" }[] }
 interface EvolucaoResp {
   fotos: { id: string; data: string; fotoUrl: string | null }[];
   medicoes: { data: string; peso: number; cintura?: number | null; quadril?: number | null; braco?: number | null; coxa?: number | null }[];
@@ -232,6 +232,8 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
             status: d.concluido ? "concluido" : "ativo",
             xp: d.pontosBonus, tipo: d.tipo,
             diasCumpridos: d.diasCumpridos, duracaoDias: d.duracaoDias,
+            adesaoMinima: min, streak: d.streak ?? 0, manual: d.manual ?? false,
+            hojeConcluido: d.hojeConcluido ?? false, dias: d.dias ?? [],
           };
         });
 

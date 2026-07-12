@@ -738,6 +738,7 @@ model DesafioProgresso {
   paciente   Paciente @relation(fields: [pacienteId], references: [id])
   progresso  Float    @default(0) // percentual 0-100 (derivado de diasCumpridos/duração)
   diasCumpridos Int    @default(0) // dias de aderência cumpridos na janela do desafio
+  diasManuais String[] @default([]) // datas (yyyy-mm-dd) marcadas à mão em desafios custom
   concluido  Boolean  @default(false)
   // Encerrado (janela terminou): concluído=true venceu; concluído=false = não atingiu o mínimo.
   // Ativo = concluido=false E encerradoEm=null.

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
-import { Check, Zap, Trophy, Gift, CalendarClock } from "lucide-react"
+import { Check, Zap, Trophy, Gift, CalendarClock, Flame, Circle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { usePacienteData } from "@/lib/paciente-data"
-import { ProgressBarNx, LevelUpOverlay } from "@/components/ui-nx"
+import { ProgressBarNx, LevelUpOverlay, useNxToasts } from "@/components/ui-nx"
+import apiPaciente from "@/lib/apiPaciente"
 import type { Challenge } from "@/lib/nexvel-data"
 
 type Tone = "water" | "evo" | "streak" | "gold"
@@ -18,10 +19,39 @@ const tema = (t?: string) => TEMA[t ?? "custom"] ?? TEMA.custom
 
 const STORE = (id: string) => `nx-desafio-ok-${id}`
 
-function EventCard({ c, onResgatar }: { c: Challenge; onResgatar: (c: Challenge) => void }) {
+/** Uma bolinha do calendário do desafio: concluído ✓ · hoje ◉ · pendente ○ · perdido. */
+function DayDot({ status, accent }: { status: string; accent: string }) {
+  if (status === "done")
+    return (
+      <span className="grid size-4 place-items-center rounded-full" style={{ background: accent }}>
+        <Check className="size-2.5 text-[#0A0A0A]" strokeWidth={3.5} />
+      </span>
+    )
+  if (status === "today")
+    return <span className="size-4 rounded-full border-2 motion-safe:animate-pulse" style={{ borderColor: accent, background: `${accent}22` }} />
+  if (status === "missed")
+    return <span className="size-4 rounded-full border border-nx-border bg-nx-container-high/40" />
+  return <span className="size-4 rounded-full border border-nx-outline" />
+}
+
+function EventCard({
+  c, marcando, onResgatar, onCumprir,
+}: {
+  c: Challenge
+  marcando: boolean
+  onResgatar: (c: Challenge) => void
+  onCumprir: (c: Challenge) => void
+}) {
   const t = tema(c.tipo)
   const Icon = c.icon
   const done = c.status === "concluido"
+
+  const total = c.duracaoDias ?? c.dias?.length ?? 0
+  const feitos = c.diasCumpridos ?? 0
+  const min = c.adesaoMinima ?? total
+  const bateuMeta = feitos >= min
+  const faltamRecompensa = Math.max(0, min - feitos)
+  const streak = c.streak ?? 0
 
   return (
     <article className="overflow-hidden rounded-nx-xl border border-nx-border bg-nx-surface">
@@ -44,19 +74,90 @@ function EventCard({ c, onResgatar }: { c: Challenge; onResgatar: (c: Challenge)
       </div>
 
       {/* Corpo */}
-      <div className="space-y-3 p-4">
+      <div className="space-y-3.5 p-4">
         <div>
           <h3 className="text-body-lg font-semibold text-nx-on-surface">{c.title}</h3>
           {c.description && <p className="mt-0.5 text-body-sm text-nx-on-surface-variant">{c.description}</p>}
         </div>
 
-        <div>
-          <ProgressBarNx value={c.progress} tone={t.tone} celebrate={done} aria-label={`Progresso do desafio ${c.title}`} />
-          <div className="mt-1.5 flex items-center justify-between text-body-sm">
-            <span className="font-semibold tabular-nums" style={{ color: t.accent }}>{c.duracaoDias ? `${c.diasCumpridos ?? 0}/${c.duracaoDias} dias` : `${c.progress}%`}</span>
-            {!done && <span className="text-nx-on-surface-variant">{c.remaining}</span>}
-          </div>
-        </div>
+        {!done && (
+          <>
+            {/* Bloco de progresso + sequência */}
+            <div className="rounded-nx-md border border-nx-border bg-nx-container-low p-3">
+              <div className="flex items-center gap-2">
+                <Flame className="size-4 text-nx-streak" />
+                <span className="text-body-sm text-nx-on-surface-variant">Sequência atual</span>
+                <span className="ml-auto text-body-md font-bold text-nx-on-surface">
+                  {streak > 0 ? `${streak} ${streak === 1 ? "dia" : "dias"} seguidos` : "Comece hoje 🔥"}
+                </span>
+              </div>
+
+              <div className="mt-3">
+                <ProgressBarNx value={c.progress} tone={t.tone} aria-label={`Progresso do desafio ${c.title}`} />
+                <div className="mt-1.5 flex items-center justify-between text-body-sm">
+                  <span className="font-semibold tabular-nums" style={{ color: t.accent }}>
+                    {feitos} de {total} dias concluídos
+                  </span>
+                  <span className="text-nx-on-surface-variant tabular-nums">{c.progress}%</span>
+                </div>
+              </div>
+
+              <p className="mt-2 text-body-sm text-nx-on-surface-variant">
+                {bateuMeta ? (
+                  <span className="font-semibold text-nx-evo">Recompensa garantida! 🎉</span>
+                ) : (
+                  <>Faltam <span className="font-semibold" style={{ color: t.accent }}>{faltamRecompensa} dia{faltamRecompensa !== 1 ? "s" : ""}</span> para receber a recompensa.</>
+                )}
+              </p>
+            </div>
+
+            {/* Calendário do desafio */}
+            {c.dias && c.dias.length > 0 && (
+              <div>
+                <div className="flex flex-wrap gap-1.5">
+                  {c.dias.map((d) => <DayDot key={d.dia} status={d.status} accent={t.accent} />)}
+                </div>
+                <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-label-sm text-nx-on-surface-variant">
+                  <span className="flex items-center gap-1"><span className="size-2.5 rounded-full" style={{ background: t.accent }} /> concluído</span>
+                  <span className="flex items-center gap-1"><span className="size-2.5 rounded-full border-2" style={{ borderColor: t.accent }} /> hoje</span>
+                  <span className="flex items-center gap-1"><span className="size-2.5 rounded-full border border-nx-outline" /> pendente</span>
+                </div>
+              </div>
+            )}
+
+            {/* Status do dia */}
+            <div className="flex items-center gap-2 text-body-sm">
+              {c.hojeConcluido ? (
+                <><Check className="size-4 text-nx-evo" /><span className="font-semibold text-nx-evo">Hoje concluído</span></>
+              ) : (
+                <><Circle className="size-4 text-nx-on-surface-variant" /><span className="text-nx-on-surface-variant">Falta concluir hoje</span></>
+              )}
+            </div>
+
+            {/* Botão só para desafios manuais (custom) */}
+            {c.manual && (
+              c.hojeConcluido ? (
+                <button
+                  type="button"
+                  disabled
+                  className="flex w-full items-center justify-center gap-2 rounded-nx-md border border-nx-border bg-nx-container-low py-2.5 text-body-md font-semibold text-nx-on-surface-variant opacity-70"
+                >
+                  <Check className="size-4" /> Hoje já concluído
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={marcando}
+                  onClick={() => onCumprir(c)}
+                  className="flex w-full items-center justify-center gap-2 rounded-nx-md py-2.5 text-body-md font-bold text-[#0A0A0A] transition-opacity disabled:opacity-60"
+                  style={{ background: t.accent }}
+                >
+                  <Zap className="size-4" /> {marcando ? "Marcando…" : "Cumprir desafio de hoje"}
+                </button>
+              )
+            )}
+          </>
+        )}
 
         {/* Recompensas */}
         <div className="flex items-center gap-2 border-t border-nx-border pt-3">
@@ -88,17 +189,19 @@ function EventCard({ c, onResgatar }: { c: Challenge; onResgatar: (c: Challenge)
 }
 
 export function DesafiosScreen() {
-  const { challenges } = usePacienteData()
+  const { challenges, reload } = usePacienteData()
+  const { push, node: toasts } = useNxToasts()
   const [tab, setTab] = useState<"ativos" | "concluidos">("ativos")
   const [celeb, setCeleb] = useState<Challenge | null>(null)
   const [fila, setFila] = useState<Challenge[]>([])
+  const [marcandoId, setMarcandoId] = useState<string | null>(null)
 
   const ativos = challenges.filter((c) => c.status === "ativo")
   const concluidos = challenges.filter((c) => c.status === "concluido")
 
   const doneKey = useMemo(() => concluidos.map((c) => c.id).join(","), [concluidos])
 
-  // Ao concluir um desafio (primeira vez que aparece concluído), revela a recompensa — Parte 2.
+  // Ao concluir um desafio (primeira vez que aparece concluído), revela a recompensa.
   useEffect(() => {
     if (typeof window === "undefined") return
     const novos = concluidos.filter((c) => !localStorage.getItem(STORE(c.id)))
@@ -118,6 +221,34 @@ export function DesafiosScreen() {
     }
   }
 
+  // Marca o dia de hoje num desafio manual (custom) — usa o backend, sem sistema paralelo.
+  async function cumprir(c: Challenge) {
+    if (marcandoId) return
+    setMarcandoId(c.id)
+    try {
+      const { data } = await apiPaciente.post<{ jaMarcado?: boolean; streak?: number; diasCumpridos?: number; adesaoMinima?: number }>(
+        `/registros/desafios/${c.id}/cumprir-hoje`,
+      )
+      await reload()
+      if (!data?.jaMarcado) {
+        const streak = data?.streak ?? 0
+        const feitos = data?.diasCumpridos ?? 0
+        const min = data?.adesaoMinima ?? c.adesaoMinima ?? 0
+        const faltam = Math.max(0, min - feitos)
+        push(
+          faltam > 0
+            ? `Concluído hoje! 🔥 ${streak} dia${streak !== 1 ? "s" : ""} · faltam ${faltam}`
+            : "Concluído! Recompensa garantida 🎉",
+          { tone: "gold", icon: <Check className="size-4" /> },
+        )
+      }
+    } catch {
+      push("Não foi possível marcar agora. Tente de novo.", { tone: "neutral" })
+    } finally {
+      setMarcandoId(null)
+    }
+  }
+
   const lista = tab === "ativos" ? ativos : concluidos
   const CelebIcon = celeb?.icon ?? Trophy
 
@@ -125,7 +256,7 @@ export function DesafiosScreen() {
     <div className="space-y-5 px-5 pb-6 pt-7">
       <header>
         <h1 className="text-headline-lg text-nx-on-surface">Desafios</h1>
-        <p className="mt-0.5 text-body-md text-nx-on-surface-variant">Eventos pra você evoluir mais rápido</p>
+        <p className="mt-0.5 text-body-md text-nx-on-surface-variant">Acompanhe seu progresso e evolua todo dia</p>
       </header>
 
       {/* Segmentos */}
@@ -157,11 +288,13 @@ export function DesafiosScreen() {
         </div>
       ) : (
         <div className="space-y-4">
-          {lista.map((c) => <EventCard key={c.id} c={c} onResgatar={setCeleb} />)}
+          {lista.map((c) => (
+            <EventCard key={c.id} c={c} marcando={marcandoId === c.id} onResgatar={setCeleb} onCumprir={cumprir} />
+          ))}
         </div>
       )}
 
-      {/* Celebração de conclusão — Parte 2 */}
+      {/* Celebração de conclusão do desafio inteiro */}
       <LevelUpOverlay
         open={!!celeb}
         nivel={0}
@@ -177,6 +310,8 @@ export function DesafiosScreen() {
         }
         ctaLabel="Resgatar"
       />
+
+      {toasts}
     </div>
   )
 }
