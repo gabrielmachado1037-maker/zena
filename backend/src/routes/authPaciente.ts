@@ -2,14 +2,33 @@ import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import rateLimit from "express-rate-limit";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
 
+// Anti brute-force no app do paciente (mesmo padrão do login da nutri).
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: "Muitas tentativas. Tente novamente em 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Cadastro depende do código de vínculo (6 dígitos) — limita a adivinhação.
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: "Muitas tentativas de cadastro. Tente novamente em 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // POST /api/auth/paciente/register
-router.post("/register", async (req: Request, res: Response) => {
+router.post("/register", registerLimiter, async (req: Request, res: Response) => {
   const { email, senha, codigoVinculo } = req.body;
   if (!email || !senha || !codigoVinculo) {
     return res.status(400).json({ error: "Email, senha e código de vínculo são obrigatórios." });
@@ -60,7 +79,7 @@ router.post("/register", async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/paciente/login
-router.post("/login", async (req: Request, res: Response) => {
+router.post("/login", loginLimiter, async (req: Request, res: Response) => {
   const { email, senha } = req.body;
   if (!email || !senha) {
     return res.status(400).json({ error: "Email e senha são obrigatórios." });
