@@ -5,6 +5,7 @@ import api from "../lib/api";
 interface BillingStatus {
   planoAtivo: boolean;
   emTrial: boolean;
+  expirado?: boolean;
 }
 
 /** Bloqueia o acesso quando o plano expirou (nem ativo, nem em trial),
@@ -17,7 +18,7 @@ export default function BillingGuard({ children }: { children: React.ReactNode }
   useEffect(() => {
     api.get<BillingStatus>("/billing/status")
       .then((r) => setBilling(r.data))
-      .catch(() => setBilling({ planoAtivo: true, emTrial: true }))
+      .catch(() => setBilling({ planoAtivo: true, emTrial: true, expirado: false }))
       .finally(() => setChecked(true));
   }, []);
 
@@ -29,7 +30,7 @@ export default function BillingGuard({ children }: { children: React.ReactNode }
     );
   }
 
-  const expirado = billing && !billing.planoAtivo && !billing.emTrial;
+  const expirado = billing && (billing.expirado === true || (!billing.planoAtivo && !billing.emTrial));
   const naPlanos = location.pathname === "/app/planos" || location.pathname === "/app/billing";
   if (expirado && !naPlanos) return <Navigate to="/app/planos" replace />;
 

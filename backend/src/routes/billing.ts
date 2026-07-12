@@ -50,7 +50,9 @@ router.get("/status", authMiddleware, async (req: AuthRequest, res: Response) =>
     ? Math.ceil((nutri.trialEnd.getTime() - agora.getTime()) / (1000 * 60 * 60 * 24))
     : 0;
 
-  const status = nutri.subscriptionStatus ?? (nutri.planoAtivo ? "ativo" : (emTrial ? "trial" : "inativo"));
+  let status = nutri.subscriptionStatus ?? (nutri.planoAtivo ? "ativo" : (emTrial ? "trial" : "inativo"));
+  // Trial que já passou do trialEnd não é mais "trial" — reporta expirado.
+  if (status === "trial" && !emTrial) status = "expirado";
   const expirado = !["trial", "ativo"].includes(status);
 
   res.json({

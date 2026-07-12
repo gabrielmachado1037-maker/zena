@@ -92,6 +92,20 @@ export function initCron() {
     }
   }, TZ);
 
+  // Daily at 6am BRT: expira trials vencidos (deixa o estado verdadeiro no banco).
+  cron.schedule("0 6 * * *", async () => {
+    try {
+      const agora = new Date();
+      const { count } = await prisma.nutricionista.updateMany({
+        where: { subscriptionStatus: "trial", trialEnd: { lt: agora } },
+        data: { subscriptionStatus: "expirado", planoAtivo: false },
+      });
+      if (count > 0) console.log(`[cron] ${count} trial(s) expirado(s).`);
+    } catch (e) {
+      console.error("Cron trial_expirado error:", e);
+    }
+  }, TZ);
+
   // Daily at 8:30am BRT: generate monthly charges from payment plans
   cron.schedule("30 8 * * *", async () => {
     try {

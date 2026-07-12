@@ -16,13 +16,15 @@ function statusEfetivo(nutri: {
   trialEnd: Date | null;
   plano: string;
 }): string {
-  // Novo campo explícito tem precedência
+  // Novo campo explícito tem precedência (ativo/inadimplente/cancelado)
   if (nutri.subscriptionStatus && nutri.subscriptionStatus !== "trial") {
     return nutri.subscriptionStatus;
   }
-  // Derivar do estado legado
+  // Trial vale SOMENTE enquanto não expirou.
   const trialValido = nutri.trialEnd && nutri.trialEnd > new Date();
-  if (nutri.plano === "trial" || trialValido) return "trial";
+  if (trialValido) return "trial";
+  // Trial sem data válida = expirado → bloqueia (não é mais "trial" eterno).
+  if (nutri.plano === "trial") return "inativo";
   if (nutri.planoAtivo) return "ativo";
   return "inativo";
 }
