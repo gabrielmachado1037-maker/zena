@@ -2,6 +2,7 @@ import "./instrument"; // Sentry — precisa ser o primeiro import
 import * as Sentry from "@sentry/node";
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import dotenv from "dotenv";
 import authRouter from "./routes/auth";
 import authPacienteRouter from "./routes/authPaciente";
@@ -49,16 +50,27 @@ if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length < 64) {
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001", 10);
+const isProd = process.env.NODE_ENV === "production";
 
-// Qualquer porta de localhost é liberada em dev (o Vite faz fallback 5173→5174→5175→…).
-// Em produção segue valendo apenas FRONTEND_URL.
-// dev: localhost, 127.0.0.1 e qualquer IP de LAN (para testar no celular via --host)
+// Headers de segurança (API JSON). crossOriginResourcePolicy: cross-origin
+// porque o front consome via fetch/CORS de outra origem.
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+
+// CORS por ambiente:
+// - Allowlist explícita de produção = FRONTEND_URL + ALLOWED_ORIGINS (CSV opcional).
+// - Fora de produção libera também localhost/127.0.0.1/IP de LAN (Vite faz fallback de porta; testes via --host no celular).
+// - Requisições sem Origin (curl / apps mobile) seguem liberadas.
+const allowlist = new Set(
+  [process.env.FRONTEND_URL, ...(process.env.ALLOWED_ORIGINS?.split(",") ?? [])]
+    .map((o) => o?.trim())
+    .filter((o): o is string => !!o),
+);
 const isLocalhost = (o?: string) => !!o && /^http:\/\/(localhost|127\.0\.0\.1|(\d{1,3}\.){3}\d{1,3}):\d+$/.test(o);
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin) return cb(null, true);                         // curl / apps mobile
-    if (process.env.FRONTEND_URL === origin) return cb(null, true);
-    if (isLocalhost(origin)) return cb(null, true);
+    if (!origin) return cb(null, true);
+    if (allowlist.has(origin)) return cb(null, true);
+    if (!isProd && isLocalhost(origin)) return cb(null, true);
     return cb(null, false);
   },
   credentials: true,
