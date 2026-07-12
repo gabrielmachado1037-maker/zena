@@ -13,6 +13,7 @@ interface Nutricionista {
   planoSlug?: string | null;
   subscriptionStatus?: string | null;
   modulosAtivos?: string[];
+  emailVerificado?: boolean;
 }
 
 interface AuthContextType {

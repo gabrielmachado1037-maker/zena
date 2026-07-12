@@ -15,6 +15,7 @@ const Login         = lazy(() => import("./pages/Login"));
 const Cadastro      = lazy(() => import("./pages/Cadastro"));
 const EsqueciSenha  = lazy(() => import("./pages/EsqueciSenha"));
 const RedefinirSenha = lazy(() => import("./pages/RedefinirSenha"));
+const VerificarEmail = lazy(() => import("./pages/VerificarEmail"));
 const Privacidade   = lazy(() => import("./pages/Privacidade"));
 const Termos        = lazy(() => import("./pages/Termos"));
 const AreaPaciente  = lazy(() => import("./pages/AreaPaciente"));
@@ -76,6 +77,7 @@ function AppRoutes() {
         <Route path="/cadastro" element={<Cadastro />} />
         <Route path="/esqueci-senha" element={<EsqueciSenha />} />
         <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+        <Route path="/verificar-email" element={<VerificarEmail />} />
         <Route path="/privacidade" element={<Privacidade />} />
         <Route path="/termos" element={<Termos />} />
         <Route path="/ds" element={<DesignShowcase />} />

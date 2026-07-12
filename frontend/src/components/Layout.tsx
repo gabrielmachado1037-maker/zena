@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useLocation, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { DashboardSidebar } from "./dashboard2/Sidebar";
+import EmailVerificacaoBanner from "./EmailVerificacaoBanner";
 import api from "../lib/api";
 import { usePWAInstall } from "../hooks/usePWAInstall";
 import { usePushNotifications } from "../hooks/usePushNotifications";
@@ -47,6 +48,7 @@ export default function Layout() {
     <div className="flex min-h-screen" style={{ background: "#09090B" }}>
       <DashboardSidebar />
       <main className="flex-1 min-w-0 overflow-auto pt-[env(safe-area-inset-top)] pb-[calc(4rem_+_env(safe-area-inset-bottom))] lg:pt-0 lg:pb-0" style={{ background: "#09090B" }}>
+        <EmailVerificacaoBanner />
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 8 }}
