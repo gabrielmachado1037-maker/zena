@@ -85,6 +85,19 @@ model RefreshToken {
   @@index([familyId])
 }
 
+model RefreshTokenPaciente {
+  id             String   @id @default(cuid())
+  pacienteUserId String
+  tokenHash      String   @unique
+  familyId       String
+  revogado       Boolean  @default(false)
+  expiresAt      DateTime
+  criadoEm       DateTime @default(now())
+
+  @@index([pacienteUserId])
+  @@index([familyId])
+}
+
 model Paciente {
   id                String             @id @default(cuid())
   nome              String
