@@ -1,6 +1,6 @@
 import prisma from "../lib/prisma";
 import { calcularLiga } from "../config/ligas";
-import { adesaoMinimaDe, diaCumpreDesafio } from "../config/desafios";
+import { adesaoMinimaDe, recompensaDe, diaCumpreDesafio } from "../config/desafios";
 import { enviarNotificacao } from "../routes/notificacoes";
 
 const DIA = 86_400_000;
@@ -87,9 +87,10 @@ export async function montarDesafioDetalhe(
   hoje: Date,
 ): Promise<DesafioDetalhe> {
   const d = prog.desafio;
-  const N = d.duracaoDias;
   const win = janelaDesafio(d);
   if (!win) return { dias: [], streak: 0, hojeConcluido: false, sugestaoHoje: false, diasCumpridos: 0, progresso: 0 };
+  // Calendário = janela real do desafio (protege contra dados com duração ≠ período).
+  const N = Math.max(1, Math.round((win.fim.getTime() - win.inicio.getTime()) / DIA));
 
   const idxDe = (dt: Date) => Math.round((inicioDoDia(dt).getTime() - win.inicio.getTime()) / DIA);
   const cumpridos = new Set<number>();
@@ -173,7 +174,9 @@ async function processarProgresso(prog: ProgComDesafio, hoje: Date): Promise<voi
     select: { pontosTotal: true, nome: true, nutricionistaId: true },
   });
   if (!pac) return;
-  const novoTotal = pac.pontosTotal + d.pontosBonus;
+  // XP sempre pela regra (7→5, 14→10, 21→15) — nunca o valor da coluna (que pode estar obsoleto).
+  const bonus = recompensaDe(d.duracaoDias);
+  const novoTotal = pac.pontosTotal + bonus;
   const liga = calcularLiga(novoTotal);
   await prisma.$transaction([
     prisma.paciente.update({
@@ -187,7 +190,7 @@ async function processarProgresso(prog: ProgComDesafio, hoje: Date): Promise<voi
         titulo: d.titulo,
         descricao: `Desafio concluído com ${dias} de ${d.duracaoDias} dias`,
         icone: d.icone || "🏅",
-        pontosBonus: d.pontosBonus,
+        pontosBonus: bonus,
       },
     }),
   ]);

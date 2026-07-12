@@ -133,7 +133,7 @@ router.post("/", async (req: AuthRequest, res: Response) => {
   const id = req.nutricionistaId!;
   const {
     titulo, descricao, categoria, tipo, metaValor, metaUnidade,
-    dataInicio, dataFim, duracaoDias, icone, status,
+    dataInicio, duracaoDias, icone, status,
     inscreverTodos, pacienteIds,
   } = req.body;
 
@@ -145,7 +145,8 @@ router.post("/", async (req: AuthRequest, res: Response) => {
     return res.status(400).json({ error: `Duração deve ser ${DURACOES_DESAFIO.join(", ")} dias.` });
   }
   const inicio = dataInicio ? new Date(dataInicio) : new Date();
-  const fim = dataFim ? new Date(dataFim) : new Date(inicio.getTime() + dur * DIA);
+  // Fim sempre derivado da duração — janela e duracaoDias nunca divergem.
+  const fim = new Date(inicio.getTime() + dur * DIA);
 
   const desafio = await prisma.desafio.create({
     data: {

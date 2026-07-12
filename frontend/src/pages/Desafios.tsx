@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   Plus, FileDown, Award, AlertTriangle, Sparkles, Bell, X, Loader2,
-  CalendarClock, Users, CheckCircle2, Flag, Play,
+  CalendarClock, Users, CheckCircle2, Flag, Play, Zap,
 } from "lucide-react";
 import { useFetch } from "../hooks/useFetch";
 import api from "../lib/api";
@@ -44,6 +44,7 @@ function Barra({ pct, cor = "#7CFF5B" }: { pct: number; cor?: string }) {
 export default function Desafios() {
   const [aba, setAba] = useState<Aba>("em_curso");
   const [createOpen, setCreateOpen] = useState(false);
+  const [prefill, setPrefill] = useState<TemplateDesafio | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
   const resumo = useFetch<ResumoResp>("/desafios/resumo");
@@ -52,18 +53,8 @@ export default function Desafios() {
 
   function recarregar() { resumo.refetch(); lista.refetch(); }
 
-  async function ativarTemplate(t: TemplateDesafio) {
-    const hoje = new Date();
-    const fim = new Date(hoje.getTime() + t.duracaoDias * 86_400_000);
-    await api.post("/desafios", {
-      titulo: t.titulo, descricao: t.descricao, categoria: t.categoria, icone: t.icone,
-      metaValor: t.metaValor, metaUnidade: t.metaUnidade, pontosBonus: t.pontosBonus,
-      dataInicio: hoje.toISOString(), dataFim: fim.toISOString(),
-      status: "em_curso", inscreverTodos: true,
-    });
-    setAba("em_curso");
-    recarregar();
-  }
+  function abrirCriar(t: TemplateDesafio | null) { setPrefill(t); setCreateOpen(true); }
+  function fecharCriar() { setCreateOpen(false); setPrefill(null); }
 
   async function lembreteBaixa(id: string) {
     await api.post(`/desafios/${id}/lembrete`, {});
@@ -82,7 +73,7 @@ export default function Desafios() {
             <button onClick={() => window.print()} className="flex items-center gap-2 rounded-xl border border-nx-border px-4 py-2.5 text-body-sm text-nx-on-surface-variant hover:text-nx-on-surface transition-colors">
               <FileDown size={16} /> Exportar PDF
             </button>
-            <button onClick={() => setCreateOpen(true)} className="flex items-center gap-2 rounded-xl bg-nx-evo text-nx-on-evo px-4 py-2.5 text-body-sm font-semibold hover:bg-nx-evo-2 transition-colors">
+            <button onClick={() => abrirCriar(null)} className="flex items-center gap-2 rounded-xl bg-nx-evo text-nx-on-evo px-4 py-2.5 text-body-sm font-semibold hover:bg-nx-evo-2 transition-colors">
               <Plus size={16} /> Novo Desafio
             </button>
           </div>
@@ -164,7 +155,7 @@ export default function Desafios() {
               </div>
               <div className="space-y-3">
                 {TEMPLATES_IA.map((t) => (
-                  <TemplateCard key={t.id} t={t} onAtivar={() => ativarTemplate(t)} />
+                  <TemplateCard key={t.id} t={t} onCriar={() => abrirCriar(t)} />
                 ))}
               </div>
             </Card>
@@ -181,7 +172,7 @@ export default function Desafios() {
         </div>
       </main>
 
-      {createOpen && <CreateModal onClose={() => setCreateOpen(false)} onCriado={() => { setCreateOpen(false); recarregar(); }} />}
+      {createOpen && <CreateModal initial={prefill} onClose={fecharCriar} onCriado={() => { fecharCriar(); setAba("em_curso"); recarregar(); }} />}
       {detailId && <DetailModal id={detailId} onClose={() => setDetailId(null)} onMudou={recarregar} />}
     </div>
   );
@@ -228,22 +219,24 @@ function DesafioCardView({ d, onDetalhes }: { d: DesafioCard; onDetalhes: () => 
   );
 }
 
-/* ───────── template (Seção 4) ───────── */
-function TemplateCard({ t, onAtivar }: { t: TemplateDesafio; onAtivar: () => void }) {
-  const [busy, setBusy] = useState(false);
+/* ───────── sugestão de desafio (Seção 4) ───────── */
+function TemplateCard({ t, onCriar }: { t: TemplateDesafio; onCriar: () => void }) {
   const cat = catMeta(t.categoria);
-  async function ativar() { setBusy(true); try { await onAtivar(); } finally { setBusy(false); } }
   return (
     <div className="rounded-xl border border-nx-border bg-nx-container/40 p-3.5">
       <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-nx-evo bg-nx-evo/12 rounded-full px-2 py-0.5">IA Insight</span>
-        <span className="text-[18px] ml-auto">{t.icone}</span>
+        <span className="text-[18px]">{t.icone}</span>
+        <span className="text-label-sm uppercase tracking-wide font-semibold" style={{ color: cat.cor }}>{cat.label}</span>
       </div>
-      <p className="text-body-sm font-semibold" style={{ color: cat.cor }}>{t.titulo}</p>
-      <p className="text-label-sm text-nx-on-surface-variant mt-1 leading-relaxed">{t.insight}</p>
-      <button onClick={ativar} disabled={busy}
-        className="w-full mt-3 rounded-lg bg-nx-evo text-nx-on-evo py-2 text-label-md font-bold hover:bg-nx-evo-2 disabled:opacity-60 transition-colors flex items-center justify-center gap-2">
-        {busy ? <Loader2 size={14} className="animate-spin" /> : <Play size={13} />} Ativar Agora
+      <p className="text-body-sm font-semibold text-nx-on-surface">{t.titulo}</p>
+      <p className="text-label-sm text-nx-on-surface-variant mt-1 leading-relaxed">{t.descricao}</p>
+      <div className="flex items-center gap-3 mt-2 text-label-sm text-nx-on-surface-variant">
+        <span className="flex items-center gap-1"><CalendarClock size={13} /> {t.duracaoDias} dias</span>
+        <span className="flex items-center gap-1 font-semibold text-nx-gold"><Zap size={13} /> +{t.pontosBonus} XP</span>
+      </div>
+      <button onClick={onCriar}
+        className="w-full mt-3 rounded-lg bg-nx-evo text-nx-on-evo py-2 text-label-md font-bold hover:bg-nx-evo-2 transition-colors flex items-center justify-center gap-2">
+        <Plus size={14} /> Criar desafio
       </button>
     </div>
   );
@@ -253,12 +246,12 @@ function TemplateCard({ t, onAtivar }: { t: TemplateDesafio; onAtivar: () => voi
 const RECOMPENSA_XP: Record<number, number> = { 7: 5, 14: 10, 21: 15 };
 const ADESAO_MIN: Record<number, number> = { 7: 6, 14: 12, 21: 18 };
 
-function CreateModal({ onClose, onCriado }: { onClose: () => void; onCriado: () => void }) {
-  const [titulo, setTitulo] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [categoria, setCategoria] = useState("hidratacao");
-  const [icone, setIcone] = useState("🎯");
-  const [duracaoDias, setDuracaoDias] = useState("7");
+function CreateModal({ initial, onClose, onCriado }: { initial?: TemplateDesafio | null; onClose: () => void; onCriado: () => void }) {
+  const [titulo, setTitulo] = useState(initial?.titulo ?? "");
+  const [descricao, setDescricao] = useState(initial?.descricao ?? "");
+  const [categoria, setCategoria] = useState(initial?.categoria ?? "hidratacao");
+  const [icone, setIcone] = useState(initial?.icone ?? "🎯");
+  const [duracaoDias, setDuracaoDias] = useState(String(initial?.duracaoDias ?? 7));
   const [inscreverTodos, setInscreverTodos] = useState(true);
   const [ativar, setAtivar] = useState(true);
   const [salvando, setSalvando] = useState(false);
@@ -305,6 +298,7 @@ function CreateModal({ onClose, onCriado }: { onClose: () => void; onCriado: () 
             <option value="alimentacao">Alimentação</option>
             <option value="treino">Treino</option>
             <option value="sono">Sono</option>
+            <option value="suplementacao">Suplementação</option>
             <option value="custom">Personalizado</option>
           </select>
         </label>

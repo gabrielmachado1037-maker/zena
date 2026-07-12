@@ -17,7 +17,7 @@ import {
   ehDiaDeTreino,
 } from "../config/ligas";
 import { uploadFoto } from "../lib/supabase";
-import { adesaoMinimaDe } from "../config/desafios";
+import { adesaoMinimaDe, recompensaDe } from "../config/desafios";
 import { processarDesafiosDoPaciente, montarDesafioDetalhe, ehCustom, janelaDesafio, ymdLocal } from "../services/desafioService";
 
 const HUMORES_VALIDOS = ["otimo", "bom", "neutro", "dificil", "pessimo"];
@@ -481,7 +481,7 @@ router.get("/desafios", async (req: PacienteAuthRequest, res: Response) => {
       duracaoDias: p.desafio.duracaoDias,
       dataInicio: p.desafio.dataInicio,
       dataFim: p.desafio.dataFim,
-      pontosBonus: p.desafio.pontosBonus,
+      pontosBonus: recompensaDe(p.desafio.duracaoDias),
       // Progresso "ao vivo" (inclui hoje) para a tela; a finalização/XP segue no motor.
       progresso: det.progresso,
       diasCumpridos: det.diasCumpridos,
