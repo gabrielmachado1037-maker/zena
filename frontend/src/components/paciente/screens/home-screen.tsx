@@ -87,6 +87,8 @@ export function HomeScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const pct = total ? (done / total) * 100 : 0
   const completo = done === total && total > 0
   const faltam = total - done
+  // Dia concluído = check-in creditado (todos os hábitos obrigatórios completos → auto-fechamento).
+  const diaConcluido = today.finalizado
 
   const ligaKey = user.league.split(" ")[0]
   const nextKey = user.nextLeague.split(" ")[0]
@@ -94,7 +96,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const desafio = challenges.find((c) => c.status === "ativo")
   const seq = marcoSequencia(user.streak)
 
-  const subtitulo = completo
+  const subtitulo = diaConcluido || completo
     ? "Dia completo — mandou bem 💚"
     : done === 0
       ? "Bora começar o dia?"
@@ -195,40 +197,61 @@ export function HomeScreen({ onNavigate }: { onNavigate: NavigateFn }) {
         </CardNx>
       </button>
 
-      {/* 3 — MISSÃO DE HOJE (anel de progresso + CTA) */}
-      <CardNx glow={completo} className="flex items-center gap-5">
-        <ProgressRing pct={pct}>
-          {completo ? (
+      {/* 3 — MISSÃO DE HOJE (anel de progresso + CTA) → vira "Dia concluído" ao fechar */}
+      {diaConcluido ? (
+        <CardNx glow className="flex items-center gap-5">
+          <ProgressRing pct={100}>
             <div className="grid size-11 place-items-center rounded-full bg-nx-evo/15 nx-evo-pulse">
               <Check className="size-6 text-nx-evo" strokeWidth={3} />
             </div>
-          ) : (
-            <span className="text-headline-lg leading-none text-nx-evo tabular-nums">
-              {done}<span className="text-nx-outline">/{total}</span>
-            </span>
-          )}
-        </ProgressRing>
-        <div className="min-w-0 flex-1">
-          <p className="text-label-md uppercase text-nx-on-surface-variant">Missão de hoje</p>
-          <p className="text-body-lg font-semibold text-nx-on-surface">
-            {completo ? "Tudo registrado hoje" : `${faltam} ${faltam === 1 ? "missão" : "missões"} pra fechar`}
-          </p>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <ChipNx tone="water" icon={<Trophy className="size-3.5" />}>#{myPosition > 0 ? myPosition : "—"} na liga</ChipNx>
+          </ProgressRing>
+          <div className="min-w-0 flex-1">
+            <p className="text-label-md uppercase text-nx-on-surface-variant">Missão de hoje</p>
+            <p className="text-headline-md text-nx-on-surface">Dia concluído</p>
+            <ul className="mt-2 space-y-1 text-body-sm text-nx-on-surface-variant">
+              <li>✔️ Check-in completo</li>
+              <li>🔥 Sequência mantida</li>
+              <li className="font-semibold text-nx-evo">+{user.todayPoints.toLocaleString("pt-BR")} XP recebido</li>
+            </ul>
+            <p className="mt-2 text-body-sm text-nx-on-surface-variant">Volte amanhã para continuar sua evolução.</p>
           </div>
-          {!completo && (
-            <button
-              type="button"
-              onClick={() => onNavigate("registro")}
-              className="mt-3 flex items-center gap-1 rounded-nx-md bg-nx-evo px-4 py-2 text-body-sm font-semibold text-nx-on-evo active:scale-95"
-            >
-              Continuar missões <ChevronRight className="size-4" />
-            </button>
-          )}
-        </div>
-      </CardNx>
+        </CardNx>
+      ) : (
+        <CardNx glow={completo} className="flex items-center gap-5">
+          <ProgressRing pct={pct}>
+            {completo ? (
+              <div className="grid size-11 place-items-center rounded-full bg-nx-evo/15 nx-evo-pulse">
+                <Check className="size-6 text-nx-evo" strokeWidth={3} />
+              </div>
+            ) : (
+              <span className="text-headline-lg leading-none text-nx-evo tabular-nums">
+                {done}<span className="text-nx-outline">/{total}</span>
+              </span>
+            )}
+          </ProgressRing>
+          <div className="min-w-0 flex-1">
+            <p className="text-label-md uppercase text-nx-on-surface-variant">Missão de hoje</p>
+            <p className="text-body-lg font-semibold text-nx-on-surface">
+              {completo ? "Tudo registrado hoje" : `${faltam} ${faltam === 1 ? "missão" : "missões"} pra fechar`}
+            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <ChipNx tone="water" icon={<Trophy className="size-3.5" />}>#{myPosition > 0 ? myPosition : "—"} na liga</ChipNx>
+            </div>
+            {!completo && (
+              <button
+                type="button"
+                onClick={() => onNavigate("registro")}
+                className="mt-3 flex items-center gap-1 rounded-nx-md bg-nx-evo px-4 py-2 text-body-sm font-semibold text-nx-on-evo active:scale-95"
+              >
+                Continuar missões <ChevronRight className="size-4" />
+              </button>
+            )}
+          </div>
+        </CardNx>
+      )}
 
-      {/* 4 — PROGRESSO DAS MISSÕES (lista) */}
+      {/* 4 — PROGRESSO DAS MISSÕES (lista) — só enquanto houver hábito pendente */}
+      {!diaConcluido && (
       <section className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <h2 className="text-label-md uppercase tracking-wide text-nx-on-surface-variant">Progresso das missões</h2>
@@ -271,6 +294,7 @@ export function HomeScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           })}
         </CardNx>
       </section>
+      )}
 
       {/* Desafio ativo (opcional) */}
       {desafio && (

@@ -153,9 +153,26 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   }
 
   const flush = useCallback(async (s: DayState) => {
-    try { await apiPaciente.put("/registros/dia", payloadFrom(s)) } catch { /* best-effort */ }
+    try {
+      const { data } = await apiPaciente.put("/registros/dia", payloadFrom(s))
+      // Auto-fechamento: o backend fechou o dia sozinho (todos os hábitos obrigatórios
+      // completos). Reaproveita a mesma celebração/estado do fechar manual.
+      if (data?.finalizado && !finalizado) {
+        const credito = data.credito
+        const novaLiga = credito?.liga ? `${credito.liga.liga} ${credito.liga.nivel}` : user.league
+        setResumoOpen(false)
+        setFinalizado(true)
+        setCeleb({
+          pontos: credito?.pontosGanhos ?? totalAoFechar,
+          streak: credito?.streakAtual ?? user.streak,
+          subiu: novaLiga !== user.league,
+          liga: novaLiga,
+        })
+        void reload()
+      }
+    } catch { /* best-effort */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metaMl])
+  }, [metaMl, finalizado, user.league, user.streak, totalAoFechar, reload])
 
   function scheduleSave(next: DayState) {
     if (saveTimer.current) window.clearTimeout(saveTimer.current)

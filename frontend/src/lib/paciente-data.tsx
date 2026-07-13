@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import {
-  Utensils, Dumbbell, Droplets, Moon, ClipboardList, Trophy,
+  Utensils, Dumbbell, Droplets, Moon, Trophy,
   Footprints, Medal, Camera, Crown, Award, type LucideIcon,
 } from "lucide-react";
 import apiPaciente from "./apiPaciente";
@@ -204,12 +204,17 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
       };
 
       const metaLabelL = (metas.aguaMl / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+      // Conclusão (dinâmica por paciente) — espelha o backend diaCompleto:
+      // alimentação = todas as refeições do plano registradas; água = meta batida;
+      // sono = registrado; treino = registrado (só entra em dia de treino).
+      const alimentacaoCompleta = planoKeys.length > 0 && planoKeys.every((k) => statusOf(k) != null);
       const missions: Mission[] = [
-        { id: "alimentacao", icon: Utensils, title: "Alimentação", subtitle: "Registre suas refeições", earned: xpAlim, total: 4, done: xpAlim >= 3 },
-        { id: "treino", icon: Dumbbell, title: "Treino", subtitle: metas.treinoDiaHoje ? "Como foi seu treino?" : "Dia de descanso", earned: xpTreino, total: 3, done: xpTreino > 0 },
+        { id: "alimentacao", icon: Utensils, title: "Alimentação", subtitle: "Registre suas refeições", earned: xpAlim, total: 4, done: alimentacaoCompleta },
+        ...(metas.treinoDiaHoje
+          ? [{ id: "treino", icon: Dumbbell, title: "Treino", subtitle: "Como foi seu treino?", earned: xpTreino, total: 3, done: rh?.treinoStatus != null }]
+          : []),
         { id: "agua", icon: Droplets, title: "Água", subtitle: `Beba ${metaLabelL}L de água`, earned: rh?.aguaOk ? 2 : 0, total: 2, done: !!rh?.aguaOk },
-        { id: "sono", icon: Moon, title: "Sono", subtitle: `Meta: ${metas.sonoHoras}h de sono`, earned: xpSono, total: 2, done: xpSono > 0 },
-        { id: "registro", icon: ClipboardList, title: "Registro diário", subtitle: "Compartilhe seu dia", earned: resumo?.feitoHoje ? 1 : 0, total: 1, done: !!resumo?.feitoHoje },
+        { id: "sono", icon: Moon, title: "Sono", subtitle: `Meta: ${metas.sonoHoras}h de sono`, earned: xpSono, total: 2, done: sonoHorasVal != null },
       ];
 
       const challenges: Challenge[] = desafiosRaw

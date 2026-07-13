@@ -142,6 +142,107 @@ function calcularFechamentoPaciente(
   return { streakAtual, streakMaximo, pontosTotal, liga };
 }
 
+type RegistroDia = {
+  refeicoesStatus: unknown;
+  cafeStatus: string | null; almocoStatus: string | null;
+  lancheStatus: string | null; jantarStatus: string | null;
+  aguaMl: number | null; aguaMetaMl: number | null;
+  sonoHoras: number | null; sonoFaixa: string | null;
+  treinoStatus: string | null;
+};
+
+/** Todos os hábitos OBRIGATÓRIOS do dia estão completos? (dinâmico por paciente)
+ *  - Alimentação: todas as refeições DO PLANO registradas (qualquer status).
+ *  - Água: bateu a meta personalizada.
+ *  - Sono: registrado no dia (horas informadas).
+ *  - Treino: registrado só quando é dia de treino; senão não entra no cálculo. */
+function diaCompleto(
+  registro: RegistroDia,
+  paciente: { planoRefeicoes: unknown; treinoDias: number[] | null },
+  hoje: Date,
+): boolean {
+  const planoKeys = resolverPlanoRefeicoes(paciente.planoRefeicoes).map((r) => r.key);
+  const status = statusMapDoRegistro(registro, planoKeys);
+  const alimentacaoOk = planoKeys.length > 0 && planoKeys.every((k) => status[k] != null);
+
+  const aguaOk =
+    registro.aguaMl != null && registro.aguaMetaMl != null && registro.aguaMl >= registro.aguaMetaMl;
+
+  const sonoOk = registro.sonoHoras != null;
+
+  const diaDeTreino = ehDiaDeTreino(paciente.treinoDias, hoje.getDay());
+  const treinoOk = !diaDeTreino || registro.treinoStatus != null;
+
+  return alimentacaoOk && aguaOk && sonoOk && treinoOk;
+}
+
+type PacienteFechamento = {
+  id: string;
+  planoRefeicoes: unknown; treinoDias: number[] | null; sonoMetaHoras: number | null;
+  ultimoCheckin: Date | null; streakAtual: number; streakMaximo: number; pontosTotal: number;
+};
+
+/** Credita o fechamento do dia (o commit): XP dos hábitos + registro_diario + bônus,
+ *  streak/liga/ranking e desafios. Fonte única reutilizada pelo fechar manual e pelo
+ *  auto-fechamento do autosave — sem duplicar regras. */
+async function finalizarDia(registro: RegistroDia & { id: string }, paciente: PacienteFechamento, hoje: Date) {
+  const planoKeys = resolverPlanoRefeicoes(paciente.planoRefeicoes).map((r) => r.key);
+  const status = statusMapDoRegistro(registro, planoKeys);
+  const xpAlim = calcularXpAlimentacao(planoKeys.map((k) => status[k]));
+  const aguaOk =
+    registro.aguaMl != null && registro.aguaMetaMl != null && registro.aguaMl >= registro.aguaMetaMl;
+  const xpSono =
+    registro.sonoHoras != null
+      ? calcularXpSonoMeta(registro.sonoHoras, resolverSonoMetaHoras(paciente.sonoMetaHoras))
+      : calcularXpSono(registro.sonoFaixa);
+  // Dia de descanso (fora dos dias de treino da nutri): treino é creditado automaticamente.
+  const diaDeTreino = ehDiaDeTreino(paciente.treinoDias, hoje.getDay());
+  const xpTreino = diaDeTreino ? calcularXpTreino(registro.treinoStatus) : PONTOS.treino;
+
+  const { total: pontosGanhos, detalhes: pontosDetalhes } = calcularPontosRegistro({
+    xpAlimentacao: xpAlim,
+    xpTreino,
+    aguaOk,
+    xpSono,
+    incluirFechamento: true,
+  });
+
+  const { streakAtual, streakMaximo, pontosTotal, liga } = calcularFechamentoPaciente(
+    paciente, pontosGanhos, hoje,
+  );
+
+  await prisma.$transaction([
+    prisma.registro.update({
+      where: { id: registro.id },
+      data: {
+        finalizado: true,
+        alimentacaoOk: xpAlim >= ALIMENTACAO_OK_MIN,
+        aguaOk,
+        pontosGanhos,
+        pontosDetalhes,
+      },
+    }),
+    prisma.paciente.update({
+      where: { id: paciente.id },
+      data: {
+        pontosTotal,
+        streakAtual,
+        streakMaximo,
+        ultimoCheckin: hoje,
+        diasInativo: 0,
+        barraCongelada: false,
+        ligaAtual: liga.liga,
+        ligaNivel: liga.nivel,
+      },
+    }),
+  ]);
+
+  // Após o dia fechado, recalcula/finaliza os desafios ativos do paciente.
+  await processarDesafiosDoPaciente(paciente.id, hoje).catch((e) => console.error("[desafio] fechar", e));
+
+  return { pontosGanhos, pontosTotal, liga, streakAtual };
+}
+
 // PUT /api/registros/dia — AUTOSAVE do dia (refeições, água, treino, sono).
 // Persiste o estado imediatamente, mas NÃO credita liga/streak (isso é o "fechar o dia").
 // Idempotente: recebe o snapshot atual do dia e faz upsert. 409 se o dia já foi fechado.
@@ -163,7 +264,10 @@ router.put("/dia", validateBody(diaSchema), async (req: PacienteAuthRequest, res
     }),
     prisma.paciente.findUnique({
       where: { id: req.pacienteId! },
-      select: { planoRefeicoes: true, aguaMetaMl: true, sonoMetaHoras: true },
+      select: {
+        id: true, planoRefeicoes: true, aguaMetaMl: true, sonoMetaHoras: true, treinoDias: true,
+        ultimoCheckin: true, streakAtual: true, streakMaximo: true, pontosTotal: true,
+      },
     }),
   ]);
   if (existente?.finalizado) return res.status(409).json({ error: "Dia já fechado" });
@@ -227,7 +331,16 @@ router.put("/dia", validateBody(diaSchema), async (req: PacienteAuthRequest, res
     },
     update: { ...dados },
   });
-  return res.json({ registro });
+
+  // Auto-fechamento: quando TODOS os hábitos obrigatórios do dia estão completos
+  // (dinâmico por paciente), o check-in é creditado automaticamente — mesmo motor
+  // do fechar manual (XP + streak + liga + ranking + desafios).
+  if (paciente && diaCompleto(registro, paciente, hoje)) {
+    const credito = await finalizarDia(registro, paciente, hoje);
+    return res.json({ registro: { ...registro, finalizado: true }, finalizado: true, credito });
+  }
+
+  return res.json({ registro, finalizado: false });
 });
 
 // POST /api/registros/dia/fechar — FINALIZA o dia (o commit): credita XP dos hábitos +
@@ -243,61 +356,8 @@ router.post("/dia/fechar", async (req: PacienteAuthRequest, res: Response) => {
   const paciente = await prisma.paciente.findUnique({ where: { id: req.pacienteId! } });
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });
 
-  const planoKeys = resolverPlanoRefeicoes(paciente.planoRefeicoes).map((r) => r.key);
-  const status = statusMapDoRegistro(registro, planoKeys);
-  const xpAlim = calcularXpAlimentacao(planoKeys.map((k) => status[k]));
-  const aguaOk =
-    registro.aguaMl != null && registro.aguaMetaMl != null && registro.aguaMl >= registro.aguaMetaMl;
-  const xpSono =
-    registro.sonoHoras != null
-      ? calcularXpSonoMeta(registro.sonoHoras, resolverSonoMetaHoras(paciente.sonoMetaHoras))
-      : calcularXpSono(registro.sonoFaixa);
-  // Dia de descanso (fora dos dias de treino da nutri): treino é creditado automaticamente.
-  const diaDeTreino = ehDiaDeTreino(paciente.treinoDias, hoje.getDay());
-  const xpTreino = diaDeTreino ? calcularXpTreino(registro.treinoStatus) : PONTOS.treino;
-
-  const { total: pontosGanhos, detalhes: pontosDetalhes } = calcularPontosRegistro({
-    xpAlimentacao: xpAlim,
-    xpTreino,
-    aguaOk,
-    xpSono,
-    incluirFechamento: true,
-  });
-
-  const { streakAtual, streakMaximo, pontosTotal, liga } = calcularFechamentoPaciente(
-    paciente, pontosGanhos, hoje,
-  );
-
-  await prisma.$transaction([
-    prisma.registro.update({
-      where: { id: registro.id },
-      data: {
-        finalizado: true,
-        alimentacaoOk: xpAlim >= ALIMENTACAO_OK_MIN,
-        aguaOk,
-        pontosGanhos,
-        pontosDetalhes,
-      },
-    }),
-    prisma.paciente.update({
-      where: { id: req.pacienteId! },
-      data: {
-        pontosTotal,
-        streakAtual,
-        streakMaximo,
-        ultimoCheckin: hoje,
-        diasInativo: 0,
-        barraCongelada: false,
-        ligaAtual: liga.liga,
-        ligaNivel: liga.nivel,
-      },
-    }),
-  ]);
-
-  // Após o dia fechado, recalcula/finaliza os desafios ativos do paciente.
-  await processarDesafiosDoPaciente(req.pacienteId!, hoje).catch((e) => console.error("[desafio] fechar", e));
-
-  return res.status(201).json({ pontosGanhos, pontosTotal, liga, streakAtual });
+  const credito = await finalizarDia(registro, paciente, hoje);
+  return res.status(201).json(credito);
 });
 
 // POST /api/registros — LEGADO (one-shot). Fecha o dia num único envio (retrocompat).
