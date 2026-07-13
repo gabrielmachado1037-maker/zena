@@ -321,6 +321,69 @@ router.put("/perfil", validateBody(perfilSchema), async (req: PacienteAuthReques
   return res.json({ ok: true });
 });
 
+// GET /api/paciente-app/exportar — direito de portabilidade (LGPD, Art. 18):
+// baixa TODOS os dados pessoais do próprio titular em JSON (escopado ao pacienteId).
+router.get("/exportar", async (req: PacienteAuthRequest, res: Response) => {
+  const pid = req.pacienteId!;
+  const puid = req.pacienteUserId!;
+
+  const [
+    perfil, anamnese, medicoes, registrosDiarios, checkInsSemanais, fotosEvolucao, registroFotos,
+    posts, mensagensComNutri, mensagensDaNutri, desafios, conquistas, checklists,
+    consultas, cobrancas, historicoPontos, marcosDeSequencia, conta,
+  ] = await Promise.all([
+    prisma.paciente.findUnique({ where: { id: pid }, include: { nutricionista: { select: { nome: true, nomeConsultorio: true } } } }),
+    prisma.anamnese.findUnique({ where: { pacienteId: pid } }),
+    prisma.medicao.findMany({ where: { pacienteId: pid }, orderBy: { data: "asc" } }),
+    prisma.registro.findMany({ where: { pacienteId: pid }, orderBy: { data: "asc" } }),
+    prisma.checkIn.findMany({ where: { pacienteId: pid }, orderBy: { criadoEm: "asc" } }),
+    prisma.fotoEvolucao.findMany({ where: { pacienteId: pid }, orderBy: { data: "asc" } }),
+    prisma.registroFotos.findMany({ where: { pacienteId: pid }, orderBy: [{ ano: "asc" }, { mes: "asc" }] }),
+    prisma.feedPost.findMany({ where: { pacienteId: pid }, orderBy: { criadoEm: "asc" } }),
+    prisma.mensagemChat.findMany({ where: { pacienteId: pid }, orderBy: { criadoEm: "asc" } }),
+    prisma.mensagemNutri.findMany({ where: { pacienteId: pid }, orderBy: { createdAt: "asc" } }),
+    prisma.desafioProgresso.findMany({ where: { pacienteId: pid }, include: { desafio: { select: { titulo: true, descricao: true, tipo: true, duracaoDias: true } } } }),
+    prisma.conquista.findMany({ where: { pacienteId: pid }, orderBy: { createdAt: "asc" } }),
+    prisma.checklistDiario.findMany({ where: { pacienteId: pid }, orderBy: { data: "asc" } }),
+    prisma.consulta.findMany({ where: { pacienteId: pid }, orderBy: { data: "asc" } }),
+    prisma.cobranca.findMany({ where: { pacienteId: pid }, orderBy: { vencimento: "asc" }, select: { valor: true, vencimento: true, status: true, descricao: true, metodo: true, pagoEm: true } }),
+    prisma.pontosLog.findMany({ where: { pacienteId: pid }, orderBy: { data: "asc" } }),
+    prisma.streakMarco.findMany({ where: { pacienteId: pid }, orderBy: { concedidoEm: "asc" } }),
+    prisma.pacienteUser.findUnique({ where: { id: puid }, select: { email: true, emailVerificado: true, postPublicoPadrao: true, createdAt: true } }),
+  ]);
+
+  const dump = {
+    _meta: {
+      exportadoEm: new Date().toISOString(),
+      formato: "JSON",
+      descricao: "Exportação de dados pessoais (LGPD, Art. 18 — portabilidade). Todos os dados do titular deste app.",
+      titular: perfil?.nome ?? null,
+    },
+    conta,
+    perfil,
+    anamnese,
+    medicoes,
+    registrosDiarios,
+    checkInsSemanais,
+    fotosEvolucao,
+    registroFotos,
+    posts,
+    mensagensComNutri,
+    mensagensDaNutri,
+    desafios,
+    conquistas,
+    checklists,
+    consultas,
+    cobrancas,
+    historicoPontos,
+    marcosDeSequencia,
+  };
+
+  res.setHeader("Content-Disposition", 'attachment; filename="meus-dados-nexvel.json"');
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.status(200).send(JSON.stringify(dump, null, 2));
+});
+
 // DELETE /api/paciente-app/conta — direito de exclusão (LGPD): anonimiza os dados
 // pessoais/biométricos e remove o login, preservando o prontuário clínico anonimizado.
 router.delete("/conta", async (req: PacienteAuthRequest, res: Response) => {

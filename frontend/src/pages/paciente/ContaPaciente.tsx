@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, ChevronRight, LogOut, Bell, Lock, Trash2, Eye, EyeOff, Globe } from "lucide-react";
+import { Camera, ChevronRight, LogOut, Bell, Lock, Trash2, Eye, EyeOff, Globe, Download } from "lucide-react";
 import api from "../../lib/api";
+import apiPaciente from "../../lib/apiPaciente";
 import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
 import Avatar from "../../components/Avatar";
 
@@ -274,6 +275,7 @@ export default function ContaPaciente() {
   const [privBusy, setPrivBusy]     = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting]     = useState(false);
+  const [exporting, setExporting]   = useState(false);
   const fileRef                     = useRef<HTMLInputElement>(null);
 
   const authHeader = { Authorization: `Bearer ${token}` };
@@ -339,6 +341,27 @@ export default function ContaPaciente() {
       await api.delete("/paciente-app/conta", { headers: authHeader });
       logout();
     } catch { setDeleting(false); setConfirmDelete(false); }
+  }
+
+  // Portabilidade (LGPD): baixa todos os dados do titular em JSON.
+  async function handleExportar() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const res = await apiPaciente.get("/paciente-app/exportar", { responseType: "blob" });
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "meus-dados-nexvel.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      /* silencioso */
+    } finally {
+      setExporting(false);
+    }
   }
 
   if (loading || !data) {
@@ -432,6 +455,15 @@ export default function ContaPaciente() {
         className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border border-white/5 bg-nx-surface text-[14px] font-semibold text-nx-primary">
         <LogOut size={16} />
         Sair da conta
+      </button>
+
+      {/* Exportar meus dados (LGPD) */}
+      <button
+        onClick={handleExportar}
+        disabled={exporting}
+        className="w-full flex items-center justify-center gap-2 py-3 text-[13px] font-medium text-nx-on-surface-variant disabled:opacity-50">
+        <Download size={14} />
+        {exporting ? "Preparando…" : "Baixar meus dados (LGPD)"}
       </button>
 
       {/* Excluir conta */}
