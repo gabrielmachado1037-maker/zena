@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Copy, CheckCircle, Loader2, AlertCircle, ExternalLink,
-  Rss, Bell, ClipboardList, BarChart2, CalendarDays, FileText,
+  Copy, CheckCircle, Loader2, AlertCircle, ExternalLink, CreditCard, QrCode, Check,
+  Gamepad2, Medal, Target, LineChart, Sparkles, CalendarCheck, ClipboardList, MessageCircle,
 } from "lucide-react";
 import api from "../lib/api";
 import { usePermissao } from "../hooks/usePermissao";
+import { CardNx, ButtonNx } from "../components/ui-nx";
 
 interface BillingStatus {
   plano: string;
@@ -28,25 +29,26 @@ interface PixData {
   planoSlug: string;
 }
 
-const PLANOS = [
-  {
-    slug: "ecossistema",
-    nome: "Ecossistema Completo",
-    descricao: "Tudo que você precisa para gerir sua clínica",
-    precoMensal: 149,
-    precoAnualMensal: 124.17,
-    precoAnualTotal: 1490,
-    destaque: true,
-    modulos: [
-      { icon: Rss,          label: "Feed + Ranking + Gamificação" },
-      { icon: ClipboardList,label: "Prontuário completo" },
-      { icon: BarChart2,    label: "Controle financeiro e Pix" },
-      { icon: CalendarDays, label: "Agenda e consultas" },
-      { icon: FileText,     label: "Planos alimentares" },
-      { icon: Bell,         label: "Notificações push" },
-    ],
-  },
-] as const;
+// Slug mantém "ecossistema" (o backend espera esse identificador); só o NOME
+// de exibição muda para "Nexvel Pro".
+const PLANO = {
+  slug: "ecossistema",
+  nome: "Nexvel Pro",
+  precoMensal: 149,
+  precoAnualMensal: 124.17,
+  precoAnualTotal: 1490,
+  limite: "Até 50 pacientes ativos.",
+  beneficios: [
+    { icon: Gamepad2,      label: "Gamificação completa para pacientes" },
+    { icon: Medal,         label: "Ligas e ranking automáticos" },
+    { icon: Target,        label: "Desafios personalizados" },
+    { icon: LineChart,     label: "Relatórios inteligentes de adesão" },
+    { icon: Sparkles,      label: "IA com sugestões para nutricionistas" },
+    { icon: CalendarCheck, label: "Check-ins diários automatizados" },
+    { icon: ClipboardList, label: "Histórico completo do paciente" },
+    { icon: MessageCircle, label: "WhatsApp e notificações inteligentes" },
+  ],
+} as const;
 
 function fmt(v: number) {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -55,7 +57,7 @@ function fmt(v: number) {
 export default function Planos() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { planoSlug: planoAtualSlug, emTrial } = usePermissao();
+  const { planoSlug: planoAtualSlug } = usePermissao();
 
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -135,210 +137,194 @@ export default function Planos() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-nexvel-cream flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-nexvel-green-light animate-spin" />
+      <div className="min-h-screen bg-nx-bg flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-nx-evo animate-spin" />
       </div>
     );
   }
 
   const planoAtivo = status?.planoSlug ?? planoAtualSlug;
+  const isAtual = planoAtivo === PLANO.slug;
   const jaAssinou = (status?.planoAtivo && !status?.emTrial) || (status?.subscriptionStatus === "ativo");
+  const precoMensalStr = ciclo === "anual" ? fmt(PLANO.precoAnualMensal) : String(PLANO.precoMensal);
+  const totalCiclo = ciclo === "anual" ? PLANO.precoAnualTotal : PLANO.precoMensal;
 
   return (
-    <div className="min-h-screen bg-nexvel-cream py-10 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-nx-bg px-5 py-10">
+      <div className="mx-auto max-w-md">
 
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <img src="/nexvel-x-512.png" alt="" className="h-6 w-auto" />
-            <span className="text-xl font-bold text-nexvel-green-dark">nexvel</span>
-          </div>
-          <h1 className="text-[28px] font-bold text-nexvel-green-dark mb-2">Planos e Preços</h1>
+        {/* Header — posicionamento */}
+        <div className="mb-8 text-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-nx-brand/40 bg-nx-brand/10 px-3 py-1 text-label-sm font-semibold uppercase tracking-wide text-nx-brand">
+            <img src="/nexvel-x-512.png" alt="" className="h-3.5 w-auto" />
+            Nexvel Pro
+          </span>
+          <h1 className="mt-4 text-headline-lg font-extrabold leading-tight text-nx-on-surface text-balance">
+            Faça seus pacientes seguirem o plano com mais consistência
+          </h1>
+          <p className="mt-2 text-body-md text-nx-on-surface-variant">
+            Teste gratuito por 14 dias. Depois R$149/mês.
+          </p>
 
-          {status?.emTrial && (
-            <p className="text-amber-600 font-medium text-sm">
-              Você está no período de teste — {status.diasRestantesTrial} dia(s) restantes.
+          {status?.emTrial && !jaAssinou && (
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-nx-gold/12 px-3 py-1 text-body-sm font-medium text-nx-gold">
+              Teste ativo — {status.diasRestantesTrial} dia(s) restantes
             </p>
           )}
-          {jaAssinou && (
-            <p className="text-nexvel-green-light font-medium text-sm">
-              ✓ Plano Ecossistema Completo ativo
-              {status?.planoVencimento && ` · renova em ${new Date(status.planoVencimento).toLocaleDateString("pt-BR")}`}
-            </p>
+          {/* Trial expirado (dia 15): o app bloqueia até assinar — paywall. */}
+          {!jaAssinou && !status?.emTrial && (
+            <div className="mt-3 flex items-center justify-center gap-2 rounded-nx-md border border-nx-danger/30 bg-nx-danger/10 px-4 py-2.5 text-body-sm font-medium text-nx-danger">
+              <AlertCircle size={15} className="shrink-0" />
+              Seu teste gratuito terminou. Assine o Nexvel Pro para voltar a usar o app.
+            </div>
           )}
-
-          {moduloDestaque && (
-            <div className="mt-3 inline-flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 text-sm text-amber-700">
+          {moduloDestaque && !jaAssinou && status?.emTrial && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-nx-md border border-nx-gold/30 bg-nx-gold/10 px-4 py-2 text-body-sm text-nx-gold">
               <AlertCircle size={15} />
-              Você precisa de um plano com este módulo para acessá-lo.
+              Assine o Nexvel Pro para garantir este recurso após o teste.
             </div>
           )}
         </div>
 
         {/* Toggle mensal/anual */}
-        <div className="flex items-center justify-center mb-8">
-          <div className="bg-white rounded-xl border border-nexvel-mint/30 p-1 flex gap-1">
-            <button
-              onClick={() => setCiclo("mensal")}
-              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
-                ciclo === "mensal"
-                  ? "bg-nexvel-green-dark text-white shadow-sm"
-                  : "text-nexvel-text-mid hover:text-nexvel-green-dark"
-              }`}
-            >
-              Mensal
-            </button>
-            <button
-              onClick={() => setCiclo("anual")}
-              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
-                ciclo === "anual"
-                  ? "bg-nexvel-green-dark text-white shadow-sm"
-                  : "text-nexvel-text-mid hover:text-nexvel-green-dark"
-              }`}
-            >
-              Anual
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                ciclo === "anual" ? "bg-white/20 text-white" : "bg-nexvel-green-light/15 text-nexvel-green-dark"
-              }`}>
-                2 meses grátis
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Cards de plano */}
-        {!pixData && (
-          <div className="grid grid-cols-1 gap-6 mb-6 max-w-md mx-auto">
-            {PLANOS.map((plano) => {
-              const isAtual = planoAtivo === plano.slug;
-              const preco = ciclo === "anual" ? plano.precoAnualMensal : plano.precoMensal;
-              const isDestaque = plano.destaque;
-
-              return (
-                <div
-                  key={plano.slug}
-                  className={`rounded-2xl overflow-hidden relative transition-transform ${
-                    isDestaque ? "shadow-xl scale-[1.02]" : "shadow-sm"
-                  } ${moduloDestaque && isDestaque ? "ring-2 ring-nexvel-green-light" : ""}`}
-                  style={isDestaque
-                    ? { background: "#7C3AED" }
-                    : { background: "#fff", border: "1px solid rgba(134,178,159,0.2)" }}
-                >
-                  {isAtual && (
-                    <div className={`absolute top-4 left-4 text-[10px] font-bold px-2.5 py-1 rounded-full ${
-                      isDestaque ? "bg-white/20 text-white" : "bg-nexvel-green-light/20 text-nexvel-green-dark"
-                    }`}>
-                      Plano atual
-                    </div>
-                  )}
-
-                  <div className="p-7">
-                    <h2 className={`text-[17px] font-bold mb-1 ${isDestaque ? "text-white" : "text-nexvel-green-dark"} ${isAtual || isDestaque ? "mt-6" : ""}`}>
-                      {plano.nome}
-                    </h2>
-                    <p className={`text-[12px] mb-5 ${isDestaque ? "text-white/60" : "text-nexvel-text-light"}`}>
-                      {plano.descricao}
-                    </p>
-
-                    {/* Preço */}
-                    <div className="mb-1">
-                      <span className={`text-[38px] font-extrabold leading-none ${isDestaque ? "text-nexvel-mint" : "text-nexvel-green-light"}`}>
-                        R${ciclo === "anual"
-                          ? fmt(preco).replace(",00", "")
-                          : plano.precoMensal}
-                      </span>
-                      <span className={`text-[13px] ml-1 ${isDestaque ? "text-white/60" : "text-nexvel-text-light"}`}>/mês</span>
-                    </div>
-                    {ciclo === "anual" && (
-                      <p className={`text-[11px] mb-5 ${isDestaque ? "text-nexvel-mint/80" : "text-nexvel-green-mid"}`}>
-                        cobrado R${plano.precoAnualTotal}/ano — 2 meses grátis
-                      </p>
-                    )}
-                    {ciclo === "mensal" && <div className="mb-5" />}
-
-                    {/* Módulos */}
-                    <ul className="space-y-2 mb-6">
-                      {plano.modulos.map(({ icon: Icon, label }) => (
-                        <li key={label} className={`flex items-center gap-2 text-[13px] ${isDestaque ? "text-white/85" : "text-nexvel-text"}`}>
-                          <Icon size={13} className={isDestaque ? "text-nexvel-mint flex-shrink-0" : "text-nexvel-green-light flex-shrink-0"} />
-                          {label}
-                        </li>
-                      ))}
-                    </ul>
-
-                    {/* Botões */}
-                    {isAtual ? (
-                      <div>
-                        <div className={`text-center py-3 rounded-xl text-sm font-semibold ${
-                          isDestaque ? "bg-white/15 text-white" : "bg-nexvel-green-light/15 text-nexvel-green-dark"
-                        }`}>
-                          Plano atual ✓
-                        </div>
-                        {status?.metodoPagamento === "cartao" && (
-                          <button
-                            onClick={gerenciarAssinatura}
-                            className={`mt-2 w-full text-center text-[12px] flex items-center justify-center gap-1 ${
-                              isDestaque ? "text-white/50 hover:text-white" : "text-nexvel-text-light hover:text-nexvel-green-dark"
-                            } transition-colors`}
-                          >
-                            Gerenciar assinatura <ExternalLink size={12} />
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-2.5">
-                        <button
-                          onClick={() => assinarPix(plano.slug)}
-                          disabled={!!loadingPlano}
-                          className={`w-full py-3 rounded-xl font-bold text-[14px] transition-all disabled:opacity-50 flex items-center justify-center gap-2 ${
-                            isDestaque
-                              ? "bg-nexvel-mint text-nexvel-green-dark hover:opacity-90"
-                              : "bg-nexvel-green-light text-white hover:bg-nexvel-green-mid"
-                          }`}
-                        >
-                          {loadingPlano === `pix-${plano.slug}` && <Loader2 size={15} className="animate-spin" />}
-                          Pagar com Pix — R${ciclo === "anual" ? plano.precoAnualTotal : plano.precoMensal}
-                          {ciclo === "anual" ? "/ano" : "/mês"}
-                        </button>
-                        <button
-                          onClick={() => assinarCartao(plano.slug)}
-                          disabled={!!loadingPlano}
-                          className={`w-full py-2.5 rounded-xl text-[13px] font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 ${
-                            isDestaque
-                              ? "border border-white/25 text-white/80 hover:bg-white/10"
-                              : "border border-nexvel-sage text-nexvel-text hover:bg-nexvel-cream"
-                          }`}
-                        >
-                          {loadingPlano === `cartao-${plano.slug}` ? <Loader2 size={13} className="animate-spin" /> : <ExternalLink size={13} />}
-                          Pagar com cartão
-                        </button>
-                        <Garantias dark={isDestaque} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        {!pixData && !jaAssinou && (
+          <div className="mb-6 flex justify-center">
+            <div className="flex gap-1 rounded-nx-md border border-nx-border bg-nx-container p-1">
+              <button
+                onClick={() => setCiclo("mensal")}
+                className={`rounded-nx-sm px-5 py-2 text-body-sm font-semibold transition-all ${
+                  ciclo === "mensal" ? "bg-nx-evo text-nx-on-evo" : "text-nx-on-surface-variant hover:text-nx-on-surface"
+                }`}
+              >
+                Mensal
+              </button>
+              <button
+                onClick={() => setCiclo("anual")}
+                className={`flex items-center gap-2 rounded-nx-sm px-5 py-2 text-body-sm font-semibold transition-all ${
+                  ciclo === "anual" ? "bg-nx-evo text-nx-on-evo" : "text-nx-on-surface-variant hover:text-nx-on-surface"
+                }`}
+              >
+                Anual
+                <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                  ciclo === "anual" ? "bg-nx-on-evo/15 text-nx-on-evo" : "bg-nx-evo/12 text-nx-evo"
+                }`}>
+                  2 meses grátis
+                </span>
+              </button>
+            </div>
           </div>
         )}
 
         {/* Erro */}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-            <AlertCircle size={18} className="text-red-500 flex-shrink-0 mt-0.5" />
-            <p className="text-red-700 text-sm">{error}</p>
+          <div className="mb-6 flex items-start gap-3 rounded-nx-md border border-nx-danger/30 bg-nx-danger/10 p-4">
+            <AlertCircle size={18} className="mt-0.5 flex-shrink-0 text-nx-danger" />
+            <p className="text-body-sm text-nx-danger">{error}</p>
           </div>
+        )}
+
+        {/* Card do plano */}
+        {!pixData && (
+          <CardNx glow className="p-7">
+            {isAtual && (
+              <span className="mb-4 inline-flex rounded-full bg-nx-evo/12 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-nx-evo">
+                Seu plano
+              </span>
+            )}
+
+            <h2 className="text-headline-md font-bold text-nx-on-surface">{PLANO.nome}</h2>
+
+            {/* Preço */}
+            <div className="mt-4 flex items-baseline gap-1">
+              <span className="text-display-lg font-extrabold leading-none text-nx-on-surface">
+                R${precoMensalStr}
+              </span>
+              <span className="text-body-md text-nx-on-surface-variant">/mês</span>
+            </div>
+            {ciclo === "anual" ? (
+              <p className="mt-1 text-body-sm text-nx-evo">
+                cobrado R${PLANO.precoAnualTotal}/ano — 2 meses grátis
+              </p>
+            ) : (
+              <p className="mt-1 text-body-sm text-nx-on-surface-variant">{PLANO.limite}</p>
+            )}
+            {ciclo === "anual" && <p className="mt-0.5 text-body-sm text-nx-on-surface-variant">{PLANO.limite}</p>}
+
+            {/* Benefícios */}
+            <ul className="mt-6 space-y-3">
+              {PLANO.beneficios.map(({ icon: Icon, label }) => (
+                <li key={label} className="flex items-center gap-3 text-body-md text-nx-on-surface">
+                  <span className="grid size-7 shrink-0 place-items-center rounded-nx-sm bg-nx-evo/12">
+                    <Icon size={15} className="text-nx-evo" />
+                  </span>
+                  {label}
+                </li>
+              ))}
+            </ul>
+
+            {/* Ações */}
+            <div className="mt-7">
+              {jaAssinou ? (
+                <div>
+                  <div className="flex items-center justify-center gap-2 rounded-nx-md bg-nx-evo/12 py-3.5 text-body-md font-semibold text-nx-evo">
+                    <Check size={18} strokeWidth={3} />
+                    Plano ativo
+                  </div>
+                  {status?.planoVencimento && (
+                    <p className="mt-2 text-center text-body-sm text-nx-on-surface-variant">
+                      Renova em {new Date(status.planoVencimento).toLocaleDateString("pt-BR")}
+                    </p>
+                  )}
+                  {status?.metodoPagamento === "cartao" && (
+                    <button
+                      onClick={gerenciarAssinatura}
+                      className="mt-2 flex w-full items-center justify-center gap-1 text-body-sm text-nx-on-surface-variant transition-colors hover:text-nx-on-surface"
+                    >
+                      Gerenciar assinatura <ExternalLink size={13} />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {status?.emTrial && (
+                    <p className="text-center text-body-sm text-nx-on-surface-variant">
+                      Seu teste de 14 dias já está ativo — <span className="font-medium text-nx-on-surface">nenhum cartão necessário</span>. Assine quando quiser para continuar depois.
+                    </p>
+                  )}
+                  <ButtonNx
+                    variant="evo"
+                    size="lg"
+                    block
+                    disabled={!!loadingPlano}
+                    onClick={() => assinarCartao(PLANO.slug)}
+                    leftIcon={loadingPlano === `cartao-${PLANO.slug}` ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}
+                  >
+                    Assinar com cartão · R${totalCiclo}{ciclo === "anual" ? "/ano" : "/mês"}
+                  </ButtonNx>
+                  <ButtonNx
+                    variant="surface"
+                    size="lg"
+                    block
+                    disabled={!!loadingPlano}
+                    onClick={() => assinarPix(PLANO.slug)}
+                    leftIcon={loadingPlano === `pix-${PLANO.slug}` ? <Loader2 size={18} className="animate-spin" /> : <QrCode size={18} />}
+                  >
+                    Pagar com Pix
+                  </ButtonNx>
+                  <Garantias />
+                </div>
+              )}
+            </div>
+          </CardNx>
         )}
 
         {/* QR Code Pix */}
         {pixData && (
-          <div className="bg-white rounded-2xl shadow-sm border border-nexvel-sage/20 p-8 max-w-md mx-auto text-center">
-            <CheckCircle size={40} className="text-nexvel-green-light mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-nexvel-green-dark mb-2">Pague com Pix</h2>
-            <p className="text-nexvel-text text-sm mb-6">
-              Ecossistema Completo
-              {" — "}R${pixData.valor}{ciclo === "anual" ? "/ano" : "/mês"}
+          <CardNx className="p-8 text-center">
+            <CheckCircle size={40} className="mx-auto mb-4 text-nx-evo" />
+            <h2 className="text-headline-md font-bold text-nx-on-surface">Pague com Pix</h2>
+            <p className="mt-2 text-body-sm text-nx-on-surface-variant">
+              {PLANO.nome}{" — "}R${pixData.valor}{ciclo === "anual" ? "/ano" : "/mês"}
               <br />Após o pagamento, seu acesso é liberado em segundos.
             </p>
 
@@ -346,44 +332,40 @@ export default function Planos() {
               <img
                 src={`data:image/png;base64,${pixData.pixQrCode}`}
                 alt="QR Code Pix"
-                className="w-48 h-48 mx-auto mb-6 border border-nexvel-sage/20 rounded-xl"
+                className="mx-auto my-6 h-48 w-48 rounded-nx-md border border-nx-border bg-white p-1"
               />
             )}
 
-            <div className="bg-nexvel-cream rounded-xl p-4 mb-4">
-              <p className="text-xs text-nexvel-text mb-2 font-medium">Pix Copia e Cola</p>
-              <p className="font-mono text-xs text-nexvel-green-dark break-all leading-relaxed">{pixData.pixCopiaECola}</p>
+            <div className="mb-4 rounded-nx-md border border-nx-border bg-nx-container p-4 text-left">
+              <p className="mb-2 text-label-sm font-medium text-nx-on-surface-variant">Pix Copia e Cola</p>
+              <p className="break-all font-mono text-body-sm leading-relaxed text-nx-on-surface">{pixData.pixCopiaECola}</p>
             </div>
 
-            <button
-              onClick={copiarPix}
-              className="w-full bg-nexvel-green-light text-white rounded-xl py-3 font-semibold hover:bg-nexvel-green-mid transition-colors flex items-center justify-center gap-2 mb-4"
-            >
-              {copiado ? <CheckCircle size={18} /> : <Copy size={18} />}
+            <ButtonNx variant="evo" size="lg" block onClick={copiarPix} leftIcon={copiado ? <CheckCircle size={18} /> : <Copy size={18} />}>
               {copiado ? "Copiado!" : "Copiar código Pix"}
-            </button>
+            </ButtonNx>
 
-            <div className="flex items-center gap-2 justify-center text-nexvel-text text-xs">
-              <Loader2 size={14} className="animate-spin text-nexvel-green-light" />
+            <div className="mt-4 flex items-center justify-center gap-2 text-body-sm text-nx-on-surface-variant">
+              <Loader2 size={14} className="animate-spin text-nx-evo" />
               Aguardando confirmação...
             </div>
 
             <button
               onClick={() => { setPixData(null); setPolling(false); }}
-              className="mt-4 text-xs text-nexvel-text hover:text-nexvel-green-dark"
+              className="mt-4 text-body-sm text-nx-on-surface-variant transition-colors hover:text-nx-on-surface"
             >
               Voltar
             </button>
-          </div>
+          </CardNx>
         )}
       </div>
     </div>
   );
 }
 
-function Garantias({ dark }: { dark?: boolean }) {
+function Garantias() {
   return (
-    <div className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-1 text-[10px] ${dark ? "text-white/40" : "text-nexvel-text-light"}`}>
+    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-2 text-label-sm text-nx-on-surface-variant">
       <span>✓ Cancele quando quiser</span>
       <span>✓ Sem fidelidade</span>
       <span>✓ LGPD</span>
