@@ -1,6 +1,13 @@
 import prisma from "../lib/prisma";
 import { resolverPlanoRefeicoes, resolverAguaMetaMl, ehDiaDeTreino } from "../config/ligas";
 import { NotificationEngine } from "./notificationEngine";
+import { horaLocalDe, offsetDe } from "./horarioInteligente";
+
+// Horário padrão (hora cheia) de cada hábito — deslocado por paciente na Fase 4.
+const HORA_PADRAO: Record<HabitoTipo, number> = {
+  cafe: 9, almoco: 13, lanche: 16, agua: 17, treino: 18, jantar: 20, sono: 21,
+};
+const TZ_PADRAO = "America/Sao_Paulo";
 
 // Lembretes agendados de hábito (Fase 2). Só notifica quem AINDA NÃO registrou o
 // hábito hoje — "cancelar ao registrar" é implícito (checa o estado antes de enviar).
@@ -100,5 +107,57 @@ export async function enviarLembretesHabito(tipo: HabitoTipo, pacienteIds?: stri
       dedupeKey: `habito:${tipo}:${dia}`,
       minIntervalMin: 60,
     });
+  }
+}
+
+const TODOS_HABITOS: HabitoTipo[] = ["cafe", "almoco", "lanche", "jantar", "agua", "treino", "sono"];
+const clampHora = (h: number) => Math.max(0, Math.min(23, h));
+
+/**
+ * Lembretes com horário INTELIGENTE (Fase 4). Roda de hora em hora: para cada
+ * paciente, dispara o lembrete de um hábito quando a HORA LOCAL dele bate o
+ * horário-padrão + offset aprendido (`horarioLembrete`). Sem histórico → offset 0
+ * (horários padrão). Reusa toda a regra da Fase 2 (plano/dia de treino/dedup/engine).
+ */
+export async function enviarLembretesInteligentes(pacienteIds?: string[]): Promise<void> {
+  const agora = new Date();
+  const hoje = inicioDeHoje();
+  const dia = ymd(hoje);
+  const diaSemana = hoje.getDay();
+
+  const pacientes = await prisma.paciente.findMany({
+    where: {
+      ativo: true, anonimizadoEm: null, pushSubscriptionsPaciente: { some: {} },
+      ...(pacienteIds ? { id: { in: pacienteIds } } : {}),
+    },
+    select: {
+      id: true, planoRefeicoes: true, aguaMetaMl: true, treinoDias: true, timezone: true, horarioLembrete: true,
+      registros: {
+        where: { data: hoje }, take: 1,
+        select: {
+          finalizado: true, cafeOk: true, almocoOk: true, lancheOk: true, jantarOk: true,
+          aguaMl: true, aguaMetaMl: true, treinoOk: true, treinoStatus: true, sonoFaixa: true, sonoHoras: true,
+        },
+      },
+    },
+  });
+
+  for (const p of pacientes) {
+    const horaLocal = horaLocalDe(agora, p.timezone || TZ_PADRAO);
+    const offset = offsetDe(p.horarioLembrete);
+    const metaMl = resolverAguaMetaMl(p.aguaMetaMl);
+    const reg = p.registros[0] as RegHoje | undefined;
+
+    for (const tipo of TODOS_HABITOS) {
+      if (clampHora(HORA_PADRAO[tipo] + offset) !== horaLocal) continue;
+      if (REFEICOES.includes(tipo) && !resolverPlanoRefeicoes(p.planoRefeicoes).some((r) => r.key === tipo)) continue;
+      if (tipo === "treino" && !ehDiaDeTreino(p.treinoDias, diaSemana)) continue;
+      if (jaRegistrou(tipo, reg, metaMl)) continue;
+
+      await NotificationEngine.enviar(p.id, TIPO_ENGINE[tipo], {
+        ...MSG[tipo], url: "/paciente/registro",
+        dedupeKey: `habito:${tipo}:${dia}`, minIntervalMin: 60,
+      });
+    }
   }
 }

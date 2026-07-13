@@ -4,7 +4,8 @@ import { emailTrialExpirando } from "./lib/email";
 import { enviarNotificacao, enviarNotificacaoPaciente } from "./routes/notificacoes";
 import { calcularProgressoCiclo, encerrarCiclo, notificarAquecimento, notificarUltimasHoras } from "./services/cicloService";
 import { finalizarDesafiosVencidos } from "./services/desafioService";
-import { enviarLembretesHabito } from "./services/lembretesHabito";
+import { enviarLembretesInteligentes } from "./services/lembretesHabito";
+import { recalcularHorariosPreferidos } from "./services/horarioInteligente";
 import { enviarReativacao, enviarPositivas } from "./services/notificacoesAgendadas";
 import {
   calcularLiga,
@@ -294,18 +295,16 @@ export function initCron() {
     }
   }, TZ);
 
-  // Lembretes de hábito (Fase 2) — horários padrão BRT; só notifica quem não registrou.
-  const agendarHabito = (expr: string, tipo: Parameters<typeof enviarLembretesHabito>[0]) =>
-    cron.schedule(expr, () => {
-      enviarLembretesHabito(tipo).catch((e) => console.error(`Cron lembrete ${tipo} error:`, e));
-    }, TZ);
-  agendarHabito("0 9 * * *",  "cafe");
-  agendarHabito("0 13 * * *", "almoco");
-  agendarHabito("0 16 * * *", "lanche");
-  agendarHabito("30 17 * * *", "agua");
-  agendarHabito("30 18 * * *", "treino");
-  agendarHabito("30 20 * * *", "jantar");
-  agendarHabito("30 21 * * *", "sono");
+  // Lembretes de hábito com horário INTELIGENTE (Fase 4) — de hora em hora; cada
+  // paciente recebe no horário padrão + offset aprendido do próprio comportamento.
+  cron.schedule("0 * * * *", () => {
+    enviarLembretesInteligentes().catch((e) => console.error("Cron lembretes inteligentes error:", e));
+  }, TZ);
+
+  // Recálculo do horário habitual de cada paciente (Fase 4) — diário 3h BRT.
+  cron.schedule("0 3 * * *", () => {
+    recalcularHorariosPreferidos().catch((e) => console.error("Cron recalcular horarios error:", e));
+  }, TZ);
 
   // Reativação (Fase 3): diária às 10h BRT — paciente sem abrir há 2/5/7 dias.
   cron.schedule("0 10 * * *", () => {
