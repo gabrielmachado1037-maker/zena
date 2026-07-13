@@ -126,6 +126,8 @@ model Paciente {
   // Notificações: preferências por categoria (null = todas ligadas) + fuso do dispositivo.
   prefsNotificacao  Json?
   timezone          String?
+  // Último acesso ao app (abertura) — base da reativação (≠ ultimoCheckin).
+  ultimoAcesso      DateTime?
   notificacaoLogs   NotificacaoLog[]
   registroEventos   RegistroEvento[]
   pontosTotal       Float              @default(0)

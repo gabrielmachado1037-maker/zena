@@ -98,7 +98,10 @@ export default function PacienteLayout() {
   const location = useLocation();
 
   useEffect(() => {
-    if (token) subscribePush(token);
+    if (!token) return;
+    subscribePush(token);
+    // Registra o acesso (base da reativação). Fire-and-forget.
+    api.post("/paciente-app/ping", {}, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
   }, [token]);
 
   // Rastreio de abertura de notificação: deep-link ?n=<logId> → registra e limpa a URL.

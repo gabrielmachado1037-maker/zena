@@ -498,6 +498,12 @@ router.put("/prefs-notificacao", async (req: PacienteAuthRequest, res: Response)
   res.json({ ok: true });
 });
 
+// POST /api/paciente-app/ping — registra que o paciente abriu o app (base da reativação).
+router.post("/ping", async (req: PacienteAuthRequest, res: Response) => {
+  await prisma.paciente.update({ where: { id: req.pacienteId! }, data: { ultimoAcesso: new Date() } }).catch(() => {});
+  res.json({ ok: true });
+});
+
 // POST /api/paciente-app/notificacao-aberta — marca a abertura (via deep-link ?n=<logId>).
 router.post("/notificacao-aberta", async (req: PacienteAuthRequest, res: Response) => {
   const id = String((req.body as { id?: string })?.id ?? "");

@@ -5,6 +5,7 @@ import { enviarNotificacao, enviarNotificacaoPaciente } from "./routes/notificac
 import { calcularProgressoCiclo, encerrarCiclo, notificarAquecimento, notificarUltimasHoras } from "./services/cicloService";
 import { finalizarDesafiosVencidos } from "./services/desafioService";
 import { enviarLembretesHabito } from "./services/lembretesHabito";
+import { enviarReativacao, enviarPositivas } from "./services/notificacoesAgendadas";
 import {
   calcularLiga,
   DIAS_ATE_CONGELAR,
@@ -305,6 +306,16 @@ export function initCron() {
   agendarHabito("30 18 * * *", "treino");
   agendarHabito("30 20 * * *", "jantar");
   agendarHabito("30 21 * * *", "sono");
+
+  // Reativação (Fase 3): diária às 10h BRT — paciente sem abrir há 2/5/7 dias.
+  cron.schedule("0 10 * * *", () => {
+    enviarReativacao().catch((e) => console.error("Cron reativacao error:", e));
+  }, TZ);
+
+  // Positivas (Fase 3): semanal, segunda 11h BRT — só quando há evolução real.
+  cron.schedule("0 11 * * 1", () => {
+    enviarPositivas().catch((e) => console.error("Cron positivas error:", e));
+  }, TZ);
 
   // Daily at 9am BRT: create reminders for overdue payments
   cron.schedule("0 9 * * *", async () => {
