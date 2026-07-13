@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Home, SquarePen, Trophy, BarChart3, User } from "lucide-react";
 import { usePacienteAuth } from "../contexts/PacienteAuthContext";
 import { PacienteDataProvider } from "../lib/paciente-data";
+import EmailVerificacaoBannerPaciente from "./EmailVerificacaoBannerPaciente";
 import api from "../lib/api";
 
 const BG = "#09090B";
@@ -115,6 +116,7 @@ export default function PacienteLayout() {
   return (
     <PacienteDataProvider>
       <div className="nexvel-dash min-h-[100dvh] pt-[env(safe-area-inset-top)] pb-[calc(6rem_+_env(safe-area-inset-bottom))]" style={{ background: BG }}>
+        <EmailVerificacaoBannerPaciente />
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 10 }}

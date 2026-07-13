@@ -8,6 +8,7 @@ export interface PacienteUser {
   nutricionistaNome: string;
   nomeConsultorio?: string | null;
   fotoUrl?: string | null;
+  emailVerificado?: boolean;
 }
 
 interface PacienteAuthContextType {
@@ -17,6 +18,7 @@ interface PacienteAuthContextType {
   register: (email: string, senha: string, codigoVinculo: string) => Promise<void>;
   logout: () => void;
   updateFoto: (url: string) => void;
+  updatePaciente: (patch: Partial<PacienteUser>) => void;
   loading: boolean;
 }
 
@@ -75,8 +77,17 @@ export function PacienteAuthProvider({ children }: { children: ReactNode }) {
     });
   }
 
+  function updatePaciente(patch: Partial<PacienteUser>) {
+    setPaciente(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...patch };
+      localStorage.setItem("zena_user_paciente", JSON.stringify(updated));
+      return updated;
+    });
+  }
+
   return (
-    <PacienteAuthContext.Provider value={{ paciente, token, login, register, logout, updateFoto, loading }}>
+    <PacienteAuthContext.Provider value={{ paciente, token, login, register, logout, updateFoto, updatePaciente, loading }}>
       {children}
     </PacienteAuthContext.Provider>
   );

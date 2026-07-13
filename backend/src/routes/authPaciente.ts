@@ -5,8 +5,9 @@ import crypto from "crypto";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import prisma from "../lib/prisma";
-import { authMiddleware, AuthRequest } from "../middleware/auth";
+import { authMiddleware, AuthRequest, authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
+import { emailVerificacaoPaciente } from "../lib/email";
 
 const registerSchema = z.object({
   email: z.email({ error: "E-mail inválido." }),
@@ -22,6 +23,20 @@ const loginSchema = z.object({
 const refreshSchema = z.object({
   refreshToken: z.string({ error: "Sessão inválida." }).min(1, "Sessão inválida."),
 });
+
+const verificarEmailSchema = z.object({
+  token: z.string({ error: "Token inválido." }).min(1, "Token inválido."),
+});
+
+const hashVerif = () => crypto.randomBytes(32).toString("hex");
+
+// Gera token de verificação de e-mail do paciente (24h) e dispara o e-mail (best-effort).
+async function criarEnviarVerificacaoPaciente(pacienteUserId: string, email: string, nome: string) {
+  const token = hashVerif();
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24);
+  await prisma.tokenVerificacaoEmailPaciente.create({ data: { pacienteUserId, token, expiresAt } });
+  emailVerificacaoPaciente(email, token, nome).catch(console.error);
+}
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -70,6 +85,15 @@ const registerLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Reenvio de verificação de e-mail.
+const emailLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: { error: "Muitas solicitações. Tente novamente em 1 hora." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // POST /api/auth/paciente/register
 router.post("/register", registerLimiter, validateBody(registerSchema), async (req: Request, res: Response) => {
   const { email, senha, codigoVinculo } = req.body;
@@ -102,6 +126,7 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
     data: { email, senha: hash, pacienteId: paciente.id },
   });
 
+  await criarEnviarVerificacaoPaciente(pacienteUser.id, pacienteUser.email, paciente.nome);
   const { accessToken, refreshToken } = await emitirParTokens(pacienteUser.id, paciente.id, nutri.id);
 
   res.status(201).json({
@@ -114,6 +139,7 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
       nutricionistaNome: nutri.nome,
       nomeConsultorio: nutri.nomeConsultorio,
       fotoUrl: null,
+      emailVerificado: false,
     },
   });
 });
@@ -147,6 +173,7 @@ router.post("/login", loginLimiter, validateBody(loginSchema), async (req: Reque
       nutricionistaNome: paciente.nutricionista.nome,
       nomeConsultorio: paciente.nutricionista.nomeConsultorio,
       fotoUrl: pacienteUser.fotoUrl ?? null,
+      emailVerificado: pacienteUser.emailVerificado,
     },
   });
 });
@@ -183,6 +210,32 @@ router.post("/logout", async (req: Request, res: Response) => {
   if (typeof rt === "string" && rt) {
     await prisma.refreshTokenPaciente.updateMany({ where: { tokenHash: hashToken(rt) }, data: { revogado: true } });
   }
+  res.json({ ok: true });
+});
+
+// POST /api/auth/paciente/verificar-email — consome o token e marca o e-mail como verificado.
+router.post("/verificar-email", validateBody(verificarEmailSchema), async (req: Request, res: Response) => {
+  const { token } = req.body;
+  const registro = await prisma.tokenVerificacaoEmailPaciente.findUnique({ where: { token } });
+  if (!registro || registro.usado || registro.expiresAt < new Date()) {
+    return res.status(400).json({ error: "Link inválido ou expirado" });
+  }
+  await prisma.$transaction([
+    prisma.pacienteUser.update({ where: { id: registro.pacienteUserId }, data: { emailVerificado: true } }),
+    prisma.tokenVerificacaoEmailPaciente.update({ where: { token }, data: { usado: true } }),
+  ]);
+  res.json({ ok: true });
+});
+
+// POST /api/auth/paciente/reenviar-verificacao — reenvia o e-mail (autenticado, rate-limit).
+router.post("/reenviar-verificacao", emailLimiter, authPacienteMiddleware, async (req: PacienteAuthRequest, res: Response) => {
+  const pu = await prisma.pacienteUser.findUnique({
+    where: { id: req.pacienteUserId! },
+    include: { paciente: { select: { nome: true } } },
+  });
+  if (!pu) return res.status(404).json({ error: "Não encontrado" });
+  if (pu.emailVerificado) return res.json({ ok: true, jaVerificado: true });
+  await criarEnviarVerificacaoPaciente(pu.id, pu.email, pu.paciente.nome);
   res.json({ ok: true });
 });
 

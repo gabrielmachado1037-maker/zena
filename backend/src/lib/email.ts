@@ -100,6 +100,25 @@ export async function emailVerificacao(email: string, token: string, nome?: stri
   });
 }
 
+export async function emailVerificacaoPaciente(email: string, token: string, nome?: string) {
+  const resend = getResend();
+  if (!resend) return;
+  const link = `${BASE_URL}/verificar-email-paciente?token=${token}`;
+  const saudacao = nome ? `Olá, ${nome.split(" ")[0]}!` : "Olá!";
+  await resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: "Confirme seu e-mail — Nexvel",
+    html: base(
+      "Confirme seu e-mail",
+      `<p>${saudacao} Falta só um passo para ativar seu acesso: confirmar que este e-mail é seu.</p>
+       <p>Clique no botão abaixo. O link é válido por <strong>24 horas</strong>.</p>
+       <a href="${link}" class="btn">Confirmar e-mail →</a>
+       <p style="margin-top:24px;font-size:14px;color:#999">Se você não reconhece este cadastro, ignore este e-mail.</p>`
+    ),
+  });
+}
+
 export async function emailTrialExpirando(nome: string, email: string, diasRestantes: number) {
   const resend = getResend();
   if (!resend) return;

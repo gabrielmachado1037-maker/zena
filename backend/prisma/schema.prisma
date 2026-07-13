@@ -470,11 +470,21 @@ model PacienteUser {
   senha             String
   fotoUrl           String?
   postPublicoPadrao Boolean  @default(true)
+  emailVerificado   Boolean  @default(false)
   pacienteId        String   @unique
   paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
 
   @@index([email])
+}
+
+model TokenVerificacaoEmailPaciente {
+  id             String   @id @default(cuid())
+  pacienteUserId String
+  token          String   @unique
+  expiresAt      DateTime
+  usado          Boolean  @default(false)
+  criadoEm       DateTime @default(now())
 }
 
 model PushSubscriptionPaciente {
