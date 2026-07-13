@@ -4,6 +4,7 @@ import { emailTrialExpirando } from "./lib/email";
 import { enviarNotificacao, enviarNotificacaoPaciente } from "./routes/notificacoes";
 import { calcularProgressoCiclo, encerrarCiclo, notificarAquecimento, notificarUltimasHoras } from "./services/cicloService";
 import { finalizarDesafiosVencidos } from "./services/desafioService";
+import { enviarLembretesHabito } from "./services/lembretesHabito";
 import {
   calcularLiga,
   DIAS_ATE_CONGELAR,
@@ -291,6 +292,19 @@ export function initCron() {
       console.error("Cron checklist_reminder error:", e);
     }
   }, TZ);
+
+  // Lembretes de hábito (Fase 2) — horários padrão BRT; só notifica quem não registrou.
+  const agendarHabito = (expr: string, tipo: Parameters<typeof enviarLembretesHabito>[0]) =>
+    cron.schedule(expr, () => {
+      enviarLembretesHabito(tipo).catch((e) => console.error(`Cron lembrete ${tipo} error:`, e));
+    }, TZ);
+  agendarHabito("0 9 * * *",  "cafe");
+  agendarHabito("0 13 * * *", "almoco");
+  agendarHabito("0 16 * * *", "lanche");
+  agendarHabito("30 17 * * *", "agua");
+  agendarHabito("30 18 * * *", "treino");
+  agendarHabito("30 20 * * *", "jantar");
+  agendarHabito("30 21 * * *", "sono");
 
   // Daily at 9am BRT: create reminders for overdue payments
   cron.schedule("0 9 * * *", async () => {
