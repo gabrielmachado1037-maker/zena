@@ -32,6 +32,7 @@ import registrosFeedRouter from "./routes/registrosFeed";
 import diarioNutriRouter from "./routes/diarioNutri";
 import relatoriosRouter from "./routes/relatorios";
 import desafiosRouter from "./routes/desafios";
+import onboardingRouter from "./routes/onboarding";
 import { initCron } from "./cron";
 
 dotenv.config();
@@ -89,6 +90,7 @@ app.use("/api/paciente-app", pacienteAppRouter);
 app.use("/api/pacientes", pacientesRouter);
 app.use("/api/cobrancas", cobrancasRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/onboarding", onboardingRouter);
 app.use("/api/public", publicaRouter);
 app.use("/api/checkins", checkinsRouter);
 app.use("/api/mensagens", mensagensRouter);

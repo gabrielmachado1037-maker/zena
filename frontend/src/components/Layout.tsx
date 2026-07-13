@@ -3,6 +3,7 @@ import { Outlet, useLocation, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { DashboardSidebar } from "./dashboard2/Sidebar";
 import EmailVerificacaoBanner from "./EmailVerificacaoBanner";
+import NutriOnboarding from "./NutriOnboarding";
 import api from "../lib/api";
 import { usePWAInstall } from "../hooks/usePWAInstall";
 import { usePushNotifications } from "../hooks/usePushNotifications";
@@ -49,6 +50,7 @@ export default function Layout() {
       <DashboardSidebar />
       <main className="flex-1 min-w-0 overflow-auto pt-[env(safe-area-inset-top)] pb-[calc(4rem_+_env(safe-area-inset-bottom))] lg:pt-0 lg:pb-0" style={{ background: "#09090B" }}>
         <EmailVerificacaoBanner />
+        {location.pathname === "/app/dashboard" && <NutriOnboarding />}
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 8 }}

@@ -38,6 +38,9 @@ model Nutricionista {
   aceiteTermosEm       DateTime?
   aceiteTermosVersao   String?
   emailVerificado      Boolean             @default(false)
+  // Onboarding de 1º acesso (guia de configuração da clínica).
+  onboardingStatus         String          @default("pendente") // pendente | andamento | concluido
+  onboardingConviteEnviado Boolean         @default(false)
   pacientes            Paciente[]
   horarios             HorarioDisponivel[]
   lembretes            Lembrete[]
