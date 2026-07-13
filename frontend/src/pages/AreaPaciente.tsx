@@ -541,7 +541,7 @@ function CheckInView({ link, pacienteNome, nutricionistaNome, onFeito, onBack }:
         </button>
         <div className="flex items-center gap-2 mb-2">
           <img src="/nexvel-x-512.png" alt="" className="h-[18px] w-auto" />
-          <span className="text-white/70 text-sm">zena</span>
+          <span className="text-white/70 text-sm">Nexvel</span>
         </div>
         <h1 className="text-white text-2xl font-bold">Check-in semanal ✨</h1>
         <p className="text-nx-on-surface-variant text-sm mt-1">Olá, {pacienteNome.split(" ")[0]}! Como foi sua semana?</p>
@@ -804,7 +804,7 @@ function AnamneseView({ link, pacienteNome, onFeito, onBack }: {
         </button>
         <div className="flex items-center gap-2 mb-2">
           <img src="/nexvel-x-512.png" alt="" className="h-[18px] w-auto" />
-          <span className="text-white/70 text-sm">zena</span>
+          <span className="text-white/70 text-sm">Nexvel</span>
         </div>
         <h1 className="text-white text-2xl font-bold">{s.emoji} {s.titulo}</h1>
         <p className="text-nx-on-surface-variant text-sm mt-1">Passo {step + 1} de {steps.length}</p>
@@ -939,7 +939,7 @@ function AgendamentoView({ link, pacienteNome, nutricionistaNome, onFeito, onBac
         </button>
         <div className="flex items-center gap-2 mb-2">
           <img src="/nexvel-x-512.png" alt="" className="h-[18px] w-auto" />
-          <span className="text-white/70 text-sm">zena</span>
+          <span className="text-white/70 text-sm">Nexvel</span>
         </div>
         <h1 className="text-white text-2xl font-bold">📅 Agendar consulta</h1>
         <p className="text-nx-on-surface-variant text-sm mt-1">Escolha um horário disponível com {nutricionistaNome.split(" ")[0]}</p>

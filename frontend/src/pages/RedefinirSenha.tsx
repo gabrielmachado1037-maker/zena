@@ -28,52 +28,52 @@ export default function RedefinirSenha() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-nexvel-cream flex items-center justify-center px-4">
+      <div className="min-h-screen bg-nx-bg flex items-center justify-center px-4">
         <div className="text-center">
-          <p className="text-nexvel-text-mid">Link inválido.</p>
-          <Link to="/esqueci-senha" className="text-nexvel-green-mid font-medium mt-2 block">Solicitar novo link</Link>
+          <p className="text-nx-on-surface-variant">Link inválido.</p>
+          <Link to="/esqueci-senha" className="text-nx-evo font-medium mt-2 block">Solicitar novo link</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-nexvel-cream flex items-center justify-center px-4">
+    <div className="min-h-screen bg-nx-bg flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link to="/" className="text-3xl font-bold text-nexvel-green-dark tracking-tight">zena</Link>
+          <Link to="/" className="inline-block"><img src="/nexvel-wordmark.png" alt="Nexvel" className="h-9 w-auto" /></Link>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-nexvel-mint/30 p-8">
-          <h2 className="text-xl font-bold text-nexvel-green-dark mb-1">Criar nova senha</h2>
-          <p className="text-nexvel-text-mid text-sm mb-6">Escolha uma senha segura com pelo menos 6 caracteres.</p>
+        <div className="bg-nx-surface rounded-2xl shadow-sm border border-nx-border p-8">
+          <h2 className="text-xl font-bold text-nx-on-surface mb-1">Criar nova senha</h2>
+          <p className="text-nx-on-surface-variant text-sm mb-6">Escolha uma senha segura com pelo menos 6 caracteres.</p>
           {erro && (
-            <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3 text-sm mb-4">{erro}</div>
+            <div className="bg-nx-danger/10 border border-nx-danger/30 text-nx-danger rounded-xl p-3 text-sm mb-4">{erro}</div>
           )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-nexvel-text-dark mb-1">Nova senha</label>
+              <label className="block text-sm font-medium text-nx-on-surface mb-1">Nova senha</label>
               <input
                 type="password"
                 required
                 value={novaSenha}
                 onChange={(e) => setNovaSenha(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nexvel-green-light"
+                className="w-full border border-nx-border bg-nx-container text-nx-on-surface placeholder-nx-outline rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nx-evo"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-nexvel-text-dark mb-1">Confirmar senha</label>
+              <label className="block text-sm font-medium text-nx-on-surface mb-1">Confirmar senha</label>
               <input
                 type="password"
                 required
                 value={confirmar}
                 onChange={(e) => setConfirmar(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nexvel-green-light"
+                className="w-full border border-nx-border bg-nx-container text-nx-on-surface placeholder-nx-outline rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-nx-evo"
               />
             </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-nexvel-green-dark text-white font-semibold py-3 rounded-xl hover:bg-nexvel-green-mid transition-colors disabled:opacity-50"
+              className="w-full bg-nx-evo text-nx-on-evo font-semibold py-3 rounded-xl hover:bg-nx-evo-2 transition-colors disabled:opacity-50"
             >
               {loading ? "Salvando..." : "Salvar nova senha"}
             </button>

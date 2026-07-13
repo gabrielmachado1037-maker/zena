@@ -2,19 +2,19 @@ import { Link } from "react-router-dom";
 
 export default function Termos() {
   return (
-    <div className="min-h-screen bg-nexvel-cream">
-      <nav className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-        <Link to="/" className="text-2xl font-bold text-nexvel-green-dark tracking-tight">nexvel</Link>
-        <Link to="/login" className="text-sm text-nexvel-green-mid font-medium hover:text-nexvel-green-dark">Entrar</Link>
+    <div className="min-h-screen bg-nx-bg">
+      <nav className="bg-nx-surface border-b border-nx-border px-6 py-4 flex items-center justify-between">
+        <Link to="/"><img src="/nexvel-wordmark.png" alt="Nexvel" className="h-6 w-auto" /></Link>
+        <Link to="/login" className="text-sm text-nx-evo font-medium hover:text-nx-on-surface">Entrar</Link>
       </nav>
       <div className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-4xl font-bold text-nexvel-green-dark mb-2">Termos de Uso</h1>
-        <p className="text-nexvel-text-light text-sm mb-10">Última atualização: junho de 2026</p>
+        <h1 className="text-4xl font-bold text-nx-on-surface mb-2">Termos de Uso</h1>
+        <p className="text-nx-on-surface-variant text-sm mb-10">Última atualização: junho de 2026</p>
 
-        <div className="bg-white rounded-2xl p-8 space-y-8 text-nexvel-text-mid leading-relaxed">
+        <div className="bg-nx-surface rounded-2xl p-8 space-y-8 text-nx-on-surface-variant leading-relaxed">
           <Section titulo="1. Aceitação">
             Ao criar uma conta na Nexvel, você concorda integralmente com estes Termos de Uso e com nossa{" "}
-            <Link to="/privacidade" className="text-nexvel-green-mid underline">Política de Privacidade</Link>.
+            <Link to="/privacidade" className="text-nx-evo underline">Política de Privacidade</Link>.
             Se não concordar, não utilize o serviço.
           </Section>
 
@@ -46,7 +46,7 @@ export default function Termos() {
 
           <Section titulo="5. Cancelamento">
             Você pode cancelar a assinatura a qualquer momento pelo portal de gerenciamento ou enviando e-mail
-            para <a href="mailto:suporte@nexvel.com.br" className="text-nexvel-green-mid underline">suporte@nexvel.com.br</a>.
+            para <a href="mailto:suporte@nexvel.com.br" className="text-nx-evo underline">suporte@nexvel.com.br</a>.
             O cancelamento encerra a renovação automática. O acesso permanece ativo até o fim do ciclo pago.
           </Section>
 
@@ -90,7 +90,7 @@ export default function Termos() {
           </Section>
 
           <Section titulo="13. Contato">
-            <a href="mailto:suporte@nexvel.com.br" className="text-nexvel-green-mid underline">suporte@nexvel.com.br</a>
+            <a href="mailto:suporte@nexvel.com.br" className="text-nx-evo underline">suporte@nexvel.com.br</a>
           </Section>
         </div>
       </div>
@@ -101,7 +101,7 @@ export default function Termos() {
 function Section({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <div>
-      <h2 className="text-lg font-bold text-nexvel-green-dark mb-3">{titulo}</h2>
+      <h2 className="text-lg font-bold text-nx-on-surface mb-3">{titulo}</h2>
       <div className="text-sm">{children}</div>
     </div>
   );
