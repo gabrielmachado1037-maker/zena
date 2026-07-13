@@ -106,6 +106,17 @@ router.post("/checkout", authMiddleware, validateBody(planoBodySchema), async (r
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
 
   let customerId = nutri.stripeCustomerId;
+  // O customer salvo pode ter sido criado em outro modo (ex.: teste) e não
+  // existir para a chave atual (live) → Stripe retorna "No such customer".
+  // Valida o customer salvo e recria se estiver ausente/excluído.
+  if (customerId) {
+    try {
+      const existente = await stripe.customers.retrieve(customerId);
+      if ((existente as any).deleted) customerId = null;
+    } catch {
+      customerId = null;
+    }
+  }
   if (!customerId) {
     const customer = await stripe.customers.create({ email: nutri.email, name: nutri.nome });
     customerId = customer.id;
