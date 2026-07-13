@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import * as Sentry from "@sentry/react";
 import api from "../lib/api";
 
 interface Nutricionista {
@@ -38,8 +39,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem("zena_token");
     const user = localStorage.getItem("zena_user");
     if (saved && user) {
+      const n: Nutricionista = JSON.parse(user);
       setToken(saved);
-      setNutricionista(JSON.parse(user));
+      setNutricionista(n);
+      Sentry.setUser({ id: n.id, email: n.email });
       api.defaults.headers.Authorization = `Bearer ${saved}`;
       api.get("/health").catch(() => {}); // Acorda backend/Neon DB antes do usuário clicar em algo
     }
@@ -50,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function setSession(t: string, n: Nutricionista, refreshToken?: string) {
     setToken(t);
     setNutricionista(n);
+    Sentry.setUser({ id: n.id, email: n.email });
     api.defaults.headers.Authorization = `Bearer ${t}`;
     localStorage.setItem("zena_token", t);
     localStorage.setItem("zena_user", JSON.stringify(n));
@@ -65,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Revoga o refresh no servidor (best-effort; não bloqueia a saída).
     const rt = localStorage.getItem("zena_refresh");
     if (rt) api.post("/auth/logout", { refreshToken: rt }).catch(() => {});
+    Sentry.setUser(null);
     setToken(null);
     setNutricionista(null);
     delete api.defaults.headers.Authorization;

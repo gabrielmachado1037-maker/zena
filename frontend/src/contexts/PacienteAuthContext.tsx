@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import * as Sentry from "@sentry/react";
 import api from "../lib/api";
 
 export interface PacienteUser {
@@ -33,8 +34,10 @@ export function PacienteAuthProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem("zena_token_paciente");
     const user = localStorage.getItem("zena_user_paciente");
     if (saved && user) {
+      const p: PacienteUser = JSON.parse(user);
       setToken(saved);
-      setPaciente(JSON.parse(user));
+      setPaciente(p);
+      Sentry.setUser({ id: p.id, email: p.email });
     }
     setLoading(false);
   }, []);
@@ -42,6 +45,7 @@ export function PacienteAuthProvider({ children }: { children: ReactNode }) {
   function guardarSessao(t: string, p: PacienteUser, refreshToken?: string) {
     setToken(t);
     setPaciente(p);
+    Sentry.setUser({ id: p.id, email: p.email });
     localStorage.setItem("zena_token_paciente", t);
     localStorage.setItem("zena_user_paciente", JSON.stringify(p));
     if (refreshToken) localStorage.setItem("zena_refresh_paciente", refreshToken);
@@ -61,6 +65,7 @@ export function PacienteAuthProvider({ children }: { children: ReactNode }) {
     // Revoga o refresh no servidor (best-effort).
     const rt = localStorage.getItem("zena_refresh_paciente");
     if (rt) api.post("/auth/paciente/logout", { refreshToken: rt }).catch(() => {});
+    Sentry.setUser(null);
     setToken(null);
     setPaciente(null);
     localStorage.removeItem("zena_token_paciente");

@@ -1,7 +1,35 @@
+import './instrument'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import * as Sentry from '@sentry/react'
 import './index.css'
 import App from './App.tsx'
+
+function ErroFatal() {
+  return (
+    <div
+      style={{
+        minHeight: '100dvh', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 16,
+        background: '#09090B', color: '#E5E7EB', padding: 24, textAlign: 'center',
+      }}
+    >
+      <p style={{ fontSize: 18, fontWeight: 700 }}>Algo deu errado</p>
+      <p style={{ fontSize: 14, color: '#9CA3AF', maxWidth: 320 }}>
+        Tivemos um problema inesperado. Recarregue a página para continuar.
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        style={{
+          marginTop: 4, padding: '10px 20px', borderRadius: 12,
+          background: '#7CFF5B', color: '#08130A', fontWeight: 600, border: 'none', cursor: 'pointer',
+        }}
+      >
+        Recarregar
+      </button>
+    </div>
+  )
+}
 
 if ('serviceWorker' in navigator) {
   // Havia um SW controlando a página quando ela carregou? Se sim, um
@@ -50,6 +78,8 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <Sentry.ErrorBoundary fallback={<ErroFatal />}>
+      <App />
+    </Sentry.ErrorBoundary>
   </StrictMode>,
 )
