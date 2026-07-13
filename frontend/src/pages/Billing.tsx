@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CheckCircle, CreditCard, AlertCircle, ExternalLink, Zap, Star } from "lucide-react";
+import { CheckCircle, CreditCard, AlertCircle, ExternalLink, Star, ArrowRight } from "lucide-react";
 import api from "../lib/api";
 
 interface BillingStatus {
@@ -25,22 +25,6 @@ export default function Billing() {
     }
     api.get<BillingStatus>("/billing/status").then((r) => setStatus(r.data)).finally(() => setLoading(false));
   }, []);
-
-  async function assinar(periodo: "mensal" | "anual") {
-    setRedirecting(periodo);
-    try {
-      const { data } = await api.post<{ url: string | null }>("/billing/checkout", { periodo });
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert("Pagamentos ainda não configurados. Verifique as variáveis STRIPE_SECRET_KEY.");
-        setRedirecting(null);
-      }
-    } catch {
-      alert("Erro ao iniciar pagamento. Tente novamente.");
-      setRedirecting(null);
-    }
-  }
 
   async function gerenciarAssinatura() {
     setRedirecting("portal");
@@ -154,63 +138,22 @@ export default function Billing() {
         )}
       </div>
 
-      {/* Planos */}
+      {/* CTA — a escolha e o checkout do plano ficam na tela de Planos */}
       {!assinaturaAtiva && (
-        <div>
-          <h2 className="font-semibold text-nx-on-surface mb-4 flex items-center gap-2">
-            <Zap size={18} className="text-nx-evo" /> Escolha um plano
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            {/* Mensal */}
-            <div className="bg-nx-surface rounded-nx-lg border border-nx-border p-6">
-              <p className="text-sm text-nx-on-surface-variant font-medium mb-1">Mensal</p>
-              <p className="text-3xl font-bold text-nx-on-surface mb-1">
-                R$ 69<span className="text-base font-normal text-nx-on-surface-variant">/mês</span>
-              </p>
-              <p className="text-xs text-nx-outline mb-4">Cobrado mensalmente</p>
-              <ul className="space-y-2 mb-6 text-sm text-nx-on-surface-variant">
-                {["Pacientes ilimitadas", "Todas as funcionalidades", "Suporte por e-mail"].map((i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-nx-evo" /> {i}
-                  </li>
-                ))}
-              </ul>
-              <button
-                onClick={() => assinar("mensal")}
-                disabled={!!redirecting}
-                className="w-full border border-nx-border text-nx-on-surface font-semibold py-2.5 rounded-nx-md hover:bg-nx-surface-hover transition-colors disabled:opacity-50 text-sm"
-              >
-                {redirecting === "mensal" ? "Redirecionando..." : "Assinar mensal"}
-              </button>
-            </div>
-
-            {/* Anual */}
-            <div className="bg-nx-surface rounded-nx-lg border border-nx-evo/40 p-6 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-nx-evo text-nx-on-evo text-xs font-bold px-3 py-0.5 rounded-full">
-                RECOMENDADO
-              </div>
-              <p className="text-sm text-nx-on-surface-variant font-medium mb-1">Anual</p>
-              <p className="text-3xl font-bold text-nx-on-surface mb-1">
-                R$ 59<span className="text-base font-normal text-nx-on-surface-variant">/mês</span>
-              </p>
-              <p className="text-xs text-nx-outline mb-4">R$ 708 cobrado anualmente · Economize R$ 120</p>
-              <ul className="space-y-2 mb-6 text-sm text-nx-on-surface-variant">
-                {["Tudo do plano mensal", "Suporte prioritário", "Acesso antecipado a novidades"].map((i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-nx-evo" /> {i}
-                  </li>
-                ))}
-              </ul>
-              <button
-                onClick={() => assinar("anual")}
-                disabled={!!redirecting}
-                className="w-full bg-nx-evo text-nx-on-evo font-semibold py-2.5 rounded-nx-md hover:bg-nx-evo-2 transition-colors disabled:opacity-50 text-sm"
-              >
-                {redirecting === "anual" ? "Redirecionando..." : "Assinar anual"}
-              </button>
-            </div>
+        <Link
+          to="/app/planos"
+          className="flex items-center justify-between gap-3 bg-nx-surface rounded-nx-lg border border-nx-evo/40 p-5 hover:border-nx-evo transition-colors"
+        >
+          <div>
+            <p className="font-semibold text-nx-on-surface">Assine o Nexvel Pro</p>
+            <p className="text-sm text-nx-on-surface-variant mt-0.5">
+              R$149/mês · 14 dias grátis · até 50 pacientes ativos
+            </p>
           </div>
-        </div>
+          <span className="flex items-center gap-1 text-nx-evo font-semibold text-sm shrink-0">
+            Ver planos <ArrowRight size={16} />
+          </span>
+        </Link>
       )}
 
       {/* Segurança */}

@@ -36,8 +36,8 @@ export default function Termos() {
           <Section titulo="4. Planos e pagamentos">
             <ul className="list-disc pl-5 space-y-2">
               <li><strong>Trial:</strong> 14 dias gratuitos sem necessidade de cartão.</li>
-              <li><strong>Plano Mensal:</strong> R$ 69/mês, cobrado mensalmente via Stripe.</li>
-              <li><strong>Plano Anual:</strong> R$ 708/ano (equivalente a R$ 59/mês), cobrado anualmente.</li>
+              <li><strong>Nexvel Pro (mensal):</strong> R$ 149/mês, cobrado mensalmente via cartão ou Pix.</li>
+              <li><strong>Nexvel Pro (anual):</strong> R$ 1.490/ano (equivalente a R$ 124,17/mês), cobrado anualmente.</li>
               <li>Os preços podem ser alterados mediante aviso prévio de 30 dias por e-mail.</li>
               <li>Reembolsos: não oferecemos reembolso proporcional por cancelamento antecipado, mas o acesso
               permanece ativo até o fim do período pago.</li>
