@@ -9,6 +9,7 @@ import { gerarFeedAutomatico } from "../lib/feedAutomatico";
 import { PLANOS_REFEICOES, resolverPlanoRefeicoes, MIN_REFEICOES, MAX_REFEICOES } from "../config/ligas";
 import { gerarRelatorioMensal, gerarInsightsIA } from "../services/relatorioService";
 import { gerarCodigoConvite, conviteExpiraEm } from "../lib/convite";
+import { anonimizarPaciente } from "../lib/anonimizarPaciente";
 
 const router = Router();
 router.use(authMiddleware);
@@ -96,7 +97,8 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   const busca = String(req.query.busca ?? "").trim();
   const status = String(req.query.status ?? "todos");
 
-  const where: any = { nutricionistaId: req.nutricionistaId as string };
+  // anonimizadoEm: null → pacientes excluídos (LGPD) não aparecem na lista da nutri.
+  const where: any = { nutricionistaId: req.nutricionistaId as string, anonimizadoEm: null };
   if (busca) where.nome = { contains: busca, mode: "insensitive" };
   if (status === "ativo") where.ativo = true;
   if (status === "inativo") where.ativo = false;
@@ -235,6 +237,13 @@ router.put("/:id", validateBody(atualizarPacienteSchema), async (req: AuthReques
     },
   });
   res.json(updated);
+});
+
+// DELETE /:id — exclui o paciente (LGPD: anonimiza PII/fotos/login, cancela o convite,
+// preserva o prontuário anonimizado). Irreversível. IDOR já coberto por router.param.
+router.delete("/:id", async (req: AuthRequest, res: Response) => {
+  await anonimizarPaciente(req.params["id"] as string);
+  res.json({ ok: true });
 });
 
 // PUT /:id/plano-missoes — nutri configura o plano de missões da paciente:

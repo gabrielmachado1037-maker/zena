@@ -1,7 +1,8 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
-import { uploadFeedFoto, uploadAvatarPaciente, deleteFotoPorUrl } from "../lib/supabase";
+import { uploadFeedFoto, uploadAvatarPaciente } from "../lib/supabase";
+import { anonimizarPaciente } from "../lib/anonimizarPaciente";
 import { enviarNotificacao } from "./notificacoes";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
@@ -387,38 +388,7 @@ router.get("/exportar", async (req: PacienteAuthRequest, res: Response) => {
 // DELETE /api/paciente-app/conta — direito de exclusão (LGPD): anonimiza os dados
 // pessoais/biométricos e remove o login, preservando o prontuário clínico anonimizado.
 router.delete("/conta", async (req: PacienteAuthRequest, res: Response) => {
-  const pid = req.pacienteId!;
-
-  // 1) Remove as fotos (dado biométrico) do storage — best-effort.
-  const [fotos, regFotos, pac] = await Promise.all([
-    prisma.fotoEvolucao.findMany({ where: { pacienteId: pid }, select: { imagem: true } }),
-    prisma.registroFotos.findMany({ where: { pacienteId: pid }, select: { frenteUrl: true, perfilUrl: true, costasUrl: true } }),
-    prisma.paciente.findUnique({ where: { id: pid }, select: { fotoInicial: true, fotoPerfilUrl: true } }),
-  ]);
-  const urls = [
-    ...fotos.map((f) => f.imagem),
-    ...regFotos.flatMap((r) => [r.frenteUrl, r.perfilUrl, r.costasUrl]),
-    pac?.fotoInicial, pac?.fotoPerfilUrl,
-  ].filter((u): u is string => !!u);
-  await Promise.allSettled(urls.map((u) => deleteFotoPorUrl(u)));
-
-  // 2) Apaga fotos/posts/dispositivos e anonimiza o cadastro + remove o login (atômico).
-  await prisma.$transaction([
-    prisma.fotoEvolucao.deleteMany({ where: { pacienteId: pid } }),
-    prisma.registroFotos.deleteMany({ where: { pacienteId: pid } }),
-    prisma.feedPost.deleteMany({ where: { pacienteId: pid } }),
-    prisma.pushSubscriptionPaciente.deleteMany({ where: { pacienteId: pid } }),
-    prisma.paciente.update({
-      where: { id: pid },
-      data: {
-        nome: "Paciente removido", email: null, telefone: null,
-        dataNascimento: null, sexo: null, fotoInicial: null, fotoPerfilUrl: null,
-        ativo: false, anonimizadoEm: new Date(),
-      },
-    }),
-    prisma.pacienteUser.deleteMany({ where: { pacienteId: pid } }),
-  ]);
-
+  await anonimizarPaciente(req.pacienteId!);
   return res.json({ ok: true });
 });
 

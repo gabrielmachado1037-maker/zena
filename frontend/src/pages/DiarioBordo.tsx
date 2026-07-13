@@ -6,7 +6,8 @@ import {
   Lightbulb, AlertTriangle, BadgeCheck, Flame, Send, SlidersHorizontal,
   TrendingDown, TrendingUp, Target, ShieldAlert, ShieldCheck,
   CalendarClock, CalendarDays, Sparkle, FileBarChart2,
-  Copy, Share2, Check, Loader2, RefreshCw, Ticket, type LucideIcon,
+  Copy, Share2, Check, Loader2, RefreshCw, Ticket,
+  MoreVertical, Trash2, X, type LucideIcon,
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
@@ -193,6 +194,23 @@ export default function DiarioBordo() {
   const [sonoMeta, setSonoMeta] = useState(8);
   const [treinoDias, setTreinoDias] = useState<number[]>([]);
   const [savingCfg, setSavingCfg] = useState(false);
+  const [menuAberto, setMenuAberto] = useState(false);
+  const [confirmAberto, setConfirmAberto] = useState(false);
+  const [confirmNome, setConfirmNome] = useState("");
+  const [excluindo, setExcluindo] = useState(false);
+  const [erroExcluir, setErroExcluir] = useState<string | null>(null);
+
+  async function excluirPaciente() {
+    if (!id) return;
+    setExcluindo(true); setErroExcluir(null);
+    try {
+      await api.delete(`/pacientes/${id}`);
+      navigate("/app/pacientes");
+    } catch (e: any) {
+      setErroExcluir(e?.response?.data?.error ?? "Não foi possível excluir o paciente.");
+      setExcluindo(false);
+    }
+  }
 
   useEffect(() => {
     if (!id) return;
@@ -319,9 +337,34 @@ export default function DiarioBordo() {
           <button onClick={() => navigate("/app/pacientes")} className="flex items-center gap-1 text-body-sm text-nx-on-surface-variant hover:text-nx-on-surface">
             <ChevronLeft size={18} /> Pacientes
           </button>
-          <button onClick={() => navigate(`/app/pacientes/${id}/relatorio`)} className="flex items-center gap-2 rounded-xl border border-nx-border px-3.5 py-2 text-body-sm font-medium text-nx-on-surface hover:bg-nx-surface-hover transition-colors">
-            <FileBarChart2 size={16} className="text-nx-evo" /> Relatório mensal
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate(`/app/pacientes/${id}/relatorio`)} className="flex items-center gap-2 rounded-xl border border-nx-border px-3.5 py-2 text-body-sm font-medium text-nx-on-surface hover:bg-nx-surface-hover transition-colors">
+              <FileBarChart2 size={16} className="text-nx-evo" /> Relatório mensal
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setMenuAberto((v) => !v)}
+                aria-label="Mais ações" aria-haspopup="menu" aria-expanded={menuAberto}
+                className="grid size-9 place-items-center rounded-xl border border-nx-border text-nx-on-surface-variant hover:bg-nx-surface-hover transition-colors"
+              >
+                <MoreVertical size={18} />
+              </button>
+              {menuAberto && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMenuAberto(false)} />
+                  <div role="menu" className="absolute right-0 top-11 z-50 w-52 overflow-hidden rounded-nx-md border border-nx-border bg-nx-surface shadow-nx-card">
+                    <button
+                      role="menuitem"
+                      onClick={() => { setMenuAberto(false); setConfirmNome(""); setErroExcluir(null); setConfirmAberto(true); }}
+                      className="flex w-full items-center gap-2.5 px-4 py-3 text-body-sm font-medium text-nx-danger hover:bg-nx-danger/10 transition-colors"
+                    >
+                      <Trash2 size={16} /> Excluir paciente
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         {loading ? (
@@ -687,6 +730,64 @@ export default function DiarioBordo() {
               )}
             </div>
           </>
+        )}
+
+        {/* ══════════ Modal — excluir paciente (LGPD, irreversível) ══════════ */}
+        {confirmAberto && pac && (
+          <div
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm md:items-center md:p-4"
+            onClick={() => !excluindo && setConfirmAberto(false)}
+          >
+            <div
+              className={`${CARD} w-full max-w-md rounded-b-none p-6 md:rounded-b-nx-lg`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-nx-danger/12 text-nx-danger">
+                    <Trash2 size={18} />
+                  </span>
+                  <h2 className="text-headline-md text-nx-on-surface">Excluir paciente</h2>
+                </div>
+                <button onClick={() => !excluindo && setConfirmAberto(false)} aria-label="Fechar" className="text-nx-on-surface-variant hover:text-nx-on-surface">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <p className="text-body-sm text-nx-on-surface-variant">
+                Isto <strong className="text-nx-on-surface">anonimiza permanentemente</strong> os dados de <strong className="text-nx-on-surface">{pac.nome}</strong> (nome, contato, fotos e login) e remove o acesso ao app. O histórico clínico é preservado de forma anonimizada, conforme a LGPD. <strong className="text-nx-danger">Não dá pra desfazer.</strong>
+              </p>
+
+              <label className="mt-4 block text-body-sm font-medium text-nx-on-surface-variant">
+                Para confirmar, digite <strong className="text-nx-on-surface">{pac.nome}</strong>
+              </label>
+              <input
+                value={confirmNome}
+                onChange={(e) => setConfirmNome(e.target.value)}
+                autoFocus disabled={excluindo}
+                placeholder={pac.nome}
+                className="mt-1.5 w-full rounded-nx-md border border-nx-border bg-nx-container px-3.5 py-2.5 text-body-md text-nx-on-surface placeholder:text-nx-on-surface-variant/60 focus:border-nx-danger/60 focus:outline-none focus:ring-2 focus:ring-nx-danger/30"
+              />
+
+              {erroExcluir && <p className="mt-3 text-body-sm text-nx-danger">{erroExcluir}</p>}
+
+              <div className="mt-5 flex gap-3">
+                <button
+                  onClick={() => setConfirmAberto(false)} disabled={excluindo}
+                  className="flex-1 rounded-nx-md border border-nx-border py-2.5 text-body-sm font-semibold text-nx-on-surface transition-colors hover:bg-nx-container disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={excluirPaciente}
+                  disabled={excluindo || confirmNome.trim().toLowerCase() !== pac.nome.trim().toLowerCase()}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-nx-md bg-nx-danger py-2.5 text-body-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {excluindo ? <><Loader2 size={16} className="animate-spin" /> Excluindo…</> : <><Trash2 size={16} /> Excluir</>}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>
