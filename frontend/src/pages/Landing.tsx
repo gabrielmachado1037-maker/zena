@@ -18,7 +18,7 @@ export default function Landing() {
         position: 'absolute',
         top: 0, left: 0, right: 0,
         height: '600px',
-        background: 'radial-gradient(ellipse at 60% 0%, rgba(124,58,237,0.30) 0%, transparent 65%)',
+        background: 'radial-gradient(ellipse at 60% 0%, rgba(124,255,91,0.30) 0%, transparent 65%)',
         pointerEvents: 'none',
       }} />
 
@@ -65,11 +65,11 @@ export default function Landing() {
             onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)')}
           >Entrar</button>
           <button onClick={() => navigate('/cadastro')} style={{
-            background: 'linear-gradient(135deg, #7C3AED, #8B5CF6)',
-            border: 'none', color: 'white',
+            background: 'linear-gradient(135deg, #7CFF5B, #70F570)',
+            border: 'none', color: '#08130A',
             padding: '9px 20px', borderRadius: '8px',
             fontSize: '14px', fontWeight: 600, cursor: 'pointer',
-            boxShadow: '0 0 16px rgba(124,58,237,0.4)',
+            boxShadow: '0 0 16px rgba(124,255,91,0.4)',
           }}>Criar conta</button>
         </div>
       </nav>
@@ -91,11 +91,11 @@ export default function Landing() {
           {/* Badge */}
           <div style={{
             display: 'inline-flex', alignItems: 'center',
-            background: 'rgba(124,58,237,0.15)',
-            border: '1px solid rgba(124,58,237,0.45)',
+            background: 'rgba(124,255,91,0.15)',
+            border: '1px solid rgba(124,255,91,0.45)',
             borderRadius: '999px', padding: '5px 14px',
             fontSize: '11px', fontWeight: 700,
-            color: '#A78BFA', letterSpacing: '0.1em',
+            color: '#7CFF5B', letterSpacing: '0.1em',
             marginBottom: '24px', textTransform: 'uppercase',
           }}>
             BEM-VINDO AO NEXVEL
@@ -108,7 +108,7 @@ export default function Landing() {
             color: 'white', margin: '0 0 20px',
           }}>
             Transforme sua rotina em{' '}
-            <span style={{ color: '#8B5CF6' }}>resultados reais.</span>
+            <span style={{ color: '#7CFF5B' }}>resultados reais.</span>
           </h1>
 
           {/* Subtitle */}
@@ -122,11 +122,11 @@ export default function Landing() {
           {/* CTAs */}
           <div style={{ display: 'flex', gap: '14px', marginBottom: '48px' }}>
             <button onClick={() => navigate('/cadastro')} style={{
-              background: 'linear-gradient(135deg, #7C3AED, #8B5CF6)',
-              border: 'none', color: 'white',
+              background: 'linear-gradient(135deg, #7CFF5B, #70F570)',
+              border: 'none', color: '#08130A',
               padding: '14px 28px', borderRadius: '10px',
               fontSize: '15px', fontWeight: 600, cursor: 'pointer',
-              boxShadow: '0 0 24px rgba(124,58,237,0.5)', transition: 'all 0.2s',
+              boxShadow: '0 0 24px rgba(124,255,91,0.5)', transition: 'all 0.2s',
             }}>Sou nutricionista</button>
             <button onClick={() => navigate('/login?tipo=paciente')} style={{
               background: 'transparent',
@@ -146,7 +146,7 @@ export default function Landing() {
               { val: '+200', label: 'Ligas criadas' },
             ].map(stat => (
               <div key={stat.val}>
-                <div style={{ fontSize: '22px', fontWeight: 700, color: '#A78BFA' }}>{stat.val}</div>
+                <div style={{ fontSize: '22px', fontWeight: 700, color: '#7CFF5B' }}>{stat.val}</div>
                 <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>{stat.label}</div>
               </div>
             ))}
@@ -159,9 +159,9 @@ export default function Landing() {
           <div style={{
             width: '580px', maxWidth: '100%',
             background: '#13131F',
-            border: '1px solid rgba(124,58,237,0.4)',
+            border: '1px solid rgba(124,255,91,0.4)',
             borderRadius: '16px', padding: '20px',
-            boxShadow: '0 0 60px rgba(124,58,237,0.2), 0 24px 48px rgba(0,0,0,0.5)',
+            boxShadow: '0 0 60px rgba(124,255,91,0.2), 0 24px 48px rgba(0,0,0,0.5)',
           }}>
             {/* header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
@@ -208,7 +208,7 @@ export default function Landing() {
                 {[
                   { name: 'Elite Nexvel', pts: '1.250 pts', cor: '#F59E0B' },
                   { name: 'Foco e Disciplina', pts: '980 pts', cor: '#F97316' },
-                  { name: 'Imbaríveis', pts: '870 pts', cor: '#A855F7' },
+                  { name: 'Imbaríveis', pts: '870 pts', cor: '#7CFF5B' },
                 ].map(l => (
                   <div key={l.name} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '9px',
@@ -245,7 +245,7 @@ export default function Landing() {
                     <div style={{ height: '3px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px' }}>
                       <div style={{
                         height: '100%', width: `${d.pct}%`,
-                        background: 'linear-gradient(90deg, #7C3AED, #8B5CF6)', borderRadius: '2px',
+                        background: 'linear-gradient(90deg, #7CFF5B, #70F570)', borderRadius: '2px',
                       }} />
                     </div>
                   </div>
@@ -259,13 +259,13 @@ export default function Landing() {
             position: 'absolute', bottom: '-20px', right: '-30px', zIndex: 10,
             width: '160px',
             background: '#0F0F1C',
-            border: '2px solid rgba(124,58,237,0.5)',
+            border: '2px solid rgba(124,255,91,0.5)',
             borderRadius: '24px', padding: '14px 12px',
             boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
           }}>
             <div style={{ fontSize: '11px', fontWeight: 600, color: 'white', marginBottom: '10px' }}>Ligas</div>
             <div style={{
-              background: 'linear-gradient(135deg, rgba(124,58,237,0.25), rgba(168,85,247,0.12))',
+              background: 'linear-gradient(135deg, rgba(124,255,91,0.25), rgba(124,255,91,0.12))',
               borderRadius: '12px', padding: '12px', textAlign: 'center', marginBottom: '10px',
             }}>
               <div style={{ fontSize: '30px', lineHeight: 1 }}>🏆</div>
@@ -278,13 +278,13 @@ export default function Landing() {
             ].map(j => (
               <div key={j.n} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' }}>
                 <span style={{ fontSize: '10px', color: '#CBD5E1' }}>{j.n}</span>
-                <span style={{ fontSize: '10px', fontWeight: 600, color: '#A78BFA' }}>{j.p}</span>
+                <span style={{ fontSize: '10px', fontWeight: 600, color: '#7CFF5B' }}>{j.p}</span>
               </div>
             ))}
             <button style={{
               width: '100%', marginTop: '4px',
-              background: 'linear-gradient(135deg, #7C3AED, #8B5CF6)',
-              border: 'none', color: 'white', fontSize: '10px', fontWeight: 600,
+              background: 'linear-gradient(135deg, #7CFF5B, #70F570)',
+              border: 'none', color: '#08130A', fontSize: '10px', fontWeight: 600,
               padding: '8px', borderRadius: '8px', cursor: 'pointer',
             }}>Ver ranking completo</button>
           </div>
@@ -293,7 +293,7 @@ export default function Landing() {
           <div style={{
             position: 'absolute', bottom: '-30px', left: '50%',
             transform: 'translateX(-50%)', width: '60%', height: '40px',
-            background: 'rgba(124,58,237,0.3)', filter: 'blur(24px)', borderRadius: '50%',
+            background: 'rgba(124,255,91,0.3)', filter: 'blur(24px)', borderRadius: '50%',
           }} />
         </div>
       </section>
@@ -313,7 +313,7 @@ export default function Landing() {
           gap: '28px', alignItems: 'center',
         }}>
           <div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#8B5CF6', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#7CFF5B', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>
               FUNCIONALIDADES
             </div>
             <div style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em' }}>

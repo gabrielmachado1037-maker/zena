@@ -55,8 +55,8 @@ const RelatorioCiclo       = lazy(() => import("./pages/paciente/RelatorioCiclo"
 
 function PageSpinner() {
   return (
-    <div className="min-h-screen bg-nexvel-bg-primary flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-nexvel-purple-light border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-nx-bg flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-nx-evo border-t-transparent rounded-full animate-spin" />
     </div>
   );
 }
