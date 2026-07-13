@@ -50,11 +50,11 @@ const humores = [
 ];
 
 const adesoes = [
-  { v: 0, label: "Não segui", cls: "bg-red-50 text-red-500 border-red-200" },
-  { v: 25, label: "Um pouco", cls: "bg-orange-50 text-orange-500 border-orange-200" },
-  { v: 50, label: "Metade", cls: "bg-yellow-50 text-yellow-600 border-yellow-200" },
-  { v: 75, label: "Quase tudo", cls: "bg-lime-50 text-lime-600 border-lime-200" },
-  { v: 100, label: "100%! 🎉", cls: "bg-emerald-50 text-emerald-600 border-emerald-200" },
+  { v: 0, label: "Não segui", cls: "bg-nx-danger/15 text-nx-danger border-nx-danger/40" },
+  { v: 25, label: "Um pouco", cls: "bg-nx-streak/15 text-nx-streak border-nx-streak/40" },
+  { v: 50, label: "Metade", cls: "bg-nx-gold/15 text-nx-gold border-nx-gold/40" },
+  { v: 75, label: "Quase tudo", cls: "bg-nx-evo/12 text-nx-evo border-nx-evo/30" },
+  { v: 100, label: "100%! 🎉", cls: "bg-nx-evo/20 text-nx-evo border-nx-evo/50" },
 ];
 
 function getMensagem(diff: number | null): string {
@@ -100,16 +100,16 @@ export default function AreaPaciente() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-nexvel-cream flex items-center justify-center">
+    <div className="min-h-screen bg-nx-bg flex items-center justify-center">
       <img src="/nexvel-x-512.png" alt="Nexvel" className="h-10 w-auto animate-pulse" />
     </div>
   );
 
   if (notFound || !dados) return (
-    <div className="min-h-screen bg-nexvel-cream flex items-center justify-center p-6 text-center">
+    <div className="min-h-screen bg-nx-bg flex items-center justify-center p-6 text-center">
       <div>
-        <p className="text-nexvel-text-mid font-medium text-lg">Link inválido.</p>
-        <p className="text-nexvel-text-light text-sm mt-2">Entre em contato com sua nutricionista.</p>
+        <p className="text-nx-on-surface-variant font-medium text-lg">Link inválido.</p>
+        <p className="text-nx-on-surface-variant text-sm mt-2">Entre em contato com sua nutricionista.</p>
       </div>
     </div>
   );
@@ -182,9 +182,9 @@ export default function AreaPaciente() {
   }
 
   return (
-    <div className="min-h-screen bg-nexvel-cream pb-12">
+    <div className="min-h-screen bg-nx-bg pb-12">
       {/* Header */}
-      <div className="bg-nexvel-green-dark px-6 pt-10 pb-10">
+      <div className="bg-nx-surface px-6 pt-10 pb-10">
         {/* Branding do consultório */}
         <div className="flex items-center gap-3 mb-6">
           {dados.nutricionista.logoConsultorio ? (
@@ -209,12 +209,12 @@ export default function AreaPaciente() {
         {/* Saudação ao paciente */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-nexvel-mint/70 text-sm mb-1">acompanhamento com {dados.nutricionista.nome.split(" ")[0]}</p>
+            <p className="text-nx-on-surface-variant text-sm mb-1">acompanhamento com {dados.nutricionista.nome.split(" ")[0]}</p>
             <h1 className="text-white text-3xl font-bold">Olá, {dados.nome.split(" ")[0]}! 🌿</h1>
-            <p className="text-nexvel-mint/60 text-sm mt-1">{dados.objetivo}</p>
+            <p className="text-nx-outline text-sm mt-1">{dados.objetivo}</p>
           </div>
           {streak > 0 && (
-            <div className="flex-shrink-0 flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-2 rounded-2xl">
+            <div className="flex-shrink-0 flex items-center gap-2 bg-nx-container backdrop-blur-sm px-3 py-2 rounded-2xl">
               <span className="text-2xl">🔥</span>
               <div>
                 <p className="text-white font-bold text-sm leading-tight">{streak}</p>
@@ -231,15 +231,15 @@ export default function AreaPaciente() {
         {!dados.anamnese && (
           <div
             onClick={() => setView("anamnese")}
-            className="bg-white border-2 border-nexvel-mint rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
+            className="bg-nx-container border-2 border-nx-border rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
           >
             <div className="flex items-center gap-3">
               <span className="text-2xl">📋</span>
               <div className="flex-1">
-                <p className="text-nexvel-text-dark font-semibold text-sm">Complete seu histórico de saúde</p>
-                <p className="text-nexvel-text-light text-xs">Leva 3 minutos e ajuda muito sua nutricionista!</p>
+                <p className="text-nx-on-surface font-semibold text-sm">Complete seu histórico de saúde</p>
+                <p className="text-nx-on-surface-variant text-xs">Leva 3 minutos e ajuda muito sua nutricionista!</p>
               </div>
-              <ChevronRight size={18} className="text-nexvel-text-light flex-shrink-0" />
+              <ChevronRight size={18} className="text-nx-on-surface-variant flex-shrink-0" />
             </div>
           </div>
         )}
@@ -248,29 +248,29 @@ export default function AreaPaciente() {
         {!fezCheckin ? (
           <div
             onClick={() => setView("checkin")}
-            className="bg-white rounded-2xl p-5 shadow-lg border border-nexvel-mint/20 cursor-pointer hover:shadow-xl transition-all active:scale-[0.98]"
+            className="bg-nx-container rounded-2xl p-5 shadow-lg border border-nx-border cursor-pointer hover:shadow-xl transition-all active:scale-[0.98]"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-nexvel-green-light/20 flex items-center justify-center text-2xl">✨</div>
+                <div className="w-11 h-11 rounded-xl bg-nx-evo/12 flex items-center justify-center text-2xl">✨</div>
                 <div>
-                  <p className="text-nexvel-text-dark font-semibold">Check-in semanal</p>
-                  <p className="text-nexvel-text-light text-xs">2 minutinhos · me ajuda muito!</p>
+                  <p className="text-nx-on-surface font-semibold">Check-in semanal</p>
+                  <p className="text-nx-on-surface-variant text-xs">2 minutinhos · me ajuda muito!</p>
                 </div>
               </div>
-              <ChevronRight size={20} className="text-nexvel-text-light" />
+              <ChevronRight size={20} className="text-nx-on-surface-variant" />
             </div>
           </div>
         ) : (
-          <div className="bg-nexvel-green-light/10 border border-nexvel-green-light/30 rounded-2xl p-4 flex items-center gap-3">
-            <CheckCircle size={20} className="text-nexvel-green-mid flex-shrink-0" />
+          <div className="bg-nx-evo/10 border border-nx-evo/30 rounded-2xl p-4 flex items-center gap-3">
+            <CheckCircle size={20} className="text-nx-evo flex-shrink-0" />
             <div>
-              <p className="text-nexvel-green-dark font-medium text-sm">Check-in desta semana feito! ✅</p>
-              <p className="text-nexvel-text-light text-xs">Você pode atualizar quando quiser.</p>
+              <p className="text-nx-evo font-medium text-sm">Check-in desta semana feito! ✅</p>
+              <p className="text-nx-on-surface-variant text-xs">Você pode atualizar quando quiser.</p>
             </div>
             <button
               onClick={() => setView("checkin")}
-              className="ml-auto text-xs text-nexvel-green-mid font-medium hover:underline flex-shrink-0"
+              className="ml-auto text-xs text-nx-evo font-medium hover:underline flex-shrink-0"
             >
               Editar
             </button>
@@ -279,31 +279,31 @@ export default function AreaPaciente() {
 
         {/* Evolução */}
         {medicoes.length > 0 && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-nexvel-mint/20">
-            <h2 className="text-nexvel-text-dark font-semibold mb-1">Sua evolução</h2>
-            <p className="text-nexvel-text-light text-sm mb-4">{getMensagem(diff)}</p>
+          <div className="bg-nx-container rounded-2xl p-5 shadow-sm border border-nx-border">
+            <h2 className="text-nx-on-surface font-semibold mb-1">Sua evolução</h2>
+            <p className="text-nx-on-surface-variant text-sm mb-4">{getMensagem(diff)}</p>
 
             <div className="grid grid-cols-3 gap-2 mb-4">
-              <div className="bg-nexvel-cream rounded-xl p-3 text-center">
-                <p className="text-nexvel-text-light text-xs mb-0.5">Início</p>
-                <p className="text-nexvel-text-dark font-bold font-mono-data">{pesoInicial} kg</p>
+              <div className="bg-nx-surface rounded-xl p-3 text-center">
+                <p className="text-nx-on-surface-variant text-xs mb-0.5">Início</p>
+                <p className="text-nx-on-surface font-bold font-mono-data">{pesoInicial} kg</p>
               </div>
-              <div className="bg-nexvel-green-light/10 rounded-xl p-3 text-center border border-nexvel-green-light/20">
-                <p className="text-nexvel-text-light text-xs mb-0.5">Agora</p>
-                <p className="text-nexvel-green-dark font-bold font-mono-data text-lg">{pesoAtual} kg</p>
+              <div className="bg-nx-evo/10 rounded-xl p-3 text-center border border-nx-evo/20">
+                <p className="text-nx-on-surface-variant text-xs mb-0.5">Agora</p>
+                <p className="text-nx-evo font-bold font-mono-data text-lg">{pesoAtual} kg</p>
               </div>
               {dados.pesoMeta && (
-                <div className="bg-nexvel-cream rounded-xl p-3 text-center">
-                  <p className="text-nexvel-text-light text-xs mb-0.5">Meta</p>
-                  <p className="text-nexvel-text-dark font-bold font-mono-data">{dados.pesoMeta} kg</p>
+                <div className="bg-nx-surface rounded-xl p-3 text-center">
+                  <p className="text-nx-on-surface-variant text-xs mb-0.5">Meta</p>
+                  <p className="text-nx-on-surface font-bold font-mono-data">{dados.pesoMeta} kg</p>
                 </div>
               )}
             </div>
 
             {diff !== null && (
-              <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl mb-4 ${diff < 0 ? "bg-nexvel-green-light/10" : "bg-nexvel-sand"}`}>
-                {diff < 0 ? <TrendingDown size={15} className="text-nexvel-green-light" /> : <TrendingUp size={15} className="text-nexvel-brown" />}
-                <span className="text-sm font-medium text-nexvel-text-dark">
+              <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl mb-4 ${diff < 0 ? "bg-nx-evo/10" : "bg-nx-streak/10"}`}>
+                {diff < 0 ? <TrendingDown size={15} className="text-nx-evo" /> : <TrendingUp size={15} className="text-nx-streak" />}
+                <span className="text-sm font-medium text-nx-on-surface">
                   {diff < 0 ? `Perdeu ${Math.abs(diff).toFixed(1)} kg` : diff > 0 ? `Ganhou ${diff.toFixed(1)} kg` : "Peso estável"} desde o início
                 </span>
               </div>
@@ -311,12 +311,12 @@ export default function AreaPaciente() {
 
             {dados.pesoMeta && progressoPct > 0 && (
               <div className="mb-4">
-                <div className="flex justify-between text-xs text-nexvel-text-light mb-1.5">
+                <div className="flex justify-between text-xs text-nx-on-surface-variant mb-1.5">
                   <span>Progresso até a meta</span>
-                  <span className="font-medium text-nexvel-green-mid">{progressoPct}%</span>
+                  <span className="font-medium text-nx-evo">{progressoPct}%</span>
                 </div>
-                <div className="h-3 bg-nexvel-cream rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-nexvel-green-light to-nexvel-green-mid rounded-full transition-all duration-700" style={{ width: `${progressoPct}%` }} />
+                <div className="h-3 bg-nx-surface rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-nx-evo to-nx-evo-2 rounded-full transition-all duration-700" style={{ width: `${progressoPct}%` }} />
                 </div>
               </div>
             )}
@@ -324,11 +324,11 @@ export default function AreaPaciente() {
             {medicoes.length > 1 && (
               <ResponsiveContainer width="100%" height={150}>
                 <LineChart data={medicoes.map((m) => ({ data: format(new Date(m.data), "dd/MM"), peso: m.peso }))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#A855F7" />
-                  <XAxis dataKey="data" tick={{ fontSize: 10, fill: "#475569" }} />
-                  <YAxis tick={{ fontSize: 10, fill: "#475569" }} domain={["dataMin - 2", "dataMax + 2"]} width={32} />
-                  <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid #A855F7", fontSize: 11 }} />
-                  <Line type="monotone" dataKey="peso" stroke="#A855F7" strokeWidth={2.5} dot={{ fill: "#A855F7", r: 3 }} name="Peso (kg)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2A2F38" />
+                  <XAxis dataKey="data" tick={{ fontSize: 10, fill: "#9CA3AF" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} domain={["dataMin - 2", "dataMax + 2"]} width={32} />
+                  <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid #2A2F38", background: "#111318", color: "#F8FAFC", fontSize: 11 }} />
+                  <Line type="monotone" dataKey="peso" stroke="#7CFF5B" strokeWidth={2.5} dot={{ fill: "#7CFF5B", r: 3 }} name="Peso (kg)" />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -337,19 +337,19 @@ export default function AreaPaciente() {
 
         {/* Galeria de fotos de evolução */}
         {(dados.fotoInicial || checkInsOrdenados.some(c => c.foto)) && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-nexvel-mint/20">
-            <h2 className="text-nexvel-text-dark font-semibold mb-3">Fotos de evolução</h2>
+          <div className="bg-nx-container rounded-2xl p-5 shadow-sm border border-nx-border">
+            <h2 className="text-nx-on-surface font-semibold mb-3">Fotos de evolução</h2>
             <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {dados.fotoInicial && (
                 <div className="flex-shrink-0 text-center">
                   <img src={dados.fotoInicial} alt="Início" className="w-24 h-32 object-cover rounded-xl" />
-                  <p className="text-[10px] text-nexvel-text-light mt-1">Início</p>
+                  <p className="text-[10px] text-nx-on-surface-variant mt-1">Início</p>
                 </div>
               )}
               {[...checkInsOrdenados].reverse().filter(c => c.foto).map(c => (
                 <div key={c.id} className="flex-shrink-0 text-center">
                   <img src={c.foto!} alt={`Semana ${c.semana}`} className="w-24 h-32 object-cover rounded-xl" />
-                  <p className="text-[10px] text-nexvel-text-light mt-1">Sem. {c.semana}/{c.ano}</p>
+                  <p className="text-[10px] text-nx-on-surface-variant mt-1">Sem. {c.semana}/{c.ano}</p>
                 </div>
               ))}
             </div>
@@ -358,30 +358,30 @@ export default function AreaPaciente() {
 
         {/* Próxima consulta */}
         {proximaConsulta && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-nexvel-mint/20">
+          <div className="bg-nx-container rounded-2xl p-5 shadow-sm border border-nx-border">
             <div className="flex items-center gap-2 mb-3">
-              <Calendar size={17} className="text-nexvel-green-mid" />
-              <h2 className="text-nexvel-text-dark font-semibold">Próxima consulta</h2>
+              <Calendar size={17} className="text-nx-evo" />
+              <h2 className="text-nx-on-surface font-semibold">Próxima consulta</h2>
             </div>
-            <p className="text-nexvel-text-dark font-medium capitalize">
+            <p className="text-nx-on-surface font-medium capitalize">
               {format(new Date(proximaConsulta.data), "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </p>
-            <p className="text-nexvel-text-light text-sm">{format(new Date(proximaConsulta.data), "HH:mm")} h · com {dados.nutricionista.nome.split(" ")[0]}</p>
+            <p className="text-nx-on-surface-variant text-sm">{format(new Date(proximaConsulta.data), "HH:mm")} h · com {dados.nutricionista.nome.split(" ")[0]}</p>
 
             {consultaAcao === "confirmada" && (
-              <div className="flex items-center gap-2 mt-3 text-nexvel-green-mid text-sm bg-nexvel-green-light/10 px-3 py-2.5 rounded-xl">
+              <div className="flex items-center gap-2 mt-3 text-nx-evo text-sm bg-nx-evo/10 px-3 py-2.5 rounded-xl">
                 <CheckCircle size={15} /> Presença confirmada!
               </div>
             )}
             {consultaAcao === "remarcacao" && (
-              <div className="flex items-center gap-2 mt-3 text-nexvel-brown text-sm bg-nexvel-brown/10 px-3 py-2.5 rounded-xl">
+              <div className="flex items-center gap-2 mt-3 text-nx-streak text-sm bg-nx-streak/10 px-3 py-2.5 rounded-xl">
                 <RefreshCw size={15} /> Solicitação de remarcação enviada.
               </div>
             )}
             {!consultaAcao && proximaConsulta.status === "agendada" && (
               <div className="flex gap-2 mt-4">
-                <button onClick={() => confirmarConsulta(proximaConsulta.id)} className="flex-1 bg-nexvel-green-mid text-white py-2.5 rounded-xl text-sm font-medium">Confirmar</button>
-                <button onClick={() => remarcarConsulta(proximaConsulta.id)} className="flex-1 border border-nexvel-mint/50 text-nexvel-text-mid py-2.5 rounded-xl text-sm">Remarcar</button>
+                <button onClick={() => confirmarConsulta(proximaConsulta.id)} className="flex-1 bg-nx-evo text-nx-on-evo py-2.5 rounded-xl text-sm font-medium">Confirmar</button>
+                <button onClick={() => remarcarConsulta(proximaConsulta.id)} className="flex-1 border border-nx-border text-nx-on-surface-variant py-2.5 rounded-xl text-sm">Remarcar</button>
               </div>
             )}
           </div>
@@ -389,8 +389,8 @@ export default function AreaPaciente() {
 
         {/* Plano alimentar */}
         {plano && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-nexvel-mint/20">
-            <h2 className="text-nexvel-text-dark font-semibold mb-4">Meu plano alimentar</h2>
+          <div className="bg-nx-container rounded-2xl p-5 shadow-sm border border-nx-border">
+            <h2 className="text-nx-on-surface font-semibold mb-4">Meu plano alimentar</h2>
             <div className="space-y-2.5">
               {([
                 { emoji: "☀️", label: "Café da manhã", val: plano.cafeManha },
@@ -400,18 +400,18 @@ export default function AreaPaciente() {
                 { emoji: "🌙", label: "Jantar", val: plano.jantar },
                 { emoji: "🫖", label: "Ceia", val: plano.ceia },
               ] as const).filter((r) => r.val).map((r) => (
-                <div key={r.label} className="flex gap-3 p-3 bg-nexvel-cream rounded-xl">
+                <div key={r.label} className="flex gap-3 p-3 bg-nx-surface rounded-xl">
                   <span className="text-lg flex-shrink-0">{r.emoji}</span>
                   <div>
-                    <p className="text-nexvel-text-light text-xs font-medium">{r.label}</p>
-                    <p className="text-nexvel-text-dark text-sm mt-0.5">{r.val}</p>
+                    <p className="text-nx-on-surface-variant text-xs font-medium">{r.label}</p>
+                    <p className="text-nx-on-surface text-sm mt-0.5">{r.val}</p>
                   </div>
                 </div>
               ))}
               {plano.observacoes && (
-                <div className="bg-nexvel-mint/20 border border-nexvel-mint/40 rounded-xl p-3">
-                  <p className="text-nexvel-text-light text-xs font-medium mb-1">Observações</p>
-                  <p className="text-nexvel-text-dark text-sm">{plano.observacoes}</p>
+                <div className="bg-nx-container border border-nx-border rounded-xl p-3">
+                  <p className="text-nx-on-surface-variant text-xs font-medium mb-1">Observações</p>
+                  <p className="text-nx-on-surface text-sm">{plano.observacoes}</p>
                 </div>
               )}
             </div>
@@ -420,31 +420,31 @@ export default function AreaPaciente() {
 
         {/* Timeline de atividades */}
         {(checkInsOrdenados.length > 0 || medicoes.length > 0) && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-nexvel-mint/20">
-            <h2 className="text-nexvel-text-dark font-semibold mb-4">Histórico</h2>
+          <div className="bg-nx-container rounded-2xl p-5 shadow-sm border border-nx-border">
+            <h2 className="text-nx-on-surface font-semibold mb-4">Histórico</h2>
             <div className="space-y-3">
               {checkInsOrdenados.slice(0, 5).map((ci) => (
-                <div key={ci.id} className="flex gap-3 items-start p-3 bg-nexvel-cream rounded-xl">
+                <div key={ci.id} className="flex gap-3 items-start p-3 bg-nx-surface rounded-xl">
                   <span className="text-xl flex-shrink-0">{humores.find((h) => h.v === ci.humor)?.emoji || "😐"}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-nexvel-text-dark text-sm font-medium">Check-in semanal</p>
-                      <p className="text-nexvel-text-light text-xs flex-shrink-0">Sem. {ci.semana}/{ci.ano}</p>
+                      <p className="text-nx-on-surface text-sm font-medium">Check-in semanal</p>
+                      <p className="text-nx-on-surface-variant text-xs flex-shrink-0">Sem. {ci.semana}/{ci.ano}</p>
                     </div>
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-nexvel-text-light">Plano: <span className="font-medium text-nexvel-text-mid">{ci.adesao}%</span></span>
-                      {ci.peso && <span className="text-xs text-nexvel-text-light">Peso: <span className="font-mono-data font-medium text-nexvel-text-mid">{ci.peso} kg</span></span>}
+                      <span className="text-xs text-nx-on-surface-variant">Plano: <span className="font-medium text-nx-on-surface-variant">{ci.adesao}%</span></span>
+                      {ci.peso && <span className="text-xs text-nx-on-surface-variant">Peso: <span className="font-mono-data font-medium text-nx-on-surface-variant">{ci.peso} kg</span></span>}
                     </div>
-                    {ci.nota && <p className="text-xs text-nexvel-text-light mt-1 italic">"{ci.nota}"</p>}
+                    {ci.nota && <p className="text-xs text-nx-on-surface-variant mt-1 italic">"{ci.nota}"</p>}
                   </div>
                 </div>
               ))}
               {medicoes.slice(-3).reverse().map((m) => (
-                <div key={m.id} className="flex gap-3 items-center p-3 rounded-xl border border-nexvel-mint/20">
+                <div key={m.id} className="flex gap-3 items-center p-3 rounded-xl border border-nx-border">
                   <span className="text-xl">📊</span>
                   <div className="flex-1">
-                    <p className="text-nexvel-text-dark text-sm font-medium">Medição registrada</p>
-                    <p className="text-xs text-nexvel-text-light">{format(new Date(m.data), "dd 'de' MMM 'de' yyyy", { locale: ptBR })} · <span className="font-mono-data">{m.peso} kg</span></p>
+                    <p className="text-nx-on-surface text-sm font-medium">Medição registrada</p>
+                    <p className="text-xs text-nx-on-surface-variant">{format(new Date(m.data), "dd 'de' MMM 'de' yyyy", { locale: ptBR })} · <span className="font-mono-data">{m.peso} kg</span></p>
                   </div>
                 </div>
               ))}
@@ -455,22 +455,22 @@ export default function AreaPaciente() {
         {/* Agendar consulta */}
         <div
           onClick={() => setView("agendamento")}
-          className="bg-white rounded-2xl p-5 shadow-sm border border-nexvel-mint/20 cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
+          className="bg-nx-container rounded-2xl p-5 shadow-sm border border-nx-border cursor-pointer hover:shadow-md transition-all active:scale-[0.98]"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-nexvel-green-light/20 flex items-center justify-center text-2xl">📅</div>
+              <div className="w-11 h-11 rounded-xl bg-nx-evo/12 flex items-center justify-center text-2xl">📅</div>
               <div>
-                <p className="text-nexvel-text-dark font-semibold">Agendar consulta</p>
-                <p className="text-nexvel-text-light text-xs">Escolha um horário disponível</p>
+                <p className="text-nx-on-surface font-semibold">Agendar consulta</p>
+                <p className="text-nx-on-surface-variant text-xs">Escolha um horário disponível</p>
               </div>
             </div>
-            <ChevronRight size={20} className="text-nexvel-text-light" />
+            <ChevronRight size={20} className="text-nx-on-surface-variant" />
           </div>
         </div>
 
-        <p className="text-center text-nexvel-text-light text-xs pb-4">
-          Powered by <span className="font-semibold text-nexvel-green-mid">Nexvel</span> · seu consultório. simplificado.
+        <p className="text-center text-nx-on-surface-variant text-xs pb-4">
+          Powered by <span className="font-semibold text-nx-evo">Nexvel</span> · seu consultório. simplificado.
         </p>
       </div>
     </div>
@@ -533,10 +533,10 @@ function CheckInView({ link, pacienteNome, nutricionistaNome, onFeito, onBack }:
   const pronto = humor !== null && adesao !== null;
 
   return (
-    <div className="min-h-screen bg-nexvel-green-dark">
+    <div className="min-h-screen bg-nx-bg">
       {/* Header */}
       <div className="px-5 pt-8 pb-6">
-        <button onClick={onBack} className="flex items-center gap-2 text-nexvel-mint/70 hover:text-nexvel-mint mb-6 text-sm">
+        <button onClick={onBack} className="flex items-center gap-2 text-nx-on-surface-variant hover:text-nx-evo mb-6 text-sm">
           <ArrowLeft size={16} />Voltar
         </button>
         <div className="flex items-center gap-2 mb-2">
@@ -544,15 +544,15 @@ function CheckInView({ link, pacienteNome, nutricionistaNome, onFeito, onBack }:
           <span className="text-white/70 text-sm">zena</span>
         </div>
         <h1 className="text-white text-2xl font-bold">Check-in semanal ✨</h1>
-        <p className="text-nexvel-mint/70 text-sm mt-1">Olá, {pacienteNome.split(" ")[0]}! Como foi sua semana?</p>
+        <p className="text-nx-on-surface-variant text-sm mt-1">Olá, {pacienteNome.split(" ")[0]}! Como foi sua semana?</p>
       </div>
 
-      <div className="bg-nexvel-cream min-h-screen rounded-t-3xl px-5 py-8 space-y-6">
+      <div className="bg-nx-surface min-h-screen rounded-t-3xl px-5 py-8 space-y-6">
 
         {/* Humor */}
         <div>
-          <p className="text-nexvel-text-dark font-semibold mb-1">Como você se sentiu esta semana?</p>
-          <p className="text-nexvel-text-light text-xs mb-4">Seja honesta — isso me ajuda a te apoiar melhor 💚</p>
+          <p className="text-nx-on-surface font-semibold mb-1">Como você se sentiu esta semana?</p>
+          <p className="text-nx-on-surface-variant text-xs mb-4">Seja honesta — isso me ajuda a te apoiar melhor 💚</p>
           <div className="grid grid-cols-5 gap-2">
             {humores.map((h) => (
               <button
@@ -560,12 +560,12 @@ function CheckInView({ link, pacienteNome, nutricionistaNome, onFeito, onBack }:
                 onClick={() => setHumor(h.v)}
                 className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl border-2 transition-all ${
                   humor === h.v
-                    ? "border-nexvel-green-mid bg-nexvel-green-light/10 scale-105 shadow-md"
-                    : "border-transparent bg-white hover:border-nexvel-mint"
+                    ? "border-nx-evo bg-nx-evo/10 scale-105 shadow-md"
+                    : "border-transparent bg-nx-container hover:border-nx-border"
                 }`}
               >
                 <span className="text-3xl">{h.emoji}</span>
-                <span className="text-[10px] text-nexvel-text-light leading-tight text-center">{h.label}</span>
+                <span className="text-[10px] text-nx-on-surface-variant leading-tight text-center">{h.label}</span>
               </button>
             ))}
           </div>
@@ -573,8 +573,8 @@ function CheckInView({ link, pacienteNome, nutricionistaNome, onFeito, onBack }:
 
         {/* Adesão ao plano */}
         <div>
-          <p className="text-nexvel-text-dark font-semibold mb-1">Quanto você seguiu o plano alimentar?</p>
-          <p className="text-nexvel-text-light text-xs mb-4">Sem julgamentos — cada semana é uma nova chance! 🌱</p>
+          <p className="text-nx-on-surface font-semibold mb-1">Quanto você seguiu o plano alimentar?</p>
+          <p className="text-nx-on-surface-variant text-xs mb-4">Sem julgamentos — cada semana é uma nova chance! 🌱</p>
           <div className="space-y-2">
             {adesoes.map((a) => (
               <button
@@ -583,7 +583,7 @@ function CheckInView({ link, pacienteNome, nutricionistaNome, onFeito, onBack }:
                 className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
                   adesao === a.v
                     ? `${a.cls} border-current scale-[1.01] shadow-sm`
-                    : "border-transparent bg-white text-nexvel-text-mid hover:border-nexvel-mint"
+                    : "border-transparent bg-nx-container text-nx-on-surface-variant hover:border-nx-border"
                 }`}
               >
                 <span>{a.label}</span>
@@ -595,7 +595,7 @@ function CheckInView({ link, pacienteNome, nutricionistaNome, onFeito, onBack }:
 
         {/* Peso (opcional) */}
         <div>
-          <p className="text-nexvel-text-dark font-semibold mb-1">Seu peso hoje <span className="text-nexvel-text-light font-normal text-sm">(opcional)</span></p>
+          <p className="text-nx-on-surface font-semibold mb-1">Seu peso hoje <span className="text-nx-on-surface-variant font-normal text-sm">(opcional)</span></p>
           <div className="relative">
             <input
               type="number"
@@ -604,16 +604,16 @@ function CheckInView({ link, pacienteNome, nutricionistaNome, onFeito, onBack }:
               onChange={(e) => setPeso(e.target.value)}
               placeholder="ex: 68.5"
               inputMode="decimal"
-              className="w-full px-5 py-4 text-xl font-mono-data bg-white border-2 border-nexvel-mint/30 rounded-2xl text-nexvel-text-dark placeholder-nexvel-text-light focus:outline-none focus:border-nexvel-green-mid"
+              className="w-full px-5 py-4 text-xl font-mono-data bg-nx-container border-2 border-nx-border rounded-2xl text-nx-on-surface placeholder-nx-outline focus:outline-none focus:border-nx-evo"
             />
-            <span className="absolute right-5 top-1/2 -translate-y-1/2 text-nexvel-text-light font-medium">kg</span>
+            <span className="absolute right-5 top-1/2 -translate-y-1/2 text-nx-on-surface-variant font-medium">kg</span>
           </div>
         </div>
 
         {/* Foto (opcional) */}
         <div>
-          <p className="text-nexvel-text-dark font-semibold mb-1">Foto de progresso <span className="text-nexvel-text-light font-normal text-sm">(opcional)</span></p>
-          <p className="text-nexvel-text-light text-xs mb-3">Acumula histórico visual da sua transformação 📸</p>
+          <p className="text-nx-on-surface font-semibold mb-1">Foto de progresso <span className="text-nx-on-surface-variant font-normal text-sm">(opcional)</span></p>
+          <p className="text-nx-on-surface-variant text-xs mb-3">Acumula histórico visual da sua transformação 📸</p>
           <input
             ref={fileRef}
             type="file"
@@ -635,7 +635,7 @@ function CheckInView({ link, pacienteNome, nutricionistaNome, onFeito, onBack }:
           ) : (
             <button
               onClick={() => fileRef.current?.click()}
-              className="w-full py-6 border-2 border-dashed border-nexvel-mint rounded-2xl flex flex-col items-center gap-2 text-nexvel-text-light hover:border-nexvel-green-light hover:text-nexvel-green-mid transition-all bg-white"
+              className="w-full py-6 border-2 border-dashed border-nx-border rounded-2xl flex flex-col items-center gap-2 text-nx-on-surface-variant hover:border-nx-evo hover:text-nx-evo transition-all bg-nx-container"
             >
               <Camera size={28} />
               <span className="text-sm">Tirar foto ou escolher da galeria</span>
@@ -645,25 +645,25 @@ function CheckInView({ link, pacienteNome, nutricionistaNome, onFeito, onBack }:
 
         {/* Nota (opcional) */}
         <div>
-          <p className="text-nexvel-text-dark font-semibold mb-1">Mensagem para sua nutricionista <span className="text-nexvel-text-light font-normal text-sm">(opcional)</span></p>
+          <p className="text-nx-on-surface font-semibold mb-1">Mensagem para sua nutricionista <span className="text-nx-on-surface-variant font-normal text-sm">(opcional)</span></p>
           <textarea
             value={nota}
             onChange={(e) => setNota(e.target.value)}
             rows={3}
             placeholder="Como foi a semana? Alguma dúvida, dificuldade ou conquista pra compartilhar?"
-            className="w-full px-4 py-3 bg-white border-2 border-nexvel-mint/30 rounded-2xl text-sm text-nexvel-text-dark placeholder-nexvel-text-light resize-none focus:outline-none focus:border-nexvel-green-mid"
+            className="w-full px-4 py-3 bg-nx-container border-2 border-nx-border rounded-2xl text-sm text-nx-on-surface placeholder-nx-outline resize-none focus:outline-none focus:border-nx-evo"
           />
         </div>
 
-        {error && <p className="text-red-500 text-sm bg-red-50 px-4 py-3 rounded-xl">{error}</p>}
+        {error && <p className="text-nx-danger text-sm bg-nx-danger/10 px-4 py-3 rounded-xl">{error}</p>}
 
         <button
           onClick={enviar}
           disabled={!pronto || loading}
           className={`w-full py-4 rounded-2xl font-bold text-base transition-all ${
             pronto && !loading
-              ? "bg-nexvel-green-mid text-white hover:bg-nexvel-green-dark shadow-lg shadow-nexvel-green-mid/30"
-              : "bg-nexvel-mint/40 text-nexvel-text-light cursor-not-allowed"
+              ? "bg-nx-evo text-nx-on-evo hover:bg-nx-evo-2 shadow-lg shadow-nx-evo/30"
+              : "bg-nx-container text-nx-on-surface-variant cursor-not-allowed"
           }`}
         >
           {loading ? "Enviando..." : "Enviar check-in ✓"}
@@ -677,7 +677,7 @@ function CheckInView({ link, pacienteNome, nutricionistaNome, onFeito, onBack }:
 function CelebracaoView({ streak, ci, onDone }: { streak: number; ci: CheckIn | null; onDone: () => void }) {
   useEffect(() => {
     const fire = (particleRatio: number, opts: object) =>
-      confetti({ origin: { y: 0.6 }, colors: ["#A855F7", "#A855F7", "#A855F7", "#0F0F1A", "#ffffff"], ...opts, particleCount: Math.floor(200 * particleRatio) });
+      confetti({ origin: { y: 0.6 }, colors: ["#7CFF5B", "#70F570", "#53F27C", "#09090B", "#ffffff"], ...opts, particleCount: Math.floor(200 * particleRatio) });
 
     fire(0.25, { spread: 26, startVelocity: 55 });
     fire(0.2, { spread: 60 });
@@ -692,26 +692,26 @@ function CelebracaoView({ streak, ci, onDone }: { streak: number; ci: CheckIn | 
   const humorObj = humores.find((h) => h.v === ci?.humor);
 
   return (
-    <div className="fixed inset-0 bg-nexvel-green-dark flex flex-col items-center justify-center z-50 px-6 text-center">
+    <div className="fixed inset-0 bg-nx-bg flex flex-col items-center justify-center z-50 px-6 text-center">
       <div className="text-8xl mb-4 animate-bounce">🎉</div>
       <h1 className="text-white text-4xl font-bold mb-3">Check-in feito!</h1>
       {streak > 1 && (
-        <div className="flex items-center gap-2 bg-white/10 rounded-2xl px-5 py-3 mb-4">
+        <div className="flex items-center gap-2 bg-nx-container rounded-2xl px-5 py-3 mb-4">
           <span className="text-3xl">🔥</span>
           <p className="text-white text-xl font-bold">{streak} semanas seguidas!</p>
         </div>
       )}
       {streak === 1 && (
-        <p className="text-nexvel-mint text-lg mb-4">🌱 Primeira semana! Você começou incrível.</p>
+        <p className="text-nx-evo text-lg mb-4">🌱 Primeira semana! Você começou incrível.</p>
       )}
       {ci && (
-        <div className="bg-white/10 rounded-2xl px-6 py-4 mb-6 space-y-1">
+        <div className="bg-nx-container rounded-2xl px-6 py-4 mb-6 space-y-1">
           {humorObj && <p className="text-white text-sm">{humorObj.emoji} Humor: <span className="font-medium">{humorObj.label}</span></p>}
           <p className="text-white text-sm">📋 Adesão ao plano: <span className="font-medium">{ci.adesao}%</span></p>
           {ci.peso && <p className="text-white text-sm">⚖️ Peso: <span className="font-mono-data font-medium">{ci.peso} kg</span></p>}
         </div>
       )}
-      <p className="text-nexvel-mint/60 text-sm">Sua nutricionista vai adorar ver isso!</p>
+      <p className="text-nx-outline text-sm">Sua nutricionista vai adorar ver isso!</p>
       <button onClick={onDone} className="mt-8 text-white/40 text-sm hover:text-white/70 transition-colors">
         Voltar ao portal →
       </button>
@@ -797,9 +797,9 @@ function AnamneseView({ link, pacienteNome, onFeito, onBack }: {
   const s = steps[step];
 
   return (
-    <div className="min-h-screen bg-nexvel-green-dark">
+    <div className="min-h-screen bg-nx-bg">
       <div className="px-5 pt-8 pb-6">
-        <button onClick={step === 0 ? onBack : () => setStep(step - 1)} className="flex items-center gap-2 text-nexvel-mint/70 hover:text-nexvel-mint mb-6 text-sm">
+        <button onClick={step === 0 ? onBack : () => setStep(step - 1)} className="flex items-center gap-2 text-nx-on-surface-variant hover:text-nx-evo mb-6 text-sm">
           <ArrowLeft size={16} />{step === 0 ? "Voltar" : "Anterior"}
         </button>
         <div className="flex items-center gap-2 mb-2">
@@ -807,32 +807,32 @@ function AnamneseView({ link, pacienteNome, onFeito, onBack }: {
           <span className="text-white/70 text-sm">zena</span>
         </div>
         <h1 className="text-white text-2xl font-bold">{s.emoji} {s.titulo}</h1>
-        <p className="text-nexvel-mint/70 text-sm mt-1">Passo {step + 1} de {steps.length}</p>
+        <p className="text-nx-on-surface-variant text-sm mt-1">Passo {step + 1} de {steps.length}</p>
         {/* Progress */}
         <div className="flex gap-1.5 mt-3">
           {steps.map((_, i) => (
-            <div key={i} className={`h-1 flex-1 rounded-full transition-all ${i <= step ? "bg-nexvel-mint" : "bg-white/20"}`} />
+            <div key={i} className={`h-1 flex-1 rounded-full transition-all ${i <= step ? "bg-nx-container" : "bg-nx-container"}`} />
           ))}
         </div>
       </div>
 
-      <div className="bg-nexvel-cream min-h-screen rounded-t-3xl px-5 py-8 space-y-5">
+      <div className="bg-nx-surface min-h-screen rounded-t-3xl px-5 py-8 space-y-5">
         {s.campos.map((campo) => (
           <div key={campo.key}>
-            <label className="text-nexvel-text-dark font-semibold text-sm block mb-2">{campo.label}</label>
+            <label className="text-nx-on-surface font-semibold text-sm block mb-2">{campo.label}</label>
             {campo.tipo === "textarea" ? (
               <textarea
                 value={form[campo.key as keyof typeof form]}
                 onChange={(e) => setForm({ ...form, [campo.key]: e.target.value })}
                 rows={3}
                 placeholder={(campo as any).placeholder}
-                className="w-full px-4 py-3 bg-white border-2 border-nexvel-mint/30 rounded-2xl text-sm text-nexvel-text-dark placeholder-nexvel-text-light resize-none focus:outline-none focus:border-nexvel-green-mid"
+                className="w-full px-4 py-3 bg-nx-container border-2 border-nx-border rounded-2xl text-sm text-nx-on-surface placeholder-nx-outline resize-none focus:outline-none focus:border-nx-evo"
               />
             ) : campo.tipo === "select" ? (
               <select
                 value={form[campo.key as keyof typeof form]}
                 onChange={(e) => setForm({ ...form, [campo.key]: e.target.value })}
-                className="w-full px-4 py-3 bg-white border-2 border-nexvel-mint/30 rounded-2xl text-sm text-nexvel-text-dark focus:outline-none focus:border-nexvel-green-mid"
+                className="w-full px-4 py-3 bg-nx-container border-2 border-nx-border rounded-2xl text-sm text-nx-on-surface focus:outline-none focus:border-nx-evo"
               >
                 {(campo as any).opcoes.map((o: { v: string; l: string }) => (
                   <option key={o.v} value={o.v}>{o.l}</option>
@@ -844,7 +844,7 @@ function AnamneseView({ link, pacienteNome, onFeito, onBack }: {
                 value={form[campo.key as keyof typeof form]}
                 onChange={(e) => setForm({ ...form, [campo.key]: e.target.value })}
                 placeholder={(campo as any).placeholder}
-                className="w-full px-4 py-3 bg-white border-2 border-nexvel-mint/30 rounded-2xl text-sm text-nexvel-text-dark placeholder-nexvel-text-light focus:outline-none focus:border-nexvel-green-mid"
+                className="w-full px-4 py-3 bg-nx-container border-2 border-nx-border rounded-2xl text-sm text-nx-on-surface placeholder-nx-outline focus:outline-none focus:border-nx-evo"
               />
             )}
           </div>
@@ -853,7 +853,7 @@ function AnamneseView({ link, pacienteNome, onFeito, onBack }: {
         {step < steps.length - 1 ? (
           <button
             onClick={() => setStep(step + 1)}
-            className="w-full py-4 rounded-2xl bg-nexvel-green-mid text-white font-bold text-base hover:bg-nexvel-green-dark shadow-lg"
+            className="w-full py-4 rounded-2xl bg-nx-evo text-nx-on-evo font-bold text-base hover:bg-nx-evo-2 shadow-lg"
           >
             Próximo →
           </button>
@@ -861,13 +861,13 @@ function AnamneseView({ link, pacienteNome, onFeito, onBack }: {
           <button
             onClick={finalizar}
             disabled={loading}
-            className="w-full py-4 rounded-2xl bg-nexvel-green-mid text-white font-bold text-base hover:bg-nexvel-green-dark shadow-lg disabled:opacity-50"
+            className="w-full py-4 rounded-2xl bg-nx-evo text-nx-on-evo font-bold text-base hover:bg-nx-evo-2 shadow-lg disabled:opacity-50"
           >
             {loading ? "Enviando..." : "Concluir ✓"}
           </button>
         )}
 
-        <p className="text-center text-nexvel-text-light text-xs">Seus dados são confidenciais e usados somente pela sua nutricionista.</p>
+        <p className="text-center text-nx-on-surface-variant text-xs">Seus dados são confidenciais e usados somente pela sua nutricionista.</p>
       </div>
     </div>
   );
@@ -914,17 +914,17 @@ function AgendamentoView({ link, pacienteNome, nutricionistaNome, onFeito, onBac
 
   if (concluido) {
     return (
-      <div className="min-h-screen bg-nexvel-green-dark flex flex-col items-center justify-center px-6 text-center">
+      <div className="min-h-screen bg-nx-bg flex flex-col items-center justify-center px-6 text-center">
         <span className="text-7xl mb-4">🎉</span>
         <h1 className="text-white text-3xl font-bold mb-2">Consulta solicitada!</h1>
-        <p className="text-nexvel-mint text-lg mb-2">
+        <p className="text-nx-evo text-lg mb-2">
           {selecionado && (() => {
             const d = new Date(selecionado.data + "T00:00:00");
             return `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]} às ${selecionado.hora}`;
           })()}
         </p>
-        <p className="text-nexvel-mint/70 text-sm mb-8">{nutricionistaNome.split(" ")[0]} irá confirmar em breve.</p>
-        <button onClick={onFeito} className="bg-white/10 text-white px-6 py-3 rounded-2xl font-medium hover:bg-white/20 transition-colors">
+        <p className="text-nx-on-surface-variant text-sm mb-8">{nutricionistaNome.split(" ")[0]} irá confirmar em breve.</p>
+        <button onClick={onFeito} className="bg-nx-container text-white px-6 py-3 rounded-2xl font-medium hover:bg-nx-container transition-colors">
           Voltar ao portal
         </button>
       </div>
@@ -932,9 +932,9 @@ function AgendamentoView({ link, pacienteNome, nutricionistaNome, onFeito, onBac
   }
 
   return (
-    <div className="min-h-screen bg-nexvel-green-dark">
+    <div className="min-h-screen bg-nx-bg">
       <div className="px-5 pt-8 pb-6">
-        <button onClick={onBack} className="flex items-center gap-2 text-nexvel-mint/70 hover:text-nexvel-mint mb-6 text-sm">
+        <button onClick={onBack} className="flex items-center gap-2 text-nx-on-surface-variant hover:text-nx-evo mb-6 text-sm">
           <ArrowLeft size={16} />Voltar
         </button>
         <div className="flex items-center gap-2 mb-2">
@@ -942,19 +942,19 @@ function AgendamentoView({ link, pacienteNome, nutricionistaNome, onFeito, onBac
           <span className="text-white/70 text-sm">zena</span>
         </div>
         <h1 className="text-white text-2xl font-bold">📅 Agendar consulta</h1>
-        <p className="text-nexvel-mint/70 text-sm mt-1">Escolha um horário disponível com {nutricionistaNome.split(" ")[0]}</p>
+        <p className="text-nx-on-surface-variant text-sm mt-1">Escolha um horário disponível com {nutricionistaNome.split(" ")[0]}</p>
       </div>
 
-      <div className="bg-nexvel-cream min-h-screen rounded-t-3xl px-5 py-8">
+      <div className="bg-nx-surface min-h-screen rounded-t-3xl px-5 py-8">
         {loading ? (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-white rounded-2xl animate-pulse" />)}
+            {[1, 2, 3].map((i) => <div key={i} className="h-16 bg-nx-container rounded-2xl animate-pulse" />)}
           </div>
         ) : datas.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-4xl mb-3">📅</p>
-            <p className="text-nexvel-text-mid font-medium">Nenhum horário disponível no momento.</p>
-            <p className="text-nexvel-text-light text-sm mt-2">Entre em contato com {nutricionistaNome.split(" ")[0]} pelo WhatsApp.</p>
+            <p className="text-nx-on-surface-variant font-medium">Nenhum horário disponível no momento.</p>
+            <p className="text-nx-on-surface-variant text-sm mt-2">Entre em contato com {nutricionistaNome.split(" ")[0]} pelo WhatsApp.</p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -963,7 +963,7 @@ function AgendamentoView({ link, pacienteNome, nutricionistaNome, onFeito, onBac
               const diaSlots = slotsPorData[data];
               return (
                 <div key={data}>
-                  <p className="text-nexvel-text-dark font-semibold mb-2">
+                  <p className="text-nx-on-surface font-semibold mb-2">
                     {DIAS[d.getDay()]}, {d.getDate()} de {MESES[d.getMonth()]}
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -975,8 +975,8 @@ function AgendamentoView({ link, pacienteNome, nutricionistaNome, onFeito, onBac
                           onClick={() => setSelecionado({ data: s.data, hora: s.hora })}
                           className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                             sel
-                              ? "bg-nexvel-green-mid text-white shadow-md scale-105"
-                              : "bg-white text-nexvel-text-dark border border-nexvel-mint/30 hover:border-nexvel-green-light"
+                              ? "bg-nx-evo text-nx-on-evo shadow-md scale-105"
+                              : "bg-nx-container text-nx-on-surface border border-nx-border hover:border-nx-evo"
                           }`}
                         >
                           {s.hora}
@@ -989,8 +989,8 @@ function AgendamentoView({ link, pacienteNome, nutricionistaNome, onFeito, onBac
             })}
 
             {selecionado && (
-              <div className="bg-nexvel-green-light/10 border border-nexvel-green-light/30 rounded-2xl p-4">
-                <p className="text-nexvel-text-dark font-medium text-sm">
+              <div className="bg-nx-evo/10 border border-nx-evo/30 rounded-2xl p-4">
+                <p className="text-nx-on-surface font-medium text-sm">
                   Selecionado: {(() => {
                     const d = new Date(selecionado.data + "T00:00:00");
                     return `${DIAS[d.getDay()]}, ${d.getDate()} de ${MESES[d.getMonth()]} às ${selecionado.hora}`;
@@ -1004,8 +1004,8 @@ function AgendamentoView({ link, pacienteNome, nutricionistaNome, onFeito, onBac
               disabled={!selecionado || enviando}
               className={`w-full py-4 rounded-2xl font-bold text-base transition-all ${
                 selecionado && !enviando
-                  ? "bg-nexvel-green-mid text-white hover:bg-nexvel-green-dark shadow-lg"
-                  : "bg-nexvel-mint/40 text-nexvel-text-light cursor-not-allowed"
+                  ? "bg-nx-evo text-nx-on-evo hover:bg-nx-evo-2 shadow-lg"
+                  : "bg-nx-container text-nx-on-surface-variant cursor-not-allowed"
               }`}
             >
               {enviando ? "Agendando..." : "Confirmar agendamento ✓"}
