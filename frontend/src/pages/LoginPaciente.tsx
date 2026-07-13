@@ -39,7 +39,7 @@ export default function LoginPaciente() {
     setError(""); setLoading(true);
     try {
       await register(email, senha, codigo.trim());
-      navigate("/paciente/feed");
+      navigate("/completar-perfil");
     } catch (err: any) {
       setError(err.response?.data?.error || "Erro ao criar conta.");
     } finally { setLoading(false); }

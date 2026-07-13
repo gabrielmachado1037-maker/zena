@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Plus, Search, Users, MessageCircle, ClipboardList, Award,
-  CalendarPlus, ArrowUpRight, Flame, Clock, X,
+  CalendarPlus, ArrowUpRight, Flame, Clock, X, ImageOff,
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
@@ -246,8 +246,16 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
     >
       {/* Identidade + brasão */}
       <div className="flex items-start gap-3.5">
-        <div className="shrink-0 rounded-full p-[2px]" style={{ boxShadow: `0 0 0 1.5px ${cor}66` }}>
+        <div className="relative shrink-0 rounded-full p-[2px]" style={{ boxShadow: `0 0 0 1.5px ${cor}66` }}>
           <Avatar src={p.fotoPerfilUrl} nome={p.nome} tamanho={46} className="rounded-full" />
+          {!p.fotoPerfilUrl && (
+            <span
+              title="Sem foto"
+              className="absolute -bottom-0.5 -right-0.5 grid size-[18px] place-items-center rounded-full border-2 border-nx-surface bg-nx-container text-nx-on-surface-variant"
+            >
+              <ImageOff size={9} />
+            </span>
+          )}
         </div>
         <div className="min-w-0 flex-1 pt-0.5">
           <p className="truncate text-[17px] font-bold leading-tight text-nx-on-surface">{p.nome}</p>
