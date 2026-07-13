@@ -8,6 +8,7 @@ import { checkModulo } from "../middleware/checkModulo";
 import { gerarFeedAutomatico } from "../lib/feedAutomatico";
 import { PLANOS_REFEICOES, resolverPlanoRefeicoes, MIN_REFEICOES, MAX_REFEICOES } from "../config/ligas";
 import { gerarRelatorioMensal, gerarInsightsIA } from "../services/relatorioService";
+import { gerarCodigoConvite, conviteExpiraEm } from "../lib/convite";
 
 const router = Router();
 router.use(authMiddleware);
@@ -160,18 +161,62 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
 
 router.post("/", validateBody(criarPacienteSchema), async (req: AuthRequest, res: Response) => {
   const { nome, email, telefone, objetivo, dataInicio, pesoMeta } = req.body;
-  const paciente = await prisma.paciente.create({
-    data: {
-      nome,
-      email,
-      telefone,
-      objetivo,
-      dataInicio: new Date(dataInicio),
-      pesoMeta: pesoMeta ? parseFloat(pesoMeta) : null,
-      nutricionistaId: req.nutricionistaId!,
-    },
+  // Gera automaticamente o convite individual (uso único) já no cadastro do paciente.
+  const paciente = await gerarPacienteComConvite({
+    nome,
+    email,
+    telefone,
+    objetivo,
+    dataInicio: new Date(dataInicio),
+    pesoMeta: pesoMeta ? parseFloat(pesoMeta) : null,
+    nutricionistaId: req.nutricionistaId!,
   });
   res.json(paciente);
+});
+
+// Cria o paciente já com um conviteCodigo único (retry em caso de colisão do índice único).
+async function gerarPacienteComConvite(data: Record<string, unknown>) {
+  for (let tentativa = 0; tentativa < 5; tentativa++) {
+    try {
+      return await prisma.paciente.create({
+        data: { ...data, conviteCodigo: gerarCodigoConvite(), conviteStatus: "pendente", conviteExpiraEm: conviteExpiraEm() } as never,
+      });
+    } catch (e: unknown) {
+      // P2002 = colisão do índice único do código → tenta outro
+      if ((e as { code?: string })?.code === "P2002" && tentativa < 4) continue;
+      throw e;
+    }
+  }
+  throw new Error("Não foi possível gerar o código de convite.");
+}
+
+// POST /:id/convite — nutri (re)gera o convite do paciente. Regenerar invalida o código anterior.
+// Só permite se o paciente ainda não vinculou conta (convite não utilizado).
+router.post("/:id/convite", async (req: AuthRequest, res: Response) => {
+  const id = req.params["id"] as string;
+  const paciente = await prisma.paciente.findFirst({
+    where: { id, nutricionistaId: req.nutricionistaId as string },
+    select: { conviteStatus: true },
+  });
+  if (!paciente) return res.status(404).json({ error: "Paciente não encontrada" });
+  if (paciente.conviteStatus === "utilizado") {
+    return res.status(409).json({ error: "Este paciente já vinculou a conta — o convite não pode ser gerado de novo." });
+  }
+
+  for (let tentativa = 0; tentativa < 5; tentativa++) {
+    try {
+      const upd = await prisma.paciente.update({
+        where: { id },
+        data: { conviteCodigo: gerarCodigoConvite(), conviteStatus: "pendente", conviteExpiraEm: conviteExpiraEm(), conviteUsadoEm: null },
+        select: { conviteCodigo: true, conviteStatus: true, conviteExpiraEm: true },
+      });
+      return res.json(upd);
+    } catch (e: unknown) {
+      if ((e as { code?: string })?.code === "P2002" && tentativa < 4) continue;
+      throw e;
+    }
+  }
+  return res.status(500).json({ error: "Não foi possível gerar o código de convite." });
 });
 
 router.put("/:id", validateBody(atualizarPacienteSchema), async (req: AuthRequest, res: Response) => {

@@ -16,7 +16,7 @@ interface PacienteAuthContextType {
   paciente: PacienteUser | null;
   token: string | null;
   login: (email: string, senha: string) => Promise<void>;
-  register: (email: string, senha: string, codigoVinculo: string) => Promise<void>;
+  register: (email: string, senha: string, codigoVinculo: string, telefone4?: string) => Promise<void>;
   logout: () => void;
   updateFoto: (url: string) => void;
   updatePaciente: (patch: Partial<PacienteUser>) => void;
@@ -56,8 +56,8 @@ export function PacienteAuthProvider({ children }: { children: ReactNode }) {
     guardarSessao(res.data.token, res.data.paciente, res.data.refreshToken);
   }
 
-  async function register(email: string, senha: string, codigoVinculo: string) {
-    const res = await api.post("/auth/paciente/register", { email, senha, codigoVinculo });
+  async function register(email: string, senha: string, codigoVinculo: string, telefone4?: string) {
+    const res = await api.post("/auth/paciente/register", { email, senha, codigoVinculo, telefone4 });
     guardarSessao(res.data.token, res.data.paciente, res.data.refreshToken);
   }
 

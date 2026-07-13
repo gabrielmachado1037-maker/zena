@@ -115,6 +115,11 @@ model Paciente {
   fotoPerfilUrl     String?
   nutricionistaId   String
   nutricionista     Nutricionista      @relation(fields: [nutricionistaId], references: [id])
+  // Convite de vínculo individual (uso único) — gerado só pela nutri.
+  conviteCodigo     String?            @unique
+  conviteStatus     String             @default("pendente") // pendente | utilizado | expirado | cancelado
+  conviteExpiraEm   DateTime?
+  conviteUsadoEm    DateTime?
   pontosTotal       Float              @default(0)
   streakAtual       Int                @default(0)
   streakMaximo      Int                @default(0)

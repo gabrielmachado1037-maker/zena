@@ -31,6 +31,7 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
       pontosTotal: true, ligaAtual: true, ligaNivel: true,
       streakAtual: true, streakMaximo: true, ultimoCheckin: true, diasInativo: true, barraCongelada: true,
       planoRefeicoes: true, aguaMetaMl: true, sonoMetaHoras: true, treinoDias: true,
+      conviteCodigo: true, conviteStatus: true, conviteExpiraEm: true,
     },
   });
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrado" });

@@ -8,11 +8,15 @@ import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest, authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
 import { emailVerificacaoPaciente } from "../lib/email";
+import { normalizarCodigo, ultimos4Telefone } from "../lib/convite";
 
 const registerSchema = z.object({
   email: z.email({ error: "E-mail inválido." }),
   senha: z.string({ error: "A senha deve ter ao menos 6 caracteres." }).min(6, "A senha deve ter ao menos 6 caracteres."),
-  codigoVinculo: z.string({ error: "Informe o código de vínculo." }).trim().min(1, "Informe o código de vínculo."),
+  // Agora é o código do CONVITE individual (por paciente), não mais o código global da clínica.
+  codigoVinculo: z.string({ error: "Informe o código de convite." }).trim().min(1, "Informe o código de convite."),
+  // 2ª validação de identidade: últimos 4 dígitos do telefone cadastrado pela nutri.
+  telefone4: z.string().trim().optional(),
 });
 
 const loginSchema = z.object({
@@ -94,40 +98,88 @@ const emailLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Mensagem única do spec quando o convite não pertence a quem tenta usar / já foi consumido.
+const MSG_CONVITE_INDIVIDUAL =
+  "Este convite é individual e já está vinculado a um paciente específico. Solicite um novo convite ao seu nutricionista.";
+
 // POST /api/auth/paciente/register
 router.post("/register", registerLimiter, validateBody(registerSchema), async (req: Request, res: Response) => {
-  const { email, senha, codigoVinculo } = req.body;
+  const { email, senha, codigoVinculo, telefone4 } = req.body;
   if (!email || !senha || !codigoVinculo) {
-    return res.status(400).json({ error: "Email, senha e código de vínculo são obrigatórios." });
+    return res.status(400).json({ error: "E-mail, senha e código de convite são obrigatórios." });
   }
   if (senha.length < 6) {
     return res.status(400).json({ error: "Senha deve ter pelo menos 6 caracteres." });
   }
 
-  const nutri = await prisma.nutricionista.findUnique({ where: { codigoVinculo } });
-  if (!nutri) {
-    return res.status(404).json({ error: "Código de vínculo inválido. Peça um novo código à sua nutricionista." });
-  }
-
-  const paciente = await prisma.paciente.findFirst({
-    where: { nutricionistaId: nutri.id, email },
+  const codigo = normalizarCodigo(codigoVinculo);
+  // 1. O convite existe? (é individual — cada código pertence a UM paciente)
+  const paciente = await prisma.paciente.findUnique({
+    where: { conviteCodigo: codigo },
+    include: { nutricionista: true },
   });
   if (!paciente) {
-    return res.status(404).json({ error: "E-mail não encontrado neste consultório. Use o mesmo e-mail cadastrado pela sua nutricionista." });
+    return res.status(404).json({ error: "Código de convite inválido. Solicite um novo convite ao seu nutricionista." });
   }
 
+  // 2. Está ativo / não foi utilizado / não expirou / não foi cancelado?
+  if (paciente.conviteStatus === "utilizado") {
+    return res.status(409).json({ error: MSG_CONVITE_INDIVIDUAL });
+  }
+  if (paciente.conviteStatus === "cancelado") {
+    return res.status(410).json({ error: "Este convite foi cancelado. Solicite um novo convite ao seu nutricionista." });
+  }
+  const expirado = paciente.conviteStatus === "expirado" ||
+    (paciente.conviteExpiraEm != null && paciente.conviteExpiraEm < new Date());
+  if (expirado || paciente.conviteStatus !== "pendente") {
+    return res.status(410).json({ error: "Este convite expirou. Solicite um novo convite ao seu nutricionista." });
+  }
+
+  // 3. Pertence EXATAMENTE a este paciente? 2ª validação: últimos 4 do telefone
+  //    (se a nutri não cadastrou telefone, cai no e-mail pré-cadastrado como prova).
+  const last4 = ultimos4Telefone(paciente.telefone);
+  if (last4) {
+    if (String(telefone4 ?? "").replace(/\D/g, "").slice(-4) !== last4) {
+      return res.status(403).json({ error: MSG_CONVITE_INDIVIDUAL });
+    }
+  } else if (paciente.email) {
+    if (paciente.email.trim().toLowerCase() !== String(email).trim().toLowerCase()) {
+      return res.status(403).json({ error: MSG_CONVITE_INDIVIDUAL });
+    }
+  }
+
+  // 4. Defesa em profundidade: 1 conta por paciente; e o e-mail de login precisa ser livre.
+  const jaTemConta = await prisma.pacienteUser.findUnique({ where: { pacienteId: paciente.id } });
+  if (jaTemConta) {
+    return res.status(409).json({ error: MSG_CONVITE_INDIVIDUAL });
+  }
   const jaExiste = await prisma.pacienteUser.findUnique({ where: { email } });
   if (jaExiste) {
-    return res.status(409).json({ error: "E-mail já possui conta. Faça login." });
+    return res.status(409).json({ error: "Este e-mail já possui conta. Faça login." });
   }
 
+  // 5. Cria a conta e QUEIMA o convite na mesma transação (nunca reutilizável).
   const hash = await bcrypt.hash(senha, 10);
-  const pacienteUser = await prisma.pacienteUser.create({
-    data: { email, senha: hash, pacienteId: paciente.id },
-  });
+  let pacienteUser;
+  try {
+    pacienteUser = await prisma.$transaction(async (tx) => {
+      const pu = await tx.pacienteUser.create({ data: { email, senha: hash, pacienteId: paciente.id } });
+      await tx.paciente.update({
+        where: { id: paciente.id },
+        data: { conviteStatus: "utilizado", conviteUsadoEm: new Date() },
+      });
+      return pu;
+    });
+  } catch (e: unknown) {
+    // Corrida: outro cadastro acabou de consumir este convite/paciente.
+    if ((e as { code?: string })?.code === "P2002") {
+      return res.status(409).json({ error: MSG_CONVITE_INDIVIDUAL });
+    }
+    throw e;
+  }
 
   await criarEnviarVerificacaoPaciente(pacienteUser.id, pacienteUser.email, paciente.nome);
-  const { accessToken, refreshToken } = await emitirParTokens(pacienteUser.id, paciente.id, nutri.id);
+  const { accessToken, refreshToken } = await emitirParTokens(pacienteUser.id, paciente.id, paciente.nutricionistaId);
 
   res.status(201).json({
     token: accessToken,
@@ -136,8 +188,8 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
       id: paciente.id,
       nome: paciente.nome,
       email: pacienteUser.email,
-      nutricionistaNome: nutri.nome,
-      nomeConsultorio: nutri.nomeConsultorio,
+      nutricionistaNome: paciente.nutricionista.nome,
+      nomeConsultorio: paciente.nutricionista.nomeConsultorio,
       fotoUrl: null,
       emailVerificado: false,
     },

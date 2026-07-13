@@ -17,6 +17,7 @@ export default function LoginPaciente() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [codigo, setCodigo] = useState("");
+  const [telefone4, setTelefone4] = useState("");
   const [showSenha, setShowSenha] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,7 +39,7 @@ export default function LoginPaciente() {
     e.preventDefault();
     setError(""); setLoading(true);
     try {
-      await register(email, senha, codigo.trim());
+      await register(email, senha, codigo.trim(), telefone4.trim());
       navigate("/completar-perfil");
     } catch (err: any) {
       setError(err.response?.data?.error || "Erro ao criar conta.");
@@ -109,16 +110,29 @@ export default function LoginPaciente() {
             />
 
             {!isLogin && (
-              <div>
-                <label className="mb-1.5 block text-body-sm font-medium text-[#A1A1AA]">Código de vínculo</label>
-                <input
-                  type="text" inputMode="numeric" value={codigo}
-                  onChange={(e) => setCodigo(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="000000" maxLength={6} required
-                  className="nx-input w-full rounded-2xl border border-white/[0.08] bg-[#141414] py-3.5 text-center text-2xl font-bold tracking-[0.4em] text-white placeholder:tracking-[0.4em] placeholder:text-[#3f3f46] focus:border-nx-evo/60 focus:outline-none focus:ring-2 focus:ring-nx-evo/40"
-                />
-                <p className="mt-1.5 text-body-sm text-[#71717A]">Código de 6 dígitos fornecido pela sua nutricionista.</p>
-              </div>
+              <>
+                <div>
+                  <label className="mb-1.5 block text-body-sm font-medium text-[#A1A1AA]">Código de convite</label>
+                  <input
+                    type="text" inputMode="text" autoCapitalize="characters" autoCorrect="off" spellCheck={false}
+                    value={codigo}
+                    onChange={(e) => setCodigo(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))}
+                    placeholder="XXXXXXXX" maxLength={8} required
+                    className="nx-input w-full rounded-2xl border border-white/[0.08] bg-[#141414] py-3.5 text-center text-2xl font-bold tracking-[0.3em] text-white placeholder:tracking-[0.3em] placeholder:text-[#3f3f46] focus:border-nx-evo/60 focus:outline-none focus:ring-2 focus:ring-nx-evo/40"
+                  />
+                  <p className="mt-1.5 text-body-sm text-[#71717A]">Código individual enviado pela sua nutricionista (é de uso único).</p>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-body-sm font-medium text-[#A1A1AA]">Últimos 4 dígitos do seu telefone</label>
+                  <input
+                    type="text" inputMode="numeric" value={telefone4}
+                    onChange={(e) => setTelefone4(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    placeholder="0000" maxLength={4} required
+                    className="nx-input w-full rounded-2xl border border-white/[0.08] bg-[#141414] py-3.5 text-center text-2xl font-bold tracking-[0.4em] text-white placeholder:tracking-[0.4em] placeholder:text-[#3f3f46] focus:border-nx-evo/60 focus:outline-none focus:ring-2 focus:ring-nx-evo/40"
+                  />
+                  <p className="mt-1.5 text-body-sm text-[#71717A]">Confirma que o convite é seu — o telefone cadastrado pela sua nutricionista.</p>
+                </div>
+              </>
             )}
 
             {error && (

@@ -5,7 +5,8 @@ import {
   Utensils, Droplet, Dumbbell, Moon, CheckCircle2, XCircle, Sparkles,
   Lightbulb, AlertTriangle, BadgeCheck, Flame, Send, SlidersHorizontal,
   TrendingDown, TrendingUp, Target, ShieldAlert, ShieldCheck,
-  CalendarClock, CalendarDays, Sparkle, FileBarChart2, type LucideIcon,
+  CalendarClock, CalendarDays, Sparkle, FileBarChart2,
+  Copy, Share2, Check, Loader2, RefreshCw, Ticket, type LucideIcon,
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
@@ -36,6 +37,7 @@ interface DiarioData {
     streakAtual: number; streakMaximo: number; ultimoCheckin: string | null;
     planoRefeicoes?: RefeicaoPlano[] | null;
     aguaMetaMl?: number | null; sonoMetaHoras?: number | null; treinoDias?: number[] | null;
+    conviteCodigo?: string | null; conviteStatus?: string | null; conviteExpiraEm?: string | null;
   };
   registros: Registro[];
   desafios: DesafioProgressoItem[];
@@ -82,6 +84,97 @@ const REFEICOES = [
   { key: "lancheOk", label: "Lanche", icon: Utensils },
   { key: "jantarOk", label: "Jantar", icon: Utensils },
 ] as const;
+
+/* ───────── Código de convite (individual, uso único) — só a nutri vê/gera ───────── */
+interface ConviteState { codigo: string | null; status: string; expiraEm: string | null }
+
+function ConviteCard({ pacienteId, nome, inicial }: { pacienteId: string; nome: string; inicial: ConviteState }) {
+  const [convite, setConvite] = useState<ConviteState>(inicial);
+  const [gerando, setGerando] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const utilizado = convite.status === "utilizado";
+  const expirado = convite.status === "expirado" ||
+    (!!convite.expiraEm && new Date(convite.expiraEm) < new Date());
+  const cancelado = convite.status === "cancelado";
+  const ativo = !!convite.codigo && convite.status === "pendente" && !expirado;
+
+  async function gerar() {
+    setGerando(true); setErro(null);
+    try {
+      const r = await api.post<{ conviteCodigo: string; conviteStatus: string; conviteExpiraEm: string | null }>(`/pacientes/${pacienteId}/convite`);
+      setConvite({ codigo: r.data.conviteCodigo, status: r.data.conviteStatus, expiraEm: r.data.conviteExpiraEm });
+    } catch (e: any) {
+      setErro(e?.response?.data?.error ?? "Não foi possível gerar o convite.");
+    } finally { setGerando(false); }
+  }
+
+  const texto = convite.codigo
+    ? `Olá, ${nome}! Seu convite para o app Nexvel é ${convite.codigo}. Baixe o app, escolha "Criar conta" e informe este código + os últimos 4 dígitos do seu telefone. O código é individual e de uso único.`
+    : "";
+
+  async function copiar() {
+    if (!convite.codigo) return;
+    try { await navigator.clipboard.writeText(convite.codigo); setCopiado(true); setTimeout(() => setCopiado(false), 1800); } catch { /* indisponível */ }
+  }
+  async function compartilhar() {
+    if (!convite.codigo) return;
+    if (navigator.share) { try { await navigator.share({ title: "Convite Nexvel", text: texto }); } catch { /* cancelado */ } }
+    else void copiar();
+  }
+
+  return (
+    <section className={`${CARD} mt-4 p-5`}>
+      <div className="mb-3 flex items-center gap-2">
+        <Ticket className="size-4 text-nx-evo" />
+        <span className="text-label-md uppercase text-nx-on-surface-variant">Código de convite</span>
+      </div>
+
+      {utilizado ? (
+        <p className="flex items-center gap-2 text-body-sm text-nx-evo">
+          <CheckCircle2 className="size-4" /> Conta vinculada — este paciente já criou o acesso.
+        </p>
+      ) : ativo ? (
+        <>
+          <p className="mb-3 text-body-sm text-nx-on-surface-variant">
+            Envie este código a <strong className="text-nx-on-surface">{nome}</strong>. É individual e de uso único — no cadastro, ele confirma com os últimos 4 dígitos do telefone.
+          </p>
+          <div className="grid place-items-center rounded-nx-md border border-nx-border bg-nx-container/50 py-5">
+            <span className="text-[30px] font-extrabold tracking-[0.25em] text-nx-on-surface tabular-nums">{convite.codigo}</span>
+          </div>
+          {convite.expiraEm && (
+            <p className="mt-2 text-label-sm text-nx-on-surface-variant">
+              Expira em {new Date(convite.expiraEm).toLocaleDateString("pt-BR")}
+            </p>
+          )}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button onClick={copiar} className="flex flex-1 items-center justify-center gap-2 rounded-nx-md border border-nx-border py-2.5 text-body-sm font-semibold text-nx-on-surface transition-colors hover:bg-nx-container disabled:opacity-50">
+              {copiado ? <><Check className="size-4 text-nx-evo" /> Copiado</> : <><Copy className="size-4" /> Copiar</>}
+            </button>
+            <button onClick={compartilhar} className="flex flex-1 items-center justify-center gap-2 rounded-nx-md bg-nx-evo py-2.5 text-body-sm font-bold text-nx-on-evo transition-opacity hover:opacity-90">
+              <Share2 className="size-4" /> Compartilhar
+            </button>
+            <button onClick={gerar} disabled={gerando} aria-label="Gerar novo código" title="Gerar novo código (invalida o atual)" className="grid size-10 shrink-0 place-items-center rounded-nx-md border border-nx-border text-nx-on-surface-variant transition-colors hover:bg-nx-container disabled:opacity-50">
+              {gerando ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="mb-3 text-body-sm text-nx-on-surface-variant">
+            {cancelado ? "O convite foi cancelado." : expirado ? "O convite expirou." : "Este paciente ainda não tem um convite."} Gere um código individual para enviar a <strong className="text-nx-on-surface">{nome}</strong>.
+          </p>
+          <button onClick={gerar} disabled={gerando} className="flex w-full items-center justify-center gap-2 rounded-nx-md bg-nx-evo py-2.5 text-body-sm font-bold text-nx-on-evo transition-opacity hover:opacity-90 disabled:opacity-60">
+            {gerando ? <><Loader2 className="size-4 animate-spin" /> Gerando…</> : <><Ticket className="size-4" /> Gerar convite</>}
+          </button>
+        </>
+      )}
+
+      {erro && <p className="mt-3 text-body-sm text-nx-danger">{erro}</p>}
+    </section>
+  );
+}
 
 export default function DiarioBordo() {
   const { id } = useParams();
@@ -353,6 +446,17 @@ export default function DiarioBordo() {
                 </button>
               </div>
             </section>
+
+            {/* ══════════ Código de convite — individual, uso único (só a nutri) ══════════ */}
+            <ConviteCard
+              pacienteId={pac.id}
+              nome={pac.nome}
+              inicial={{
+                codigo: pac.conviteCodigo ?? null,
+                status: pac.conviteStatus ?? "pendente",
+                expiraEm: pac.conviteExpiraEm ?? null,
+              }}
+            />
 
             {/* ══════════ Leitura automática — insights prontos ══════════ */}
             {insights.length > 0 && (
