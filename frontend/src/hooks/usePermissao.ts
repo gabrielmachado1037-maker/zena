@@ -4,7 +4,7 @@ const MODULOS_POR_PLANO: Record<string, string[]> = {
   hub: ["feed", "ranking", "gamificacao", "notificacoes"],
   ecossistema: [
     "feed", "ranking", "gamificacao", "notificacoes",
-    "prontuario", "financeiro", "agenda", "plano_alimentar",
+    "prontuario", "agenda", "plano_alimentar",
   ],
 };
 

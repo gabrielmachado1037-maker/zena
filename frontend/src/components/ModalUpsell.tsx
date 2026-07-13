@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Zap, BarChart2, CalendarDays, FileText, ClipboardList, Loader2, ArrowRight } from "lucide-react";
+import { X, Zap, CalendarDays, FileText, ClipboardList, Loader2, ArrowRight } from "lucide-react";
 import api from "../lib/api";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -11,14 +11,12 @@ interface Props {
 
 const MODULO_INFO: Record<string, { nome: string; icon: React.FC<{ size?: number; className?: string }> }> = {
   prontuario:     { nome: "Prontuário Completo", icon: ClipboardList },
-  financeiro:     { nome: "Controle Financeiro",  icon: BarChart2 },
   agenda:         { nome: "Agenda e Consultas",   icon: CalendarDays },
   plano_alimentar:{ nome: "Planos Alimentares",   icon: FileText },
 };
 
 const BENEFICIOS = [
   "Prontuário completo do paciente",
-  "Controle financeiro e cobranças via Pix",
   "Agenda e agendamento online",
   "Criação de planos alimentares",
 ];
@@ -27,7 +25,7 @@ export default function ModalUpsell({ modulo, onClose, onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
   const { nutricionista, updateAvatar } = useAuth();
-  const info = MODULO_INFO[modulo] ?? MODULO_INFO.financeiro;
+  const info = MODULO_INFO[modulo] ?? MODULO_INFO.prontuario;
   const Icon = info.icon;
 
   async function handleUpgrade() {
@@ -43,7 +41,7 @@ export default function ModalUpsell({ modulo, onClose, onSuccess }: Props) {
           subscriptionStatus: "ativo",
           modulosAtivos: [
             "feed", "ranking", "gamificacao", "notificacoes",
-            "prontuario", "financeiro", "agenda", "plano_alimentar",
+            "prontuario", "agenda", "plano_alimentar",
           ],
         };
         localStorage.setItem("zena_user", JSON.stringify(updated));
