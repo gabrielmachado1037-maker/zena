@@ -36,17 +36,8 @@ export default function Landing() {
         backdropFilter: 'blur(12px)',
       }}>
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            width: '28px', height: '28px',
-            background: 'linear-gradient(135deg, #6D28D9, #8B5CF6)',
-            borderRadius: '8px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 800, fontSize: '15px', color: 'white',
-          }}>N</div>
-          <span style={{ fontWeight: 700, fontSize: '16px', color: 'white', letterSpacing: '-0.3px' }}>
-            NEXVEL
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <img src="/nexvel-wordmark.png" alt="Nexvel" style={{ height: '22px', width: 'auto', display: 'block' }} />
         </div>
 
         {/* Links */}
@@ -176,11 +167,12 @@ export default function Landing() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
               <div style={{
                 width: '24px', height: '24px',
-                background: 'linear-gradient(135deg, #6D28D9, #8B5CF6)',
+                background: '#0A0A0A',
                 borderRadius: '6px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '12px', fontWeight: 800, color: 'white',
-              }}>N</div>
+              }}>
+                <img src="/nexvel-x-512.png" alt="" style={{ height: '13px', width: 'auto', display: 'block' }} />
+              </div>
               <span style={{ fontSize: '13px', fontWeight: 600, color: 'white' }}>Dashboard</span>
             </div>
 

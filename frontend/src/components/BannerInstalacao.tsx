@@ -48,7 +48,7 @@ export default function BannerInstalacao() {
   return (
     <div
       className="install-banner fixed left-4 right-4 z-50 rounded-2xl p-4 shadow-2xl"
-      style={{ bottom: "88px", background: "#7C3AED" }}
+      style={{ bottom: "88px", background: "#111318", border: "1px solid #2A2F38" }}
     >
       <button
         onClick={fechar}
@@ -77,7 +77,7 @@ export default function BannerInstalacao() {
         {!isIOS && (
           <button
             onClick={instalar}
-            className="flex-shrink-0 px-4 py-2 rounded-xl bg-white text-[#7C3AED] text-[13px] font-semibold"
+            className="flex-shrink-0 px-4 py-2 rounded-xl bg-[#7CFF5B] text-[#08130A] text-[13px] font-semibold"
           >
             Instalar
           </button>

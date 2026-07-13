@@ -57,7 +57,7 @@ export default function Login() {
       <div className="relative z-10 w-full max-w-[440px]">
         {/* Marca + escudo */}
         <div className="flex flex-col items-center text-center">
-          <ProLogo size="text-[30px]" className="[&_p]:text-center" />
+          <ProLogo size="h-[28px]" className="[&_p]:text-center" />
           <span className="mt-6 grid size-14 place-items-center rounded-2xl border border-nx-evo/30 bg-nx-evo/10">
             <ShieldCheck className="size-7 text-nx-evo" strokeWidth={2} />
           </span>

@@ -3,7 +3,7 @@ import { NexvelLogo } from "../../onboarding/components/NexvelLogo";
 import { cn } from "../../../lib/utils";
 
 /** Logo NEXVEL + subtítulo "NUTRITION PRO" (marca da área web da nutri). */
-export function ProLogo({ size = "text-[26px]", className = "" }: { size?: string; className?: string }) {
+export function ProLogo({ size = "h-6", className = "" }: { size?: string; className?: string }) {
   return (
     <div className={cn("leading-none", className)}>
       <NexvelLogo className={size} />

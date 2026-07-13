@@ -21,14 +21,15 @@ export function HeroImage({ src }: { src?: string }) {
             className="absolute inset-0"
             style={{ background: "radial-gradient(115% 80% at 64% 42%, rgba(124,255,91,0.30), rgba(124,255,91,0.06) 46%, transparent 72%)" }}
           />
-          {/* "N" angular de marca ao fundo */}
-          <svg viewBox="0 0 100 100" className="absolute inset-0 size-full" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-            <path
-              d="M26 84 L26 24 L74 84 L74 24"
-              fill="none" stroke="#7CFF5B" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round"
-              opacity="0.34" style={{ filter: "drop-shadow(0 0 14px rgba(124,255,91,0.4))" }}
+          {/* "X" de marca ao fundo */}
+          <div className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+            <img
+              src="/nexvel-x-512.png"
+              alt=""
+              className="w-2/5 max-w-[180px]"
+              style={{ opacity: 0.34, filter: "drop-shadow(0 0 14px rgba(124,255,91,0.4))" }}
             />
-          </svg>
+          </div>
           {/* legenda discreta de placeholder */}
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/40">
             <ImageIcon className="size-8" strokeWidth={1.5} />

@@ -11,7 +11,7 @@ export function WelcomeSlide({ onStart, onLogin }: { onStart: () => void; onLogi
 
       {/* Conteúdo */}
       <div className="flex flex-1 flex-col px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        <NexvelLogo className="-mt-3 text-[42px]" />
+        <NexvelLogo className="-mt-3 h-[38px]" />
 
         <h1 className="mt-4 text-[32px] font-extrabold leading-[1.06] tracking-tight text-white text-balance">
           Transforme hábitos em <span className="text-nx-evo">resultados.</span>

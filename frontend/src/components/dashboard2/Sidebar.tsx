@@ -32,8 +32,8 @@ export function DashboardSidebar() {
       {/* Desktop */}
       <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:shrink-0 min-h-screen bg-nx-bg border-r border-nx-border px-4 py-6">
         <div className="px-2 mb-8">
-          <p className="text-nx-on-surface font-extrabold tracking-tight text-[20px] leading-none">NEXVEL</p>
-          <p className="text-label-sm text-nx-on-surface-variant uppercase mt-1 tracking-[0.14em]">Nutrition Pro</p>
+          <img src="/nexvel-wordmark.png" alt="Nexvel" className="block h-5 w-auto" />
+          <p className="text-label-sm text-nx-on-surface-variant uppercase mt-1.5 tracking-[0.14em]">Nutrition Pro</p>
         </div>
 
         <nav className="flex-1 flex flex-col gap-1">

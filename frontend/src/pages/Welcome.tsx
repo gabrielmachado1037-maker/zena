@@ -137,17 +137,18 @@ export default function Welcome() {
             className="absolute left-1/2 top-1/2 h-[190%] w-[190%] -translate-x-1/2 -translate-y-1/2 rounded-full"
             style={{ background: "radial-gradient(circle, rgba(124,255,91,0.22), transparent 68%)" }}
           />
-          <span
-            className="relative block font-black leading-none text-[clamp(2rem,8vw,2.9rem)]"
+          <img
+            src="/nexvel-x-512.png"
+            alt=""
+            aria-hidden
+            className="relative block w-[clamp(2.4rem,9vw,3.4rem)]"
             style={{
-              color: "rgba(124,255,91,0.62)",
-              textShadow:
-                "0 0 14px rgba(124,255,91,0.6), 0 0 34px rgba(124,255,91,0.38), 0 0 2px rgba(255,255,255,0.5)",
+              opacity: 0.62,
+              filter:
+                "drop-shadow(0 0 14px rgba(124,255,91,0.6)) drop-shadow(0 0 34px rgba(124,255,91,0.38))",
               transform: "skewX(-2deg)",
             }}
-          >
-            N
-          </span>
+          />
         </div>
       </div>
 
@@ -184,13 +185,8 @@ export default function Welcome() {
         className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-md flex-col justify-end px-6 pb-[calc(2.5rem+env(safe-area-inset-bottom))] pt-10"
       >
         {/* Lockup da marca */}
-        <motion.div variants={item} className="mb-auto flex items-center gap-2.5">
-          <span className="grid size-9 place-items-center rounded-nx-sm bg-nx-evo text-nx-on-evo font-extrabold text-[19px] leading-none shadow-[0_0_24px_-6px_rgba(124,255,91,0.7)]">
-            N
-          </span>
-          <span className="text-[15px] font-extrabold uppercase tracking-[0.22em] text-nx-on-surface">
-            Nexvel
-          </span>
+        <motion.div variants={item} className="mb-auto flex items-center">
+          <img src="/nexvel-wordmark.png" alt="Nexvel" className="block h-6 w-auto" />
         </motion.div>
 
         {/* Título + subtítulo */}

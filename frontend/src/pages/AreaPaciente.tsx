@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Leaf, Calendar, TrendingDown, TrendingUp, CheckCircle, RefreshCw, ArrowLeft, Camera, ChevronRight } from "lucide-react";
+import { Calendar, TrendingDown, TrendingUp, CheckCircle, RefreshCw, ArrowLeft, Camera, ChevronRight } from "lucide-react";
 import confetti from "canvas-confetti";
 import api from "../lib/api";
 import { comprimirImagem, calcularStreak, jaFezCheckinEstaSemana } from "../lib/utils";
@@ -101,7 +101,7 @@ export default function AreaPaciente() {
 
   if (loading) return (
     <div className="min-h-screen bg-nexvel-cream flex items-center justify-center">
-      <Leaf className="text-nexvel-green-light animate-pulse" size={40} />
+      <img src="/nexvel-x-512.png" alt="Nexvel" className="h-10 w-auto animate-pulse" />
     </div>
   );
 
@@ -194,8 +194,8 @@ export default function AreaPaciente() {
               className="w-10 h-10 rounded-xl object-cover ring-2 ring-white/20"
             />
           ) : (
-            <div className="w-10 h-10 rounded-xl bg-nexvel-green-mid/60 flex items-center justify-center">
-              <Leaf className="text-white" size={18} />
+            <div className="w-10 h-10 rounded-xl bg-[#0A0A0A] flex items-center justify-center">
+              <img src="/nexvel-x-512.png" alt="" className="h-5 w-auto" />
             </div>
           )}
           <div>
@@ -540,7 +540,7 @@ function CheckInView({ link, pacienteNome, nutricionistaNome, onFeito, onBack }:
           <ArrowLeft size={16} />Voltar
         </button>
         <div className="flex items-center gap-2 mb-2">
-          <Leaf className="text-nexvel-mint" size={18} />
+          <img src="/nexvel-x-512.png" alt="" className="h-[18px] w-auto" />
           <span className="text-white/70 text-sm">zena</span>
         </div>
         <h1 className="text-white text-2xl font-bold">Check-in semanal ✨</h1>
@@ -803,7 +803,7 @@ function AnamneseView({ link, pacienteNome, onFeito, onBack }: {
           <ArrowLeft size={16} />{step === 0 ? "Voltar" : "Anterior"}
         </button>
         <div className="flex items-center gap-2 mb-2">
-          <Leaf className="text-nexvel-mint" size={18} />
+          <img src="/nexvel-x-512.png" alt="" className="h-[18px] w-auto" />
           <span className="text-white/70 text-sm">zena</span>
         </div>
         <h1 className="text-white text-2xl font-bold">{s.emoji} {s.titulo}</h1>
@@ -938,7 +938,7 @@ function AgendamentoView({ link, pacienteNome, nutricionistaNome, onFeito, onBac
           <ArrowLeft size={16} />Voltar
         </button>
         <div className="flex items-center gap-2 mb-2">
-          <Leaf className="text-nexvel-mint" size={18} />
+          <img src="/nexvel-x-512.png" alt="" className="h-[18px] w-auto" />
           <span className="text-white/70 text-sm">zena</span>
         </div>
         <h1 className="text-white text-2xl font-bold">📅 Agendar consulta</h1>

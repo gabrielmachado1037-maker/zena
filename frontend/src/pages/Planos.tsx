@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Leaf, Copy, CheckCircle, Loader2, AlertCircle, ExternalLink,
+  Copy, CheckCircle, Loader2, AlertCircle, ExternalLink,
   Rss, Bell, ClipboardList, BarChart2, CalendarDays, FileText,
 } from "lucide-react";
 import api from "../lib/api";
@@ -151,7 +151,7 @@ export default function Planos() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <Leaf className="text-nexvel-green-light" size={24} />
+            <img src="/nexvel-x-512.png" alt="" className="h-6 w-auto" />
             <span className="text-xl font-bold text-nexvel-green-dark">nexvel</span>
           </div>
           <h1 className="text-[28px] font-bold text-nexvel-green-dark mb-2">Planos e Preços</h1>

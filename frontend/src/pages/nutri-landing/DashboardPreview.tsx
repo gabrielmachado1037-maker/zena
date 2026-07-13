@@ -48,7 +48,7 @@ export function DashboardPreview() {
           {/* Sidebar */}
           <aside className="flex w-[132px] shrink-0 flex-col justify-between border-r border-white/[0.06] bg-[#0A0D0A] p-3">
             <div>
-              <ProLogo size="text-[15px]" className="mb-4 px-1 [&_p]:text-[8px] [&_p]:tracking-[0.2em]" />
+              <ProLogo size="h-[15px]" className="mb-4 px-1 [&_p]:text-[8px] [&_p]:tracking-[0.2em]" />
               <nav className="space-y-0.5">
                 {NAV.map((n) => (
                   <div key={n.label}

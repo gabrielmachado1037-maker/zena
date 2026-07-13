@@ -67,7 +67,7 @@ export default function LoginPaciente() {
         </header>
 
         <div className="mt-8">
-          <NexvelLogo className="text-[32px]" />
+          <NexvelLogo className="h-[30px]" />
 
           <h1 className="mt-8 text-[30px] font-extrabold leading-tight tracking-tight text-white">
             {isLogin ? <>Bem-vindo <span className="text-nx-evo">de volta.</span></> : <>Crie a sua <span className="text-nx-evo">conta.</span></>}
