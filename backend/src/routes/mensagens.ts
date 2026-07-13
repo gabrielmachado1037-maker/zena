@@ -3,7 +3,7 @@ import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
-import { enviarNotificacaoPaciente } from "./notificacoes";
+import { NotificationEngine } from "../services/notificationEngine";
 import { uploadImagemChat, UploadError } from "../lib/supabase";
 
 const router = Router();
@@ -154,17 +154,14 @@ router.post("/thread/:pacienteId", validateBody(enviarMensagemSchema), async (re
     data: { nutricionistaId, pacienteId, autor: "nutri", conteudo, anexoUrl, lida: true },
   });
 
-  // Notificação push (best-effort; helper já ignora se não houver VAPID/subscription).
-  try {
+  // Notificação push via NotificationEngine (respeita preferência/quiet-hours/log).
+  {
     const previa = conteudo || "📷 Enviou uma imagem";
-    await enviarNotificacaoPaciente(
-      pacienteId,
-      "Nova mensagem da sua nutri",
-      previa.length > 80 ? previa.slice(0, 77) + "..." : previa,
-      "/paciente/dashboard",
-    );
-  } catch {
-    /* silencioso */
+    NotificationEngine.enviar(pacienteId, "mensagem", {
+      titulo: "💬 Sua nutricionista enviou uma nova mensagem",
+      corpo: previa.length > 80 ? previa.slice(0, 77) + "..." : previa,
+      url: "/paciente/dashboard",
+    }).catch(() => {});
   }
 
   res.json({ id: msg.id, autor: msg.autor, conteudo: msg.conteudo, anexoUrl: msg.anexoUrl, criadoEm: msg.criadoEm });

@@ -123,6 +123,11 @@ model Paciente {
   conviteStatus     String             @default("pendente") // pendente | utilizado | expirado | cancelado
   conviteExpiraEm   DateTime?
   conviteUsadoEm    DateTime?
+  // Notificações: preferências por categoria (null = todas ligadas) + fuso do dispositivo.
+  prefsNotificacao  Json?
+  timezone          String?
+  notificacaoLogs   NotificacaoLog[]
+  registroEventos   RegistroEvento[]
   pontosTotal       Float              @default(0)
   streakAtual       Int                @default(0)
   streakMaximo      Int                @default(0)
@@ -505,6 +510,36 @@ model PushSubscriptionPaciente {
   criadoEm   DateTime @default(now())
 
   @@index([pacienteId])
+}
+
+// Histórico central de notificações (dedup, idempotência, log de envio e abertura).
+model NotificacaoLog {
+  id         String    @id @default(cuid())
+  pacienteId String
+  paciente   Paciente  @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  tipo       String
+  dedupeKey  String?
+  titulo     String
+  corpo      String
+  url        String
+  status     String    // enviado | pulado | falha
+  motivo     String?   // preferencia | quiet_hours | duplicado | intervalo | sem_dispositivo
+  enviadoEm  DateTime  @default(now())
+  abertaEm   DateTime?
+
+  @@index([pacienteId, enviadoEm])
+  @@index([pacienteId, dedupeKey])
+}
+
+// Captura do horário de cada ação do paciente — base para aprender horários (Fase 4).
+model RegistroEvento {
+  id         String   @id @default(cuid())
+  pacienteId String
+  paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  tipo       String   // cafe | almoco | lanche | jantar | agua | treino | sono | checkin
+  ocorridoEm DateTime @default(now())
+
+  @@index([pacienteId, tipo])
 }
 
 model PushSubscription {

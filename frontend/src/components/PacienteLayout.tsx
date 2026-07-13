@@ -6,6 +6,7 @@ import { usePacienteAuth } from "../contexts/PacienteAuthContext";
 import { PacienteDataProvider } from "../lib/paciente-data";
 import EmailVerificacaoBannerPaciente from "./EmailVerificacaoBannerPaciente";
 import api from "../lib/api";
+import { pingNotificacaoAberta } from "../lib/pushPaciente";
 
 const BG = "#09090B";
 
@@ -99,6 +100,18 @@ export default function PacienteLayout() {
   useEffect(() => {
     if (token) subscribePush(token);
   }, [token]);
+
+  // Rastreio de abertura de notificação: deep-link ?n=<logId> → registra e limpa a URL.
+  useEffect(() => {
+    if (!token) return;
+    const params = new URLSearchParams(location.search);
+    const n = params.get("n");
+    if (!n) return;
+    pingNotificacaoAberta(n);
+    params.delete("n");
+    const qs = params.toString();
+    window.history.replaceState({}, "", location.pathname + (qs ? `?${qs}` : "") + location.hash);
+  }, [token, location.search, location.pathname, location.hash]);
 
   if (loading) {
     return (

@@ -21,6 +21,7 @@ import {
 import { uploadFoto, UploadError } from "../lib/supabase";
 import { adesaoMinimaDe, recompensaDe } from "../config/desafios";
 import { processarDesafiosDoPaciente, montarDesafioDetalhe, ehCustom, janelaDesafio, ymdLocal } from "../services/desafioService";
+import { notificarFechamentoDia } from "../services/notificacoesEventos";
 
 const HUMORES_VALIDOS = ["otimo", "bom", "neutro", "dificil", "pessimo"];
 const STATUS_VALIDOS = ["seguiu", "adaptou", "comeu_mal", "pulou"];
@@ -239,6 +240,18 @@ async function finalizarDia(registro: RegistroDia & { id: string }, paciente: Pa
 
   // Após o dia fechado, recalcula/finaliza os desafios ativos do paciente.
   await processarDesafiosDoPaciente(paciente.id, hoje).catch((e) => console.error("[desafio] fechar", e));
+
+  // Captura o horário do check-in (base p/ aprender horários — Fase 4). Best-effort.
+  prisma.registroEvento.create({ data: { pacienteId: paciente.id, tipo: "checkin" } }).catch(() => {});
+
+  // Eventos motivacionais (liga/sequência/ranking/promoção) via NotificationEngine. Best-effort.
+  notificarFechamentoDia(paciente.id, {
+    pontosAntes: paciente.pontosTotal,
+    pontosDepois: pontosTotal,
+    streakAtual,
+    ligaAtual: liga.liga,
+    ligaNivel: liga.nivel,
+  }).catch(() => {});
 
   return { pontosGanhos, pontosTotal, liga, streakAtual };
 }

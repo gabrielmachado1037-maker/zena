@@ -16,7 +16,7 @@ import { PrimaryButton, OutlineButton, TextButton } from "../onboarding/componen
  * segue com o avatar de iniciais e pode adicionar depois em Configurações.
  */
 
-const DESTINO = "/paciente/feed"; // mesmo destino do fluxo original pós-cadastro
+const DESTINO = "/ativar-notificacoes"; // opt-in de notificações → depois cai no feed
 
 async function fileToBase64(file: File): Promise<string> {
   return new Promise((res, rej) => {

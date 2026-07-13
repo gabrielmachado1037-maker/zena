@@ -2,6 +2,7 @@ import prisma from "../lib/prisma";
 import { calcularLiga } from "../config/ligas";
 import { adesaoMinimaDe, recompensaDe, diaCumpreDesafio } from "../config/desafios";
 import { enviarNotificacao } from "../routes/notificacoes";
+import { NotificationEngine } from "./notificationEngine";
 
 const DIA = 86_400_000;
 const inicioDoDia = (d: Date) => {
@@ -202,6 +203,21 @@ async function processarProgresso(prog: ProgComDesafio, hoje: Date): Promise<voi
     `${pac.nome} concluiu o desafio "${d.titulo}".`,
     `/app/pacientes/${prog.pacienteId}`,
   ).catch((e) => console.error("[desafio] notificar nutri", e));
+
+  // Notifica o PACIENTE — desafio concluído + medalha (via NotificationEngine).
+  NotificationEngine.enviar(prog.pacienteId, "desafio_concluido", {
+    titulo: "🎉 Parabéns!",
+    corpo: `Você concluiu seu desafio "${d.titulo}".`,
+    url: "/paciente/desafios",
+    dedupeKey: `desafio_concluido:${prog.id}`,
+  }).catch(() => {});
+  NotificationEngine.enviar(prog.pacienteId, "medalha", {
+    titulo: "🏅 Nova medalha desbloqueada",
+    corpo: `Você ganhou uma medalha por concluir "${d.titulo}".`,
+    url: "/paciente/conta",
+    dedupeKey: `medalha:desafio_concluido:${prog.id}`,
+    minIntervalMin: 5,
+  }).catch(() => {});
 }
 
 /** Processa os desafios ativos de um paciente (chamado ao fechar o dia). */

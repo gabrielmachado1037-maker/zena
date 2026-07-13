@@ -262,6 +262,19 @@ function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; d
   );
 }
 
+// Categorias de notificação (espelham o gate do NotificationEngine no backend).
+const CATEGORIAS_NOTIF: { key: string; label: string }[] = [
+  { key: "alimentacao", label: "Alimentação" },
+  { key: "agua", label: "Água" },
+  { key: "sono", label: "Sono" },
+  { key: "treino", label: "Treino" },
+  { key: "desafios", label: "Desafios" },
+  { key: "mensagens", label: "Mensagens" },
+  { key: "medalhas", label: "Medalhas" },
+  { key: "ranking", label: "Ranking" },
+  { key: "sequencia", label: "Sequência" },
+];
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 export default function ContaPaciente() {
@@ -276,6 +289,7 @@ export default function ContaPaciente() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting]     = useState(false);
   const [exporting, setExporting]   = useState(false);
+  const [prefs, setPrefs]           = useState<Record<string, boolean>>({});
   const fileRef                     = useRef<HTMLInputElement>(null);
 
   const authHeader = { Authorization: `Bearer ${token}` };
@@ -285,6 +299,28 @@ export default function ContaPaciente() {
       .then(r => { setData(r.data); setPostPublico(r.data.postPublicoPadrao); })
       .finally(() => setLoading(false));
   }, []);
+
+  // Preferências granulares de notificação (null no banco = tudo ligado).
+  useEffect(() => {
+    api.get<{ prefs: Record<string, boolean> | null }>("/paciente-app/prefs-notificacao", { headers: authHeader })
+      .then(r => {
+        const stored = r.data.prefs ?? {};
+        const init: Record<string, boolean> = {};
+        for (const c of CATEGORIAS_NOTIF) init[c.key] = stored[c.key] !== false;
+        setPrefs(init);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function toggleCategoria(cat: string) {
+    const next = !(prefs[cat] ?? true);
+    setPrefs(p => ({ ...p, [cat]: next }));
+    try {
+      await api.put("/paciente-app/prefs-notificacao", { prefs: { [cat]: next } }, { headers: authHeader });
+    } catch {
+      setPrefs(p => ({ ...p, [cat]: !next })); // reverte em caso de falha
+    }
+  }
 
   // Estado inicial do push: reflete a subscription real no dispositivo.
   useEffect(() => {
@@ -425,6 +461,20 @@ export default function ContaPaciente() {
               </div>
             </div>
             <Toggle on={pushOn} onClick={togglePush} disabled={pushBusy} />
+          </div>
+
+          {/* Tipos de notificação (granular) */}
+          <div className="bg-nx-surface rounded-2xl px-5 py-4 border border-white/5">
+            <p className="text-[13px] font-semibold text-nx-on-surface mb-1">Tipos de notificação</p>
+            <p className="text-[11px] text-nx-on-surface-variant mb-3">Escolha o que você quer receber.</p>
+            <div className="divide-y divide-white/5">
+              {CATEGORIAS_NOTIF.map(c => (
+                <div key={c.key} className="flex items-center justify-between py-2.5">
+                  <span className="text-[14px] text-nx-on-surface">{c.label}</span>
+                  <Toggle on={prefs[c.key] ?? true} onClick={() => toggleCategoria(c.key)} />
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Privacidade padrão */}

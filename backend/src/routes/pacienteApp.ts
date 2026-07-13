@@ -468,6 +468,48 @@ router.delete("/push/subscribe", async (req: PacienteAuthRequest, res: Response)
   return res.json({ ok: true });
 });
 
+// ─── Preferências de notificação + fuso ───────────────────────────────────────
+const CATEGORIAS_NOTIF = ["alimentacao", "agua", "sono", "treino", "desafios", "mensagens", "medalhas", "ranking", "sequencia"] as const;
+
+// GET /api/paciente-app/prefs-notificacao — devolve preferências (null = tudo ligado) + fuso.
+router.get("/prefs-notificacao", async (req: PacienteAuthRequest, res: Response) => {
+  const pac = await prisma.paciente.findUnique({
+    where: { id: req.pacienteId! }, select: { prefsNotificacao: true, timezone: true },
+  });
+  res.json({ prefs: pac?.prefsNotificacao ?? null, timezone: pac?.timezone ?? null });
+});
+
+// PUT /api/paciente-app/prefs-notificacao — salva toggles (merge) e/ou fuso do dispositivo.
+router.put("/prefs-notificacao", async (req: PacienteAuthRequest, res: Response) => {
+  const body = req.body as { prefs?: Record<string, unknown>; timezone?: string };
+  const data: { prefsNotificacao?: Record<string, boolean>; timezone?: string } = {};
+
+  if (body.prefs && typeof body.prefs === "object") {
+    const atual = await prisma.paciente.findUnique({ where: { id: req.pacienteId! }, select: { prefsNotificacao: true } });
+    const merged: Record<string, boolean> = { ...((atual?.prefsNotificacao as Record<string, boolean>) ?? {}) };
+    for (const cat of CATEGORIAS_NOTIF) {
+      if (typeof body.prefs[cat] === "boolean") merged[cat] = body.prefs[cat] as boolean;
+    }
+    data.prefsNotificacao = merged;
+  }
+  if (typeof body.timezone === "string" && body.timezone.length <= 64) data.timezone = body.timezone;
+
+  if (Object.keys(data).length) await prisma.paciente.update({ where: { id: req.pacienteId! }, data });
+  res.json({ ok: true });
+});
+
+// POST /api/paciente-app/notificacao-aberta — marca a abertura (via deep-link ?n=<logId>).
+router.post("/notificacao-aberta", async (req: PacienteAuthRequest, res: Response) => {
+  const id = String((req.body as { id?: string })?.id ?? "");
+  if (id) {
+    await prisma.notificacaoLog.updateMany({
+      where: { id, pacienteId: req.pacienteId!, abertaEm: null },
+      data: { abertaEm: new Date() },
+    });
+  }
+  res.json({ ok: true });
+});
+
 // ─── Mensagens com a nutri ───────────────────────────────────────────────────
 // Mesma conversa (MensagemChat) usada na tela de Mensagens da nutri — aqui pela
 // ótica do paciente: "paciente" = eu, "nutri" = a profissional.
