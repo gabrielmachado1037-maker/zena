@@ -37,7 +37,7 @@ export async function enviarReativacao(pacienteIds?: string[]): Promise<void> {
     const marco = MARCOS_REATIVACAO[dias];
     if (!marco) continue;
     await NotificationEngine.enviar(p.id, "reativacao", {
-      ...marco, url: "/paciente/dashboard",
+      ...marco, destination: "dashboard_paciente",
       dedupeKey: `reativacao:${dias}:${ymd(p.ultimoAcesso)}`,
     });
   }
@@ -70,7 +70,7 @@ export async function enviarPositivas(pacienteIds?: string[]): Promise<void> {
     if (!msg) continue;
 
     await NotificationEngine.enviar(p.id, "positiva", {
-      ...msg, url: "/paciente/evolucao", dedupeKey: `positiva:${semanaKey}`,
+      ...msg, destination: "evolucao_paciente", dedupeKey: `positiva:${semanaKey}`,
     });
   }
 }

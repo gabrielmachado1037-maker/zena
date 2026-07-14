@@ -1,8 +1,8 @@
 import type { Mensagem } from "../../lib/mensagens";
 import Avatar from "./Avatar";
 
-// Balão de mensagem — variante paciente (cinza, radius 16/16/16/4)
-// e nutri (gradiente roxo, radius 16/16/4/16). Fiel ao code.html.
+// Balão de mensagem — variante paciente (grafite, radius 16/16/16/4)
+// e nutri (verde Nexvel, radius 16/16/4/16).
 export default function MessageBubble({ msg }: { msg: Mensagem }) {
   if (msg.autor === "nutri") {
     return (
@@ -16,7 +16,7 @@ export default function MessageBubble({ msg }: { msg: Mensagem }) {
                 <img src={msg.anexoUrl} alt="Anexo" className={`rounded-lg max-h-64 w-auto object-cover ${msg.texto ? "mb-2" : ""}`} />
               </a>
             )}
-            {msg.texto && <p className="text-body-md text-nx-on-primary-container">{msg.texto}</p>}
+            {msg.texto && <p className="text-body-md text-nx-on-evo">{msg.texto}</p>}
           </div>
         </div>
       </div>

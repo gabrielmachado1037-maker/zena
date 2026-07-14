@@ -54,15 +54,15 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
   }
 
   return (
-    <div className="p-4 bg-nx-surface border-t border-nx-primary-container/10">
+    <div className="p-4 bg-nx-surface border-t border-nx-border">
       {anexo && (
         <div className="mb-2 flex items-center gap-2">
           <div className="relative">
-            <img src={anexo} alt="Anexo" className="h-16 w-16 rounded-lg object-cover border border-nx-primary-container/20" />
+            <img src={anexo} alt="Anexo" className="h-16 w-16 rounded-lg object-cover border border-nx-border" />
             <button
               onClick={() => setAnexo(null)}
               aria-label="Remover anexo"
-              className="absolute -top-1.5 -right-1.5 bg-nx-container-high rounded-full p-0.5 text-nx-on-surface-variant hover:text-nx-error border border-nx-surface"
+              className="absolute -top-1.5 -right-1.5 bg-nx-container-high rounded-full p-0.5 text-nx-on-surface-variant hover:text-nx-danger border border-nx-surface"
             >
               <span className="material-symbols-outlined text-[16px] leading-none">close</span>
             </button>
@@ -70,11 +70,11 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
           <span className="text-label-sm text-nx-on-surface-variant">Imagem anexada</span>
         </div>
       )}
-      <div className="flex items-end gap-3 bg-nx-container-high rounded-xl p-2 focus-within:ring-1 focus-within:ring-nx-primary transition-all">
+      <div className="flex items-end gap-3 bg-nx-container-high rounded-xl p-2 focus-within:ring-1 focus-within:ring-nx-evo transition-all">
         <button
           onClick={() => fileRef.current?.click()}
           title="Anexar imagem"
-          className="p-2 text-nx-on-surface-variant hover:text-nx-primary transition-colors mb-1 rounded-full hover:bg-[#343342]/50"
+          className="p-2 text-nx-on-surface-variant hover:text-nx-evo transition-colors mb-1 rounded-full hover:bg-nx-surface-hover"
         >
           <span className="material-symbols-outlined">attach_file</span>
         </button>
@@ -95,7 +95,7 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
           <button
             title="Respostas Rápidas"
             onClick={() => setRapidasAberto((s) => !s)}
-            className="p-2 text-nx-primary hover:text-[#eaddff] bg-nx-primary/10 rounded-full transition-colors flex items-center justify-center gap-1 text-label-md px-3"
+            className="p-2 text-nx-evo hover:text-nx-evo-2 bg-nx-evo/10 rounded-full transition-colors flex items-center justify-center gap-1 text-label-md px-3"
           >
             <span className="material-symbols-outlined text-[18px]">bolt</span>
             <span className="hidden md:inline">Rápidas</span>
@@ -103,7 +103,7 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
           <button
             onClick={enviar}
             disabled={disabled}
-            className="p-2 bg-nx-primary-container text-nx-on-primary-container rounded-full hover:bg-nx-primary transition-colors disabled:opacity-40"
+            className="p-2 bg-nx-evo text-nx-on-evo rounded-full hover:bg-nx-evo-2 transition-colors disabled:opacity-40"
           >
             <span className="material-symbols-outlined">send</span>
           </button>
@@ -119,7 +119,7 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
                   <button
                     key={r}
                     onClick={() => { onChange(r); setRapidasAberto(false); ref.current?.focus(); }}
-                    className="w-full text-left px-4 py-2 text-body-sm text-nx-on-surface hover:bg-[#343342]/50 transition-colors"
+                    className="w-full text-left px-4 py-2 text-body-sm text-nx-on-surface hover:bg-nx-surface-hover transition-colors"
                   >
                     {r}
                   </button>

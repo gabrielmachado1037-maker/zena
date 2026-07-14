@@ -7,7 +7,7 @@ import {
   TrendingDown, TrendingUp, Target, ShieldAlert, ShieldCheck,
   CalendarClock, CalendarDays, Sparkle, FileBarChart2,
   Copy, Share2, Check, Loader2, RefreshCw, Ticket,
-  MoreVertical, Trash2, X, type LucideIcon,
+  MoreVertical, Trash2, X, MessageSquare, type LucideIcon,
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
@@ -17,7 +17,6 @@ import { LeagueEmblem, LeagueBadge, ProgressBarNx } from "../components/ui-nx";
 import DesafiosTab from "../components/diario/DesafiosTab";
 import LigaPontosTab from "../components/diario/LigaPontosTab";
 import EvolucaoTab from "../components/diario/EvolucaoTab";
-import MensagensTab from "../components/diario/MensagensTab";
 import type {
   DesafioProgressoItem, MedicaoItem, FotoEvolucaoItem, PontosLogItem, StreakMarcoItem, ConquistaItem,
 } from "../lib/diario";
@@ -50,7 +49,7 @@ interface DiarioData {
 }
 interface RankingItem { pacienteId: string; posicaoRanking: number }
 
-const TABS = ["Linha do tempo", "Evolução", "Liga & Pontos", "Desafios", "Mensagens"] as const;
+const TABS = ["Linha do tempo", "Evolução", "Liga & Pontos", "Desafios"] as const;
 const HUMOR: Record<string, string> = { otimo: "😄", bom: "🙂", neutro: "😐", dificil: "😔", pessimo: "😢" };
 const DIAS = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"];
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -338,6 +337,9 @@ export default function DiarioBordo() {
             <ChevronLeft size={18} /> Pacientes
           </button>
           <div className="flex items-center gap-2">
+            <button onClick={() => navigate(`/app/mensagens/${id}`)} className="flex items-center gap-2 rounded-xl bg-nx-evo text-nx-on-evo px-3.5 py-2 text-body-sm font-semibold hover:bg-nx-evo-2 transition-colors">
+              <MessageSquare size={16} /> Conversar
+            </button>
             <button onClick={() => navigate(`/app/pacientes/${id}/relatorio`)} className="flex items-center gap-2 rounded-xl border border-nx-border px-3.5 py-2 text-body-sm font-medium text-nx-on-surface hover:bg-nx-surface-hover transition-colors">
               <FileBarChart2 size={16} className="text-nx-evo" /> Relatório mensal
             </button>
@@ -611,8 +613,6 @@ export default function DiarioBordo() {
                 <LigaPontosTab paciente={pac} pontosLog={data!.pontosLog} streakMarcos={data!.streakMarcos} conquistas={data!.conquistas} rankPos={rankPos} />
               ) : tab === "Desafios" ? (
                 <DesafiosTab desafios={data!.desafios} />
-              ) : tab === "Mensagens" ? (
-                <MensagensTab pacienteId={pac.id} pacienteNome={pac.nome} />
               ) : (
                 /* Linha do tempo — calendário + detalhe do dia */
                 <div className="space-y-4">

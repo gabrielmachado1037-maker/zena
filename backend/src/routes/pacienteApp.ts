@@ -578,7 +578,7 @@ router.post("/mensagens", validateBody(mensagemSchema), async (req: PacienteAuth
     });
     const nome = paciente?.nome?.split(" ")[0] ?? "Um paciente";
     const previa = conteudo.length > 80 ? conteudo.slice(0, 77) + "..." : conteudo;
-    await enviarNotificacao(nutricionistaId, `Nova mensagem de ${nome}`, previa, "/app/mensagens");
+    await enviarNotificacao(nutricionistaId, `Nova mensagem de ${nome}`, previa, `/app/mensagens/${pacienteId}`, "conversation_nutri", pacienteId);
   } catch {
     /* silencioso */
   }

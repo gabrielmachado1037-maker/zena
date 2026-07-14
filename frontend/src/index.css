@@ -165,15 +165,15 @@ body,
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 .glow-hover:hover {
-  box-shadow: inset 0 0 20px rgba(124, 58, 237, 0.2);
-  background-color: #1A1A2E;
+  box-shadow: inset 0 0 20px rgba(124, 255, 91, 0.14);
+  background-color: #171A22;
 }
 .chat-bubble-nutri {
-  background: linear-gradient(135deg, #7c3aed 0%, #5a00c6 100%);
+  background: #7CFF5B;
   border-radius: 16px 16px 4px 16px;
 }
 .chat-bubble-patient {
-  background: #292937;
+  background: #1C212B;
   border-radius: 16px 16px 16px 4px;
 }
 

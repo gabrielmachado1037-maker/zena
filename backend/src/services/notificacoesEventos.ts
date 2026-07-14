@@ -31,7 +31,7 @@ export async function notificarFechamentoDia(
       await NotificationEngine.enviar(pacienteId, "liga_subiu", {
         titulo: "🏆 Você subiu de liga",
         corpo: `Agora você está na liga ${dados.ligaAtual} ${dados.ligaNivel}.`,
-        url: "/paciente/ligas",
+        destination: "ligas",
         dedupeKey: `liga_subiu:${dados.ligaAtual}:${dados.ligaNivel}`,
         minIntervalMin: 30,
       });
@@ -41,7 +41,7 @@ export async function notificarFechamentoDia(
     const marco = MARCOS_SEQUENCIA[dados.streakAtual];
     if (marco) {
       await NotificationEngine.enviar(pacienteId, "sequencia", {
-        ...marco, url: "/paciente/dashboard",
+        ...marco, destination: "dashboard_paciente",
         dedupeKey: `sequencia:${dados.streakAtual}`, minIntervalMin: 30,
       });
     }
@@ -55,11 +55,11 @@ export async function notificarFechamentoDia(
       });
       const pos = lista.findIndex((p) => p.id === pacienteId) + 1;
       if (pos === 1) {
-        await NotificationEngine.enviar(pacienteId, "ranking_primeiro", { titulo: "👑 Líder da liga", corpo: "Você é o líder da sua liga.", url: "/paciente/ranking", dedupeKey: "ranking_primeiro", minIntervalMin: 30 });
+        await NotificationEngine.enviar(pacienteId, "ranking_primeiro", { titulo: "👑 Líder da liga", corpo: "Você é o líder da sua liga.", destination: "ranking", dedupeKey: "ranking_primeiro", minIntervalMin: 30 });
       } else if (pos >= 2 && pos <= 3) {
-        await NotificationEngine.enviar(pacienteId, "ranking_top3", { titulo: "🚀 Top 3", corpo: "Agora você está entre os melhores.", url: "/paciente/ranking", dedupeKey: "ranking_top3", minIntervalMin: 30 });
+        await NotificationEngine.enviar(pacienteId, "ranking_top3", { titulo: "🚀 Top 3", corpo: "Agora você está entre os melhores.", destination: "ranking", dedupeKey: "ranking_top3", minIntervalMin: 30 });
       } else if (pos >= 4 && pos <= 10) {
-        await NotificationEngine.enviar(pacienteId, "ranking_top10", { titulo: "🥇 Top 10", corpo: "Você entrou no Top 10.", url: "/paciente/ranking", dedupeKey: "ranking_top10", minIntervalMin: 30 });
+        await NotificationEngine.enviar(pacienteId, "ranking_top10", { titulo: "🥇 Top 10", corpo: "Você entrou no Top 10.", destination: "ranking", dedupeKey: "ranking_top10", minIntervalMin: 30 });
       }
     }
 
@@ -71,7 +71,7 @@ export async function notificarFechamentoDia(
       if (faltam > 0 && faltam <= PROMO_FALTA_MAX) {
         await NotificationEngine.enviar(pacienteId, "liga_promo", {
           titulo: "✨ Quase lá!", corpo: `Faltam poucos pontos para subir para ${prox.liga} ${prox.nivel}.`,
-          url: "/paciente/ligas", dedupeKey: `liga_promo:${prox.liga}:${prox.nivel}`, minIntervalMin: 30,
+          destination: "ligas", dedupeKey: `liga_promo:${prox.liga}:${prox.nivel}`, minIntervalMin: 30,
         });
       }
     }

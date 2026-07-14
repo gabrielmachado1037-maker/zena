@@ -33,6 +33,12 @@ const TIPO_ENGINE: Record<HabitoTipo, string> = {
   agua: "agua", treino: "treino", sono: "sono",
 };
 
+// tipo do hábito → seção do Registro (deep-link ?foco=...).
+const FOCO_REGISTRO: Record<HabitoTipo, string> = {
+  cafe: "alimentacao", almoco: "alimentacao", lanche: "alimentacao", jantar: "alimentacao",
+  agua: "agua", treino: "treino", sono: "sono",
+};
+
 function inicioDeHoje(): Date {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -103,7 +109,8 @@ export async function enviarLembretesHabito(tipo: HabitoTipo, pacienteIds?: stri
 
     await NotificationEngine.enviar(p.id, TIPO_ENGINE[tipo], {
       ...MSG[tipo],
-      url: "/paciente/registro",
+      destination: "registro",
+      id: FOCO_REGISTRO[tipo],
       dedupeKey: `habito:${tipo}:${dia}`,
       minIntervalMin: 60,
     });
@@ -155,7 +162,7 @@ export async function enviarLembretesInteligentes(pacienteIds?: string[]): Promi
       if (jaRegistrou(tipo, reg, metaMl)) continue;
 
       await NotificationEngine.enviar(p.id, TIPO_ENGINE[tipo], {
-        ...MSG[tipo], url: "/paciente/registro",
+        ...MSG[tipo], destination: "registro", id: FOCO_REGISTRO[tipo],
         dedupeKey: `habito:${tipo}:${dia}`, minIntervalMin: 60,
       });
     }

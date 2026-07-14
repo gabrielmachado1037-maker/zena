@@ -29,15 +29,30 @@ export interface Mensagem {
   nome?: string; // primeiro nome do paciente (rótulo acima do balão)
 }
 
+// Contexto do paciente para o cabeçalho do chat (liga/score/sequência/último check-in).
+export interface PacienteContexto {
+  id: string;
+  nome: string;
+  avatarUrl: string | null;
+  objetivo: string;
+  ligaAtual: string;
+  streak: number;
+  ultimoCheckin: string | null; // ISO
+  online: boolean;
+  score: number; // 0–100 (adesão de check-ins nos últimos 30 dias)
+}
+
 export interface Thread {
   mensagens: Mensagem[];
   nutriAvatarUrl: string | null;
   pacienteAvatarUrl: string | null;
+  paciente: PacienteContexto | null;
 }
 
 interface ThreadResp {
   pacienteAvatarUrl: string | null;
   nutriAvatarUrl: string | null;
+  paciente?: PacienteContexto | null;
   mensagens: { id: string; autor: Autor; conteudo: string; anexoUrl?: string | null; criadoEm: string }[];
 }
 
@@ -68,6 +83,7 @@ export async function getThreadById(pacienteId: string, pacienteNome: string): P
   return {
     nutriAvatarUrl: data.nutriAvatarUrl,
     pacienteAvatarUrl: data.pacienteAvatarUrl,
+    paciente: data.paciente ?? null,
     mensagens: data.mensagens.map((m) => ({
       id: m.id,
       autor: m.autor,

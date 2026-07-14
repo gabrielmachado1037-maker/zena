@@ -423,7 +423,7 @@ export async function encerrarCiclo(cicloId: string) {
       top3[0].pacienteId,
       "👑 Parabéns! Você venceu!",
       `Você venceu o Ciclo ${String(ciclo.numero).padStart(2, "0")}! Seu escudo dourado está no topo!`,
-      "/paciente/relatorio/" + cicloId
+      "/paciente/relatorio/" + cicloId, "report", cicloId
     ).catch(console.error);
   }
 
@@ -432,7 +432,7 @@ export async function encerrarCiclo(cicloId: string) {
       p.pacienteId,
       "🎉 Ciclo encerrado!",
       `Veja seu relatório do Ciclo ${String(ciclo.numero).padStart(2, "0")}.`,
-      "/paciente/relatorio/" + cicloId
+      "/paciente/relatorio/" + cicloId, "report", cicloId
     ).catch(console.error);
   }
 
@@ -440,7 +440,7 @@ export async function encerrarCiclo(cicloId: string) {
     ciclo.nutricionistaId,
     `Ciclo ${String(ciclo.numero).padStart(2, "0")} encerrado`,
     `${total} participantes. Veja os relatórios.`,
-    "/app/ranking"
+    "/app/ranking", "app_ranking"
   ).catch(console.error);
 
   // ── Criar próximo ciclo automaticamente ──

@@ -59,7 +59,9 @@ export async function enviarNotificacao(
   nutricionistaId: string,
   titulo: string,
   corpo: string,
-  url = "/app/dashboard"
+  url = "/app/dashboard",
+  destination?: string,
+  id?: string | null
 ): Promise<void> {
   if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
 
@@ -69,7 +71,7 @@ export async function enviarNotificacao(
   });
   if (subs.length === 0) return;
 
-  const payload = JSON.stringify({ title: titulo, body: corpo, url });
+  const payload = JSON.stringify({ title: titulo, body: corpo, url, destination, id });
 
   await Promise.allSettled(
     subs.map(sub =>
@@ -93,7 +95,9 @@ export async function enviarNotificacaoPaciente(
   pacienteId: string,
   titulo: string,
   corpo: string,
-  url = "/paciente/feed"
+  url = "/paciente/feed",
+  destination?: string,
+  id?: string | null
 ): Promise<void> {
   if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
 
@@ -103,7 +107,7 @@ export async function enviarNotificacaoPaciente(
   });
   if (subs.length === 0) return;
 
-  const payload = JSON.stringify({ title: titulo, body: corpo, url });
+  const payload = JSON.stringify({ title: titulo, body: corpo, url, destination, id });
 
   await Promise.allSettled(
     subs.map(sub =>

@@ -1,107 +1,143 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { MessagesSquare } from "lucide-react";
-import { getConversas, type Conversa } from "../lib/mensagens";
-import { deriveSituacao, type Situacao } from "../lib/comunicacao";
-import CommQueue from "../components/mensagens/CommQueue";
-import CommPanel from "../components/mensagens/CommPanel";
+import { MessagesSquare, Search } from "lucide-react";
+import { getConversas, formatHoraLista, type Conversa } from "../lib/mensagens";
+import Avatar from "../components/mensagens/Avatar";
 
-// Central de Comunicação (nutricionista) — não é um chat estilo WhatsApp: a tela é orientada
-// a intenção. Um motor client-side deriva QUEM precisa de um toque hoje e QUAL (responder /
-// parabenizar / cobrar retorno / incentivar / agendar consulta), com rascunho pronto pra enviar.
+type Filtro = "todas" | "nao_lidas" | "arquivadas";
+
+// Central de Conversas (nutricionista) — lista estilo WhatsApp Business: todas as conversas
+// ordenadas pela mensagem mais recente. Tocar abre o chat em tela cheia (/app/mensagens/:id).
 export default function Mensagens() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const alvoInicial = searchParams.get("paciente"); // deep-link vindo dos Registros Diários
   const [conversas, setConversas] = useState<Conversa[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selId, setSelId] = useState<string | null>(null);
-  // Situação "congelada" na seleção: abrir o paciente marca lido e mudaria a sugestão
-  // ao vivo (responder → incentivo). O painel mantém a leitura do momento em que abriu.
-  const [painelSituacao, setPainelSituacao] = useState<Situacao | null>(null);
+  const [busca, setBusca] = useState("");
+  const [filtro, setFiltro] = useState<Filtro>("todas");
 
-  const situacoes = useMemo<Record<string, Situacao>>(
-    () => Object.fromEntries(conversas.map((c) => [c.id, deriveSituacao(c)])),
-    [conversas],
-  );
-
-  // Fila ordenada por urgência (prioridade da situação; empata pela atividade mais recente).
-  const ordenadas = useMemo(() => {
-    return [...conversas].sort((a, b) => {
-      const pa = situacoes[a.id]?.prioridade ?? 9;
-      const pb = situacoes[b.id]?.prioridade ?? 9;
-      if (pa !== pb) return pa - pb;
-      const ta = a.ultimaAtividade ? new Date(a.ultimaAtividade).getTime() : 0;
-      const tb = b.ultimaAtividade ? new Date(b.ultimaAtividade).getTime() : 0;
-      return tb - ta;
-    });
-  }, [conversas, situacoes]);
+  // Deep-link legado ?paciente=<id> → abre direto a conversa.
+  const alvoInicial = searchParams.get("paciente");
+  useEffect(() => {
+    if (alvoInicial) navigate(`/app/mensagens/${alvoInicial}`, { replace: true });
+  }, [alvoInicial, navigate]);
 
   useEffect(() => {
     let vivo = true;
     getConversas()
-      .then((cs) => {
-        if (!vivo) return;
-        setConversas(cs);
-      })
+      .then((cs) => vivo && setConversas(cs))
       .catch(() => {})
       .finally(() => vivo && setLoading(false));
-    return () => {
-      vivo = false;
-    };
+    return () => { vivo = false; };
   }, []);
 
-  function selecionar(id: string) {
-    const c = conversas.find((x) => x.id === id);
-    setSelId(id);
-    setPainelSituacao(c ? deriveSituacao(c) : null);
-  }
+  const totalNaoLidas = useMemo(() => conversas.filter((c) => c.naoLidoCount > 0).length, [conversas]);
 
-  // Seleciona o paciente do deep-link (?paciente=), ou a primeira da fila, assim que existir.
-  useEffect(() => {
-    if (selId || ordenadas.length === 0) return;
-    const preferido = (alvoInicial && ordenadas.find((c) => c.id === alvoInicial)) || ordenadas[0];
-    selecionar(preferido.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ordenadas, selId, alvoInicial]);
+  const lista = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return conversas.filter((c) => {
+      if (filtro === "nao_lidas" && c.naoLidoCount === 0) return false;
+      if (filtro === "arquivadas") return false; // arquivamento chega em versão futura
+      if (termo && !c.nome.toLowerCase().includes(termo)) return false;
+      return true;
+    });
+  }, [conversas, busca, filtro]);
 
-  const conversa = useMemo(() => conversas.find((c) => c.id === selId) ?? null, [conversas, selId]);
-
-  function handleEnviado(id: string, previa: string) {
-    setConversas((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, previa, ultimaAtividade: new Date().toISOString(), naoLidoCount: 0 } : c)),
-    );
-  }
-
-  function handleLida(id: string) {
-    setConversas((prev) => prev.map((c) => (c.id === id ? { ...c, naoLidoCount: 0 } : c)));
-  }
+  const CHIPS: { key: Filtro; label: string }[] = [
+    { key: "todas", label: "Todas" },
+    { key: "nao_lidas", label: totalNaoLidas > 0 ? `Não lidas (${totalNaoLidas})` : "Não lidas" },
+    { key: "arquivadas", label: "Arquivadas" },
+  ];
 
   return (
-    <div className="flex h-screen gap-4 overflow-hidden bg-nx-bg-lowest p-4 text-nx-on-surface">
-      <CommQueue
-        conversas={ordenadas}
-        situacoes={situacoes}
-        ativaId={selId}
-        onSelect={selecionar}
-        loading={loading}
-      />
+    <div className="mx-auto max-w-3xl px-3 py-4 md:px-6 md:py-6">
+      <h1 className="text-headline-md font-bold text-nx-on-surface mb-4 px-1">Mensagens</h1>
 
-      {conversa && painelSituacao ? (
-        <CommPanel
-          key={conversa.id}
-          conversa={conversa}
-          situacao={painelSituacao}
-          onEnviado={handleEnviado}
-          onLida={handleLida}
-          onVerPerfil={() => navigate(`/app/pacientes/${conversa.id}`)}
+      {/* Busca */}
+      <div className="flex items-center gap-2 rounded-nx-md bg-nx-container border border-nx-border px-3 py-2.5 mb-3">
+        <Search size={18} className="text-nx-outline shrink-0" />
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar paciente…"
+          className="flex-1 bg-transparent text-body-md text-nx-on-surface placeholder:text-nx-outline focus:outline-none"
         />
+      </div>
+
+      {/* Filtros */}
+      <div className="flex gap-2 mb-4 overflow-x-auto hide-scrollbar">
+        {CHIPS.map((c) => (
+          <button
+            key={c.key}
+            onClick={() => setFiltro(c.key)}
+            className={`shrink-0 rounded-full px-4 py-1.5 text-label-md font-medium transition-colors ${
+              filtro === c.key
+                ? "bg-nx-evo text-nx-on-evo"
+                : "bg-nx-container text-nx-on-surface-variant border border-nx-border hover:text-nx-on-surface"
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Lista */}
+      {loading ? (
+        <div className="space-y-2">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-16 animate-pulse rounded-nx-md bg-nx-container/60" />
+          ))}
+        </div>
+      ) : filtro === "arquivadas" ? (
+        <EstadoVazio texto="Arquivamento de conversas chega em uma próxima versão." />
+      ) : lista.length === 0 ? (
+        <EstadoVazio texto={busca ? "Nenhum paciente encontrado." : "Nenhuma conversa ainda."} />
       ) : (
-        <div className="flex flex-1 flex-col items-center justify-center rounded-nx-lg border border-nx-border bg-nx-surface text-nx-on-surface-variant">
-          <MessagesSquare size={40} className="mb-3 text-nx-outline" />
-          <p className="text-body-md">{loading ? "Carregando…" : "Selecione um paciente para começar."}</p>
+        <div className="divide-y divide-nx-border/60 rounded-nx-lg border border-nx-border bg-nx-surface overflow-hidden">
+          {lista.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => navigate(`/app/mensagens/${c.id}`)}
+              className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-nx-surface-hover transition-colors"
+            >
+              <div className="relative shrink-0">
+                <Avatar url={c.avatarUrl} nome={c.nome} className="w-12 h-12 rounded-full" />
+                {c.online && (
+                  <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-nx-surface bg-nx-evo" />
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="flex-1 truncate font-semibold text-nx-on-surface">{c.nome}</p>
+                  <span className={`text-label-sm shrink-0 ${c.naoLidoCount > 0 ? "text-nx-evo" : "text-nx-outline"}`}>
+                    {formatHoraLista(c.ultimaAtividade)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className={`flex-1 truncate text-body-sm ${c.naoLidoCount > 0 ? "text-nx-on-surface" : "text-nx-on-surface-variant"}`}>
+                    {c.previa}
+                  </p>
+                  {c.naoLidoCount > 0 && (
+                    <span className="shrink-0 min-w-[20px] h-5 px-1.5 grid place-items-center rounded-full bg-nx-evo text-nx-on-evo text-[11px] font-bold">
+                      {c.naoLidoCount > 99 ? "99+" : c.naoLidoCount}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </button>
+          ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function EstadoVazio({ texto }: { texto: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-nx-lg border border-nx-border bg-nx-surface py-16 text-nx-on-surface-variant">
+      <MessagesSquare size={40} className="mb-3 text-nx-outline" />
+      <p className="text-body-md">{texto}</p>
     </div>
   );
 }

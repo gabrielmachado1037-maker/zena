@@ -316,7 +316,7 @@ router.post("/:id/lembrete", async (req: AuthRequest, res: Response) => {
 
   const alvo = d.progresso.map((p) => p.pacienteId);
   await Promise.all(alvo.map((pid) =>
-    enviarNotificacaoPaciente(pid, "Vamos nessa! 💪", `Continue firme no desafio "${d.titulo}".`, "/paciente/desafios").catch(() => {})
+    enviarNotificacaoPaciente(pid, "Vamos nessa! 💪", `Continue firme no desafio "${d.titulo}".`, `/paciente/desafios?d=${d.id}`, "challenge", d.id).catch(() => {})
   ));
   res.json({ enviados: alvo.length });
 });

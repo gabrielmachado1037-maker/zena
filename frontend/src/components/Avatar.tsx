@@ -1,8 +1,9 @@
 import { useState } from "react";
 
+// Paleta neutra/verde-tinta (sem roxo) para iniciais — coerente com o tema Nexvel.
 const COLORS = [
-  "#7C3AED", "#A855F7", "#40916C", "#A855F7",
-  "#6B21A8", "#7C3AED", "#B45309", "#D97706",
+  "#2F6F4F", "#3B8C6E", "#40916C", "#1D6F5C",
+  "#5A7A52", "#2E7D5B", "#B45309", "#D97706",
   "#0E7490", "#0369A1",
 ];
 

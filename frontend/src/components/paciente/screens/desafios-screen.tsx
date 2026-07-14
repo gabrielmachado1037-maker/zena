@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Check, Zap, Trophy, Gift, CalendarClock, Flame, Circle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { usePacienteData } from "@/lib/paciente-data"
@@ -200,9 +200,27 @@ export function DesafiosScreen() {
   const [celeb, setCeleb] = useState<Challenge | null>(null)
   const [fila, setFila] = useState<Challenge[]>([])
   const [marcandoId, setMarcandoId] = useState<string | null>(null)
+  const [destacadoId, setDestacadoId] = useState<string | null>(null)
+  const focoAplicado = useRef(false)
 
   const ativos = challenges.filter((c) => c.status === "ativo")
   const concluidos = challenges.filter((c) => c.status === "concluido")
+
+  // Deep-link ?d=<id> (notificação de desafio) — seleciona a aba, rola e destaca o card.
+  useEffect(() => {
+    if (focoAplicado.current) return
+    const alvo = new URLSearchParams(window.location.search).get("d")
+    if (!alvo) { focoAplicado.current = true; return }
+    const alvoDesafio = challenges.find((c) => c.id === alvo)
+    if (!alvoDesafio) return // aguarda os desafios carregarem
+    focoAplicado.current = true
+    if (alvoDesafio.status === "concluido") setTab("concluidos")
+    setDestacadoId(alvo)
+    window.setTimeout(() => {
+      document.getElementById(`desafio-${alvo}`)?.scrollIntoView({ behavior: "smooth", block: "center" })
+    }, 300)
+    window.setTimeout(() => setDestacadoId(null), 2600)
+  }, [challenges])
 
   const doneKey = useMemo(() => concluidos.map((c) => c.id).join(","), [concluidos])
 
@@ -285,7 +303,13 @@ export function DesafiosScreen() {
       ) : (
         <div className="space-y-4">
           {lista.map((c) => (
-            <EventCard key={c.id} c={c} marcando={marcandoId === c.id} onResgatar={setCeleb} onCumprir={cumprir} />
+            <div
+              key={c.id}
+              id={`desafio-${c.id}`}
+              className={cn("rounded-nx-lg transition-shadow", destacadoId === c.id && "ring-2 ring-nx-evo ring-offset-2 ring-offset-nx-bg")}
+            >
+              <EventCard c={c} marcando={marcandoId === c.id} onResgatar={setCeleb} onCumprir={cumprir} />
+            </div>
           ))}
         </div>
       )}

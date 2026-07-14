@@ -1,5 +1,6 @@
 import prisma from "../lib/prisma";
 import { enviarNotificacaoPaciente } from "../routes/notificacoes";
+import { deepLink } from "../lib/deepLink";
 
 /**
  * NotificationEngine — ÚNICO caminho de envio de notificação ao paciente.
@@ -38,6 +39,10 @@ const TZ_PADRAO = "America/Sao_Paulo";
 interface EnviarOpts {
   titulo: string;
   corpo: string;
+  /** Deep-link estruturado (preferido) — resolve a rota via lib/deepLink e viaja no payload. */
+  destination?: string;
+  id?: string | null;
+  /** Override de rota legado; se ausente, deriva de destination (ou cai em /paciente/feed). */
   url?: string;
   /** Se informado, não reenvia se já houve um envio com a mesma chave (idempotência). */
   dedupeKey?: string;
@@ -70,7 +75,7 @@ async function registrarLog(
  * Nunca lança — é best-effort e sempre registra o desfecho no NotificacaoLog.
  */
 export async function enviar(pacienteId: string, tipo: string, opts: EnviarOpts): Promise<void> {
-  const url = opts.url ?? "/paciente/feed";
+  const url = opts.url ?? (opts.destination ? deepLink(opts.destination, opts.id) : "/paciente/feed");
   try {
     const categoria = CATEGORIA_DO_TIPO[tipo];
     const pac = await prisma.paciente.findUnique({
@@ -111,7 +116,9 @@ export async function enviar(pacienteId: string, tipo: string, opts: EnviarOpts)
     // 5) Envia e registra (com deep-link ?n=<logId> para rastrear abertura).
     const log = await registrarLog(pacienteId, tipo, opts, url, "enviado");
     const sep = url.includes("?") ? "&" : "?";
-    await enviarNotificacaoPaciente(pacienteId, opts.titulo, opts.corpo, `${url}${sep}n=${log.id}`);
+    await enviarNotificacaoPaciente(
+      pacienteId, opts.titulo, opts.corpo, `${url}${sep}n=${log.id}`, opts.destination, opts.id ?? undefined,
+    );
   } catch (e) {
     console.error("[NotificationEngine]", tipo, (e as Error)?.message ?? e);
   }

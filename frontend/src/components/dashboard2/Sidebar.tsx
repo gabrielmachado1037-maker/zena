@@ -4,6 +4,7 @@ import {
   MessageSquare, BarChart3, Settings, LogOut, Sparkles,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useMensagensNaoLidas } from "../../hooks/useMensagensNaoLidas";
 import Avatar from "../Avatar";
 
 const NAV = [
@@ -11,19 +12,30 @@ const NAV = [
   { label: "Pacientes", icon: Users, to: "/app/pacientes" },
   { label: "Ligas", icon: Trophy, to: "/app/ligas" },
   { label: "Desafios", icon: Award, to: "/app/desafios" },
-  { label: "Registros", icon: ClipboardList, to: "/app/feed" },
   { label: "Mensagens", icon: MessageSquare, to: "/app/mensagens" },
+  { label: "Registros", icon: ClipboardList, to: "/app/feed" },
   { label: "Insights", icon: BarChart3, to: "/app/relatorios" },
   { label: "Configurações", icon: Settings, to: "/app/perfil" },
 ];
 
-const MOBILE = NAV.slice(0, 5);
+const MOBILE = NAV.slice(0, 6);
+
+// Badge vermelho de não-lidas (mostra 9+ acima de 9).
+function BadgeNaoLidas({ count, className = "" }: { count: number; className?: string }) {
+  if (count <= 0) return null;
+  return (
+    <span className={`min-w-[18px] h-[18px] px-1 grid place-items-center rounded-full bg-nx-danger text-white text-[10px] font-bold leading-none ${className}`}>
+      {count > 9 ? "9+" : count}
+    </span>
+  );
+}
 
 export function DashboardSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { nutricionista, logout } = useAuth();
   const nome = nutricionista?.nome ?? "Nutricionista";
+  const naoLidas = useMensagensNaoLidas();
 
   const isActive = (to: string) => location.pathname === to || location.pathname.startsWith(to + "/");
 
@@ -52,6 +64,7 @@ export function DashboardSidebar() {
               >
                 <Icon size={20} className={active ? "text-nx-evo" : "text-nx-outline group-hover:text-nx-on-surface"} />
                 <span>{label}</span>
+                {to === "/app/mensagens" && <BadgeNaoLidas count={naoLidas} className="ml-auto" />}
               </button>
             );
           })}
@@ -99,11 +112,12 @@ export function DashboardSidebar() {
               aria-current={active ? "page" : undefined}
             >
               <span
-                className={`grid place-items-center rounded-full px-4 py-1 transition-colors ${
+                className={`relative grid place-items-center rounded-full px-4 py-1 transition-colors ${
                   active ? "bg-nx-evo text-nx-on-evo shadow-nx-evo" : "text-nx-outline"
                 }`}
               >
                 <Icon size={20} />
+                {to === "/app/mensagens" && <BadgeNaoLidas count={naoLidas} className="absolute -top-1 -right-0.5" />}
               </span>
               <span className={`text-label-sm ${active ? "text-nx-evo" : "text-nx-on-surface-variant"}`}>{label}</span>
             </button>

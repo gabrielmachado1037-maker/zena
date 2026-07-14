@@ -37,6 +37,7 @@ interface ProgComDesafio {
   encerradoEm: Date | null;
   diasManuais: string[];
   desafio: {
+    id: string;
     tipo: string;
     duracaoDias: number;
     dataInicio: Date | null;
@@ -48,7 +49,7 @@ interface ProgComDesafio {
 }
 
 const SELECT_DESAFIO = {
-  tipo: true, duracaoDias: true, dataInicio: true, dataFim: true,
+  id: true, tipo: true, duracaoDias: true, dataInicio: true, dataFim: true,
   pontosBonus: true, titulo: true, icone: true,
 } as const;
 
@@ -202,19 +203,22 @@ async function processarProgresso(prog: ProgComDesafio, hoje: Date): Promise<voi
     "🏆 Desafio concluído",
     `${pac.nome} concluiu o desafio "${d.titulo}".`,
     `/app/pacientes/${prog.pacienteId}`,
+    "patient",
+    prog.pacienteId,
   ).catch((e) => console.error("[desafio] notificar nutri", e));
 
   // Notifica o PACIENTE — desafio concluído + medalha (via NotificationEngine).
   NotificationEngine.enviar(prog.pacienteId, "desafio_concluido", {
     titulo: "🎉 Parabéns!",
     corpo: `Você concluiu seu desafio "${d.titulo}".`,
-    url: "/paciente/desafios",
+    destination: "challenge",
+    id: d.id,
     dedupeKey: `desafio_concluido:${prog.id}`,
   }).catch(() => {});
   NotificationEngine.enviar(prog.pacienteId, "medalha", {
     titulo: "🏅 Nova medalha desbloqueada",
     corpo: `Você ganhou uma medalha por concluir "${d.titulo}".`,
-    url: "/paciente/conta",
+    destination: "conta_paciente",
     dedupeKey: `medalha:desafio_concluido:${prog.id}`,
     minIntervalMin: 5,
   }).catch(() => {});

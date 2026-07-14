@@ -32,6 +32,7 @@ const Ligas         = lazy(() => import("./pages/Ligas"));
 const Relatorios    = lazy(() => import("./pages/Relatorios"));
 const Desafios      = lazy(() => import("./pages/Desafios"));
 const Mensagens     = lazy(() => import("./pages/Mensagens"));
+const Conversa      = lazy(() => import("./pages/Conversa"));
 const EmBreve       = lazy(() => import("./pages/EmBreve"));
 const DesignShowcase = lazy(() => import("./pages/DesignShowcase"));
 const Feed               = lazy(() => import("./pages/Feed"));
@@ -108,6 +109,7 @@ function AppRoutes() {
           <Route path="feed" element={<RotaProtegida modulo="feed"><Feed /></RotaProtegida>} />
           <Route path="desafios" element={<Desafios />} />
           <Route path="mensagens" element={<Mensagens />} />
+          <Route path="mensagens/:id" element={<Conversa />} />
           <Route path="relatorios" element={<Relatorios />} />
         </Route>
         {/* Paciente routes */}

@@ -110,9 +110,29 @@ router.get("/thread/:pacienteId", async (req: AuthRequest, res: Response) => {
     data: { lida: true },
   });
 
+  // Contexto do paciente para o cabeçalho do chat (liga/score/sequência/último check-in).
+  const agora = new Date();
+  const ini30 = new Date(agora);
+  ini30.setDate(ini30.getDate() - 29);
+  ini30.setHours(0, 0, 0, 0);
+  const checkins30 = await prisma.registro.count({
+    where: { pacienteId, finalizado: true, data: { gte: ini30 } },
+  });
+
   res.json({
     pacienteAvatarUrl: paciente.fotoPerfilUrl ?? null,
     nutriAvatarUrl: nutri?.foto ?? null,
+    paciente: {
+      id: paciente.id,
+      nome: paciente.nome,
+      avatarUrl: paciente.fotoPerfilUrl ?? null,
+      objetivo: paciente.objetivo,
+      ligaAtual: `${paciente.ligaAtual} ${paciente.ligaNivel}`,
+      streak: paciente.streakAtual,
+      ultimoCheckin: paciente.ultimoCheckin ?? null,
+      online: paciente.ultimoCheckin ? mesmoDia(paciente.ultimoCheckin, agora) : false,
+      score: Math.min(100, Math.round((checkins30 / 30) * 100)),
+    },
     mensagens: mensagens.map((m) => ({
       id: m.id,
       autor: m.autor,
@@ -121,6 +141,15 @@ router.get("/thread/:pacienteId", async (req: AuthRequest, res: Response) => {
       criadoEm: m.criadoEm,
     })),
   });
+});
+
+// GET /api/mensagens/nao-lidas — total de mensagens de pacientes ainda não lidas (badge da barra).
+router.get("/nao-lidas", async (req: AuthRequest, res: Response) => {
+  const nutricionistaId = req.nutricionistaId as string;
+  const total = await prisma.mensagemChat.count({
+    where: { nutricionistaId, autor: "paciente", lida: false },
+  });
+  res.json({ total });
 });
 
 // POST /api/mensagens/thread/:pacienteId — nutri envia uma mensagem (persiste + notifica paciente).
@@ -160,7 +189,7 @@ router.post("/thread/:pacienteId", validateBody(enviarMensagemSchema), async (re
     NotificationEngine.enviar(pacienteId, "mensagem", {
       titulo: "💬 Sua nutricionista enviou uma nova mensagem",
       corpo: previa.length > 80 ? previa.slice(0, 77) + "..." : previa,
-      url: "/paciente/dashboard",
+      destination: "conversation_paciente",
     }).catch(() => {});
   }
 

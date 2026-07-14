@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Check, Flame, TrendingUp, ChevronRight, Dumbbell, Moon, ChevronDown,
   Coffee, Utensils, Cookie, Soup, Leaf, Meh, CircleSlash, CircleCheck, CircleDashed, type LucideIcon,
@@ -126,6 +126,24 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const [erro, setErro] = useState("")
   const [celeb, setCeleb] = useState<Celebracao | null>(null)
   const saveTimer = useRef<number | null>(null)
+
+  // Deep-link ?foco=agua|alimentacao|treino|sono (lembrete de hábito) — rola/abre a seção.
+  const alimentacaoRef = useRef<HTMLDivElement>(null)
+  const aguaRef = useRef<HTMLDivElement>(null)
+  const focoAplicado = useRef(false)
+  useEffect(() => {
+    if (focoAplicado.current) return
+    const foco = new URLSearchParams(window.location.search).get("foco")
+    if (!foco) return
+    focoAplicado.current = true
+    const t = window.setTimeout(() => {
+      if (foco === "sono") setSheet("sono")
+      else if (foco === "treino" && diaDeTreino) setSheet("treino")
+      else if (foco === "alimentacao") alimentacaoRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+      else if (foco === "agua") aguaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" })
+    }, 300)
+    return () => window.clearTimeout(t)
+  }, [diaDeTreino])
 
   const xpAlim = calcularXpAlimentacao(planoKeys.map((k) => state.refeicoes[k]?.status ?? null))
   // Dia de descanso: treino creditado automaticamente (+3), missão não aparece.
@@ -268,7 +286,7 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
       </div>
 
       {/* Alimentação */}
-      <div className={cn("rounded-nx-lg border p-4 transition-colors", xpAlim >= 3 ? "border-nx-evo/40 bg-nx-evo/10" : "border-nx-border bg-nx-surface")}>
+      <div ref={alimentacaoRef} className={cn("rounded-nx-lg border p-4 transition-colors", xpAlim >= 3 ? "border-nx-evo/40 bg-nx-evo/10" : "border-nx-border bg-nx-surface")}>
         <div className="flex items-center gap-4">
           <div className={cn("grid size-12 shrink-0 place-items-center rounded-nx-md", xpAlim >= 3 ? "bg-nx-evo/15" : "bg-nx-container-high")}>
             {xpAlim >= 3 ? <Check className="nx-pop size-6 text-nx-evo" strokeWidth={3} /> : <Utensils className="size-6 text-nx-on-surface-variant" />}
@@ -290,7 +308,9 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
       </div>
 
       {/* Água */}
-      <WaterProgress ml={state.aguaMl} metaMl={metaMl} onAdd={addAgua} />
+      <div ref={aguaRef}>
+        <WaterProgress ml={state.aguaMl} metaMl={metaMl} onAdd={addAgua} />
+      </div>
 
       {/* Treino + Sono (bottom sheets) */}
       <div className="space-y-3">
