@@ -216,7 +216,7 @@ function StatusChip({ label, cor }: { label: string; cor: string }) {
   );
 }
 
-/* ── Card do paciente = "personagem em evolução" ── */
+/* ── Card do paciente = "personagem em evolução" (compacto) ── */
 function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: ReturnType<typeof useNavigate> }) {
   const reduce = useReducedMotion();
   const { pct, faltam, proxima } = progressoLiga(p.pontosTotal);
@@ -224,7 +224,9 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
   const dias = diasDesde(p.ultimoCheckin);
   const emRisco = p.diasInativo >= 3 || dias === null || dias > 2;
   const status = statusDe(p);
-  const perto = proxima != null && pct >= 85;
+  // "Faltam X XP para próxima liga" é obrigatório; destaque quando falta pouco.
+  const faltamPoucoXP = proxima != null && faltam > 0 && faltam < 100;
+  const perto = proxima != null && (faltamPoucoXP || pct >= 85);
 
   const go = (to: string) => (e: React.MouseEvent) => { e.stopPropagation(); navigate(to); };
   const acoes = [
@@ -241,12 +243,12 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
       transition={{ delay: reduce ? 0 : i * 0.035, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       whileHover={reduce ? undefined : { y: -4, boxShadow: `0 20px 54px -20px ${cor}40`, transition: { duration: 0.18 } }}
       onClick={() => navigate(`/app/pacientes/${p.id}`)}
-      className="group relative cursor-pointer rounded-2xl bg-nx-surface border border-nx-border p-5 transition-colors duration-[180ms] hover:border-nx-outline"
+      className="group relative cursor-pointer rounded-2xl bg-nx-surface border border-nx-border p-4 transition-colors duration-[180ms] hover:border-nx-outline"
     >
-      {/* Identidade + brasão */}
-      <div className="flex items-start gap-3.5">
-        <div className="relative shrink-0 rounded-full p-[2px]" style={{ boxShadow: `0 0 0 1.5px ${cor}66` }}>
-          <Avatar src={p.fotoPerfilUrl} nome={p.nome} tamanho={46} className="rounded-full" />
+      {/* Identidade + brasão — anel do avatar = score visual (status) */}
+      <div className="flex items-start gap-3">
+        <div className="relative shrink-0 rounded-full p-[2px]" style={{ boxShadow: `0 0 0 2px ${status.cor}`, filter: `drop-shadow(0 0 6px ${status.cor}55)` }}>
+          <Avatar src={p.fotoPerfilUrl} nome={p.nome} tamanho={42} className="rounded-full" />
           {!p.fotoPerfilUrl && (
             <span
               title="Sem foto"
@@ -257,27 +259,27 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
           )}
         </div>
         <div className="min-w-0 flex-1 pt-0.5">
-          <p className="truncate text-[17px] font-bold leading-tight text-nx-on-surface">{p.nome}</p>
-          <p className="mt-1 truncate text-body-sm text-nx-on-surface-variant">{p.objetivo || "Sem objetivo definido"}</p>
-          <div className="mt-2.5"><StatusChip label={status.label} cor={status.cor} /></div>
+          <p className="truncate text-body-lg font-bold leading-tight text-nx-on-surface">{p.nome}</p>
+          <p className="mt-0.5 truncate text-body-sm text-nx-on-surface-variant">{p.objetivo || "Sem objetivo definido"}</p>
+          <div className="mt-2"><StatusChip label={status.label} cor={status.cor} /></div>
         </div>
-        <div className="flex shrink-0 flex-col items-center gap-1">
-          <span className="inline-flex" style={{ filter: `drop-shadow(0 0 12px ${cor}55)` }}><LeagueEmblem liga={p.ligaAtual} size={54} /></span>
+        <div className="flex shrink-0 flex-col items-center gap-0.5">
+          <span className="inline-flex" style={{ filter: `drop-shadow(0 0 10px ${cor}55)` }}><LeagueEmblem liga={p.ligaAtual} size={44} /></span>
           <span className="text-label-sm font-bold leading-none" style={{ color: cor }}>{p.ligaAtual} {p.ligaNivel}</span>
         </div>
       </div>
 
       {/* XP + progresso na liga */}
-      <div className="mt-5">
+      <div className="mt-3.5">
         <div className="flex items-baseline justify-between">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-[26px] font-extrabold leading-none tracking-tight tabular-nums text-nx-on-surface">{nf(p.pontosTotal)}</span>
+            <span className="text-[22px] font-extrabold leading-none tracking-tight tabular-nums text-nx-on-surface">{nf(p.pontosTotal)}</span>
             <span className="text-label-md font-semibold text-nx-on-surface-variant">XP</span>
           </div>
-          <span className="text-label-md font-semibold tabular-nums" style={{ color: cor }}>{pct}%</span>
+          <span className="text-label-md font-semibold tabular-nums" style={{ color: cor }}>{proxima ? `${pct}%` : "MÁX"}</span>
         </div>
 
-        <div className="mt-2.5 h-2.5 overflow-hidden rounded-full bg-nx-container-high">
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-nx-container-high">
           <motion.div
             className="h-full rounded-full"
             style={{ background: cor, boxShadow: `0 0 12px ${cor}80, 0 0 3px ${cor}` }}
@@ -287,19 +289,22 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
           />
         </div>
 
-        <p
-          className="mt-2.5 text-label-sm"
-          style={perto ? { color: cor, fontWeight: 600 } : { color: "#6B7280" }}
-        >
-          {proxima ? `${perto ? "Quase lá — faltam" : "Faltam"} ${nf(faltam)} pts para ${proxima.liga} ${proxima.nivel}` : "Liga máxima atingida 👑"}
-        </p>
+        {faltamPoucoXP ? (
+          <p className="mt-2 text-label-sm font-bold" style={{ color: cor }}>
+            🚀 Apenas {nf(faltam)} XP para {proxima!.liga} {proxima!.nivel}
+          </p>
+        ) : (
+          <p className="mt-2 text-label-sm" style={perto ? { color: cor, fontWeight: 600 } : { color: "#9CA3AF" }}>
+            {proxima ? `Faltam ${nf(faltam)} XP para ${proxima.liga} ${proxima.nivel}` : "Liga máxima atingida 👑"}
+          </p>
+        )}
       </div>
 
-      {/* Último check-in + sequência */}
-      <div className="mt-4 flex items-center justify-between border-t border-nx-border pt-3.5">
+      {/* Último check-in + sequência (compacto) */}
+      <div className="mt-3 flex items-center justify-between border-t border-nx-border pt-3">
         <span className={`flex items-center gap-1.5 text-label-md ${emRisco ? "text-nx-danger" : "text-nx-on-surface-variant"}`}>
           <Clock size={13} />
-          {dias === null ? "Nunca registrou" : dias === 0 ? "Registrou hoje" : dias === 1 ? "Ontem" : `${dias} dias atrás`}
+          {dias === null ? "Nunca registrou" : dias === 0 ? "Hoje" : dias === 1 ? "Ontem" : `${dias} dias`}
         </span>
         {p.streakAtual > 0 && (
           <span className="flex items-center gap-1 text-label-md font-semibold text-nx-streak">
@@ -309,7 +314,7 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
       </div>
 
       {/* Ações rápidas — reveladas no hover (desktop); sempre visíveis no toque (mobile) */}
-      <div className="grid grid-cols-5 gap-2 overflow-hidden transition-all duration-[180ms] ease-out mt-3 max-h-14 opacity-100 md:mt-0 md:max-h-0 md:opacity-0 md:group-hover:mt-3 md:group-hover:max-h-14 md:group-hover:opacity-100">
+      <div className="grid grid-cols-4 gap-2 overflow-hidden transition-all duration-[180ms] ease-out mt-2.5 max-h-14 opacity-100 md:mt-0 md:max-h-0 md:opacity-0 md:group-hover:mt-2.5 md:group-hover:max-h-14 md:group-hover:opacity-100">
         {acoes.map((a) => (
           <button
             key={a.title}

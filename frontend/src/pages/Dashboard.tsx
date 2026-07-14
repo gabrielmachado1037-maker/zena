@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Flame, ChevronRight, Sparkles, Users, ShieldAlert, TrendingUp, TrendingDown, Minus,
-  MessageSquare, Target, ArrowRight, Trophy, Utensils, Dumbbell, Droplets, Moon,
+  ChevronRight, Sparkles, ShieldAlert, TrendingUp, TrendingDown, Minus,
+  MessageSquare, Target, ArrowRight, Trophy, Utensils, Dumbbell, Droplets, Moon, CheckCircle2,
 } from "lucide-react";
 import { useFetch } from "../hooks/useFetch";
 import Avatar from "../components/Avatar";
 import AccountSheet from "../components/AccountSheet";
 import { useAuth } from "../contexts/AuthContext";
-import { CORES_LIGA } from "../lib/ligas";
+import { CORES_LIGA, progressoLiga } from "../lib/ligas";
 
 /* ───────── shapes reais da API ───────── */
 type Risco = "risco" | "atencao" | "ok";
@@ -38,6 +38,7 @@ interface LigasResp {
 }
 
 const nf = (n: number) => n.toLocaleString("pt-BR");
+const RISCO_RANK: Record<Risco, number> = { risco: 0, atencao: 1, ok: 2 };
 
 const HABITO = {
   alimentacao: { label: "Alimentação", Icon: Utensils, cor: "#7CFF5B" },
@@ -67,26 +68,44 @@ const TONE_TEXT: Record<Risco, string> = {
   risco: "text-nx-danger", atencao: "text-nx-streak", ok: "text-nx-on-surface-variant",
 };
 
+/* Cor do score de aderência (0–100) → semáforo. */
+function scoreCor(s: number) {
+  return s >= 60 ? "#7CFF5B" : s >= 35 ? "#F8C84B" : "#FF5D5D";
+}
+
 /* ───────── página ───────── */
 export default function Dashboard() {
   const navigate = useNavigate();
   const { nutricionista } = useAuth();
   const { data, loading, error, refetch } = useFetch<LigasResp>("/dashboard/ligas");
+  const { data: conversas } = useFetch<{ naoLidoCount: number }[]>("/mensagens/conversas");
   const [filtro, setFiltro] = useState<"todos" | "criticos" | "hoje">("todos");
   const [contaOpen, setContaOpen] = useState(false);
 
   const k = data?.kpis;
   const primeiroNome = (data?.nutri?.nome ?? "").trim().split(/\s+/)[0] || "";
 
+  const mensagensNaoLidas = useMemo(
+    () => (Array.isArray(conversas) ? conversas : []).reduce((s, c) => s + (c.naoLidoCount || 0), 0),
+    [conversas],
+  );
+
   const lista = data?.pacientesLista ?? [];
   const criticos = useMemo(() => lista.filter((p) => p.risco === "risco"), [lista]);
   const listaFiltrada = useMemo(() => {
-    if (filtro === "criticos") return criticos;
-    if (filtro === "hoje") return lista.filter((p) => p.diasInativo === 0);
-    return lista;
+    let base = lista;
+    if (filtro === "criticos") base = criticos;
+    else if (filtro === "hoje") base = lista.filter((p) => p.diasInativo === 0);
+    // apresenta quem precisa de atenção no topo (só ordenação visual, não muda dados)
+    return [...base].sort((a, b) => RISCO_RANK[a.risco] - RISCO_RANK[b.risco]);
   }, [lista, criticos, filtro]);
 
-  // hábito mais difícil da clínica (Resumo Inteligente)
+  const irParaPrioridades = () => {
+    setFiltro("criticos");
+    document.getElementById("prioridades")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  // hábito mais difícil da clínica (Panorama)
   const piorHabito = useMemo(() => {
     const d = data?.desempenhoCategoria;
     if (!d) return null;
@@ -98,7 +117,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-nx-bg-lowest text-nx-on-surface font-sans">
       <main className="mx-auto max-w-6xl px-4 py-6 pb-24 md:px-6 lg:pb-8">
         {/* Boas-vindas */}
-        <header className="mb-7 flex items-start justify-between gap-4">
+        <header className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-headline-lg text-nx-on-surface">
               {saudacao()}{primeiroNome ? `, ${primeiroNome}` : ""} 👋
@@ -121,20 +140,41 @@ export default function Dashboard() {
           </button>
         </header>
 
-        {/* 3 indicadores com tendência */}
-        <section className="mb-9 grid gap-3 sm:grid-cols-3">
-          <AderenciaCard s={data?.aderenciaSemana} loading={loading} />
-          <CriticosCard n={k?.emRisco} total={k?.pacientesAtivos} loading={loading}
-            onClick={() => { setFiltro("criticos"); document.getElementById("carteira")?.scrollIntoView({ behavior: "smooth", block: "start" }); }} />
-          <RetencaoCard pct={data?.retencaoPrevista} loading={loading} />
+        {/* 1 · Resumo Inteligente (será preenchido pela IA no futuro) */}
+        <section className="mb-6">
+          <ResumoInteligente
+            loading={loading}
+            emRisco={k?.emRisco}
+            evoluiram={data?.subiramSemana?.length}
+            mensagens={conversas ? mensagensNaoLidas : undefined}
+            desafios={data?.desafiosResumo?.ativos}
+            onPrioridades={irParaPrioridades}
+          />
         </section>
 
-        {/* Carteira de pacientes */}
-        <section id="carteira" className="mb-9 scroll-mt-6">
+        {/* 2 · Indicadores compactos */}
+        <section className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <StatTile Icon={CheckCircle2} cor="#7CFF5B" label="Check-ins hoje" valor={k?.checkinsHoje} loading={loading} />
+          <StatTile Icon={ShieldAlert} cor="#FF5D5D" label="Críticos" valor={k?.emRisco} loading={loading}
+            mudo={(k?.emRisco ?? 0) === 0} onClick={irParaPrioridades} />
+          <StatTile Icon={MessageSquare} cor="#49A8FF" label="Mensagens" valor={mensagensNaoLidas}
+            loading={loading} mudo={mensagensNaoLidas === 0} onClick={() => navigate("/app/mensagens")} />
+          <StatTile Icon={TrendingUp} cor="#F8C84B" label="Evoluíram" valor={data?.subiramSemana?.length} loading={loading} />
+          <StatTile Icon={Target} cor="#FF8A1F" label="Desafios" valor={data?.desafiosResumo?.ativos} loading={loading}
+            mudo={(data?.desafiosResumo?.ativos ?? 0) === 0} onClick={() => navigate("/app/desafios")} />
+        </section>
+
+        {/* 3 · Adesão da clínica */}
+        <section className="mb-8">
+          <AdesaoPremium ader={data?.aderenciaSemana} retencao={data?.retencaoPrevista} loading={loading} />
+        </section>
+
+        {/* 4 · Pacientes que precisam de você */}
+        <section id="prioridades" className="mb-9 scroll-mt-6">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <h2 className="text-body-lg font-semibold text-nx-on-surface">Carteira de pacientes</h2>
-              <span className="rounded-full bg-nx-container-high px-2 py-0.5 text-label-md font-semibold tabular-nums text-nx-on-surface-variant">{lista.length}</span>
+              <h2 className="text-body-lg font-semibold text-nx-on-surface">Pacientes que precisam de você</h2>
+              <span className="rounded-full bg-nx-container-high px-2 py-0.5 text-label-md font-semibold tabular-nums text-nx-on-surface-variant">{listaFiltrada.length}</span>
             </div>
             <div className="flex items-center gap-1 rounded-full border border-nx-border bg-nx-surface p-0.5">
               {([["todos", "Todos"], ["criticos", "Em risco"], ["hoje", "Ativos hoje"]] as const).map(([key, label]) => (
@@ -152,26 +192,11 @@ export default function Dashboard() {
               {listaFiltrada.length === 0 ? (
                 <EmptyCarteira filtro={filtro} />
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] border-collapse text-left">
-                    <thead>
-                      <tr className="border-b border-nx-border text-label-md uppercase tracking-wide text-nx-on-surface-variant">
-                        <th className="px-4 py-2.5 font-semibold">Paciente</th>
-                        <th className="px-3 py-2.5 font-semibold">Liga</th>
-                        <th className="px-3 py-2.5 font-semibold">Sequência</th>
-                        <th className="px-3 py-2.5 font-semibold">Aderência</th>
-                        <th className="hidden px-3 py-2.5 font-semibold lg:table-cell">Sem check-in</th>
-                        <th className="hidden px-3 py-2.5 font-semibold lg:table-cell">Maior dificuldade</th>
-                        <th className="px-3 py-2.5 text-right font-semibold">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {listaFiltrada.map((p) => (
-                        <PacienteRow key={p.id} p={p} onOpen={() => navigate(`/app/pacientes/${p.id}`)} navigate={navigate} />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <ul className="divide-y divide-nx-border/70">
+                  {listaFiltrada.map((p) => (
+                    <PrioridadeRow key={p.id} p={p} onOpen={() => navigate(`/app/pacientes/${p.id}`)} navigate={navigate} />
+                  ))}
+                </ul>
               )}
             </StateBox>
           </div>
@@ -196,11 +221,11 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Resumo Inteligente da Clínica */}
+        {/* Panorama da clínica (métricas de 30 dias) */}
         <section>
           <div className="mb-3 flex items-center gap-2">
             <Sparkles className="size-4 text-nx-evo" />
-            <h2 className="text-body-lg font-semibold text-nx-on-surface">Resumo inteligente da clínica</h2>
+            <h2 className="text-body-lg font-semibold text-nx-on-surface">Panorama da clínica</h2>
             <span className="text-label-md uppercase tracking-wide text-nx-on-surface-variant">calculado · 30 dias</span>
           </div>
           <div className="rounded-nx-lg border border-nx-border bg-nx-surface p-5">
@@ -236,7 +261,97 @@ export default function Dashboard() {
   );
 }
 
-/* ───────── indicadores ───────── */
+/* ───────── 1 · Resumo Inteligente ───────── */
+function ResumoInteligente({
+  loading, emRisco, evoluiram, mensagens, desafios, onPrioridades,
+}: {
+  loading: boolean; emRisco?: number; evoluiram?: number; mensagens?: number; desafios?: number;
+  onPrioridades: () => void;
+}) {
+  const linhas: { cor: string; texto: React.ReactNode }[] = [];
+  if (emRisco != null)
+    linhas.push({ cor: "#FF5D5D", texto: emRisco > 0
+      ? <><b className="text-nx-on-surface">{emRisco}</b> {emRisco === 1 ? "paciente precisa" : "pacientes precisam"} de atenção.</>
+      : <>Ninguém em risco agora — carteira saudável 💚</> });
+  if (evoluiram != null && evoluiram > 0)
+    linhas.push({ cor: "#7CFF5B", texto: <><b className="text-nx-on-surface">{evoluiram}</b> {evoluiram === 1 ? "paciente evoluiu" : "pacientes evoluíram"} muito bem esta semana.</> });
+  if (mensagens != null && mensagens > 0)
+    linhas.push({ cor: "#49A8FF", texto: <><b className="text-nx-on-surface">{mensagens}</b> {mensagens === 1 ? "mensagem aguarda" : "mensagens aguardam"} resposta.</> });
+  if (desafios != null && desafios > 0)
+    linhas.push({ cor: "#F8C84B", texto: <><b className="text-nx-on-surface">{desafios}</b> {desafios === 1 ? "desafio ativo" : "desafios ativos"} em andamento.</> });
+
+  return (
+    <div className="relative overflow-hidden rounded-nx-lg border border-nx-evo/25 bg-nx-surface p-5 sm:p-6">
+      {/* brilho de marca, discreto */}
+      <div className="pointer-events-none absolute -right-16 -top-16 size-56 rounded-full bg-nx-evo/10 blur-3xl" />
+      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-nx-md bg-nx-evo/12">
+              <Sparkles className="size-4 text-nx-evo" />
+            </span>
+            <h2 className="text-body-lg font-semibold text-nx-on-surface">Resumo Inteligente</h2>
+            <span className="rounded-full border border-nx-border px-2 py-0.5 text-label-sm uppercase tracking-wide text-nx-on-surface-variant">IA em breve</span>
+          </div>
+
+          {loading ? (
+            <div className="space-y-2.5">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-4 w-64 max-w-full animate-pulse rounded bg-nx-container/60" />
+              ))}
+            </div>
+          ) : (
+            <ul className="grid gap-2.5 sm:grid-cols-2 sm:gap-x-8">
+              {linhas.map((l, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-body-md text-nx-on-surface-variant">
+                  <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: l.cor, boxShadow: `0 0 8px ${l.cor}` }} />
+                  <span>{l.texto}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <button
+          onClick={onPrioridades}
+          className="group inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-nx-md bg-nx-evo px-4 py-2.5 text-label-md font-bold text-nx-on-evo shadow-[0_8px_30px_-10px_rgba(124,255,91,0.5)] transition-colors hover:bg-nx-evo-2"
+        >
+          Ver prioridades
+          <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ───────── 2 · indicador compacto ───────── */
+function StatTile({
+  Icon, cor, label, valor, loading, mudo, onClick,
+}: {
+  Icon: typeof CheckCircle2; cor: string; label: string; valor?: number; loading: boolean; mudo?: boolean; onClick?: () => void;
+}) {
+  if (loading || valor == null)
+    return <div className="h-[92px] animate-pulse rounded-nx-lg bg-nx-container/40" />;
+  const ativo = !mudo;
+  const Wrap: any = onClick ? "button" : "div";
+  return (
+    <Wrap
+      {...(onClick ? { onClick, type: "button" } : {})}
+      className={`flex h-[92px] flex-col justify-between rounded-nx-lg border border-nx-border bg-nx-surface p-4 text-left ${
+        onClick ? "transition-colors hover:border-nx-outline active:scale-[0.99]" : ""}`}
+    >
+      <div className="flex items-center justify-between">
+        <span className="truncate text-label-md uppercase tracking-wide text-nx-on-surface-variant">{label}</span>
+        <Icon className="size-4 shrink-0" style={{ color: ativo ? cor : "#6B7280" }} />
+      </div>
+      <span className="text-display-md leading-none tabular-nums" style={{ color: ativo ? cor : undefined }}>
+        <span className={ativo ? "" : "text-nx-on-surface"}>{nf(valor)}</span>
+      </span>
+    </Wrap>
+  );
+}
+
+/* ───────── 3 · Adesão premium ───────── */
 function trendMeta(delta: number) {
   if (delta > 0) return { Icon: TrendingUp, cls: "text-nx-evo", txt: `+${delta}` };
   if (delta < 0) return { Icon: TrendingDown, cls: "text-nx-danger", txt: `${delta}` };
@@ -248,66 +363,71 @@ function aderStatus(pct: number) {
   return { label: "Crítico", cls: "bg-nx-danger/12 text-nx-danger" };
 }
 
-function IndicadorShell({ children, minH = "h-[132px]" }: { children: React.ReactNode; minH?: string }) {
-  return <div className={`flex flex-col justify-between rounded-nx-lg border border-nx-border bg-nx-surface p-5 ${minH}`}>{children}</div>;
-}
-
-function AderenciaCard({ s, loading }: { s?: LigasResp["aderenciaSemana"]; loading: boolean }) {
-  if (loading || !s) return <IndicadorShell><div className="h-full animate-pulse rounded bg-nx-container/50" /></IndicadorShell>;
-  const t = trendMeta(s.delta);
-  const st = aderStatus(s.atual);
+function AdesaoPremium({ ader, retencao, loading }: {
+  ader?: LigasResp["aderenciaSemana"]; retencao?: number; loading: boolean;
+}) {
+  if (loading || !ader) return <div className="h-[150px] animate-pulse rounded-nx-lg bg-nx-container/40" />;
+  const t = trendMeta(ader.delta);
+  const st = aderStatus(ader.atual);
+  const maxBar = Math.max(ader.atual, ader.anterior, 1);
+  const bars = [
+    { key: "anterior", label: "Semana passada", val: ader.anterior, cor: "#3A4150" },
+    { key: "atual", label: "Esta semana", val: ader.atual, cor: "#7CFF5B" },
+  ];
   return (
-    <IndicadorShell>
-      <div className="flex items-center justify-between">
-        <span className="text-label-md uppercase tracking-wide text-nx-on-surface-variant">Aderência da clínica</span>
-        <span className={`rounded-full px-2 py-0.5 text-label-md font-semibold ${st.cls}`}>{st.label}</span>
+    <div className="flex flex-col gap-6 rounded-nx-lg border border-nx-border bg-nx-surface p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+      {/* valor grande + status */}
+      <div className="min-w-0">
+        <div className="mb-2 flex items-center gap-2">
+          <span className="text-label-md uppercase tracking-wide text-nx-on-surface-variant">Adesão da clínica</span>
+          <span className={`rounded-full px-2 py-0.5 text-label-md font-semibold ${st.cls}`}>{st.label}</span>
+        </div>
+        <div className="flex items-end gap-3">
+          <p className="text-display-lg leading-none tabular-nums text-nx-on-surface">
+            {ader.atual}<span className="text-headline-md text-nx-on-surface-variant">%</span>
+          </p>
+          <p className={`mb-1.5 flex items-center gap-1 text-body-sm font-medium ${t.cls}`}>
+            <t.Icon className="size-4" /> {t.txt} p.p.
+          </p>
+        </div>
+        {retencao != null && (
+          <p className="mt-2 text-body-sm text-nx-on-surface-variant">
+            Retenção prevista <span className="font-semibold text-nx-on-surface tabular-nums">{retencao}%</span> · sequência viva e ativos há ≤3 dias
+          </p>
+        )}
       </div>
-      <div className="flex items-end gap-2">
-        <p className="text-display-lg leading-none tabular-nums text-nx-on-surface">{s.atual}<span className="text-headline-md text-nx-on-surface-variant">%</span></p>
+
+      {/* gráfico pequeno (esta semana vs anterior) */}
+      <div className="flex shrink-0 items-end gap-4">
+        {bars.map((b) => (
+          <div key={b.key} className="flex flex-col items-center gap-2">
+            <div className="flex h-20 w-9 items-end overflow-hidden rounded-md bg-nx-container-low">
+              <div className="w-full rounded-md transition-all"
+                style={{ height: `${Math.max(6, (b.val / maxBar) * 100)}%`, background: b.cor, boxShadow: b.key === "atual" ? `0 0 12px ${b.cor}66` : undefined }} />
+            </div>
+            <span className="text-label-sm font-semibold tabular-nums text-nx-on-surface">{b.val}%</span>
+            <span className="w-14 text-center text-label-sm leading-tight text-nx-on-surface-variant">{b.label}</span>
+          </div>
+        ))}
       </div>
-      <p className={`flex items-center gap-1 text-body-sm font-medium ${t.cls}`}>
-        <t.Icon className="size-4" /> {t.txt} p.p. <span className="font-normal text-nx-on-surface-variant">vs semana passada</span>
-      </p>
-    </IndicadorShell>
+    </div>
   );
 }
 
-function CriticosCard({ n, total, loading, onClick }: { n?: number; total?: number; loading: boolean; onClick: () => void }) {
-  if (loading || n == null) return <IndicadorShell><div className="h-full animate-pulse rounded bg-nx-container/50" /></IndicadorShell>;
-  const danger = n > 0;
+/* ───────── 4 · linha de prioridade (uma por paciente) ───────── */
+function ScoreCircle({ score }: { score: number }) {
+  const cor = scoreCor(score);
   return (
-    <IndicadorShell>
-      <div className="flex items-center justify-between">
-        <span className="text-label-md uppercase tracking-wide text-nx-on-surface-variant">Pacientes críticos</span>
-        <ShieldAlert className={`size-4 ${danger ? "text-nx-danger" : "text-nx-on-surface-variant"}`} />
-      </div>
-      <p className={`text-display-lg leading-none tabular-nums ${danger ? "text-nx-danger" : "text-nx-on-surface"}`}>{n}</p>
-      {danger ? (
-        <button onClick={onClick} className="flex items-center gap-1 text-body-sm font-semibold text-nx-danger hover:underline">
-          Ver críticos <ArrowRight className="size-3.5" />
-        </button>
-      ) : (
-        <p className="text-body-sm text-nx-on-surface-variant">Ninguém inativo há 3+ dias 💚</p>
-      )}
-    </IndicadorShell>
+    <span
+      title={`Score de aderência ${score}%`}
+      className="grid size-9 shrink-0 place-items-center rounded-full text-label-sm font-bold tabular-nums"
+      style={{ color: cor, border: `2px solid ${cor}`, background: `${cor}14` }}
+    >
+      {score}
+    </span>
   );
 }
 
-function RetencaoCard({ pct, loading }: { pct?: number; loading: boolean }) {
-  if (loading || pct == null) return <IndicadorShell><div className="h-full animate-pulse rounded bg-nx-container/50" /></IndicadorShell>;
-  return (
-    <IndicadorShell>
-      <div className="flex items-center justify-between">
-        <span className="text-label-md uppercase tracking-wide text-nx-on-surface-variant">Retenção prevista</span>
-        <Users className="size-4 text-nx-on-surface-variant" />
-      </div>
-      <p className="text-display-lg leading-none tabular-nums text-nx-on-surface">{pct}<span className="text-headline-md text-nx-on-surface-variant">%</span></p>
-      <p className="text-body-sm text-nx-on-surface-variant">estimativa · com sequência viva e ativos há ≤3 dias</p>
-    </IndicadorShell>
-  );
-}
-
-/* ───────── carteira ───────── */
 function AcaoBtn({ Icon, label, onClick }: { Icon: typeof MessageSquare; label: string; onClick: () => void }) {
   return (
     <button
@@ -320,77 +440,58 @@ function AcaoBtn({ Icon, label, onClick }: { Icon: typeof MessageSquare; label: 
   );
 }
 
-function PacienteRow({ p, onOpen, navigate }: { p: PacienteLinha; onOpen: () => void; navigate: (to: string) => void }) {
+function PrioridadeRow({ p, onOpen, navigate }: { p: PacienteLinha; onOpen: () => void; navigate: (to: string) => void }) {
   const ins = insightDe(p);
   const ligaCor = CORES_LIGA[p.liga] ?? "#9CA3AF";
-  const diasCls = p.diasInativo >= 3 ? "text-nx-danger" : p.diasInativo >= 1 ? "text-nx-streak" : "text-nx-on-surface-variant";
-  const dif = p.maiorDificuldade;
-  const difCor = dif ? (HABITO[dif.habito as keyof typeof HABITO]?.cor ?? "#9CA3AF") : "#9CA3AF";
+  const { pct, faltam, proxima } = progressoLiga(p.pontos);
   return (
-    <tr onClick={onOpen}
-      className="group cursor-pointer border-b border-nx-border/70 transition-colors last:border-0 hover:bg-nx-container/40">
-      {/* Paciente + insight */}
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="relative shrink-0">
-            <Avatar src={p.foto} nome={p.nome} tamanho={38} />
-            <span className={`absolute -right-0.5 -top-0.5 size-2.5 rounded-full ring-2 ring-nx-surface ${
-              p.risco === "risco" ? "bg-nx-danger" : p.risco === "atencao" ? "bg-nx-streak" : "bg-nx-evo"}`} />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-body-md font-semibold text-nx-on-surface">{p.nome}</p>
-            <p className={`truncate text-body-sm ${TONE_TEXT[ins.tone]}`}>{ins.texto}</p>
-          </div>
-        </div>
-      </td>
+    <li
+      onClick={onOpen}
+      className="group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-nx-container/40"
+    >
+      {/* Foto + status + nome + motivo */}
+      <div className="relative shrink-0">
+        <Avatar src={p.foto} nome={p.nome} tamanho={40} />
+        <span className={`absolute -right-0.5 -top-0.5 size-2.5 rounded-full ring-2 ring-nx-surface ${
+          p.risco === "risco" ? "bg-nx-danger" : p.risco === "atencao" ? "bg-nx-streak" : "bg-nx-evo"}`} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-body-md font-semibold text-nx-on-surface">{p.nome}</p>
+        <p className={`truncate text-body-sm ${TONE_TEXT[ins.tone]}`}>{ins.texto}</p>
+      </div>
+
       {/* Liga */}
-      <td className="px-3 py-3">
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-body-sm text-nx-on-surface">
-          <span className="size-2.5 rounded-full" style={{ background: ligaCor }} />
-          {p.liga} {p.ligaNivel}
-        </span>
-      </td>
-      {/* Sequência */}
-      <td className="px-3 py-3">
-        {p.streak > 0 ? (
-          <span className="inline-flex items-center gap-1 text-body-sm font-medium text-nx-streak">
-            <Flame className="size-3.5" /> {p.streak}
-          </span>
-        ) : <span className="text-body-sm text-nx-on-surface-variant">—</span>}
-      </td>
-      {/* Aderência */}
-      <td className="px-3 py-3">
-        <div className="flex items-center gap-2">
-          <div className="h-1.5 w-16 overflow-hidden rounded-full bg-nx-container-low">
-            <div className="h-full rounded-full" style={{ width: `${p.score}%`, background: p.score >= 60 ? "#7CFF5B" : p.score >= 35 ? "#F8C84B" : "#FF5D5D" }} />
-          </div>
-          <span className="text-body-sm font-semibold tabular-nums text-nx-on-surface">{p.score}%</span>
+      <span className="hidden w-24 shrink-0 items-center gap-1.5 whitespace-nowrap text-body-sm text-nx-on-surface md:inline-flex">
+        <span className="size-2.5 rounded-full" style={{ background: ligaCor }} />
+        {p.liga} {p.ligaNivel}
+      </span>
+
+      {/* XP + barra de progresso + % */}
+      <div className="hidden w-40 shrink-0 lg:block">
+        <div className="mb-1 flex items-baseline justify-between">
+          <span className="text-label-md font-semibold tabular-nums text-nx-on-surface">{nf(p.pontos)} <span className="font-normal text-nx-on-surface-variant">XP</span></span>
+          <span className="text-label-sm font-semibold tabular-nums" style={{ color: ligaCor }}>{proxima ? `${pct}%` : "MÁX"}</span>
         </div>
-      </td>
-      {/* Sem check-in */}
-      <td className="hidden px-3 py-3 lg:table-cell">
-        <span className={`text-body-sm font-medium tabular-nums ${diasCls}`}>
-          {p.diasInativo === 0 ? "Hoje" : p.diasInativo === 1 ? "1 dia" : `${p.diasInativo} dias`}
-        </span>
-      </td>
-      {/* Maior dificuldade */}
-      <td className="hidden px-3 py-3 lg:table-cell">
-        {dif ? (
-          <span className="inline-flex items-center gap-1.5 rounded-nx-sm border border-nx-border px-2 py-1 text-label-md text-nx-on-surface">
-            <span className="size-2 rounded-full" style={{ background: difCor }} />
-            {dif.label} {dif.pct}%
-          </span>
-        ) : <span className="text-body-sm text-nx-on-surface-variant">—</span>}
-      </td>
-      {/* Ações */}
-      <td className="px-3 py-3">
-        <div className="flex items-center justify-end gap-1.5">
-          <AcaoBtn Icon={MessageSquare} label="Mensagem" onClick={() => navigate("/app/mensagens")} />
+        <div className="h-1.5 overflow-hidden rounded-full bg-nx-container-low">
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: ligaCor }} />
+        </div>
+        <p className="mt-1 truncate text-label-sm text-nx-on-surface-variant">
+          {proxima ? `Faltam ${nf(faltam)} XP p/ ${proxima.liga} ${proxima.nivel}` : "Liga máxima 👑"}
+        </p>
+      </div>
+
+      {/* Score */}
+      <ScoreCircle score={p.score} />
+
+      {/* Ações + abrir */}
+      <div className="flex shrink-0 items-center gap-1.5">
+        <span className="hidden items-center gap-1.5 sm:flex">
+          <AcaoBtn Icon={MessageSquare} label="Mensagem" onClick={() => navigate(`/app/mensagens/${p.id}`)} />
           <AcaoBtn Icon={Target} label="Criar desafio" onClick={() => navigate("/app/desafios")} />
-          <ChevronRight className="size-4 text-nx-outline transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
-        </div>
-      </td>
-    </tr>
+        </span>
+        <ChevronRight className="size-5 text-nx-outline transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
+      </div>
+    </li>
   );
 }
 
@@ -458,7 +559,7 @@ function SubiramSemana({ itens, onOpen }: { itens?: LigasResp["subiramSemana"]; 
   );
 }
 
-/* ───────── resumo inteligente ───────── */
+/* ───────── panorama ───────── */
 function Leitura({ Icon, cor, titulo, valor, trend, sufixo }: {
   Icon: typeof TrendingUp; cor: string; titulo: string; valor: string; trend?: number; sufixo?: string;
 }) {
