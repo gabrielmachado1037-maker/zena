@@ -10,6 +10,7 @@ import { PLANOS_REFEICOES, resolverPlanoRefeicoes, MIN_REFEICOES, MAX_REFEICOES 
 import { gerarRelatorioMensal, gerarInsightsIA } from "../services/relatorioService";
 import { gerarCodigoConvite, conviteExpiraEm } from "../lib/convite";
 import { anonimizarPaciente } from "../lib/anonimizarPaciente";
+import { scoreAderencia30 } from "../lib/adesao";
 
 const router = Router();
 router.use(authMiddleware);
@@ -123,6 +124,16 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     }),
   ]);
 
+  // Score de aderência (30d) por paciente — mesma janela/fórmula do Dashboard (scoreAderencia30).
+  const ha30 = new Date(now.getTime() - 30 * 86_400_000);
+  const checkins30 = await prisma.registro.groupBy({
+    by: ["pacienteId"],
+    where: { pacienteId: { in: pacientes.map((p) => p.id) }, data: { gte: ha30 } },
+    _count: { _all: true },
+  });
+  const reg30ByPac: Record<string, number> = {};
+  for (const c of checkins30) reg30ByPac[c.pacienteId] = c._count._all;
+
   const result = pacientes.map((p) => {
     const ultimaConsulta = p.consultas.find((c) => new Date(c.data) < now) ?? null;
     const proximaConsulta = [...p.consultas].reverse().find((c) => new Date(c.data) >= now) ?? null;
@@ -134,6 +145,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
 
     return {
       ...p,
+      score: scoreAderencia30(reg30ByPac[p.id] || 0),
       ultimaConsulta: ultimaConsulta ? { data: ultimaConsulta.data } : null,
       proximaConsulta: proximaConsulta ? { data: proximaConsulta.data } : null,
       cobrancaStatus,

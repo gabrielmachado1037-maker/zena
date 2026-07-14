@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { calcularLiga } from "../config/ligas";
+import { scoreAderencia30 } from "../lib/adesao";
 
 const router = Router();
 router.use(authMiddleware);
@@ -520,7 +521,7 @@ router.get("/ligas", async (req: AuthRequest, res: Response) => {
       liga: p.ligaAtual, ligaNivel: p.ligaNivel, pontos: p.pontosTotal,
       streak: p.streakAtual, diasInativo: p.diasInativo,
       ultimoCheckin: p.ultimoCheckin,
-      score: Math.round(Math.min((reg30ByPac[p.id] || 0) / 30, 1) * 100),
+      score: scoreAderencia30(reg30ByPac[p.id] || 0),
       risco: riscoTone(p),
       maiorDificuldade: maiorDificuldade(p.id),
     }))

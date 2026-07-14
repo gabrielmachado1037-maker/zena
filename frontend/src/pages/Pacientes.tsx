@@ -22,7 +22,11 @@ interface Paciente {
   streakAtual: number;
   ultimoCheckin: string | null;
   diasInativo: number;
+  score?: number; // aderência 30d (0–100) — vinda do backend; opcional por retrocompat
 }
+
+/* Cor do score de aderência (0–100) — mesmo semáforo do Dashboard. */
+const scoreCor = (s: number) => (s >= 60 ? "#7CFF5B" : s >= 35 ? "#F8C84B" : "#FF5D5D");
 
 const LIGAS_FILTRO = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"];
 type StatusFiltro = "todos" | "ativo" | "risco" | "inativo";
@@ -300,14 +304,25 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
         )}
       </div>
 
-      {/* Último check-in + sequência (compacto) */}
-      <div className="mt-3 flex items-center justify-between border-t border-nx-border pt-3">
-        <span className={`flex items-center gap-1.5 text-label-md ${emRisco ? "text-nx-danger" : "text-nx-on-surface-variant"}`}>
-          <Clock size={13} />
-          {dias === null ? "Nunca registrou" : dias === 0 ? "Hoje" : dias === 1 ? "Ontem" : `${dias} dias`}
-        </span>
+      {/* Score + último check-in + sequência (compacto) */}
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-nx-border pt-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {p.score != null && (
+            <span
+              title={`Score de aderência ${p.score}% (últimos 30 dias)`}
+              className="grid size-8 shrink-0 place-items-center rounded-full text-label-sm font-bold tabular-nums"
+              style={{ color: scoreCor(p.score), border: `2px solid ${scoreCor(p.score)}`, background: `${scoreCor(p.score)}14` }}
+            >
+              {p.score}
+            </span>
+          )}
+          <span className={`flex min-w-0 items-center gap-1.5 text-label-md ${emRisco ? "text-nx-danger" : "text-nx-on-surface-variant"}`}>
+            <Clock size={13} className="shrink-0" />
+            <span className="truncate">{dias === null ? "Nunca registrou" : dias === 0 ? "Hoje" : dias === 1 ? "Ontem" : `${dias} dias`}</span>
+          </span>
+        </div>
         {p.streakAtual > 0 && (
-          <span className="flex items-center gap-1 text-label-md font-semibold text-nx-streak">
+          <span className="flex shrink-0 items-center gap-1 text-label-md font-semibold text-nx-streak">
             <Flame size={13} /> {p.streakAtual} dias
           </span>
         )}
