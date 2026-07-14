@@ -332,7 +332,9 @@ router.get("/:id/relatorio-mensal", async (req: AuthRequest, res: Response) => {
   if (!relatorio) return res.status(404).json({ error: "Paciente não encontrada" });
 
   if (String(req.query.ia ?? "") === "1") {
-    relatorio.insightsIA = await gerarInsightsIA(relatorio);
+    const ia = await gerarInsightsIA(relatorio);
+    relatorio.insightsIA = ia?.resumo.length ? ia.resumo : null;
+    relatorio.focoIA = ia?.foco.length ? ia.foco : null;
   }
 
   return res.json(relatorio);

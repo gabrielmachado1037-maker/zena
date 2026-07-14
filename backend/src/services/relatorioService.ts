@@ -95,8 +95,19 @@ export interface RelatorioMensal {
   peso: { inicial: number; final: number; delta: number } | null;
   conquistas: Array<{ titulo: string; icone: string | null; data: string }>;
   motivosRefeicoes: Array<{ refeicao: string; texto: string }>;
+  scoreGeral: { valor: number; status: string };
+  dificuldades: Array<{ texto: string; vezes: number }>;
+  evolucaoFisica: {
+    peso: { inicial: number; final: number; delta: number } | null;
+    medidas: Record<string, { inicial: number; final: number; delta: number } | null>;
+    laudo: string | null;
+    observacoes: string | null;
+    fotos: Array<{ data: string; tipo: string; imagem: string }>;
+  };
   insightsRegras: string[];
   insightsIA: string[] | null;
+  focoRegras: string[];
+  focoIA: string[] | null;
 }
 
 /** Monta o relatório determinístico do paciente no intervalo [inicio, fim] (inclusive). */
@@ -120,7 +131,7 @@ export async function gerarRelatorioMensal(
   });
   if (!paciente) return null;
 
-  const [registros, conquistas, medicoes, desafiosCumpridos] = await Promise.all([
+  const [registros, conquistas, medicoes, desafiosCumpridos, fotos] = await Promise.all([
     prisma.registro.findMany({
       where: { pacienteId, finalizado: true, data: { gte: ini, lte: end } },
       orderBy: { data: "asc" },
@@ -139,10 +150,18 @@ export async function gerarRelatorioMensal(
     prisma.medicao.findMany({
       where: { pacienteId, data: { gte: ini, lte: end } },
       orderBy: { data: "asc" },
-      select: { data: true, peso: true },
+      select: {
+        data: true, peso: true, gordura: true, musculo: true,
+        cintura: true, quadril: true, braco: true, coxa: true, laudo: true, observacoes: true,
+      },
     }),
     prisma.desafioProgresso.count({
       where: { pacienteId, concluido: true, encerradoEm: { gte: ini, lt: fimExclusivo } },
+    }),
+    prisma.fotoEvolucao.findMany({
+      where: { pacienteId, data: { gte: ini, lte: end } },
+      orderBy: { data: "asc" },
+      select: { data: true, tipo: true, imagem: true },
     }),
   ]);
 
@@ -254,6 +273,59 @@ export async function gerarRelatorioMensal(
   const prevCount = await prisma.registro.count({ where: { pacienteId, finalizado: true, data: { gte: prevIni, lte: prevEnd } } });
   const mesAnterior = prevCount > 0 ? { aderenciaPct: pct(prevCount, diasPeriodo) } : null;
 
+  // ─── Score Geral de Adesão (0–100) = média das dimensões COM dado no período ──
+  const aderenciaPct = pct(diasRegistrados, diasPeriodo);
+  const totRef = refAgg.reduce((s, r) => s + r.total, 0);
+  const treinoDen = tConforme + tParcial + tNao;
+  const dims: number[] = [aderenciaPct];
+  if (totRef > 0) dims.push(pct(refAgg.reduce((s, r) => s + r.seguiu + r.adaptou, 0), totRef));
+  if (aguaDias > 0) dims.push(pct(aguaDias - aguaAbaixo, aguaDias));
+  if (sonoDias > 0) dims.push(pct(sonoDias - sonoAbaixo, sonoDias));
+  if (treinoDen > 0) dims.push(pct(tConforme + tParcial, treinoDen));
+  const scoreValor = Math.round(dims.reduce((s, n) => s + n, 0) / dims.length);
+  const scoreStatus = scoreValor >= 85 ? "Excelente" : scoreValor >= 70 ? "Bom" : scoreValor >= 55 ? "Regular" : "Abaixo do esperado";
+
+  // ─── Principais dificuldades (automático, ordenado maior→menor, sem zerados) ──
+  const plural = (n: number) => (n === 1 ? "dia" : "dias");
+  const dificuldades: Array<{ texto: string; vezes: number }> = [];
+  for (const r of refAgg) {
+    const vezes = r.pulou + r.comeuMal;
+    if (vezes > 0) dificuldades.push({ texto: `Pulou ou comeu fora do plano no ${r.label.toLowerCase()} em ${vezes} ${plural(vezes)}`, vezes });
+  }
+  if (tNao > 0) dificuldades.push({ texto: `Faltou ao treino em ${tNao} ${plural(tNao)}`, vezes: tNao });
+  if (sonoAbaixo > 0) dificuldades.push({ texto: `Dormiu abaixo da meta de ${metaSono}h em ${sonoAbaixo} ${plural(sonoAbaixo)}`, vezes: sonoAbaixo });
+  if (aguaAbaixo > 0) dificuldades.push({ texto: `Bebeu menos água que a meta em ${aguaAbaixo} ${plural(aguaAbaixo)}`, vezes: aguaAbaixo });
+  const fdsNaoReg = totalFds - registradosFds;
+  if (totalFds > 0 && fdsNaoReg > 0 && pct(registradosFds, totalFds) <= 60) {
+    dificuldades.push({ texto: `Sem registro em ${fdsNaoReg} ${plural(fdsNaoReg)} de fim de semana`, vezes: fdsNaoReg });
+  }
+  dificuldades.sort((a, b) => b.vezes - a.vezes);
+
+  // ─── Foco da próxima consulta (plano de ação determinístico; a IA pode reescrever) ──
+  const focoRegras: string[] = [];
+  const piorRef = [...refAgg].filter((r) => r.total >= 3).sort((a, b) => (b.pulou + b.comeuMal) - (a.pulou + a.comeuMal))[0];
+  if (piorRef && piorRef.pulou + piorRef.comeuMal > 0) focoRegras.push(`Revisar o ${piorRef.label.toLowerCase()}: combinar opções práticas para os dias de maior dificuldade.`);
+  if (tNao >= 2) focoRegras.push("Retomar a regularidade do treino e investigar as principais barreiras.");
+  if (sonoAbaixo >= 3) focoRegras.push(`Trabalhar a higiene do sono para aproximar da meta de ${metaSono}h.`);
+  if (aguaAbaixo >= 3) focoRegras.push("Reforçar a hidratação ao longo do dia.");
+  if (totalFds > 0 && pct(registradosFds, totalFds) <= 60) focoRegras.push("Definir uma estratégia para manter os registros nos fins de semana.");
+  if (!focoRegras.length) focoRegras.push("Manter a consistência atual e seguir acompanhando os indicadores.");
+
+  // ─── Evolução física: medidas (primeira→última leitura), laudo/obs recentes, fotos ──
+  const MEDIDAS_KEYS = ["gordura", "musculo", "cintura", "quadril", "braco", "coxa"] as const;
+  const medidas: Record<string, { inicial: number; final: number; delta: number } | null> = {};
+  for (const k of MEDIDAS_KEYS) {
+    const pts = medicoes
+      .map((m) => (m as Record<string, unknown>)[k])
+      .filter((v): v is number => typeof v === "number");
+    medidas[k] = pts.length
+      ? { inicial: pts[0], final: pts[pts.length - 1], delta: Math.round((pts[pts.length - 1] - pts[0]) * 10) / 10 }
+      : null;
+  }
+  const laudo = [...medicoes].reverse().map((m) => m.laudo).find((v) => v?.trim()) ?? null;
+  const observacoesMed = [...medicoes].reverse().map((m) => m.observacoes).find((v) => v?.trim()) ?? null;
+  const fotosEvolucao = fotos.map((f) => ({ data: f.data.toISOString().slice(0, 10), tipo: f.tipo, imagem: f.imagem }));
+
   const relatorio: RelatorioMensal = {
     paciente: {
       id: paciente.id, nome: paciente.nome, telefone: paciente.telefone,
@@ -262,7 +334,7 @@ export async function gerarRelatorioMensal(
     periodo: { inicio: ini.toISOString().slice(0, 10), fim: end.toISOString().slice(0, 10), dias: diasPeriodo },
     resumo: {
       diasRegistrados,
-      aderenciaPct: pct(diasRegistrados, diasPeriodo),
+      aderenciaPct,
       desafiosCumpridos,
       xpPeriodo: Math.round(xpPeriodo),
       ligaAtual: paciente.ligaAtual,
@@ -292,8 +364,13 @@ export async function gerarRelatorioMensal(
     peso,
     conquistas: conquistas.map((c) => ({ titulo: c.titulo, icone: c.icone, data: c.createdAt.toISOString().slice(0, 10) })),
     motivosRefeicoes,
+    scoreGeral: { valor: scoreValor, status: scoreStatus },
+    dificuldades,
+    evolucaoFisica: { peso, medidas, laudo, observacoes: observacoesMed, fotos: fotosEvolucao },
     insightsRegras: [],
     insightsIA: null,
+    focoRegras: focoRegras.slice(0, 4),
+    focoIA: null,
   };
 
   relatorio.insightsRegras = gerarInsightsRegras(relatorio, primeiroNome(paciente.nome));
@@ -348,15 +425,18 @@ function gerarInsightsRegras(r: RelatorioMensal, nome: string): string[] {
 }
 
 /** Camada de IA (opcional): reescreve as métricas em "voz de nutricionista".
- *  Só usa os dados recebidos; em qualquer falha retorna null (o front usa as regras). */
-export async function gerarInsightsIA(r: RelatorioMensal): Promise<string[] | null> {
+ *  Retorna o Resumo Inteligente (resumo) + o Foco da próxima consulta (foco), numa
+ *  única chamada. Só usa os dados recebidos; em qualquer falha retorna null (fallback: regras). */
+export async function gerarInsightsIA(r: RelatorioMensal): Promise<{ resumo: string[]; foco: string[] } | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
   const dados = {
     paciente: primeiroNome(r.paciente.nome),
+    objetivo: r.paciente.objetivo,
     periodo: r.periodo,
-    resumo: r.resumo,
+    scoreGeral: r.scoreGeral,
+    resumoNums: r.resumo,
     refeicoes: r.refeicoes,
     treino: r.treino,
     sono: r.sono,
@@ -364,16 +444,21 @@ export async function gerarInsightsIA(r: RelatorioMensal): Promise<string[] | nu
     humor: r.humor,
     finaisDeSemana: r.finaisDeSemana,
     peso: r.peso,
+    dificuldades: r.dificuldades,
+    mesAnterior: r.mesAnterior,
     conquistas: r.conquistas.length,
     motivosRefeicoes: r.motivosRefeicoes.slice(0, 20),
   };
 
   const prompt =
-    `Você é um(a) nutricionista experiente escrevendo um resumo do mês de um paciente para o próprio prontuário. ` +
-    `Use SOMENTE os dados fornecidos (não invente números nem fatos). Escreva de 4 a 6 frases curtas, em português, ` +
-    `tom profissional e humano. Destaque padrões de comportamento (ex.: refeição em que mais falha, sumiço em fins de semana, ` +
-    `motivos recorrentes de faltar treino agrupados por tema, qualidade do sono). Seja específico com os números. ` +
-    `Responda APENAS JSON no formato {"insights": ["frase 1", "frase 2", ...]}.\n\nDADOS:\n` +
+    `Você é um(a) nutricionista experiente escrevendo a ficha de consulta de um paciente. ` +
+    `Use SOMENTE os dados fornecidos (nunca invente números nem fatos). Português, tom profissional e humano. ` +
+    `Produza DOIS blocos:\n` +
+    `1) "resumo": 4 a 6 frases curtas resumindo como foi o mês — adesão, alimentação, hidratação, treino, sono, humor, ` +
+    `consistência/sequência, comparação com o período anterior e padrões de comportamento. Seja específico com os números.\n` +
+    `2) "foco": 2 a 4 itens de plano de ação para a PRÓXIMA consulta, priorizando as maiores dificuldades ` +
+    `(ex.: revisar a refeição que mais falha, retomar treino, monitorar sono). Cada item é uma frase acionável e concreta.\n` +
+    `Responda APENAS JSON no formato {"resumo": ["..."], "foco": ["..."]}.\n\nDADOS:\n` +
     JSON.stringify(dados);
 
   try {
@@ -386,18 +471,20 @@ export async function gerarInsightsIA(r: RelatorioMensal): Promise<string[] | nu
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 600,
+        max_tokens: 900,
         messages: [{ role: "user", content: prompt }],
       }),
     });
     const data = (await resp.json()) as { content?: Array<{ text?: string }> };
-    const text = data?.content?.[0]?.text ?? "";
-    const parsed = JSON.parse(text) as { insights?: unknown };
-    if (Array.isArray(parsed.insights)) {
-      const frases = parsed.insights.filter((f): f is string => typeof f === "string" && f.trim().length > 0);
-      return frases.length ? frases : null;
-    }
-    return null;
+    let text = data?.content?.[0]?.text ?? "";
+    const bloco = text.match(/\{[\s\S]*\}/); // tolera cercas de código / texto ao redor
+    if (bloco) text = bloco[0];
+    const parsed = JSON.parse(text) as { resumo?: unknown; foco?: unknown };
+    const limpa = (v: unknown): string[] =>
+      Array.isArray(v) ? v.filter((f): f is string => typeof f === "string" && f.trim().length > 0) : [];
+    const resumo = limpa(parsed.resumo);
+    const foco = limpa(parsed.foco);
+    return resumo.length || foco.length ? { resumo, foco } : null;
   } catch (e) {
     console.error("[relatorio] IA indisponível, usando regras", e);
     return null;

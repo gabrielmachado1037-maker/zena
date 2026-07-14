@@ -1,13 +1,12 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ChevronLeft, FileDown, Sparkles, Utensils, Droplet, Moon, Dumbbell, Smile,
-  Shield, Flame, CalendarCheck, Target, User, AlertTriangle, AlertCircle,
-  CheckCircle2, TrendingUp, Star, StickyNote,
+  Target, User, AlertTriangle, AlertCircle, CheckCircle2, TrendingUp,
+  StickyNote, CalendarCheck, Star,
 } from "lucide-react";
 import { useFetch } from "../hooks/useFetch";
 import { gerarUrlWhatsApp } from "../lib/utils";
-import { CORES_LIGA } from "../lib/ligas";
 
 /* ───────── tipos (espelham o backend relatorioService) ───────── */
 interface DiaRel {
@@ -19,6 +18,7 @@ interface DiaRel {
   humor: string | null;
   checkin: boolean;
 }
+interface Medida { inicial: number; final: number; delta: number }
 interface Relatorio {
   paciente: { id: string; nome: string; telefone: string | null; foto: string | null; objetivo: string | null; nutricionista: string | null };
   periodo: { inicio: string; fim: string; dias: number };
@@ -36,18 +36,34 @@ interface Relatorio {
   peso: { inicial: number; final: number; delta: number } | null;
   conquistas: Array<{ titulo: string; icone: string | null; data: string }>;
   motivosRefeicoes: Array<{ refeicao: string; texto: string }>;
+  scoreGeral: { valor: number; status: string };
+  dificuldades: Array<{ texto: string; vezes: number }>;
+  evolucaoFisica: {
+    peso: Medida | null;
+    medidas: Record<string, Medida | null>;
+    laudo: string | null;
+    observacoes: string | null;
+    fotos: Array<{ data: string; tipo: string; imagem: string }>;
+  };
   dias: DiaRel[];
   mesAnterior: { aderenciaPct: number } | null;
   insightsRegras: string[];
   insightsIA: string[] | null;
+  focoRegras: string[];
+  focoIA: string[] | null;
 }
 
-const HUMOR_EMOJI: Record<string, string> = { otimo: "😄", bom: "🙂", neutro: "😐", dificil: "😕", pessimo: "😣" };
 const HUMOR_LABEL: Record<string, string> = { otimo: "Ótimo", bom: "Bom", neutro: "Neutro", dificil: "Difícil", pessimo: "Péssimo" };
 const HUMOR_SCORE: Record<string, number> = { otimo: 5, bom: 4, neutro: 3, dificil: 2, pessimo: 1 };
+const MEDIDA_LABEL: Record<string, string> = {
+  gordura: "Gordura corporal", musculo: "Massa muscular", cintura: "Cintura",
+  quadril: "Quadril", braco: "Braço", coxa: "Coxa",
+};
+const MEDIDA_UNIDADE: Record<string, string> = { gordura: "%", musculo: "kg", cintura: "cm", quadril: "cm", braco: "cm", coxa: "cm" };
+const MEDIDAS_ORDEM = ["gordura", "musculo", "cintura", "quadril", "braco", "coxa"];
 
-/* cores dos hábitos (documento claro) */
-const C = { green: "#16A34A", greenSoft: "#DCFCE7", amber: "#D97706", amberSoft: "#FEF3C7", red: "#DC2626", redSoft: "#FEE2E2", water: "#2563EB", waterSoft: "#DBEAFE", sleep: "#7C3AED", sleepSoft: "#EDE9FE", ink: "#111827", muted: "#6B7280", line: "#E5E7EB", soft: "#F7F7F5" };
+/* cores do documento (claro, clínico) */
+const C = { green: "#16A34A", greenSoft: "#E7F6EC", amber: "#B45309", amberSoft: "#FBF0DC", red: "#B91C1C", redSoft: "#FBE7E7", water: "#1D4ED8", waterSoft: "#E4ECFB", sleep: "#6D28D9", sleepSoft: "#EEE8FB", ink: "#111827", sub: "#374151", muted: "#6B7280", line: "#E3E5E9", soft: "#F6F6F4" };
 
 function isoHoje() { return new Date().toISOString().slice(0, 10); }
 function isoHa(dias: number) { return new Date(Date.now() - dias * 86_400_000).toISOString().slice(0, 10); }
@@ -55,236 +71,205 @@ function brData(iso: string) { const [a, m, d] = iso.split("-"); return `${d}/${
 function diaMes(iso: string) { const [, m, d] = iso.split("-"); return `${d}/${m}`; }
 function nf(n: number) { return n.toLocaleString("pt-BR"); }
 function litros(ml: number) { return `${(ml / 1000).toFixed(1).replace(".", ",")}L`; }
-function fmtSono(h: number) { const hh = Math.floor(h); const mm = Math.round((h - hh) * 60); return `${hh}h ${String(mm).padStart(2, "0")}min`; }
-function classeIndicador(p: number) { return p >= 85 ? "Excelente" : p >= 75 ? "Muito boa" : p >= 55 ? "Regular" : "Baixa"; }
+function fmtSono(h: number) { const hh = Math.floor(h); const mm = Math.round((h - hh) * 60); return `${hh}h${mm ? ` ${String(mm).padStart(2, "0")}min` : ""}`; }
+function classeIndicador(p: number) { return p >= 85 ? "Excelente" : p >= 70 ? "Muito boa" : p >= 55 ? "Regular" : "Baixa"; }
+function sinal(n: number) { return n > 0 ? "+" : n < 0 ? "−" : ""; }
 
-/* ───────── CSS do documento (A4, claro, premium) ───────── */
-const CSS = `
-.rp{ --ink:${C.ink}; --muted:${C.muted}; --line:${C.line}; --soft:${C.soft};
-  --green:${C.green}; --amber:${C.amber}; --red:${C.red}; --water:${C.water}; --sleep:${C.sleep};
+/* status do dia (P2): calculado a partir dos hábitos registrados */
+function statusDia(d: DiaRel, metaAgua: number, metaSono: number): { label: string; tone: "green" | "blue" | "amber" | "muted" } {
+  if (!d.checkin) return { label: "Sem registro", tone: "muted" };
+  let problemas = 0;
+  if (d.alimentacao === "pulou") problemas++;
+  if (d.aguaMl != null && d.aguaMl < metaAgua) problemas++;
+  if (d.sonoHoras != null && d.sonoHoras < metaSono) problemas++;
+  if (d.treino === "nao") problemas++;
+  if (problemas === 0) return { label: "Excelente", tone: "green" };
+  if (problemas === 1) return { label: "Bom", tone: "blue" };
+  return { label: "Atenção", tone: "amber" };
+}
+const TONE_COR: Record<string, { cor: string; bg: string }> = {
+  green: { cor: C.green, bg: C.greenSoft }, blue: { cor: C.water, bg: C.waterSoft },
+  amber: { cor: C.amber, bg: C.amberSoft }, muted: { cor: C.muted, bg: C.soft },
+};
+function statusScoreCor(status: string) {
+  return status === "Excelente" ? C.green : status === "Bom" ? C.water : status === "Regular" ? C.amber : C.red;
+}
+
+/* ───────── CSS base (visual — usado na tela e passado ao Paged.js) ───────── */
+const BASE_CSS = `
+.rp{ --ink:${C.ink}; --sub:${C.sub}; --muted:${C.muted}; --line:${C.line}; --soft:${C.soft};
   font-family:Inter,ui-sans-serif,system-ui,sans-serif; }
-.rp-doc{ width:820px; max-width:100%; margin:0 auto; background:#fff; color:var(--ink);
-  border-radius:18px; box-shadow:0 12px 44px rgba(0,0,0,.30); overflow:hidden; }
-.rp-pad{ padding:30px 34px; }
+.rp-report{ }
+/* folha = 1 página */
+.rp-page{ width:820px; max-width:100%; margin:0 auto 24px; background:#fff; color:var(--ink);
+  border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,.26); padding:34px 38px; box-sizing:border-box; }
+.rp-page + .rp-page{ break-before:page; page-break-before:always; }
+.rp-page > * + *{ margin-top:22px; }
+
 /* header */
-.rp-top{ display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:18px; border-bottom:1px solid var(--line); }
+.rp-top{ display:flex; justify-content:space-between; align-items:flex-start; padding-bottom:16px; border-bottom:1px solid var(--line); }
 .rp-logo{ display:flex; align-items:center; gap:11px; }
 .rp-logo .mark{ width:34px; height:34px; border-radius:9px; background:#0F1115; display:grid; place-items:center; }
 .rp-logo .mark svg{ color:#7CFF5B; }
-.rp-logo b{ font-size:19px; font-weight:800; letter-spacing:.04em; }
-.rp-logo small{ display:block; font-size:11px; color:var(--muted); font-weight:500; margin-top:1px; }
-.rp-gen{ text-align:right; font-size:11px; color:var(--muted); line-height:1.5; }
+.rp-logo b{ font-size:18px; font-weight:800; letter-spacing:.05em; }
+.rp-logo small{ display:block; font-size:10.5px; color:var(--muted); font-weight:500; margin-top:1px; }
+.rp-gen{ text-align:right; font-size:10.5px; color:var(--muted); line-height:1.55; }
 .rp-gen b{ color:var(--ink); font-weight:600; }
-/* patient block */
-.rp-pac{ display:flex; gap:20px; padding:20px 0; align-items:center; border-bottom:1px solid var(--line); }
-.rp-avatar{ width:88px; height:88px; border-radius:50%; object-fit:cover; flex:none; border:1px solid var(--line); }
-.rp-avatar.ph{ display:grid; place-items:center; background:var(--soft); font-size:32px; font-weight:700; color:var(--muted); }
-.rp-pinfo{ min-width:0; }
-.rp-pinfo h1{ font-size:26px; font-weight:800; margin:0 0 8px; line-height:1; }
-.rp-pline{ display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); margin:4px 0; }
-.rp-pline b{ color:var(--ink); font-weight:600; }
-.rp-stats{ display:flex; gap:14px; margin-left:auto; flex:none; }
-.rp-stat{ background:var(--soft); border:1px solid var(--line); border-radius:14px; padding:13px 16px; min-width:118px; }
-.rp-stat .lbl{ display:flex; align-items:center; gap:6px; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:5px; }
-.rp-stat .val{ font-size:19px; font-weight:800; line-height:1.05; }
-.rp-stat .sub{ font-size:10.5px; color:var(--muted); margin-top:4px; }
-.rp-xpbar{ height:6px; border-radius:99px; background:#EDEDEA; margin:7px 0 4px; overflow:hidden; }
-.rp-xpbar i{ display:block; height:100%; background:#E8A419; border-radius:99px; }
+.rp-page-tag{ font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); font-weight:700; margin:0 0 12px; }
+
+/* paciente */
+.rp-pac{ display:flex; gap:18px; align-items:center; }
+.rp-avatar{ width:74px; height:74px; border-radius:50%; object-fit:cover; flex:none; border:1px solid var(--line); }
+.rp-avatar.ph{ display:grid; place-items:center; background:var(--soft); font-size:28px; font-weight:700; color:var(--muted); }
+.rp-pinfo h1{ font-size:23px; font-weight:800; margin:0 0 6px; line-height:1.05; }
+.rp-pline{ display:flex; align-items:center; gap:7px; font-size:12.5px; color:var(--muted); margin:3px 0; }
+.rp-pline b{ color:var(--sub); font-weight:600; }
+
+/* score */
+.rp-score{ display:flex; align-items:center; gap:20px; border:1px solid var(--line); border-radius:14px; padding:16px 20px; background:var(--soft); }
+.rp-score .num{ font-size:46px; font-weight:800; line-height:1; }
+.rp-score .num small{ font-size:18px; font-weight:600; color:var(--muted); }
+.rp-score .status{ display:inline-block; font-size:13px; font-weight:700; padding:3px 12px; border-radius:99px; }
+.rp-score .sub{ font-size:12px; color:var(--muted); margin-top:7px; }
+.rp-score .cap{ font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:700; margin-bottom:6px; }
+
 /* indicadores */
-.rp-inds{ display:grid; grid-template-columns:repeat(5,1fr); gap:11px; margin:22px 0 6px; }
-.rp-ind{ border:1px solid var(--line); border-radius:14px; padding:14px 12px; text-align:center; }
-.rp-ind .ic{ width:34px; height:34px; border-radius:10px; display:grid; place-items:center; margin:0 auto 8px; }
-.rp-ind .t{ font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
-.rp-ind .v{ font-size:27px; font-weight:800; line-height:1.1; margin-top:2px; }
-.rp-ind .d{ font-size:10px; color:var(--muted); margin-top:3px; }
-/* seções e colunas */
-.rp-cols{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:24px; }
-.rp-card{ border:1px solid var(--line); border-radius:14px; padding:16px; }
-.rp-h{ font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink); font-weight:700; margin:0 0 12px; }
-.rp-h.mt{ margin-top:16px; }
-.rp-donut{ display:flex; align-items:center; gap:14px; }
-.rp-dleg{ display:flex; flex-direction:column; gap:8px; font-size:11.5px; }
-.rp-dleg .r{ display:flex; align-items:center; gap:7px; }
-.rp-dleg .dot{ width:9px; height:9px; border-radius:3px; flex:none; }
-.rp-dleg .p{ margin-left:auto; font-weight:700; padding-left:10px; }
-.rp-puladas{ list-style:none; margin:0; padding:0; }
-.rp-puladas li{ display:flex; align-items:center; gap:8px; font-size:12px; padding:5px 0; }
-.rp-puladas .dot{ width:8px; height:8px; border-radius:50%; flex:none; }
-.rp-puladas .n{ margin-left:auto; font-weight:700; color:var(--muted); }
-.rp-alert{ display:flex; gap:10px; padding:9px 0; }
-.rp-alert .ai{ width:26px; height:26px; border-radius:50%; display:grid; place-items:center; flex:none; }
-.rp-alert .at{ font-size:12px; line-height:1.4; }
-.rp-alert + .rp-alert{ border-top:1px solid var(--line); }
-.rp-evo{ font-size:11px; color:var(--muted); }
-.rp-evo b{ font-size:22px; font-weight:800; }
-.rp-evobox{ margin-top:12px; background:${C.greenSoft}; border-radius:12px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; }
-.rp-evobox .l{ font-size:11px; color:#166534; }
-.rp-evobox .l b{ display:block; font-size:12px; color:#166534; font-weight:600; }
-.rp-evobox .d{ font-size:22px; font-weight:800; color:var(--green); display:flex; align-items:center; gap:4px; }
-/* tabela */
-.rp-tblwrap{ margin-top:26px; }
-.rp-tbl{ width:100%; border-collapse:separate; border-spacing:0; font-size:11.5px; }
-.rp-tbl th{ background:#0F1115; color:#fff; font-weight:600; padding:11px 10px; text-align:left; font-size:11px; }
-.rp-tbl th small{ display:block; font-weight:400; color:#9CA3AF; font-size:9.5px; }
-.rp-tbl th:first-child{ border-top-left-radius:11px; } .rp-tbl th:last-child{ border-top-right-radius:11px; }
-.rp-tbl td{ padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:middle; }
+.rp-inds{ display:grid; grid-template-columns:repeat(5,1fr); gap:11px; }
+.rp-ind{ border:1px solid var(--line); border-radius:12px; padding:13px 10px; text-align:center; }
+.rp-ind .ic{ width:32px; height:32px; border-radius:9px; display:grid; place-items:center; margin:0 auto 7px; }
+.rp-ind .t{ font-size:10px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); }
+.rp-ind .v{ font-size:25px; font-weight:800; line-height:1.1; margin-top:2px; }
+.rp-ind .d{ font-size:9.5px; color:var(--muted); margin-top:3px; }
+
+/* blocos de texto (IA / foco / dificuldades) */
+.rp-block{ border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+.rp-block.hl{ border-color:#CBB68A; background:#FBF7EE; }
+.rp-block h3{ display:flex; align-items:center; gap:8px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink); font-weight:800; margin:0 0 11px; }
+.rp-block h3 .tag{ margin-left:auto; font-size:8.5px; font-weight:600; color:var(--muted); background:#fff; border:1px solid var(--line); border-radius:99px; padding:2px 8px; letter-spacing:.02em; }
+.rp-list{ list-style:none; margin:0; padding:0; }
+.rp-list li{ display:flex; gap:9px; font-size:12.5px; line-height:1.55; color:var(--sub); margin:7px 0; }
+.rp-list li::before{ content:""; width:5px; height:5px; border-radius:50%; background:#CBB68A; margin-top:7px; flex:none; }
+.rp-block.plain h3{ } .rp-block.plain .rp-list li::before{ background:var(--muted); }
+.rp-dif li{ align-items:center; }
+.rp-dif li::before{ background:${C.amber}; }
+.rp-dif .n{ margin-left:auto; font-size:11px; font-weight:700; color:var(--muted); white-space:nowrap; padding-left:10px; }
+.rp-empty{ font-size:12px; color:var(--muted); }
+.rp-cols2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+/* evolução vs período anterior (só número) */
+.rp-evobox{ display:flex; align-items:center; justify-content:space-between; border:1px solid var(--line); border-radius:12px; padding:14px 18px; }
+.rp-evobox .cap{ font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:700; }
+.rp-evobox .l{ font-size:13px; color:var(--sub); font-weight:600; margin-top:4px; }
+.rp-evobox .d{ font-size:26px; font-weight:800; display:flex; align-items:center; gap:5px; }
+
+/* tabela dia-a-dia */
+.rp-tbl{ width:100%; border-collapse:separate; border-spacing:0; font-size:11px; }
+.rp-tbl th{ background:#0F1115; color:#fff; font-weight:600; padding:10px 9px; text-align:left; font-size:10.5px; }
+.rp-tbl th small{ display:block; font-weight:400; color:#9CA3AF; font-size:9px; }
+.rp-tbl th:first-child{ border-top-left-radius:9px; } .rp-tbl th:last-child{ border-top-right-radius:9px; }
+.rp-tbl td{ padding:8px 9px; border-bottom:1px solid var(--line); vertical-align:middle; }
 .rp-tbl tr:nth-child(even) td{ background:#FAFAF9; }
 .rp-tbl .cd{ font-weight:600; white-space:nowrap; }
-.rp-cell{ display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+.rp-cell{ display:inline-flex; align-items:center; gap:5px; white-space:nowrap; font-weight:600; }
 .rp-badge{ display:inline-flex; align-items:center; gap:5px; font-weight:600; }
-.rp-mut{ color:#C4C7CD; }
+.rp-st{ display:inline-block; font-size:10px; font-weight:700; padding:2px 9px; border-radius:99px; white-space:nowrap; }
+.rp-mut{ color:#B6BAC1; }
 .rp-tbl tr{ break-inside:avoid; page-break-inside:avoid; }
 .rp-tbl thead{ display:table-header-group; }
-.rp-legrow td{ background:#fff !important; border-bottom:none; padding-top:12px; }
+.rp-legrow td{ background:#fff !important; border-bottom:none; padding-top:11px; }
 .rp-leg{ display:flex; flex-wrap:wrap; gap:6px 14px; font-size:9.5px; color:var(--muted); }
 .rp-leg span{ display:inline-flex; align-items:center; gap:4px; }
-/* rodapé */
-.rp-foot{ display:grid; grid-template-columns:1fr 1fr auto; gap:16px; margin-top:26px; align-items:stretch; }
-.rp-foot .rp-card h4{ display:flex; align-items:center; gap:7px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink); font-weight:700; margin:0 0 10px; }
-.rp-foot ul{ list-style:none; margin:0; padding:0; }
-.rp-foot li{ display:flex; gap:8px; font-size:11.5px; line-height:1.5; margin:6px 0; }
-.rp-foot li::before{ content:""; width:5px; height:5px; border-radius:50%; background:var(--green); margin-top:6px; flex:none; }
-.rp-qr{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:8px; }
-.rp-qrbox{ width:92px; height:92px; border-radius:12px; border:1px dashed var(--line); background:repeating-conic-gradient(#EDEDEA 0% 25%, #fff 0% 50%) 50% / 12px 12px; display:grid; place-items:center; }
-.rp-qr small{ font-size:9.5px; color:var(--muted); text-align:center; line-height:1.4; }
-.rp-brand{ display:flex; align-items:center; justify-content:space-between; padding:14px 34px; border-top:1px solid var(--line); font-size:11px; color:var(--muted); }
-.rp-brand .l{ display:flex; align-items:center; gap:9px; }
-.rp-empty{ font-size:11.5px; color:var(--muted); }
-.rp-iaslot{ min-height:52px; display:flex; align-items:center; font-size:11.5px; color:#9AA0A6; font-style:italic; }
+
+/* evolução física (P3) */
+.rp-med{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.rp-medcard{ border:1px solid var(--line); border-radius:12px; padding:13px 15px; }
+.rp-medcard .t{ font-size:10.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); }
+.rp-medcard .row{ display:flex; align-items:baseline; gap:8px; margin-top:6px; }
+.rp-medcard .val{ font-size:19px; font-weight:800; }
+.rp-medcard .arw{ font-size:12px; color:var(--muted); }
+.rp-medcard .dl{ margin-left:auto; font-size:12px; font-weight:700; }
+.rp-fotos{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.rp-foto{ border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--soft); }
+.rp-foto img{ display:block; width:100%; height:150px; object-fit:cover; }
+.rp-foto .cap{ font-size:9.5px; color:var(--muted); padding:5px 8px; text-align:center; }
+.rp-obs{ font-size:12.5px; line-height:1.6; color:var(--sub); white-space:pre-wrap; }
+.rp-humor{ display:flex; flex-wrap:wrap; gap:8px; }
+.rp-humorchip{ font-size:11.5px; color:var(--sub); border:1px solid var(--line); border-radius:99px; padding:5px 12px; }
+.rp-humorchip b{ font-weight:700; color:var(--ink); }
+
+/* rodapé de página (Paged.js running element) */
+.rp-runfoot{ display:none; align-items:center; gap:7px; font-size:8pt; color:${C.muted}; }
+.rp-runfoot .m{ width:14px; height:14px; border-radius:4px; background:#0F1115; display:inline-grid; place-items:center; }
+.rp-runfoot b{ color:${C.ink}; font-weight:700; letter-spacing:.04em; }
+`;
+
+/* CSS aplicado na TELA e na impressão nativa (caminho de sucesso: só imprime o Paged.js) */
+const SCREEN_CSS = `
+.rp-print-root{ position:absolute; left:-100000px; top:0; width:820px; }
 @media print{
-  @page{ size:A4; margin:10mm; }
   html,body{ background:#fff !important; }
-  /* isola o documento: some com controles/nav fixa. O menu lateral do desktop já é
-     display:none na largura de página (<1024px), então não ocupa espaço nem desloca o doc. */
   body *{ visibility:hidden !important; }
-  .rp, .rp *{ visibility:visible !important; }
-  .no-print, .no-print *{ display:none !important; }
-  /* o documento flui no topo DENTRO da área imprimível (respeita as margens @page).
-     Nada de position:absolute — isso fazia width:100% valer a página inteira e cortar à direita. */
-  main{ overflow:visible !important; padding:0 !important; }
-  .rp{ padding:0 !important; background:#fff !important; }
-  .rp main{ max-width:none !important; margin:0 !important; padding:0 !important; }
-  .rp-doc{ box-shadow:none !important; border-radius:0 !important; width:100% !important; max-width:100% !important; }
-  .rp-pad{ padding:0 !important; }
-  .rp-pac{ gap:14px !important; }
-  .rp-stat{ min-width:104px !important; }
-  .rp *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-  .rp-cols, .rp-foot, .rp-pac, .rp-inds, .rp-tbl tr{ break-inside:avoid; }
+  .rp-print-root, .rp-print-root *{ visibility:visible !important; }
+  .no-print{ display:none !important; }
+  .rp-print-root{ position:static !important; left:0 !important; width:auto !important; }
+  @page{ margin:0; }
+  .pagedjs_page{ margin:0 !important; box-shadow:none !important; }
+  *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
 }
 `;
 
-/* ───────── donut SVG ───────── */
-function Donut({ seg }: { seg: Array<{ pct: number; cor: string }> }) {
-  const r = 34, cx = 44, cy = 44, sw = 15, Cc = 2 * Math.PI * r;
-  let off = 0;
-  return (
-    <svg width="88" height="88" viewBox="0 0 88 88">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#EDEDEA" strokeWidth={sw} />
-      {seg.map((s, i) => {
-        const len = (s.pct / 100) * Cc;
-        const el = <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={s.cor} strokeWidth={sw}
-          strokeDasharray={`${len} ${Cc - len}`} strokeDashoffset={-off} transform={`rotate(-90 ${cx} ${cy})`} />;
-        off += len;
-        return el;
-      })}
-    </svg>
-  );
+/* CSS só para o Paged.js (paginação real + rodapé com nº de página em toda página) */
+const PAGED_CSS = `
+${BASE_CSS}
+@page{
+  size:A4; margin:14mm 12mm 16mm;
+  @bottom-left{ content:element(runfoot); }
+  @bottom-right{ content:"Página " counter(page) " de " counter(pages);
+    font-family:Inter,ui-sans-serif,sans-serif; font-size:8pt; color:${C.muted}; }
 }
-
-/* ───────── mini gráfico de linha (evolução semanal) ───────── */
-function LineChart({ pts }: { pts: number[] }) {
-  const W = 236, H = 100, pl = 24, pr = 24, pt = 20, pb = 22;
-  const iw = W - pl - pr, ih = H - pt - pb;
-  const x = (i: number) => pl + (pts.length === 1 ? iw / 2 : (i / (pts.length - 1)) * iw);
-  const y = (v: number) => pt + ih - (Math.max(0, Math.min(100, v)) / 100) * ih;
-  const anchor = (i: number) => (i === 0 ? "start" : i === pts.length - 1 ? "end" : "middle");
-  const line = pts.map((v, i) => `${x(i)},${y(v)}`).join(" ");
-  const area = `${x(0)},${pt + ih} ${line} ${x(pts.length - 1)},${pt + ih}`;
-  return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-      {[0, 50, 100].map((g) => <line key={g} x1={pl} x2={pl + iw} y1={y(g)} y2={y(g)} stroke="#F0F0EE" strokeWidth="1" />)}
-      <polygon points={area} fill={C.greenSoft} opacity="0.7" />
-      <polyline points={line} fill="none" stroke={C.green} strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round" />
-      {pts.map((v, i) => (
-        <g key={i}>
-          <circle cx={x(i)} cy={y(v)} r="3.4" fill="#fff" stroke={C.green} strokeWidth="2" />
-          <text x={x(i)} y={y(v) - 8} textAnchor={anchor(i)} fontSize="10" fontWeight="700" fill={C.ink}>{v}%</text>
-          <text x={x(i)} y={H - 5} textAnchor={anchor(i)} fontSize="9.5" fill={C.muted}>Sem {i + 1}</text>
-        </g>
-      ))}
-    </svg>
-  );
-}
+.rp-page{ box-shadow:none !important; border-radius:0 !important; margin:0 auto !important; padding:0 !important; width:100% !important; }
+.rp-runfoot{ display:flex !important; position:running(runfoot); }
+`;
 
 /* ───────── página ───────── */
 export default function RelatorioMensal() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const [inicio, setInicio] = useState(isoHa(29));
   const [fim, setFim] = useState(isoHoje());
   const [comIA, setComIA] = useState(false);
+  const [gerando, setGerando] = useState(false);
 
   const url = id ? `/pacientes/${id}/relatorio-mensal?inicio=${inicio}&fim=${fim}${comIA ? "&ia=1" : ""}` : null;
   const { data: rel, loading, error } = useFetch<Relatorio>(url);
 
   const iaAtiva = !!(rel?.insightsIA && rel.insightsIA.length);
   const insights = rel ? (iaAtiva ? rel.insightsIA! : rel.insightsRegras) : [];
+  const focoAtiva = !!(rel?.focoIA && rel.focoIA.length);
+  const foco = rel ? (focoAtiva ? rel.focoIA! : rel.focoRegras) : [];
 
-  /* ── derivações (100% dos dados já existentes) ── */
+  /* ── indicadores (a partir dos dados já existentes) ── */
   const view = useMemo(() => {
     if (!rel) return null;
     const R = rel.refeicoes;
     const totRef = R.reduce((s, m) => s + m.total, 0);
-    const seguiu = R.reduce((s, m) => s + m.seguiu, 0);
-    const adaptou = R.reduce((s, m) => s + m.adaptou, 0);
-    const pulouRuim = R.reduce((s, m) => s + m.comeuMal + m.pulou, 0);
     const p = (a: number, b: number) => (b > 0 ? Math.round((a / b) * 100) : 0);
-
-    // 5 indicadores (— quando não há dado no período)
     const treinoDen = rel.treino.conforme + rel.treino.parcial + rel.treino.nao;
-    const alimentacaoPct = totRef > 0 ? p(seguiu + adaptou, totRef) : null;
+
+    const alimentacaoPct = totRef > 0 ? p(R.reduce((s, m) => s + m.seguiu + m.adaptou, 0), totRef) : null;
     const hidratacaoPct = rel.agua.diasComDado > 0 ? p(rel.agua.diasComDado - rel.agua.diasAbaixoMeta, rel.agua.diasComDado) : null;
     const sonoPct = rel.sono.diasComDado > 0 ? p(rel.sono.diasComDado - rel.sono.diasAbaixoMeta, rel.sono.diasComDado) : null;
     const treinoPct = treinoDen > 0 ? p(rel.treino.conforme + rel.treino.parcial, treinoDen) : null;
+
     const humorTot = Object.values(rel.humor).reduce((s, n) => s + n, 0);
     const humorAvg = humorTot ? Object.entries(rel.humor).reduce((s, [k, n]) => s + (HUMOR_SCORE[k] ?? 3) * n, 0) / humorTot : 0;
     const humorKey = humorAvg >= 4.5 ? "otimo" : humorAvg >= 3.5 ? "bom" : humorAvg >= 2.5 ? "neutro" : humorAvg >= 1.5 ? "dificil" : humorTot ? "pessimo" : null;
-    const humorDesc = humorAvg >= 3.5 ? "Predominantemente positivo" : humorAvg >= 2.5 ? "Equilibrado" : humorTot ? "Requer atenção" : "Sem registros";
+    const humorDesc = humorAvg >= 3.5 ? "Predominante positivo" : humorAvg >= 2.5 ? "Equilibrado" : humorTot ? "Requer atenção" : "Sem registros";
 
-    // donut + refeições puladas
-    const donut = [
-      { pct: p(seguiu, totRef), cor: C.green }, { pct: p(adaptou, totRef), cor: "#EAB308" }, { pct: p(pulouRuim, totRef), cor: C.red },
-    ];
-    const puladas = [...R].filter((m) => m.pulou + m.comeuMal > 0).sort((a, b) => (b.pulou + b.comeuMal) - (a.pulou + a.comeuMal)).slice(0, 4);
-
-    // alertas
-    type Al = { tone: "red" | "amber" | "green"; text: string };
-    const alertas: Al[] = [];
-    // treino consecutivo
-    let maxSem = 0, cur = 0;
-    for (const d of rel.dias) { if (d.treino === "nao") { cur++; maxSem = Math.max(maxSem, cur); } else if (d.treino === "sim") cur = 0; }
-    if (maxSem >= 3) alertas.push({ tone: "red", text: `Ficou ${maxSem} dias consecutivos sem treino` });
-    if (rel.sono.diasAbaixoMeta > 0) alertas.push({ tone: rel.sono.diasAbaixoMeta >= 7 ? "red" : "amber", text: `Dormiu menos de ${rel.sono.meta}h em ${rel.sono.diasAbaixoMeta} dias` });
-    const pior = [...R].filter((m) => m.total >= 3).sort((a, b) => b.problemaPct - a.problemaPct)[0];
-    if (pior && pior.problemaPct >= 30) alertas.push({ tone: "amber", text: `Maior dificuldade: ${pior.label.toLowerCase()} (${pior.problemaPct}% de falha)` });
-    if (rel.finaisDeSemana.totalFds > 0 && rel.finaisDeSemana.aderenciaFdsPct <= 50) alertas.push({ tone: "amber", text: `Menor adesão nos fins de semana (${rel.finaisDeSemana.aderenciaFdsPct}%)` });
-    const aguaOkDias = rel.agua.diasComDado - rel.agua.diasAbaixoMeta;
-    if (aguaOkDias > 0) alertas.push({ tone: "green", text: `Cumpriu a meta de água em ${aguaOkDias} dias` });
-    if (rel.resumo.diasRegistrados > 0) alertas.push({ tone: "green", text: `Check-in realizado em ${rel.resumo.diasRegistrados} dias` });
-    const alertasOrd = alertas.sort((a, b) => ({ red: 0, amber: 1, green: 2 }[a.tone] - { red: 0, amber: 1, green: 2 }[b.tone])).slice(0, 6);
-
-    // evolução semanal (buckets de dias)
-    const n = rel.dias.length;
-    const bk = Math.max(1, Math.ceil(n / 4));
-    const semanas: number[] = [];
-    for (let i = 0; i < n; i += bk) {
-      const slice = rel.dias.slice(i, i + bk);
-      semanas.push(p(slice.filter((d) => d.checkin).length, slice.length));
-    }
     const deltaMes = rel.mesAnterior ? rel.resumo.aderenciaPct - rel.mesAnterior.aderenciaPct : null;
-
-    return { alimentacaoPct, hidratacaoPct, sonoPct, treinoPct, humorKey, humorDesc, donut, puladas, alertas: alertasOrd, semanas: semanas.slice(0, 4), deltaMes };
+    return { alimentacaoPct, hidratacaoPct, sonoPct, treinoPct, humorKey, humorDesc, deltaMes };
   }, [rel]);
 
   const geradoEm = useMemo(() => {
@@ -293,11 +278,23 @@ export default function RelatorioMensal() {
     return `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()} às ${p2(d.getHours())}:${p2(d.getMinutes())}`;
   }, [rel]);
 
+  /* evolução física — o que mostrar (blocos vazios são ocultados) */
+  const fis = useMemo(() => {
+    if (!rel) return null;
+    const ev = rel.evolucaoFisica;
+    const medidas = MEDIDAS_ORDEM
+      .map((k) => ({ k, m: ev.medidas[k] }))
+      .filter((x): x is { k: string; m: Medida } => !!x.m);
+    const humorTot = Object.values(rel.humor).reduce((s, n) => s + n, 0);
+    const temAlgo = !!ev.peso || medidas.length > 0 || ev.fotos.length > 0 || !!(ev.laudo || ev.observacoes) || humorTot > 0;
+    return { ev, medidas, humorTot, temAlgo };
+  }, [rel]);
+
   const textoWhatsApp = useMemo(() => {
     if (!rel) return "";
     return [
       `*Nexvel · Relatório de ${rel.paciente.nome}*`,
-      `${brData(rel.periodo.inicio)} a ${brData(rel.periodo.fim)} · adesão ${rel.resumo.aderenciaPct}% (${rel.resumo.diasRegistrados}/${rel.periodo.dias} dias)`,
+      `${brData(rel.periodo.inicio)} a ${brData(rel.periodo.fim)} · Score ${rel.scoreGeral.valor}/100 (${rel.scoreGeral.status})`,
       "", ...insights.map((i) => `• ${i}`),
     ].join("\n");
   }, [rel, insights]);
@@ -308,20 +305,54 @@ export default function RelatorioMensal() {
     const link = tel ? gerarUrlWhatsApp(rel.paciente.telefone as string, textoWhatsApp) : `https://wa.me/?text=${encodeURIComponent(textoWhatsApp)}`;
     window.open(link, "_blank", "noopener");
   }
-  function exportarPdf() {
+
+  /* Export: paginação real via Paged.js (rodapé + nº de página em toda página).
+     Falha na lib → cai na impressão nativa simples. */
+  async function exportarPdf() {
+    const src = reportRef.current;
     const original = document.title;
     document.title = `Nexvel - Relatório - ${rel?.paciente.nome ?? "paciente"}`;
-    const restaurar = () => { document.title = original; window.removeEventListener("afterprint", restaurar); };
-    window.addEventListener("afterprint", restaurar);
-    window.print();
+    const restaurar = () => { document.title = original; };
+    if (!src) { window.print(); restaurar(); return; }
+
+    setGerando(true);
+    let root: HTMLDivElement | null = null;
+    let cssUrl = "";
+    try {
+      const { Previewer } = await import("pagedjs");
+      root = document.createElement("div");
+      root.className = "rp-print-root";
+      document.body.appendChild(root);
+      cssUrl = URL.createObjectURL(new Blob([PAGED_CSS], { type: "text/css" }));
+      await new Previewer().preview(src.cloneNode(true), [cssUrl], root);
+
+      const limpar = () => {
+        if (root && document.body.contains(root)) root.remove();
+        if (cssUrl) URL.revokeObjectURL(cssUrl);
+        window.removeEventListener("afterprint", onAfter);
+        restaurar();
+      };
+      const onAfter = () => limpar();
+      window.addEventListener("afterprint", onAfter);
+      setGerando(false);
+      window.print();
+      setTimeout(() => { if (root && document.body.contains(root)) limpar(); }, 120000);
+    } catch (e) {
+      console.error("[relatorio] Paged.js falhou, imprimindo direto", e);
+      if (root && document.body.contains(root)) root.remove();
+      if (cssUrl) URL.revokeObjectURL(cssUrl);
+      setGerando(false);
+      window.print();
+      restaurar();
+    }
   }
 
-  const ligaCor = rel ? (CORES_LIGA[rel.resumo.ligaAtual] ?? "#E8A419") : "#E8A419";
-  const xpPct = rel && rel.resumo.xpParaProxima > 0 ? Math.round((rel.resumo.pontosTotal / (rel.resumo.pontosTotal + rel.resumo.xpParaProxima)) * 100) : 100;
+  const metaAgua = rel?.agua.meta ?? 0;
+  const metaSono = rel?.sono.meta ?? 0;
 
   return (
     <div className="rp min-h-screen bg-nx-bg-lowest text-nx-on-surface font-sans">
-      <style>{CSS}</style>
+      <style>{BASE_CSS + SCREEN_CSS}</style>
 
       <main className="mx-auto max-w-4xl px-4 py-6 pb-24 md:px-6">
         {/* Controles (não saem no PDF) */}
@@ -346,7 +377,7 @@ export default function RelatorioMensal() {
           </div>
           {rel && (
             <div className="mb-5 flex flex-wrap gap-2">
-              <button onClick={exportarPdf} className="flex items-center gap-2 rounded-xl bg-nx-evo text-nx-on-evo px-4 py-2.5 text-body-sm font-semibold hover:bg-nx-evo-2 transition-colors"><FileDown size={16} /> Exportar PDF</button>
+              <button onClick={exportarPdf} disabled={gerando} className="flex items-center gap-2 rounded-xl bg-nx-evo text-nx-on-evo px-4 py-2.5 text-body-sm font-semibold hover:bg-nx-evo-2 transition-colors disabled:opacity-60"><FileDown size={16} /> {gerando ? "Preparando…" : "Exportar PDF"}</button>
               <button onClick={abrirWhatsApp} title={rel.paciente.telefone ? "Enviar resumo por WhatsApp" : "Paciente sem número — escolha o contato no WhatsApp"} className="flex items-center gap-2 rounded-xl border border-nx-border px-4 py-2.5 text-body-sm font-semibold text-nx-on-surface hover:bg-nx-surface-hover transition-colors">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden><path d="M17.5 14.4c-.3-.15-1.7-.85-2-.95-.26-.1-.45-.15-.64.15-.19.28-.73.94-.9 1.13-.16.19-.33.21-.61.07-.3-.15-1.24-.46-2.36-1.46-.87-.78-1.46-1.74-1.63-2.03-.17-.29-.02-.45.13-.6.13-.13.29-.34.44-.5.15-.17.19-.29.29-.48.1-.19.05-.36-.02-.5-.08-.15-.64-1.55-.88-2.12-.23-.55-.47-.48-.64-.49l-.55-.01c-.19 0-.5.07-.76.36-.26.29-1 .98-1 2.38s1.02 2.76 1.17 2.95c.15.19 2.02 3.08 4.9 4.32.68.29 1.22.47 1.63.6.69.22 1.31.19 1.8.11.55-.08 1.7-.69 1.94-1.36.24-.67.24-1.24.17-1.36-.07-.12-.26-.19-.55-.34zM12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2z" /></svg> WhatsApp
               </button>
@@ -358,20 +389,25 @@ export default function RelatorioMensal() {
           <div className="mx-auto max-w-[820px] space-y-4"><div className="h-40 animate-pulse rounded-2xl bg-nx-container/60" /><div className="h-96 animate-pulse rounded-2xl bg-nx-container/60" /></div>
         ) : error ? (
           <div className="mx-auto max-w-[820px] rounded-2xl border border-nx-border bg-nx-surface p-8 text-center text-body-sm text-nx-danger">{error}</div>
-        ) : !rel || !view ? null : (
-          /* ═══════════ DOCUMENTO A4 ═══════════ */
-          <article className="rp-doc">
-            <div className="rp-pad">
-              {/* HEADER */}
-              <header className="rp-top">
+        ) : !rel || !view || !fis ? null : (
+          /* ═══════════ FICHA CLÍNICA (3 páginas) ═══════════ */
+          <div className="rp-report" ref={reportRef}>
+            {/* rodapé repetido em toda página (Paged.js) */}
+            <div className="rp-runfoot">
+              <span className="m"><Sparkles size={9} style={{ color: "#7CFF5B" }} /></span>
+              <b>NEXVEL</b>· Ficha clínica · Gerado em {geradoEm}
+            </div>
+
+            {/* ───────── PÁGINA 1 — RESUMO EXECUTIVO ───────── */}
+            <section className="rp-page">
+              <header className="rp-top" style={{ marginTop: 0 }}>
                 <div className="rp-logo">
                   <span className="mark"><Sparkles size={18} /></span>
-                  <div><b>NEXVEL</b><small>Relatório Mensal do Paciente</small></div>
+                  <div><b>NEXVEL</b><small>Ficha clínica de acompanhamento</small></div>
                 </div>
-                <div className="rp-gen">Relatório gerado em:<br /><b>{geradoEm}</b><br />Período: {brData(rel.periodo.inicio)} — {brData(rel.periodo.fim)}</div>
+                <div className="rp-gen">Gerado em: <b>{geradoEm}</b><br />Período: {brData(rel.periodo.inicio)} — {brData(rel.periodo.fim)} ({rel.periodo.dias} dias)</div>
               </header>
 
-              {/* PACIENTE + GAMIFICAÇÃO */}
               <section className="rp-pac">
                 {rel.paciente.foto
                   ? <img src={rel.paciente.foto} alt={rel.paciente.nome} className="rp-avatar" />
@@ -379,172 +415,204 @@ export default function RelatorioMensal() {
                 <div className="rp-pinfo">
                   <h1>{rel.paciente.nome}</h1>
                   {rel.paciente.objetivo && <div className="rp-pline"><Target size={14} /> Objetivo: <b>{rel.paciente.objetivo}</b></div>}
-                  {rel.paciente.nutricionista && <div className="rp-pline"><User size={14} /> Nutricionista: <b>{rel.paciente.nutricionista}</b></div>}
-                </div>
-                <div className="rp-stats">
-                  <div className="rp-stat">
-                    <div className="lbl"><Shield size={13} style={{ color: ligaCor }} /> Liga atual</div>
-                    <div className="val" style={{ color: ligaCor }}>{rel.resumo.ligaAtual} {rel.resumo.ligaNivel}</div>
-                    <div className="rp-xpbar"><i style={{ width: `${xpPct}%`, background: ligaCor }} /></div>
-                    <div className="sub">{nf(rel.resumo.pontosTotal)} XP{rel.resumo.proximaLiga ? ` · faltam ${nf(rel.resumo.xpParaProxima)}` : ""}</div>
-                  </div>
-                  <div className="rp-stat">
-                    <div className="lbl"><Flame size={13} style={{ color: "#F97316" }} /> Sequência</div>
-                    <div className="val" style={{ color: "#16A34A" }}>{rel.resumo.streakAtual} dias</div>
-                    <div className="sub">recorde {rel.resumo.streakMaximo} dias</div>
-                  </div>
-                  <div className="rp-stat">
-                    <div className="lbl"><CalendarCheck size={13} style={{ color: C.water }} /> Check-ins</div>
-                    <div className="val">{rel.resumo.diasRegistrados} de {rel.periodo.dias}</div>
-                    <div className="sub">{rel.resumo.aderenciaPct}% de adesão</div>
-                  </div>
+                  {rel.paciente.nutricionista && <div className="rp-pline"><User size={14} /> Nutricionista responsável: <b>{rel.paciente.nutricionista}</b></div>}
                 </div>
               </section>
 
-              {/* 5 INDICADORES */}
+              {/* Score Geral */}
+              <section className="rp-score">
+                <div>
+                  <div className="cap">Score geral de adesão</div>
+                  <div className="num" style={{ color: statusScoreCor(rel.scoreGeral.status) }}>{rel.scoreGeral.valor}<small>/100</small></div>
+                </div>
+                <div className="rp-score-meta">
+                  <span className="status" style={{ color: statusScoreCor(rel.scoreGeral.status), background: `${statusScoreCor(rel.scoreGeral.status)}18` }}>{rel.scoreGeral.status}</span>
+                  <div className="sub">Check-ins: <b style={{ color: C.sub }}>{rel.resumo.diasRegistrados} de {rel.periodo.dias} dias</b> · {rel.resumo.aderenciaPct}% de adesão · sequência recorde {rel.resumo.streakMaximo} dias</div>
+                </div>
+              </section>
+
+              {/* 5 indicadores */}
               <section className="rp-inds">
                 {[
                   { ic: Utensils, cor: C.green, bg: C.greenSoft, t: "Alimentação", pct: view.alimentacaoPct },
                   { ic: Droplet, cor: C.water, bg: C.waterSoft, t: "Hidratação", pct: view.hidratacaoPct },
                   { ic: Moon, cor: C.sleep, bg: C.sleepSoft, t: "Sono", pct: view.sonoPct },
-                  { ic: Dumbbell, cor: "#EA580C", bg: "#FFEDD5", t: "Treino", pct: view.treinoPct },
-                  { ic: Smile, cor: "#CA8A04", bg: "#FEF9C3", t: "Humor médio", pct: null as number | null, v: view.humorKey ? HUMOR_LABEL[view.humorKey] : "—", d: view.humorDesc },
+                  { ic: Dumbbell, cor: "#C2410C", bg: "#FBEBDD", t: "Treino", pct: view.treinoPct },
+                  { ic: Smile, cor: "#A16207", bg: "#FBF3D5", t: "Humor médio", pct: null as number | null, v: view.humorKey ? HUMOR_LABEL[view.humorKey] : "—", d: view.humorDesc },
                 ].map((k, i) => {
                   const semDado = k.t !== "Humor médio" && k.pct == null;
                   const v = "v" in k ? (k as { v: string }).v : semDado ? "—" : `${k.pct}%`;
                   const d = "d" in k ? (k as { d: string }).d : semDado ? "Sem registros" : classeIndicador(k.pct as number);
                   return (
                     <div className="rp-ind" key={i}>
-                      <div className="ic" style={{ background: k.bg }}><k.ic size={19} style={{ color: k.cor }} /></div>
+                      <div className="ic" style={{ background: k.bg }}><k.ic size={18} style={{ color: k.cor }} /></div>
                       <div className="t">{k.t}</div>
-                      <div className="v" style={{ color: semDado ? C.muted : k.cor, fontSize: k.t === "Humor médio" ? 20 : undefined }}>{v}</div>
+                      <div className="v" style={{ color: semDado ? C.muted : k.cor, fontSize: k.t === "Humor médio" ? 19 : undefined }}>{v}</div>
                       <div className="d">{d}</div>
                     </div>
                   );
                 })}
               </section>
 
-              {/* 3 COLUNAS */}
-              <section className="rp-cols">
-                {/* col 1 */}
-                <div className="rp-card">
-                  <h3 className="rp-h">Resumo do mês</h3>
-                  <div className="rp-donut">
-                    <Donut seg={view.donut} />
-                    <div className="rp-dleg">
-                      <div className="r"><span className="dot" style={{ background: C.green }} /> Seguiu o plano <span className="p">{view.donut[0].pct}%</span></div>
-                      <div className="r"><span className="dot" style={{ background: "#EAB308" }} /> Adaptou <span className="p">{view.donut[1].pct}%</span></div>
-                      <div className="r"><span className="dot" style={{ background: C.red }} /> Pulou refeições <span className="p">{view.donut[2].pct}%</span></div>
-                    </div>
-                  </div>
-                  <h3 className="rp-h mt">Refeições mais puladas</h3>
-                  {view.puladas.length === 0 ? <p className="rp-empty">Nenhuma refeição pulada. 🎉</p> : (
-                    <ul className="rp-puladas">
-                      {view.puladas.map((m) => (
-                        <li key={m.key}><span className="dot" style={{ background: C.red }} />{m.label}<span className="n">{m.pulou + m.comeuMal} {m.pulou + m.comeuMal === 1 ? "vez" : "vezes"}</span></li>
+              {/* Resumo Inteligente (destaque) */}
+              <section className="rp-block hl">
+                <h3><Sparkles size={14} style={{ color: "#B08D57" }} /> Resumo inteligente <span className="tag">{iaAtiva ? "Gerado por IA" : "Leitura automática"}</span></h3>
+                {insights.length === 0 ? <p className="rp-empty">Sem dados suficientes no período.</p> : (
+                  <ul className="rp-list">{insights.slice(0, 6).map((t, i) => <li key={i}>{t}</li>)}</ul>
+                )}
+              </section>
+
+              {/* Foco da próxima consulta */}
+              <section className="rp-block plain">
+                <h3><CalendarCheck size={14} style={{ color: C.water }} /> Foco da próxima consulta {focoAtiva && <span className="tag">IA</span>}</h3>
+                {foco.length === 0 ? <p className="rp-empty">Sem prioridades definidas.</p> : (
+                  <ul className="rp-list">{foco.slice(0, 4).map((t, i) => <li key={i}>{t}</li>)}</ul>
+                )}
+              </section>
+
+              <section className="rp-cols2">
+                {/* Principais dificuldades */}
+                <div className="rp-block plain">
+                  <h3><AlertTriangle size={14} style={{ color: C.amber }} /> Principais dificuldades</h3>
+                  {rel.dificuldades.length === 0 ? <p className="rp-empty">Nenhuma dificuldade relevante no período.</p> : (
+                    <ul className="rp-list rp-dif">
+                      {rel.dificuldades.slice(0, 6).map((d, i) => (
+                        <li key={i}>{d.texto}<span className="n">{d.vezes}×</span></li>
                       ))}
                     </ul>
                   )}
                 </div>
 
-                {/* col 2 */}
-                <div className="rp-card">
-                  <h3 className="rp-h">Principais alertas</h3>
-                  {view.alertas.length === 0 ? <p className="rp-empty">Sem alertas relevantes no período.</p> : view.alertas.map((a, i) => {
-                    const Ico = a.tone === "green" ? CheckCircle2 : a.tone === "red" ? AlertCircle : AlertTriangle;
-                    const cor = a.tone === "green" ? C.green : a.tone === "red" ? C.red : C.amber;
-                    const bg = a.tone === "green" ? C.greenSoft : a.tone === "red" ? C.redSoft : C.amberSoft;
-                    return (<div className="rp-alert" key={i}><span className="ai" style={{ background: bg }}><Ico size={15} style={{ color: cor }} /></span><span className="at">{a.text}</span></div>);
-                  })}
-                </div>
-
-                {/* col 3 */}
-                <div className="rp-card">
-                  <h3 className="rp-h">Evolução da aderência</h3>
-                  <LineChart pts={view.semanas} />
-                  <div className="rp-evobox">
-                    <span className="l">Evolução no mês<b>comparado ao mês anterior</b></span>
-                    {view.deltaMes == null
-                      ? <span className="d" style={{ color: C.muted, fontSize: 15 }}>—</span>
-                      : <span className="d" style={{ color: view.deltaMes >= 0 ? C.green : C.red }}>{view.deltaMes >= 0 ? "+" : ""}{view.deltaMes}%<TrendingUp size={16} style={{ transform: view.deltaMes >= 0 ? "none" : "scaleY(-1)" }} /></span>}
+                {/* Evolução vs período anterior (só número) */}
+                <div className="rp-evobox">
+                  <div>
+                    <div className="cap">Evolução da adesão</div>
+                    <div className="l">{rel.mesAnterior ? `${rel.mesAnterior.aderenciaPct}% → ${rel.resumo.aderenciaPct}%` : "Sem período anterior para comparar"}</div>
                   </div>
+                  {view.deltaMes == null
+                    ? <span className="d" style={{ color: C.muted, fontSize: 18 }}>—</span>
+                    : <span className="d" style={{ color: view.deltaMes >= 0 ? C.green : C.red }}>{sinal(view.deltaMes)}{Math.abs(view.deltaMes)}%<TrendingUp size={18} style={{ transform: view.deltaMes >= 0 ? "none" : "scaleY(-1)" }} /></span>}
                 </div>
               </section>
+            </section>
 
-              {/* TABELA DIA-A-DIA */}
-              <section className="rp-tblwrap">
-                <h3 className="rp-h" style={{ fontSize: 12, marginBottom: 12 }}>Visão diária do mês</h3>
-                <table className="rp-tbl">
-                  <thead>
-                    <tr>
-                      <th>Dia</th><th>Alimentação</th><th>Hidratação<small>Meta {litros(rel.agua.meta)}</small></th>
-                      <th>Sono<small>Meta ≥{rel.sono.meta}h</small></th><th>Treino</th><th>Humor</th><th>Check-in</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rel.dias.map((d) => {
-                      const alCor = d.alimentacao === "seguiu" ? C.green : d.alimentacao === "adaptou" ? C.amber : C.red;
-                      const alTxt = d.alimentacao === "seguiu" ? "Seguiu" : d.alimentacao === "adaptou" ? "Adaptou" : d.alimentacao === "pulou" ? "Pulou" : null;
-                      const AlIco = d.alimentacao === "seguiu" ? CheckCircle2 : d.alimentacao === "adaptou" ? AlertTriangle : AlertCircle;
-                      const aguaCor = d.aguaMl == null ? C.muted : d.aguaMl >= rel.agua.meta ? C.green : d.aguaMl >= rel.agua.meta * 0.72 ? C.amber : C.red;
-                      const sonoCor = d.sonoHoras == null ? C.muted : d.sonoHoras >= rel.sono.meta ? C.green : d.sonoHoras >= rel.sono.meta - 1 ? C.amber : C.red;
-                      return (
-                        <tr key={d.data}>
-                          <td className="cd">{diaMes(d.data)}</td>
-                          <td>{alTxt ? <span className="rp-badge" style={{ color: alCor }}><AlIco size={14} />{alTxt}</span> : <span className="rp-mut">—</span>}</td>
-                          <td>{d.aguaMl == null ? <span className="rp-mut">—</span> : <span className="rp-cell" style={{ color: aguaCor, fontWeight: 600 }}><Droplet size={13} />{litros(d.aguaMl)}</span>}</td>
-                          <td>{d.sonoHoras == null ? <span className="rp-mut">—</span> : <span className="rp-cell" style={{ color: sonoCor, fontWeight: 600 }}><Moon size={13} />{fmtSono(d.sonoHoras)}</span>}</td>
-                          <td>{d.treino == null ? <span className="rp-mut">—</span> : d.treino === "sim" ? <span className="rp-badge" style={{ color: C.green }}><Dumbbell size={14} />Treinou</span> : <span className="rp-badge" style={{ color: C.muted }}><Dumbbell size={14} />Não treinou</span>}</td>
-                          <td>{d.humor ? <span style={{ fontSize: 16 }}>{HUMOR_EMOJI[d.humor] ?? "•"}</span> : <span className="rp-mut">—</span>}</td>
-                          <td>{d.checkin ? <CheckCircle2 size={16} style={{ color: C.green }} /> : <AlertCircle size={16} style={{ color: "#D1D5DB" }} />}</td>
-                        </tr>
-                      );
-                    })}
-                    <tr className="rp-legrow">
-                      <td colSpan={7}>
-                        <div className="rp-leg">
-                          <span><CheckCircle2 size={12} style={{ color: C.green }} /> Seguiu</span>
-                          <span><AlertTriangle size={12} style={{ color: C.amber }} /> Adaptou</span>
-                          <span><AlertCircle size={12} style={{ color: C.red }} /> Pulou</span>
-                          <span style={{ color: C.green }}>💧 ≥ {litros(rel.agua.meta)}</span>
-                          <span style={{ color: C.amber }}>quase</span>
-                          <span style={{ color: C.red }}>{"<"} meta</span>
-                          <span style={{ color: C.green }}>🌙 ≥ {rel.sono.meta}h</span>
-                          <span style={{ color: C.red }}>{"<"} {rel.sono.meta - 1}h</span>
+            {/* ───────── PÁGINA 2 — HISTÓRICO DIÁRIO ───────── */}
+            <section className="rp-page">
+              <p className="rp-page-tag">Página 2 · Histórico diário</p>
+              <table className="rp-tbl">
+                <thead>
+                  <tr>
+                    <th>Data</th><th>Alimentação</th><th>Água<small>Meta {litros(rel.agua.meta)}</small></th>
+                    <th>Sono<small>Meta ≥{rel.sono.meta}h</small></th><th>Treino</th><th>Humor</th><th>Check-in</th><th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rel.dias.map((d) => {
+                    const alCor = d.alimentacao === "seguiu" ? C.green : d.alimentacao === "adaptou" ? C.amber : C.red;
+                    const alTxt = d.alimentacao === "seguiu" ? "Seguiu" : d.alimentacao === "adaptou" ? "Adaptou" : d.alimentacao === "pulou" ? "Pulou" : null;
+                    const aguaCor = d.aguaMl == null ? C.muted : d.aguaMl >= rel.agua.meta ? C.green : d.aguaMl >= rel.agua.meta * 0.72 ? C.amber : C.red;
+                    const sonoCor = d.sonoHoras == null ? C.muted : d.sonoHoras >= rel.sono.meta ? C.green : d.sonoHoras >= rel.sono.meta - 1 ? C.amber : C.red;
+                    const st = statusDia(d, metaAgua, metaSono);
+                    const stc = TONE_COR[st.tone];
+                    return (
+                      <tr key={d.data}>
+                        <td className="cd">{diaMes(d.data)}</td>
+                        <td>{alTxt ? <span className="rp-badge" style={{ color: alCor }}>{alTxt}</span> : <span className="rp-mut">—</span>}</td>
+                        <td>{d.aguaMl == null ? <span className="rp-mut">—</span> : <span className="rp-cell" style={{ color: aguaCor }}>{litros(d.aguaMl)}</span>}</td>
+                        <td>{d.sonoHoras == null ? <span className="rp-mut">—</span> : <span className="rp-cell" style={{ color: sonoCor }}>{fmtSono(d.sonoHoras)}</span>}</td>
+                        <td>{d.treino == null ? <span className="rp-mut">—</span> : d.treino === "sim" ? <span className="rp-badge" style={{ color: C.green }}>Treinou</span> : <span className="rp-badge" style={{ color: C.muted }}>Não treinou</span>}</td>
+                        <td>{d.humor ? <span style={{ color: C.sub }}>{HUMOR_LABEL[d.humor] ?? "—"}</span> : <span className="rp-mut">—</span>}</td>
+                        <td>{d.checkin ? <CheckCircle2 size={15} style={{ color: C.green }} /> : <AlertCircle size={15} style={{ color: "#D1D5DB" }} />}</td>
+                        <td><span className="rp-st" style={{ color: stc.cor, background: stc.bg }}>{st.label}</span></td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="rp-legrow">
+                    <td colSpan={8}>
+                      <div className="rp-leg">
+                        <span><span className="rp-st" style={{ color: C.green, background: C.greenSoft }}>Excelente</span> nenhum problema no dia</span>
+                        <span><span className="rp-st" style={{ color: C.water, background: C.waterSoft }}>Bom</span> 1 ponto de atenção</span>
+                        <span><span className="rp-st" style={{ color: C.amber, background: C.amberSoft }}>Atenção</span> 2+ pontos</span>
+                        <span><span className="rp-st" style={{ color: C.muted, background: C.soft }}>Sem registro</span> dia sem check-in</span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </section>
+
+            {/* ───────── PÁGINA 3 — EVOLUÇÃO FÍSICA ───────── */}
+            {fis.temAlgo && (
+              <section className="rp-page">
+                <p className="rp-page-tag">Página 3 · Evolução física</p>
+
+                {/* Peso + medidas */}
+                {(fis.ev.peso || fis.medidas.length > 0) && (
+                  <section className="rp-block plain">
+                    <h3><TrendingUp size={14} style={{ color: C.green }} /> Peso e medidas <span className="tag">início → fim</span></h3>
+                    <div className="rp-med">
+                      {fis.ev.peso && (
+                        <div className="rp-medcard">
+                          <div className="t">Peso</div>
+                          <div className="row">
+                            <span className="val">{fis.ev.peso.final}<span style={{ fontSize: 12, color: C.muted, marginLeft: 2 }}>kg</span></span>
+                            <span className="arw">← {fis.ev.peso.inicial}kg</span>
+                            <span className="dl" style={{ color: fis.ev.peso.delta === 0 ? C.muted : fis.ev.peso.delta < 0 ? C.green : C.amber }}>{sinal(fis.ev.peso.delta)}{Math.abs(fis.ev.peso.delta)}kg</span>
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </section>
+                      )}
+                      {fis.medidas.map(({ k, m }) => (
+                        <div className="rp-medcard" key={k}>
+                          <div className="t">{MEDIDA_LABEL[k]}</div>
+                          <div className="row">
+                            <span className="val">{m.final}<span style={{ fontSize: 12, color: C.muted, marginLeft: 2 }}>{MEDIDA_UNIDADE[k]}</span></span>
+                            <span className="arw">← {m.inicial}{MEDIDA_UNIDADE[k]}</span>
+                            <span className="dl" style={{ color: m.delta === 0 ? C.muted : C.sub }}>{sinal(m.delta)}{Math.abs(m.delta)}{MEDIDA_UNIDADE[k]}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
 
-              {/* RODAPÉ */}
-              <section className="rp-foot">
-                <div className="rp-card">
-                  <h4><StickyNote size={14} /> Anotações rápidas</h4>
-                  {insights.length === 0 ? <p className="rp-empty">Sem dados suficientes no período.</p> : (
-                    <ul>{insights.slice(0, 4).map((i, idx) => <li key={idx}>{i}</li>)}</ul>
-                  )}
-                </div>
-                <div className="rp-card">
-                  <h4><Star size={14} /> Resumo inteligente <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 500, color: C.muted, background: C.soft, borderRadius: 99, padding: "2px 8px" }}>{iaAtiva ? "IA" : "Em breve"}</span></h4>
-                  {iaAtiva
-                    ? <ul>{rel.insightsIA!.slice(0, 4).map((i, idx) => <li key={idx}>{i}</li>)}</ul>
-                    : <div className="rp-iaslot">Espaço reservado para a leitura inteligente do mês, gerada por IA.</div>}
-                </div>
-                <div className="rp-qr">
-                  <div className="rp-qrbox"><Sparkles size={20} style={{ color: "#C4C7CD" }} /></div>
-                  <small>Escaneie para<br />ver no app</small>
-                </div>
-              </section>
-            </div>
+                {/* Fotos */}
+                {fis.ev.fotos.length > 0 && (
+                  <section className="rp-block plain">
+                    <h3><Star size={14} style={{ color: "#B08D57" }} /> Fotos de evolução</h3>
+                    <div className="rp-fotos">
+                      {fis.ev.fotos.slice(0, 8).map((f, i) => (
+                        <div className="rp-foto" key={i}>
+                          <img src={f.imagem} alt={`Foto ${brData(f.data)}`} />
+                          <div className="cap">{brData(f.data)}{f.tipo ? ` · ${f.tipo}` : ""}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
 
-            {/* BRAND BAR */}
-            <div className="rp-brand">
-              <span className="l"><span style={{ width: 20, height: 20, borderRadius: 6, background: "#0F1115", display: "grid", placeItems: "center" }}><Sparkles size={11} style={{ color: "#7CFF5B" }} /></span> <b style={{ color: C.ink }}>NEXVEL</b> · Transformando hábitos em conquistas.</span>
-              <span>www.nexvel.app</span>
-            </div>
-          </article>
+                {/* Humor (distribuição) */}
+                {fis.humorTot > 0 && (
+                  <section className="rp-block plain">
+                    <h3><Smile size={14} style={{ color: "#A16207" }} /> Humor no período</h3>
+                    <div className="rp-humor">
+                      {Object.entries(rel.humor).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
+                        <span className="rp-humorchip" key={k}>{HUMOR_LABEL[k] ?? k}: <b>{n} {n === 1 ? "dia" : "dias"}</b></span>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                {/* Laudo / Observações */}
+                {(fis.ev.laudo || fis.ev.observacoes) && (
+                  <section className="rp-block plain">
+                    <h3><StickyNote size={14} style={{ color: C.muted }} /> Observações clínicas</h3>
+                    {fis.ev.laudo && <p className="rp-obs" style={{ marginBottom: fis.ev.observacoes ? 10 : 0 }}><b style={{ color: C.ink }}>Laudo:</b> {fis.ev.laudo}</p>}
+                    {fis.ev.observacoes && <p className="rp-obs">{fis.ev.observacoes}</p>}
+                  </section>
+                )}
+              </section>
+            )}
+          </div>
         )}
       </main>
     </div>
