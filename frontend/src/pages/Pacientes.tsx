@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   Plus, Search, Users, MessageCircle, ClipboardList, Award,
   ArrowUpRight, Flame, Clock, X, ImageOff, MoreVertical,
+  TrendingUp, TrendingDown, Minus,
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
@@ -23,6 +24,7 @@ interface Paciente {
   ultimoCheckin: string | null;
   diasInativo: number;
   score?: number; // aderência 30d (0–100) — vinda do backend; opcional por retrocompat
+  aderenciaDelta?: number | null; // tendência 7d vs 7d anteriores (p.p.); null = sem amostra
 }
 
 /* Cor do score de aderência (0–100) por faixa: 90+ verde · 70+ verde claro · 50+ laranja · <50 vermelho. */
@@ -235,6 +237,30 @@ function ScoreBadge({ score }: { score?: number }) {
   );
 }
 
+/* ── Tendência de aderência (7d vs 7d anteriores) ── */
+function TrendChip({ delta }: { delta?: number | null }) {
+  if (delta == null) return null;
+  const Icon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+  const cls = delta > 0 ? "text-nx-evo" : delta < 0 ? "text-nx-danger" : "text-nx-on-surface-variant";
+  const txt = delta > 0 ? `+${delta}%` : delta < 0 ? `${delta}%` : "0%";
+  return (
+    <span title="Tendência vs. 7 dias anteriores" className={`inline-flex items-center gap-0.5 text-label-sm font-semibold tabular-nums ${cls}`}>
+      <Icon size={11} />{txt}
+    </span>
+  );
+}
+
+/* ── Score (aderência 30d) + tendência ── */
+function ScoreCluster({ score, delta }: { score?: number; delta?: number | null }) {
+  if (score == null) return null;
+  return (
+    <div className="flex shrink-0 flex-col items-center gap-0.5">
+      <ScoreBadge score={score} />
+      <TrendChip delta={delta} />
+    </div>
+  );
+}
+
 /* Motivo curto e colorido — só dados já existentes; sem tendência fabricada. */
 function motivoDe(p: Paciente): { texto: string; cor: string } {
   const dias = diasDesde(p.ultimoCheckin);
@@ -310,7 +336,7 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
         </div>
         {/* score + ações — MOBILE */}
         <div className="flex shrink-0 items-center gap-1.5 sm:hidden">
-          <ScoreBadge score={p.score} />
+          <ScoreCluster score={p.score} delta={p.aderenciaDelta} />
           <RowActions p={p} menu={menu} setMenu={setMenu} go={go} menuItens={menuItens} />
         </div>
       </div>

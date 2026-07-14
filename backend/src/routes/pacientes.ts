@@ -134,6 +134,28 @@ router.get("/", async (req: AuthRequest, res: Response) => {
   const reg30ByPac: Record<string, number> = {};
   for (const c of checkins30) reg30ByPac[c.pacienteId] = c._count._all;
 
+  // Tendência de aderência (por paciente): check-ins dos últimos 7 dias vs os 7 anteriores —
+  // mesma definição do aderenciaSemana do Dashboard (check-in ÷ dias possíveis), aqui base = 7.
+  const ha7 = new Date(now.getTime() - 7 * 86_400_000);
+  const ha14 = new Date(now.getTime() - 14 * 86_400_000);
+  const reg14 = await prisma.registro.findMany({
+    where: { pacienteId: { in: pacientes.map((p) => p.id) }, data: { gte: ha14 } },
+    select: { pacienteId: true, data: true },
+  });
+  const trendByPac: Record<string, { r7: number; p7: number }> = {};
+  for (const r of reg14) {
+    let b = trendByPac[r.pacienteId];
+    if (!b) b = trendByPac[r.pacienteId] = { r7: 0, p7: 0 };
+    if (new Date(r.data) >= ha7) b.r7++; else b.p7++;
+  }
+  const aderenciaDeltaDe = (pid: string): number | null => {
+    const b = trendByPac[pid];
+    if (!b || (b.r7 === 0 && b.p7 === 0)) return null; // sem amostra → sem tendência
+    const atual = Math.round(Math.min(b.r7 / 7, 1) * 100);
+    const anterior = Math.round(Math.min(b.p7 / 7, 1) * 100);
+    return atual - anterior;
+  };
+
   const result = pacientes.map((p) => {
     const ultimaConsulta = p.consultas.find((c) => new Date(c.data) < now) ?? null;
     const proximaConsulta = [...p.consultas].reverse().find((c) => new Date(c.data) >= now) ?? null;
@@ -146,6 +168,7 @@ router.get("/", async (req: AuthRequest, res: Response) => {
     return {
       ...p,
       score: scoreAderencia30(reg30ByPac[p.id] || 0),
+      aderenciaDelta: aderenciaDeltaDe(p.id),
       ultimaConsulta: ultimaConsulta ? { data: ultimaConsulta.data } : null,
       proximaConsulta: proximaConsulta ? { data: proximaConsulta.data } : null,
       cobrancaStatus,
