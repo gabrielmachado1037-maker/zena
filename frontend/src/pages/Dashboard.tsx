@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Flame, ChevronRight, Sparkles, Users, ShieldAlert, TrendingUp, TrendingDown, Minus,
-  MessageSquare, Target, CalendarPlus, ArrowRight, Trophy, Utensils, Dumbbell, Droplets, Moon,
+  MessageSquare, Target, ArrowRight, Trophy, Utensils, Dumbbell, Droplets, Moon,
 } from "lucide-react";
 import { useFetch } from "../hooks/useFetch";
 import Avatar from "../components/Avatar";
@@ -387,7 +387,6 @@ function PacienteRow({ p, onOpen, navigate }: { p: PacienteLinha; onOpen: () => 
         <div className="flex items-center justify-end gap-1.5">
           <AcaoBtn Icon={MessageSquare} label="Mensagem" onClick={() => navigate("/app/mensagens")} />
           <AcaoBtn Icon={Target} label="Criar desafio" onClick={() => navigate("/app/desafios")} />
-          <AcaoBtn Icon={CalendarPlus} label="Agendar retorno" onClick={() => navigate("/app/horarios")} />
           <ChevronRight className="size-4 text-nx-outline transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
         </div>
       </td>
