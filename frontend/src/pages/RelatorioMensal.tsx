@@ -46,7 +46,9 @@ interface Relatorio {
     fotos: Array<{ data: string; tipo: string; imagem: string }>;
   };
   dias: DiaRel[];
+  diasAtencao?: Array<{ data: string; motivo: string }>;
   mesAnterior: { aderenciaPct: number } | null;
+  evolucao?: Array<{ dim: string; atual: number | null; anterior: number | null; delta: number | null; unidade: "%" | "nivel" }>;
   insightsRegras: string[];
   insightsIA: string[] | null;
   focoRegras: string[];
@@ -161,6 +163,24 @@ const BASE_CSS = `
 .rp-evobox .cap{ font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); font-weight:700; }
 .rp-evobox .l{ font-size:13px; color:var(--sub); font-weight:600; margin-top:4px; }
 .rp-evobox .d{ font-size:26px; font-weight:800; display:flex; align-items:center; gap:5px; }
+
+/* dias que merecem atenção (mini-tabela Data|Motivo) */
+.rp-mini{ width:100%; border-collapse:collapse; font-size:11.5px; }
+.rp-mini td{ padding:5px 0; border-bottom:1px solid var(--line); color:var(--sub); vertical-align:top; }
+.rp-mini tr:last-child td{ border-bottom:none; }
+.rp-mini .dt{ font-weight:700; color:var(--ink); width:54px; white-space:nowrap; }
+
+/* evolução por dimensão vs período anterior */
+.rp-evogrid{ display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+.rp-evoitem{ text-align:center; border:1px solid var(--line); border-radius:10px; padding:11px 6px; }
+.rp-evoitem .l{ display:block; font-size:9.5px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted); margin-bottom:5px; }
+.rp-evoitem .d{ font-size:15px; font-weight:800; }
+
+/* anti-corte: nenhum card/seção é fatiado no meio ao paginar (Paged.js) */
+.rp-score, .rp-inds, .rp-ind, .rp-block, .rp-evobox, .rp-cols2,
+.rp-med, .rp-medcard, .rp-foto, .rp-evogrid, .rp-evoitem, .rp-mini tr, .rp-pac{
+  break-inside:avoid; page-break-inside:avoid;
+}
 
 /* tabela dia-a-dia */
 .rp-tbl{ width:100%; border-collapse:separate; border-spacing:0; font-size:11px; }
@@ -395,7 +415,7 @@ export default function RelatorioMensal() {
             {/* rodapé repetido em toda página (Paged.js) */}
             <div className="rp-runfoot">
               <span className="m"><Sparkles size={9} style={{ color: "#7CFF5B" }} /></span>
-              <b>NEXVEL</b>· Ficha clínica · Gerado em {geradoEm}
+              <b>NEXVEL</b>· Relatório Mensal · Gerado em {geradoEm}
             </div>
 
             {/* ───────── PÁGINA 1 — RESUMO EXECUTIVO ───────── */}
@@ -403,7 +423,7 @@ export default function RelatorioMensal() {
               <header className="rp-top" style={{ marginTop: 0 }}>
                 <div className="rp-logo">
                   <span className="mark"><Sparkles size={18} /></span>
-                  <div><b>NEXVEL</b><small>Ficha clínica de acompanhamento</small></div>
+                  <div><b>NEXVEL</b><small>Relatório Mensal do Paciente</small></div>
                 </div>
                 <div className="rp-gen">Gerado em: <b>{geradoEm}</b><br />Período: {brData(rel.periodo.inicio)} — {brData(rel.periodo.fim)} ({rel.periodo.dias} dias)</div>
               </header>
@@ -427,7 +447,7 @@ export default function RelatorioMensal() {
                 </div>
                 <div className="rp-score-meta">
                   <span className="status" style={{ color: statusScoreCor(rel.scoreGeral.status), background: `${statusScoreCor(rel.scoreGeral.status)}18` }}>{rel.scoreGeral.status}</span>
-                  <div className="sub">Check-ins: <b style={{ color: C.sub }}>{rel.resumo.diasRegistrados} de {rel.periodo.dias} dias</b> · {rel.resumo.aderenciaPct}% de adesão · sequência recorde {rel.resumo.streakMaximo} dias</div>
+                  <div className="sub">Check-ins realizados: <b style={{ color: C.sub }}>{rel.resumo.diasRegistrados} de {rel.periodo.dias} dias</b> · {rel.resumo.aderenciaPct}% de adesão no período</div>
                 </div>
               </section>
 
@@ -462,11 +482,11 @@ export default function RelatorioMensal() {
                 )}
               </section>
 
-              {/* Foco da próxima consulta */}
+              {/* Plano de ação sugerido (foco da próxima consulta) */}
               <section className="rp-block plain">
-                <h3><CalendarCheck size={14} style={{ color: C.water }} /> Foco da próxima consulta {focoAtiva && <span className="tag">IA</span>}</h3>
+                <h3><CalendarCheck size={14} style={{ color: C.water }} /> Plano de ação sugerido {focoAtiva && <span className="tag">IA</span>}</h3>
                 {foco.length === 0 ? <p className="rp-empty">Sem prioridades definidas.</p> : (
-                  <ul className="rp-list">{foco.slice(0, 4).map((t, i) => <li key={i}>{t}</li>)}</ul>
+                  <ul className="rp-list">{foco.slice(0, 3).map((t, i) => <li key={i}>{t}</li>)}</ul>
                 )}
               </section>
 
@@ -483,22 +503,48 @@ export default function RelatorioMensal() {
                   )}
                 </div>
 
-                {/* Evolução vs período anterior (só número) */}
-                <div className="rp-evobox">
-                  <div>
-                    <div className="cap">Evolução da adesão</div>
-                    <div className="l">{rel.mesAnterior ? `${rel.mesAnterior.aderenciaPct}% → ${rel.resumo.aderenciaPct}%` : "Sem período anterior para comparar"}</div>
-                  </div>
-                  {view.deltaMes == null
-                    ? <span className="d" style={{ color: C.muted, fontSize: 18 }}>—</span>
-                    : <span className="d" style={{ color: view.deltaMes >= 0 ? C.green : C.red }}>{sinal(view.deltaMes)}{Math.abs(view.deltaMes)}%<TrendingUp size={18} style={{ transform: view.deltaMes >= 0 ? "none" : "scaleY(-1)" }} /></span>}
+                {/* Dias que merecem atenção */}
+                <div className="rp-block plain">
+                  <h3><AlertCircle size={14} style={{ color: C.red }} /> Dias que merecem atenção</h3>
+                  {(rel.diasAtencao ?? []).length === 0 ? <p className="rp-empty">Nenhum dia crítico no período.</p> : (
+                    <table className="rp-mini"><tbody>
+                      {(rel.diasAtencao ?? []).map((d, i) => (
+                        <tr key={i}><td className="dt">{brData(d.data)}</td><td>{d.motivo}</td></tr>
+                      ))}
+                    </tbody></table>
+                  )}
                 </div>
+              </section>
+
+              {/* Evolução vs. período anterior (por dimensão) */}
+              <section className="rp-block plain">
+                <h3><TrendingUp size={14} style={{ color: C.green }} /> Evolução vs. período anterior</h3>
+                {rel.mesAnterior == null || !rel.evolucao?.length ? (
+                  <p className="rp-empty">Sem período anterior para comparar.</p>
+                ) : (
+                  <div className="rp-evogrid">
+                    {rel.evolucao.map((e, i) => {
+                      const est = e.delta == null ? null : (e.unidade === "nivel" ? Math.round(e.delta) : e.delta);
+                      const cor = est == null ? C.muted : est > 0 ? C.green : est < 0 ? C.red : C.muted;
+                      const txt = est == null ? "—"
+                        : e.unidade === "nivel"
+                          ? (est === 0 ? "Estável" : `${sinal(est)}${Math.abs(est)} ${Math.abs(est) === 1 ? "nível" : "níveis"}`)
+                          : (est === 0 ? "Estável" : `${sinal(est)}${Math.abs(est)}%`);
+                      return (
+                        <div className="rp-evoitem" key={i}>
+                          <span className="l">{e.dim}</span>
+                          <span className="d" style={{ color: cor }}>{txt}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </section>
             </section>
 
             {/* ───────── PÁGINA 2 — HISTÓRICO DIÁRIO ───────── */}
             <section className="rp-page">
-              <p className="rp-page-tag">Página 2 · Histórico diário</p>
+              <p className="rp-page-tag">Histórico diário</p>
               <table className="rp-tbl">
                 <thead>
                   <tr>
@@ -544,7 +590,7 @@ export default function RelatorioMensal() {
             {/* ───────── PÁGINA 3 — EVOLUÇÃO FÍSICA ───────── */}
             {fis.temAlgo && (
               <section className="rp-page">
-                <p className="rp-page-tag">Página 3 · Evolução física</p>
+                <p className="rp-page-tag">Evolução física</p>
 
                 {/* Peso + medidas */}
                 {(fis.ev.peso || fis.medidas.length > 0) && (

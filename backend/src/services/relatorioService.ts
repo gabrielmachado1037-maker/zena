@@ -65,6 +65,31 @@ function agruparMotivos(textos: string[], limite = 4): Array<{ motivo: string; v
   return [...mapa.values()].sort((a, b) => b.vezes - a.vezes).slice(0, limite);
 }
 
+const HUMOR_SCORE_MAP: Record<string, number> = { otimo: 5, bom: 4, neutro: 3, dificil: 2, pessimo: 1 };
+
+/** % de adesão por dimensão num conjunto de registros — usado para comparar o
+ *  período atual com o anterior (evolução). Usa só um subconjunto dos campos. */
+type RegDim = Pick<RegistroLite, "refeicoesStatus" | "cafeStatus" | "almocoStatus" | "lancheStatus" | "jantarStatus" | "treinoStatus" | "sonoHoras" | "aguaMl" | "aguaMetaMl" | "humor">;
+function dimensoesPeriodo(regs: RegDim[], planoKeys: string[], metaSono: number, metaAgua: number) {
+  let refTot = 0, refOk = 0, aguaD = 0, aguaOk = 0, sonoD = 0, sonoOk = 0, tCon = 0, tPar = 0, tNao = 0, humorTot = 0, humorSoma = 0;
+  for (const reg of regs) {
+    const st = statusDasRefeicoes(reg as RegistroLite, planoKeys);
+    for (const k of planoKeys) { const s = st[k]; if (!s) continue; refTot++; if (s === "seguiu" || s === "adaptou") refOk++; }
+    if (reg.treinoStatus === "conforme") tCon++; else if (reg.treinoStatus === "parcial") tPar++; else if (reg.treinoStatus === "nao") tNao++;
+    if (typeof reg.sonoHoras === "number") { sonoD++; if (reg.sonoHoras >= metaSono) sonoOk++; }
+    if (typeof reg.aguaMl === "number") { const m = reg.aguaMetaMl ?? metaAgua; aguaD++; if (reg.aguaMl >= m) aguaOk++; }
+    if (reg.humor) { humorTot++; humorSoma += HUMOR_SCORE_MAP[reg.humor] ?? 3; }
+  }
+  const tDen = tCon + tPar + tNao;
+  return {
+    alimentacao: refTot > 0 ? pct(refOk, refTot) : null,
+    hidratacao: aguaD > 0 ? pct(aguaOk, aguaD) : null,
+    sono: sonoD > 0 ? pct(sonoOk, sonoD) : null,
+    treino: tDen > 0 ? pct(tCon + tPar, tDen) : null,
+    humor: humorTot > 0 ? Math.round((humorSoma / humorTot) * 10) / 10 : null, // média 1–5
+  };
+}
+
 /** Uma linha da tabela dia-a-dia (roll-up por dia; null = sem dado nesse dia). */
 export interface DiaRelatorio {
   data: string;                                          // ISO AAAA-MM-DD
@@ -85,7 +110,9 @@ export interface RelatorioMensal {
     pontosTotal: number; xpParaProxima: number; proximaLiga: string | null;
   };
   dias: DiaRelatorio[];
+  diasAtencao: Array<{ data: string; motivo: string }>;
   mesAnterior: { aderenciaPct: number } | null;
+  evolucao: Array<{ dim: string; atual: number | null; anterior: number | null; delta: number | null; unidade: "%" | "nivel" }>;
   refeicoes: Array<{ key: string; label: string; total: number; seguiu: number; adaptou: number; comeuMal: number; pulou: number; problemaPct: number }>;
   treino: { conforme: number; parcial: number; nao: number; faltas: number; motivos: Array<{ motivo: string; vezes: number }> };
   sono: { meta: number; diasComDado: number; mediaHoras: number; diasAbaixoMeta: number };
@@ -260,6 +287,25 @@ export async function gerarRelatorioMensal(
     dias.push({ data: iso, alimentacao, aguaMl: reg.aguaMl ?? null, sonoHoras: reg.sonoHoras ?? null, treino, humor: reg.humor ?? null, checkin: true });
   }
 
+  // ─── Dias que merecem atenção (Data | Motivo) — os mais críticos, máx 6 ───────
+  const diasAtencaoRaw: Array<{ data: string; motivo: string; sev: number }> = [];
+  for (const d of dias) {
+    if (!d.checkin) continue;
+    const probs: string[] = [];
+    if (d.alimentacao === "pulou") probs.push("Pulou refeição");
+    if (d.treino === "nao") probs.push("Não treinou");
+    if (d.sonoHoras != null && d.sonoHoras < metaSono) probs.push("Dormiu pouco");
+    if (d.aguaMl != null && d.aguaMl < metaAgua) probs.push("Água abaixo da meta");
+    const humorRuim = d.humor === "dificil" || d.humor === "pessimo";
+    if (humorRuim) probs.push("Humor ruim");
+    if (probs.length >= 2 || humorRuim) diasAtencaoRaw.push({ data: d.data, motivo: probs[0], sev: probs.length });
+  }
+  const diasAtencao = diasAtencaoRaw
+    .sort((a, b) => b.sev - a.sev || a.data.localeCompare(b.data))
+    .slice(0, 6)
+    .sort((a, b) => a.data.localeCompare(b.data))
+    .map(({ data, motivo }) => ({ data, motivo }));
+
   // ─── XP para a próxima LIGA (topo da liga atual) e nome dela ──────────────────
   const tierAtual = calcularLiga(paciente.pontosTotal);
   const ligaTiers = LIGAS.filter((t) => t.liga === tierAtual.liga);
@@ -267,11 +313,31 @@ export async function gerarRelatorioMensal(
   const xpParaProxima = ligaAte != null ? Math.max(0, Math.round(ligaAte - paciente.pontosTotal)) : 0;
   const proximaLiga = ligaAte != null ? (LIGAS.find((t) => t.de === ligaAte)?.liga ?? null) : null;
 
-  // ─── Aderência do período ANTERIOR (mesma duração), para o Δ de evolução ─────
+  // ─── Período ANTERIOR (mesma duração): adesão + evolução POR DIMENSÃO ─────────
   const prevEnd = new Date(ini.getTime() - DIA);
   const prevIni = new Date(prevEnd.getTime() - (diasPeriodo - 1) * DIA);
-  const prevCount = await prisma.registro.count({ where: { pacienteId, finalizado: true, data: { gte: prevIni, lte: prevEnd } } });
-  const mesAnterior = prevCount > 0 ? { aderenciaPct: pct(prevCount, diasPeriodo) } : null;
+  const prevRegistros = await prisma.registro.findMany({
+    where: { pacienteId, finalizado: true, data: { gte: prevIni, lte: prevEnd } },
+    select: {
+      refeicoesStatus: true, cafeStatus: true, almocoStatus: true, lancheStatus: true, jantarStatus: true,
+      treinoStatus: true, sonoHoras: true, aguaMl: true, aguaMetaMl: true, humor: true,
+    },
+  });
+  const mesAnterior = prevRegistros.length > 0 ? { aderenciaPct: pct(prevRegistros.length, diasPeriodo) } : null;
+
+  const dimAtual = dimensoesPeriodo(registros as unknown as RegDim[], planoKeys, metaSono, metaAgua);
+  const dimPrev = prevRegistros.length > 0 ? dimensoesPeriodo(prevRegistros as RegDim[], planoKeys, metaSono, metaAgua) : null;
+  const evoPct = (dim: string, atual: number | null, anterior: number | null) =>
+    ({ dim, atual, anterior, delta: atual != null && anterior != null ? atual - anterior : null, unidade: "%" as const });
+  const evolucao = [
+    evoPct("Alimentação", dimAtual.alimentacao, dimPrev?.alimentacao ?? null),
+    evoPct("Hidratação", dimAtual.hidratacao, dimPrev?.hidratacao ?? null),
+    evoPct("Sono", dimAtual.sono, dimPrev?.sono ?? null),
+    evoPct("Treino", dimAtual.treino, dimPrev?.treino ?? null),
+    { dim: "Humor", atual: dimAtual.humor, anterior: dimPrev?.humor ?? null,
+      delta: dimAtual.humor != null && dimPrev?.humor != null ? Math.round((dimAtual.humor - dimPrev.humor) * 10) / 10 : null,
+      unidade: "nivel" as const },
+  ];
 
   // ─── Score Geral de Adesão (0–100) = média das dimensões COM dado no período ──
   const aderenciaPct = pct(diasRegistrados, diasPeriodo);
@@ -346,7 +412,9 @@ export async function gerarRelatorioMensal(
       proximaLiga,
     },
     dias,
+    diasAtencao,
     mesAnterior,
+    evolucao,
     refeicoes: refAgg.map((r) => ({
       key: r.key, label: r.label, total: r.total,
       seguiu: r.seguiu, adaptou: r.adaptou, comeuMal: r.comeuMal, pulou: r.pulou,
@@ -369,7 +437,7 @@ export async function gerarRelatorioMensal(
     evolucaoFisica: { peso, medidas, laudo, observacoes: observacoesMed, fotos: fotosEvolucao },
     insightsRegras: [],
     insightsIA: null,
-    focoRegras: focoRegras.slice(0, 4),
+    focoRegras: focoRegras.slice(0, 3),
     focoIA: null,
   };
 
@@ -416,10 +484,7 @@ function gerarInsightsRegras(r: RelatorioMensal, nome: string): string[] {
     out.push(`Peso: ${r.peso.inicial}kg → ${r.peso.final}kg (${sinal}${Math.abs(r.peso.delta)}kg no período).`);
   }
 
-  // Conquistas
-  if (r.conquistas.length) {
-    out.push(`Desbloqueou ${r.conquistas.length} ${r.conquistas.length === 1 ? "conquista" : "conquistas"} no período.`);
-  }
+  // (Conquistas/gamificação NÃO entram no relatório clínico — removido de propósito.)
 
   return out;
 }
@@ -456,7 +521,7 @@ export async function gerarInsightsIA(r: RelatorioMensal): Promise<{ resumo: str
     `Produza DOIS blocos:\n` +
     `1) "resumo": 4 a 6 frases curtas resumindo como foi o mês — adesão, alimentação, hidratação, treino, sono, humor, ` +
     `consistência/sequência, comparação com o período anterior e padrões de comportamento. Seja específico com os números.\n` +
-    `2) "foco": 2 a 4 itens de plano de ação para a PRÓXIMA consulta, priorizando as maiores dificuldades ` +
+    `2) "foco": 2 a 3 itens de plano de ação para a PRÓXIMA consulta, priorizando as maiores dificuldades ` +
     `(ex.: revisar a refeição que mais falha, retomar treino, monitorar sono). Cada item é uma frase acionável e concreta.\n` +
     `Responda APENAS JSON no formato {"resumo": ["..."], "foco": ["..."]}.\n\nDADOS:\n` +
     JSON.stringify(dados);
