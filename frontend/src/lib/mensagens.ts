@@ -72,11 +72,7 @@ export async function getConversas(): Promise<Conversa[]> {
   return data;
 }
 
-export async function getThread(conversa: Conversa): Promise<Thread> {
-  return getThreadById(conversa.id, conversa.nome);
-}
-
-// Mesma thread, mas por id/nome do paciente (usado na aba Mensagens do Diário de Bordo).
+// Thread por id/nome do paciente (usada na Central de Conversas / chat).
 export async function getThreadById(pacienteId: string, pacienteNome: string): Promise<Thread> {
   const { data } = await api.get<ThreadResp>(`/mensagens/thread/${pacienteId}`);
   const primeiroNome = pacienteNome.split(" ")[0];
