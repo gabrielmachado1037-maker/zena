@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Plus, Search, Users, MessageCircle, ClipboardList, Award,
-  ArrowUpRight, Flame, Clock, X, ImageOff,
+  ArrowUpRight, Flame, Clock, X, ImageOff, MoreVertical,
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
@@ -25,8 +25,8 @@ interface Paciente {
   score?: number; // aderência 30d (0–100) — vinda do backend; opcional por retrocompat
 }
 
-/* Cor do score de aderência (0–100) — mesmo semáforo do Dashboard. */
-const scoreCor = (s: number) => (s >= 60 ? "#7CFF5B" : s >= 35 ? "#F8C84B" : "#FF5D5D");
+/* Cor do score de aderência (0–100) por faixa: 90+ verde · 70+ verde claro · 50+ laranja · <50 vermelho. */
+const scoreCor = (s: number) => (s >= 90 ? "#7CFF5B" : s >= 70 ? "#53F27C" : s >= 50 ? "#FF8A1F" : "#FF5D5D");
 
 const LIGAS_FILTRO = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"];
 type StatusFiltro = "todos" | "ativo" | "risco" | "inativo";
@@ -146,9 +146,9 @@ export default function Pacientes() {
 
         {/* Lista */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-64 animate-pulse rounded-2xl bg-nx-surface/70" />
+          <div className="space-y-2.5">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="h-[108px] animate-pulse rounded-2xl bg-nx-surface/70 sm:h-[92px]" />
             ))}
           </div>
         ) : erro ? (
@@ -162,7 +162,7 @@ export default function Pacientes() {
             <p className="text-body-sm">Nenhum paciente encontrado.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="space-y-2.5">
             {filtrados.map((p, i) => (
               <PacienteCard key={p.id} p={p} i={i} navigate={navigate} />
             ))}
@@ -207,142 +207,188 @@ function Chip({ children, active, onClick }: {
   );
 }
 
-/* ── Chip de status ── */
-function StatusChip({ label, cor }: { label: string; cor: string }) {
+/* ── Badge de status (pequeno) ── */
+function StatusBadge({ label, cor }: { label: string; cor: string }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-label-sm font-semibold"
+      className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-label-sm font-semibold"
       style={{ background: `${cor}1a`, color: cor, border: `1px solid ${cor}33` }}
     >
-      <span className="size-1.5 rounded-full" style={{ background: cor, boxShadow: `0 0 6px ${cor}` }} />
+      <span className="size-1.5 rounded-full" style={{ background: cor }} />
       {label}
     </span>
   );
 }
 
-/* ── Card do paciente = "personagem em evolução" (compacto) ── */
+/* ── Badge de score (0–100) por faixa ── */
+function ScoreBadge({ score }: { score?: number }) {
+  if (score == null) return null;
+  const c = scoreCor(score);
+  return (
+    <span
+      title={`Score de aderência ${score} (últimos 30 dias)`}
+      className="grid size-11 shrink-0 place-items-center rounded-full text-body-md font-extrabold tabular-nums"
+      style={{ color: c, border: `2.5px solid ${c}`, background: `${c}14` }}
+    >
+      {score}
+    </span>
+  );
+}
+
+/* Motivo curto e colorido — só dados já existentes; sem tendência fabricada. */
+function motivoDe(p: Paciente): { texto: string; cor: string } {
+  const dias = diasDesde(p.ultimoCheckin);
+  if (dias === null) return { texto: "Nunca registrou", cor: "#FF5D5D" };
+  if (dias >= 3) return { texto: `${dias} dias sem check-in`, cor: "#FF5D5D" };
+  if (p.score != null && p.score < 40) return { texto: `Aderência baixa · ${p.score}%`, cor: "#FF8A1F" };
+  if (dias >= 1) return { texto: `${dias} dia sem registrar`, cor: "#FF8A1F" };
+  if (p.streakAtual >= 7) return { texto: "Ótima evolução", cor: "#7CFF5B" };
+  if (p.score != null && p.score >= 60) return { texto: "No plano", cor: "#7CFF5B" };
+  return { texto: "Registrou hoje", cor: "#9CA3AF" };
+}
+
+const checkinLabel = (dias: number | null) =>
+  dias === null ? "Nunca" : dias === 0 ? "Hoje" : dias === 1 ? "Ontem" : `Há ${dias} dias`;
+
+/* ── Linha do paciente (CRM compacto) ── */
 function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: ReturnType<typeof useNavigate> }) {
   const reduce = useReducedMotion();
   const { pct, faltam, proxima } = progressoLiga(p.pontosTotal);
   const cor = corLiga(p.ligaAtual);
   const dias = diasDesde(p.ultimoCheckin);
   const emRisco = p.diasInativo >= 3 || dias === null || dias > 2;
-  const status = statusDe(p);
-  // "Faltam X XP para próxima liga" é obrigatório; destaque quando falta pouco.
+  const status = !p.ativo ? { label: "Inativo", cor: "#9CA3AF" } : statusDe(p);
+  const motivo = motivoDe(p);
   const faltamPoucoXP = proxima != null && faltam > 0 && faltam < 100;
-  const perto = proxima != null && (faltamPoucoXP || pct >= 85);
+  const [menu, setMenu] = useState(false);
 
-  const go = (to: string) => (e: React.MouseEvent) => { e.stopPropagation(); navigate(to); };
-  const acoes = [
+  const go = (to: string) => (e: React.MouseEvent) => { e.stopPropagation(); setMenu(false); navigate(to); };
+  const menuItens = [
     { icon: ArrowUpRight, title: "Abrir paciente", to: `/app/pacientes/${p.id}` },
-    { icon: MessageCircle, title: "Enviar mensagem", to: `/app/mensagens/${p.id}` },
     { icon: ClipboardList, title: "Ver registros", to: `/app/pacientes/${p.id}/diario` },
     { icon: Award, title: "Criar desafio", to: `/app/desafios` },
   ];
 
   return (
     <motion.div
-      initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
+      initial={reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: reduce ? 0 : i * 0.035, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={reduce ? undefined : { y: -4, boxShadow: `0 20px 54px -20px ${cor}40`, transition: { duration: 0.18 } }}
+      transition={{ delay: reduce ? 0 : Math.min(i, 8) * 0.03, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={reduce ? undefined : { y: -2, boxShadow: `0 14px 40px -22px ${cor}55`, transition: { duration: 0.18 } }}
+      whileTap={reduce ? undefined : { scale: 0.995 }}
       onClick={() => navigate(`/app/pacientes/${p.id}`)}
-      className="group relative cursor-pointer rounded-2xl bg-nx-surface border border-nx-border p-4 transition-colors duration-[180ms] hover:border-nx-outline"
+      className="group relative flex cursor-pointer flex-col gap-3 rounded-2xl border border-nx-border bg-nx-surface p-3.5 transition-colors duration-[180ms] hover:border-nx-outline sm:flex-row sm:items-center sm:gap-4 sm:p-4"
     >
-      {/* Identidade + brasão — anel do avatar = score visual (status) */}
-      <div className="flex items-start gap-3">
-        <div className="relative shrink-0 rounded-full p-[2px]" style={{ boxShadow: `0 0 0 2px ${status.cor}`, filter: `drop-shadow(0 0 6px ${status.cor}55)` }}>
-          <Avatar src={p.fotoPerfilUrl} nome={p.nome} tamanho={42} className="rounded-full" />
-          {!p.fotoPerfilUrl && (
-            <span
-              title="Sem foto"
-              className="absolute -bottom-0.5 -right-0.5 grid size-[18px] place-items-center rounded-full border-2 border-nx-surface bg-nx-container text-nx-on-surface-variant"
-            >
+      {/* Identidade */}
+      <div className="flex items-center gap-3 sm:min-w-0 sm:flex-1">
+        <div className="relative shrink-0 rounded-full p-[2px]" style={{ boxShadow: `0 0 0 2px ${status.cor}` }}>
+          <Avatar src={p.fotoPerfilUrl} nome={p.nome} tamanho={48} className="rounded-full" />
+          {emRisco ? (
+            <span className="absolute -right-0.5 -top-0.5 flex size-3">
+              {!reduce && <span className="absolute inline-flex size-full animate-ping rounded-full bg-nx-danger opacity-75" />}
+              <span className="relative inline-flex size-3 rounded-full bg-nx-danger ring-2 ring-nx-surface" />
+            </span>
+          ) : !p.fotoPerfilUrl ? (
+            <span title="Sem foto" className="absolute -bottom-0.5 -right-0.5 grid size-[18px] place-items-center rounded-full border-2 border-nx-surface bg-nx-container text-nx-on-surface-variant">
               <ImageOff size={9} />
             </span>
-          )}
+          ) : null}
         </div>
-        <div className="min-w-0 flex-1 pt-0.5">
-          <p className="truncate text-body-lg font-bold leading-tight text-nx-on-surface">{p.nome}</p>
-          <p className="mt-0.5 truncate text-body-sm text-nx-on-surface-variant">{p.objetivo || "Sem objetivo definido"}</p>
-          <div className="mt-2"><StatusChip label={status.label} cor={status.cor} /></div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="truncate text-body-lg font-bold leading-tight text-nx-on-surface">{p.nome}</p>
+            <StatusBadge label={status.label} cor={status.cor} />
+          </div>
+          <p className="mt-0.5 truncate text-body-sm font-medium" style={{ color: motivo.cor }}>{motivo.texto}</p>
+          <p className="mt-0.5 flex items-center gap-1.5 truncate text-label-sm text-nx-on-surface-variant">
+            {p.streakAtual > 0 && (
+              <span className="inline-flex items-center gap-1 font-semibold text-nx-streak"><Flame size={12} /> Sequência: {p.streakAtual} dias</span>
+            )}
+            {p.streakAtual > 0 && <span className="text-nx-outline">·</span>}
+            <span className="inline-flex items-center gap-1"><Clock size={11} /> {checkinLabel(dias)}</span>
+          </p>
         </div>
-        <div className="flex shrink-0 flex-col items-center gap-0.5">
-          <span className="inline-flex" style={{ filter: `drop-shadow(0 0 10px ${cor}55)` }}><LeagueEmblem liga={p.ligaAtual} size={44} /></span>
-          <span className="text-label-sm font-bold leading-none" style={{ color: cor }}>{p.ligaAtual} {p.ligaNivel}</span>
+        {/* score + ações — MOBILE */}
+        <div className="flex shrink-0 items-center gap-1.5 sm:hidden">
+          <ScoreBadge score={p.score} />
+          <RowActions p={p} menu={menu} setMenu={setMenu} go={go} menuItens={menuItens} />
         </div>
       </div>
 
-      {/* XP + progresso na liga */}
-      <div className="mt-3.5">
-        <div className="flex items-baseline justify-between">
+      {/* Brasão + XP */}
+      <div className="flex items-center gap-3 sm:shrink-0 sm:gap-4">
+        <div className="flex shrink-0 flex-col items-center gap-0.5 sm:w-16">
+          <span className="inline-flex transition-transform duration-200 group-hover:scale-110 motion-reduce:transform-none" style={{ filter: `drop-shadow(0 0 10px ${cor}55)` }}>
+            <LeagueEmblem liga={p.ligaAtual} size={44} />
+          </span>
+          <span className="whitespace-nowrap text-label-sm font-bold leading-none" style={{ color: cor }}>{p.ligaAtual} {p.ligaNivel}</span>
+        </div>
+
+        <div className="min-w-0 flex-1 sm:w-52 sm:flex-none">
           <div className="flex items-baseline gap-1.5">
-            <span className="text-[22px] font-extrabold leading-none tracking-tight tabular-nums text-nx-on-surface">{nf(p.pontosTotal)}</span>
+            <span className="text-body-lg font-extrabold leading-none tabular-nums text-nx-on-surface">{nf(p.pontosTotal)}</span>
             <span className="text-label-md font-semibold text-nx-on-surface-variant">XP</span>
           </div>
-          <span className="text-label-md font-semibold tabular-nums" style={{ color: cor }}>{proxima ? `${pct}%` : "MÁX"}</span>
-        </div>
-
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-nx-container-high">
-          <motion.div
-            className="h-full rounded-full"
-            style={{ background: cor, boxShadow: `0 0 12px ${cor}80, 0 0 3px ${cor}` }}
-            initial={reduce ? false : { width: 0 }}
-            animate={{ width: `${pct}%` }}
-            transition={{ duration: reduce ? 0 : 0.9, ease: [0.16, 1, 0.3, 1], delay: reduce ? 0 : 0.15 }}
-          />
-        </div>
-
-        {faltamPoucoXP ? (
-          <p className="mt-2 text-label-sm font-bold" style={{ color: cor }}>
-            🚀 Apenas {nf(faltam)} XP para {proxima!.liga} {proxima!.nivel}
-          </p>
-        ) : (
-          <p className="mt-2 text-label-sm" style={perto ? { color: cor, fontWeight: 600 } : { color: "#9CA3AF" }}>
-            {proxima ? `Faltam ${nf(faltam)} XP para ${proxima.liga} ${proxima.nivel}` : "Liga máxima atingida 👑"}
-          </p>
-        )}
-      </div>
-
-      {/* Score + último check-in + sequência (compacto) */}
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-nx-border pt-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          {p.score != null && (
-            <span
-              title={`Score de aderência ${p.score}% (últimos 30 dias)`}
-              className="grid size-8 shrink-0 place-items-center rounded-full text-label-sm font-bold tabular-nums"
-              style={{ color: scoreCor(p.score), border: `2px solid ${scoreCor(p.score)}`, background: `${scoreCor(p.score)}14` }}
-            >
-              {p.score}
-            </span>
+          <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-nx-container-high">
+            <motion.div
+              className="h-full rounded-full transition-[filter] duration-200 group-hover:brightness-125 motion-reduce:transition-none"
+              style={{ background: cor, boxShadow: `0 0 8px ${cor}66` }}
+              initial={reduce ? false : { width: 0 }}
+              animate={{ width: `${pct}%` }}
+              transition={{ duration: reduce ? 0 : 0.9, ease: [0.16, 1, 0.3, 1], delay: reduce ? 0 : 0.15 }}
+            />
+          </div>
+          {faltamPoucoXP ? (
+            <p className="mt-1.5 truncate text-label-sm font-bold text-nx-evo">🚀 Apenas {nf(faltam)} XP para {proxima!.liga} {proxima!.nivel}</p>
+          ) : (
+            <p className="mt-1.5 truncate text-label-sm text-nx-on-surface-variant">
+              {proxima ? `Faltam ${nf(faltam)} XP para ${proxima.liga} ${proxima.nivel}` : "Liga máxima atingida 👑"}
+            </p>
           )}
-          <span className={`flex min-w-0 items-center gap-1.5 text-label-md ${emRisco ? "text-nx-danger" : "text-nx-on-surface-variant"}`}>
-            <Clock size={13} className="shrink-0" />
-            <span className="truncate">{dias === null ? "Nunca registrou" : dias === 0 ? "Hoje" : dias === 1 ? "Ontem" : `${dias} dias`}</span>
-          </span>
         </div>
-        {p.streakAtual > 0 && (
-          <span className="flex shrink-0 items-center gap-1 text-label-md font-semibold text-nx-streak">
-            <Flame size={13} /> {p.streakAtual} dias
-          </span>
-        )}
       </div>
 
-      {/* Ações rápidas — reveladas no hover (desktop); sempre visíveis no toque (mobile) */}
-      <div className="grid grid-cols-4 gap-2 overflow-hidden transition-all duration-[180ms] ease-out mt-2.5 max-h-14 opacity-100 md:mt-0 md:max-h-0 md:opacity-0 md:group-hover:mt-2.5 md:group-hover:max-h-14 md:group-hover:opacity-100">
-        {acoes.map((a) => (
-          <button
-            key={a.title}
-            onClick={go(a.to)}
-            title={a.title}
-            aria-label={a.title}
-            className="grid h-9 place-items-center rounded-xl border border-nx-border bg-nx-container-high text-nx-on-surface-variant transition-colors duration-150 hover:bg-nx-surface-hover hover:text-nx-on-surface"
-          >
-            <a.icon size={16} />
-          </button>
-        ))}
+      {/* score + ações — DESKTOP */}
+      <div className="hidden shrink-0 items-center gap-2 sm:flex">
+        <ScoreBadge score={p.score} />
+        <RowActions p={p} menu={menu} setMenu={setMenu} go={go} menuItens={menuItens} />
       </div>
     </motion.div>
+  );
+}
+
+/* ── Ações da linha: mensagem + menu (⋮) ── */
+function RowActions({ p, menu, setMenu, go, menuItens }: {
+  p: Paciente; menu: boolean; setMenu: (v: boolean) => void;
+  go: (to: string) => (e: React.MouseEvent) => void;
+  menuItens: { icon: typeof ArrowUpRight; title: string; to: string }[];
+}) {
+  const btn = "grid size-9 shrink-0 place-items-center rounded-xl border border-nx-border bg-nx-container text-nx-on-surface-variant transition-colors hover:border-nx-outline hover:text-nx-on-surface";
+  return (
+    <>
+      <button onClick={go(`/app/mensagens/${p.id}`)} title="Mensagem" aria-label="Enviar mensagem" className={btn}>
+        <MessageCircle size={16} />
+      </button>
+      <div className="relative">
+        <button onClick={(e) => { e.stopPropagation(); setMenu(!menu); }} title="Mais opções" aria-label="Mais opções" className={btn}>
+          <MoreVertical size={16} />
+        </button>
+        {menu && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setMenu(false); }} />
+            <div onClick={(e) => e.stopPropagation()}
+              className="absolute right-0 top-11 z-50 w-48 overflow-hidden rounded-xl border border-nx-border bg-nx-elevated py-1 shadow-2xl">
+              {menuItens.map((m) => (
+                <button key={m.title} onClick={go(m.to)}
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-label-md text-nx-on-surface transition-colors hover:bg-nx-container">
+                  <m.icon size={15} className="text-nx-on-surface-variant" /> {m.title}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 }
 
