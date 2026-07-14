@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Plus, Search, Users, MessageCircle, ClipboardList, Award,
-  CalendarPlus, ArrowUpRight, Flame, Clock, X, ImageOff,
+  ArrowUpRight, Flame, Clock, X, ImageOff,
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
@@ -229,10 +229,9 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
   const go = (to: string) => (e: React.MouseEvent) => { e.stopPropagation(); navigate(to); };
   const acoes = [
     { icon: ArrowUpRight, title: "Abrir paciente", to: `/app/pacientes/${p.id}` },
-    { icon: MessageCircle, title: "Enviar mensagem", to: `/app/pacientes/${p.id}/diario?tab=mensagens` },
+    { icon: MessageCircle, title: "Enviar mensagem", to: `/app/mensagens/${p.id}` },
     { icon: ClipboardList, title: "Ver registros", to: `/app/pacientes/${p.id}/diario` },
     { icon: Award, title: "Criar desafio", to: `/app/desafios` },
-    { icon: CalendarPlus, title: "Agendar retorno", to: `/app/mensagens` },
   ];
 
   return (
