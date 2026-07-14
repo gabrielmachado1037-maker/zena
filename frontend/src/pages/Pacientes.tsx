@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  Plus, Search, Users, MessageCircle, ClipboardList, Award,
+  Plus, Search, Users, MessageCircle, Award,
   ArrowUpRight, Flame, Clock, X, ImageOff, MoreVertical,
-  TrendingUp, TrendingDown, Minus,
+  TrendingUp, TrendingDown, Minus, FileText, Trash2, AlertTriangle,
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
@@ -55,6 +55,7 @@ export default function Pacientes() {
   const [ligaFiltro, setLigaFiltro] = useState<string | null>(null);
   const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>("todos");
   const [novoAberto, setNovoAberto] = useState(false);
+  const [excluir, setExcluir] = useState<Paciente | null>(null);
 
   function carregar() {
     setLoading(true); setErro(null);
@@ -166,12 +167,13 @@ export default function Pacientes() {
         ) : (
           <div className="space-y-2.5">
             {filtrados.map((p, i) => (
-              <PacienteCard key={p.id} p={p} i={i} navigate={navigate} />
+              <PacienteCard key={p.id} p={p} i={i} navigate={navigate} onExcluir={setExcluir} />
             ))}
           </div>
         )}
 
         {novoAberto && <NovoPacienteModal onClose={() => setNovoAberto(false)} onCriado={() => { setNovoAberto(false); carregar(); }} />}
+        {excluir && <ExcluirModal paciente={excluir} onClose={() => setExcluir(null)} onExcluido={() => { setExcluir(null); carregar(); }} />}
       </main>
     </div>
   );
@@ -277,7 +279,9 @@ const checkinLabel = (dias: number | null) =>
   dias === null ? "Nunca" : dias === 0 ? "Hoje" : dias === 1 ? "Ontem" : `Há ${dias} dias`;
 
 /* ── Linha do paciente (CRM compacto) ── */
-function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: ReturnType<typeof useNavigate> }) {
+function PacienteCard({ p, i, navigate, onExcluir }: {
+  p: Paciente; i: number; navigate: ReturnType<typeof useNavigate>; onExcluir: (p: Paciente) => void;
+}) {
   const reduce = useReducedMotion();
   const { pct, faltam, proxima } = progressoLiga(p.pontosTotal);
   const cor = corLiga(p.ligaAtual);
@@ -289,10 +293,12 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
   const [menu, setMenu] = useState(false);
 
   const go = (to: string) => (e: React.MouseEvent) => { e.stopPropagation(); setMenu(false); navigate(to); };
-  const menuItens = [
+  const menuItens: MenuItem[] = [
     { icon: ArrowUpRight, title: "Abrir paciente", to: `/app/pacientes/${p.id}` },
-    { icon: ClipboardList, title: "Ver registros", to: `/app/pacientes/${p.id}/diario` },
-    { icon: Award, title: "Criar desafio", to: `/app/desafios` },
+    { icon: FileText, title: "Relatório PDF", to: `/app/pacientes/${p.id}/relatorio` },
+    { icon: TrendingUp, title: "Evolução", to: `/app/pacientes/${p.id}?tab=evolucao` },
+    { icon: Award, title: "Medalhas", to: `/app/pacientes/${p.id}?tab=liga` },
+    { icon: Trash2, title: "Excluir paciente", danger: true, onClick: () => onExcluir(p) },
   ];
 
   return (
@@ -383,11 +389,13 @@ function PacienteCard({ p, i, navigate }: { p: Paciente; i: number; navigate: Re
   );
 }
 
+type MenuItem = { icon: typeof ArrowUpRight; title: string; to?: string; onClick?: () => void; danger?: boolean };
+
 /* ── Ações da linha: mensagem + menu (⋮) ── */
 function RowActions({ p, menu, setMenu, go, menuItens }: {
   p: Paciente; menu: boolean; setMenu: (v: boolean) => void;
   go: (to: string) => (e: React.MouseEvent) => void;
-  menuItens: { icon: typeof ArrowUpRight; title: string; to: string }[];
+  menuItens: MenuItem[];
 }) {
   const btn = "grid size-9 shrink-0 place-items-center rounded-xl border border-nx-border bg-nx-container text-nx-on-surface-variant transition-colors hover:border-nx-outline hover:text-nx-on-surface";
   return (
@@ -403,11 +411,15 @@ function RowActions({ p, menu, setMenu, go, menuItens }: {
           <>
             <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setMenu(false); }} />
             <div onClick={(e) => e.stopPropagation()}
-              className="absolute right-0 top-11 z-50 w-48 overflow-hidden rounded-xl border border-nx-border bg-nx-elevated py-1 shadow-2xl">
+              className="absolute right-0 top-11 z-50 w-52 overflow-hidden rounded-xl border border-nx-border bg-nx-elevated py-1 shadow-2xl">
               {menuItens.map((m) => (
-                <button key={m.title} onClick={go(m.to)}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-label-md text-nx-on-surface transition-colors hover:bg-nx-container">
-                  <m.icon size={15} className="text-nx-on-surface-variant" /> {m.title}
+                <button
+                  key={m.title}
+                  onClick={m.to ? go(m.to) : (e) => { e.stopPropagation(); setMenu(false); m.onClick?.(); }}
+                  className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-label-md transition-colors hover:bg-nx-container ${
+                    m.danger ? "border-t border-nx-border/60 text-nx-danger" : "text-nx-on-surface"}`}
+                >
+                  <m.icon size={15} className={m.danger ? "text-nx-danger" : "text-nx-on-surface-variant"} /> {m.title}
                 </button>
               ))}
             </div>
@@ -415,6 +427,64 @@ function RowActions({ p, menu, setMenu, go, menuItens }: {
         )}
       </div>
     </>
+  );
+}
+
+/* ── Modal de exclusão (LGPD): exige digitar o nome, mesmo fluxo seguro do perfil ── */
+function ExcluirModal({ paciente, onClose, onExcluido }: {
+  paciente: Paciente; onClose: () => void; onExcluido: () => void;
+}) {
+  const [nome, setNome] = useState("");
+  const [excluindo, setExcluindo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const confere = nome.trim().toLowerCase() === paciente.nome.trim().toLowerCase();
+
+  async function confirmar() {
+    if (!confere || excluindo) return;
+    setExcluindo(true); setErro(null);
+    try {
+      await api.delete(`/pacientes/${paciente.id}`);
+      onExcluido();
+    } catch (e: any) {
+      setErro(e?.response?.data?.error ?? "Não foi possível excluir o paciente.");
+      setExcluindo(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm md:items-center md:p-4" onClick={onClose}>
+      <div className="w-full rounded-t-3xl border border-nx-border bg-nx-surface p-6 md:max-w-md md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="grid size-9 place-items-center rounded-full bg-nx-danger/12"><AlertTriangle size={18} className="text-nx-danger" /></span>
+            <h2 className="text-body-lg font-bold text-nx-on-surface">Excluir paciente</h2>
+          </div>
+          <button onClick={onClose} aria-label="Fechar" className="text-nx-outline hover:text-nx-on-surface"><X size={20} /></button>
+        </div>
+        <p className="text-body-sm text-nx-on-surface-variant">
+          Esta ação é <span className="font-semibold text-nx-danger">irreversível</span> (LGPD): os dados pessoais de <b className="text-nx-on-surface">{paciente.nome}</b> serão anonimizados e o acesso ao app removido.
+        </p>
+        <p className="mt-3 text-body-sm text-nx-on-surface-variant">Digite <b className="text-nx-on-surface">{paciente.nome}</b> para confirmar.</p>
+        <input
+          value={nome} onChange={(e) => setNome(e.target.value)} autoFocus
+          placeholder={paciente.nome}
+          onKeyDown={(e) => { if (e.key === "Enter") confirmar(); }}
+          className="mt-2 w-full rounded-xl border border-nx-border bg-nx-container px-3 py-2.5 text-body-sm text-nx-on-surface placeholder:text-nx-on-surface-variant focus:border-nx-danger/60 focus:outline-none focus:ring-1 focus:ring-nx-danger/40"
+        />
+        {erro && <p className="mt-2 text-label-md text-nx-danger">{erro}</p>}
+        <div className="mt-5 flex gap-2">
+          <button onClick={onClose} className="flex-1 rounded-xl border border-nx-border py-2.5 text-label-md font-semibold text-nx-on-surface transition-colors hover:bg-nx-container">
+            Cancelar
+          </button>
+          <button
+            onClick={confirmar} disabled={!confere || excluindo}
+            className="flex-1 rounded-xl bg-nx-danger py-2.5 text-label-md font-bold text-white transition-colors hover:brightness-110 disabled:opacity-40"
+          >
+            {excluindo ? "Excluindo…" : "Excluir"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

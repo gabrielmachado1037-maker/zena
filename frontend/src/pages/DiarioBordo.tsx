@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft, ChevronRight, Filter,
   Utensils, Droplet, Dumbbell, Moon, CheckCircle2, XCircle, Sparkles,
@@ -184,7 +184,11 @@ export default function DiarioBordo() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rankPos, setRankPos] = useState<number | null>(null);
-  const [tab, setTab] = useState<(typeof TABS)[number]>("Linha do tempo");
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState<(typeof TABS)[number]>(() => {
+    const t = searchParams.get("tab");
+    return t === "evolucao" ? "Evolução" : t === "liga" ? "Liga & Pontos" : t === "desafios" ? "Desafios" : "Linha do tempo";
+  });
   const [mesRef, setMesRef] = useState(() => new Date());
   const [selKey, setSelKey] = useState<string | null>(null);
   const [incentivo, setIncentivo] = useState<"idle" | "enviando" | "ok">("idle");
