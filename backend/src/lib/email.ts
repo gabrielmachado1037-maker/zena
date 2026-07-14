@@ -8,7 +8,7 @@ function getResend(): Resend | null {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
-const FROM = "Nexvel <noreply@nexvel.com.br>";
+const FROM = "Nexvel <noreply@nexvel.tech>";
 const BASE_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 function base(titulo: string, corpo: string) {
