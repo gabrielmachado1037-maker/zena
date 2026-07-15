@@ -8,7 +8,10 @@ function getResend(): Resend | null {
   return new Resend(process.env.RESEND_API_KEY);
 }
 
-const FROM = "Nexvel <noreply@nexvel.tech>";
+// Remetente configurável. Precisa ser um domínio VERIFICADO no Resend.
+// Hoje o verificado é clinne.com.br; quando nexvel.tech for verificado,
+// basta setar EMAIL_FROM="Nexvel <noreply@nexvel.tech>" no Render.
+const FROM = process.env.EMAIL_FROM || "Nexvel <noreply@clinne.com.br>";
 const BASE_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 function base(titulo: string, corpo: string) {
