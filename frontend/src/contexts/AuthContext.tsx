@@ -42,7 +42,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const n: Nutricionista = JSON.parse(user);
       setToken(saved);
       setNutricionista(n);
-      Sentry.setUser({ id: n.id, email: n.email });
+      // Só o id: e-mail é dado pessoal e não deve sair do app (LGPD). Para saber
+      // quem é, cruze o id no banco.
+      Sentry.setUser({ id: n.id });
       api.defaults.headers.Authorization = `Bearer ${saved}`;
       api.get("/health").catch(() => {}); // Acorda backend/Neon DB antes do usuário clicar em algo
     }
@@ -53,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function setSession(t: string, n: Nutricionista, refreshToken?: string) {
     setToken(t);
     setNutricionista(n);
-    Sentry.setUser({ id: n.id, email: n.email });
+    Sentry.setUser({ id: n.id });
     api.defaults.headers.Authorization = `Bearer ${t}`;
     localStorage.setItem("zena_token", t);
     localStorage.setItem("zena_user", JSON.stringify(n));

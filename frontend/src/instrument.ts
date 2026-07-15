@@ -12,5 +12,8 @@ if (dsn) {
     integrations: [Sentry.browserTracingIntegration()],
     // Amostragem de performance (10%). Erros são sempre capturados.
     tracesSampleRate: 0.1,
+    // App de saúde: nunca enviar PII (IP, cookies) para o Sentry. É o padrão do
+    // SDK, mas explícito para não regredir por acidente.
+    sendDefaultPii: false,
   });
 }

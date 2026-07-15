@@ -51,7 +51,8 @@ export default function Privacidade() {
             <ul className="list-disc pl-5 space-y-2 mt-2">
               <li><strong>Stripe</strong> — processamento de pagamentos.</li>
               <li><strong>Resend</strong> — envio de e-mails transacionais.</li>
-              <li><strong>Render / Neon</strong> — hospedagem e banco de dados (servidores no Brasil ou com adequação LGPD).</li>
+              <li><strong>Render / Neon / Vercel</strong> — hospedagem e banco de dados (servidores no Brasil ou com adequação LGPD).</li>
+              <li><strong>Sentry</strong> — monitoramento de erros. Recebe apenas dados técnicos da falha (mensagem de erro, tela e identificador interno da conta). Não recebe seu nome, e-mail, fotos nem dados de saúde.</li>
             </ul>
           </Section>
 

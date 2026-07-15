@@ -37,7 +37,9 @@ export function PacienteAuthProvider({ children }: { children: ReactNode }) {
       const p: PacienteUser = JSON.parse(user);
       setToken(saved);
       setPaciente(p);
-      Sentry.setUser({ id: p.id, email: p.email });
+      // Só o id: e-mail é dado pessoal e não deve sair do app (LGPD). Para saber
+      // quem é, cruze o id no banco.
+      Sentry.setUser({ id: p.id });
     }
     setLoading(false);
   }, []);
@@ -45,7 +47,7 @@ export function PacienteAuthProvider({ children }: { children: ReactNode }) {
   function guardarSessao(t: string, p: PacienteUser, refreshToken?: string) {
     setToken(t);
     setPaciente(p);
-    Sentry.setUser({ id: p.id, email: p.email });
+    Sentry.setUser({ id: p.id });
     localStorage.setItem("zena_token_paciente", t);
     localStorage.setItem("zena_user_paciente", JSON.stringify(p));
     if (refreshToken) localStorage.setItem("zena_refresh_paciente", refreshToken);
