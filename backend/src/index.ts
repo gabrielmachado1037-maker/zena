@@ -116,11 +116,6 @@ app.use("/api/desafios", desafiosRouter);
 
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 
-// TEMPORÁRIO — teste de captação do Sentry no backend. REMOVER após validar.
-app.get("/api/debug-sentry", () => {
-  throw new Error("Sentry backend test — erro controlado (remover rota depois)");
-});
-
 initCron();
 
 // Captura os erros no Sentry (no-op sem SENTRY_DSN) — depois das rotas, antes do handler final.
