@@ -128,7 +128,7 @@ function ShareModal({ quote, onClose }: { quote: string; onClose: () => void }) 
 
         {/* Rodapé */}
         <div style={{ width: "100%", borderTop: "1px solid rgba(255,255,255,0.15)", paddingTop: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <p style={{ color: "white", fontSize: 11, fontWeight: 300, margin: 0 }}>nexvel.com.br</p>
+          <p style={{ color: "white", fontSize: 11, fontWeight: 300, margin: 0 }}>nexvel.tech</p>
           <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 11, margin: 0 }}>{todayPtBR()}</p>
         </div>
       </div>

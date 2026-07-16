@@ -9,7 +9,7 @@ import api from "../lib/api";
 import Avatar from "./Avatar";
 import { BottomSheetNx } from "./ui-nx";
 
-const SUPORTE_EMAIL = "suporte@nexvel.com.br";
+const SUPORTE_EMAIL = "contato@nexvel.tech";
 
 type Vista = "menu" | "clinica" | "codigo" | "sair";
 

@@ -14,7 +14,7 @@ interface Me {
   nomeConsultorio?: string | null; enderecoConsultorio?: string | null;
 }
 
-const SUPORTE_EMAIL = "suporte@nexvel.com.br";
+const SUPORTE_EMAIL = "contato@nexvel.tech";
 
 /* superfície sólida (glassmorphism fora — ban do DESIGN.md) */
 const GLASS = "bg-nx-surface border border-nx-border rounded-nx-lg";

@@ -16,7 +16,7 @@ export default function Privacidade() {
             A Nexvel é uma plataforma SaaS destinada a nutricionistas autônomos. Operamos em conformidade com a
             Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018) e demais normas aplicáveis.
             Para dúvidas sobre privacidade, entre em contato pelo e-mail{" "}
-            <a href="mailto:privacidade@nexvel.com.br" className="text-nx-evo underline">privacidade@nexvel.com.br</a>.
+            <a href="mailto:contato@nexvel.tech" className="text-nx-evo underline">contato@nexvel.tech</a>.
           </Section>
 
           <Section titulo="2. Dados que coletamos">
@@ -60,7 +60,7 @@ export default function Privacidade() {
             Mantemos os dados enquanto a conta estiver ativa. Após o cancelamento, os dados são mantidos por
             90 dias para fins de auditoria e, em seguida, excluídos permanentemente.
             Para solicitar a exclusão antecipada, envie um e-mail para{" "}
-            <a href="mailto:privacidade@nexvel.com.br" className="text-nx-evo underline">privacidade@nexvel.com.br</a>.
+            <a href="mailto:contato@nexvel.tech" className="text-nx-evo underline">contato@nexvel.tech</a>.
           </Section>
 
           <Section titulo="7. Seus direitos">
@@ -80,7 +80,7 @@ export default function Privacidade() {
 
           <Section titulo="10. Contato">
             Dúvidas, solicitações ou reclamações sobre privacidade:{" "}
-            <a href="mailto:privacidade@nexvel.com.br" className="text-nx-evo underline">privacidade@nexvel.com.br</a>.
+            <a href="mailto:contato@nexvel.tech" className="text-nx-evo underline">contato@nexvel.tech</a>.
           </Section>
         </div>
       </div>

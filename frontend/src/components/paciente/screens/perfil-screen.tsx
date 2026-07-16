@@ -53,7 +53,7 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
     { icon: MessageCircle, label: "Mensagens da nutri", screen: "mensagens" },
     { icon: TrendingUp, label: "Minha evolução", screen: "evolucao" },
     { icon: Settings, label: "Configurações", screen: "configuracoes" },
-    { icon: HelpCircle, label: "Ajuda e suporte", action: () => { window.location.href = "mailto:suporte@nexvel.com.br" } },
+    { icon: HelpCircle, label: "Ajuda e suporte", action: () => { window.location.href = "mailto:contato@nexvel.tech" } },
   ]
 
   return (

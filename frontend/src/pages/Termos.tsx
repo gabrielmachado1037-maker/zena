@@ -46,7 +46,7 @@ export default function Termos() {
 
           <Section titulo="5. Cancelamento">
             Você pode cancelar a assinatura a qualquer momento pelo portal de gerenciamento ou enviando e-mail
-            para <a href="mailto:suporte@nexvel.com.br" className="text-nx-evo underline">suporte@nexvel.com.br</a>.
+            para <a href="mailto:contato@nexvel.tech" className="text-nx-evo underline">contato@nexvel.tech</a>.
             O cancelamento encerra a renovação automática. O acesso permanece ativo até o fim do ciclo pago.
           </Section>
 
@@ -90,7 +90,7 @@ export default function Termos() {
           </Section>
 
           <Section titulo="13. Contato">
-            <a href="mailto:suporte@nexvel.com.br" className="text-nx-evo underline">suporte@nexvel.com.br</a>
+            <a href="mailto:contato@nexvel.tech" className="text-nx-evo underline">contato@nexvel.tech</a>
           </Section>
         </div>
       </div>
