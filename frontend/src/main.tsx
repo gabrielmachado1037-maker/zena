@@ -5,6 +5,19 @@ import * as Sentry from '@sentry/react'
 import './index.css'
 import App from './App.tsx'
 
+// Após um deploy, a "casca" em cache pode apontar para chunks de rota cujo nome
+// (com hash) já mudou. Quando um import dinâmico falha, o Vite dispara
+// 'vite:preloadError' — aqui recarregamos 1x para pegar a versão nova, em vez de
+// mostrar tela quebrada. O carimbo de tempo evita loop se o erro persistir.
+window.addEventListener('vite:preloadError', () => {
+  const KEY = 'nx-chunk-reload-at'
+  const last = Number(sessionStorage.getItem(KEY) || 0)
+  if (Date.now() - last > 10_000) {
+    sessionStorage.setItem(KEY, String(Date.now()))
+    window.location.reload()
+  }
+})
+
 function ErroFatal() {
   return (
     <div
