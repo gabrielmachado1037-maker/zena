@@ -10,3 +10,6 @@ dist/
 
 # Ferramenta de design (skill impeccable) — tooling pessoal, não é produto
 .claude/
+
+.vercel
+.env*
