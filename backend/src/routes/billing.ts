@@ -366,6 +366,14 @@ export function webhookHandler(req: Request, res: Response) {
 
 // Webhook Asaas
 router.post("/asaas-webhook", async (req: Request, res: Response) => {
+  // Autenticação do webhook: o Asaas envia o token configurado no painel no
+  // header `asaas-access-token`. Sem esta checagem, qualquer um poderia forjar
+  // um PAYMENT_CONFIRMED e ativar um plano de graça (bypass do paywall).
+  const expected = process.env.ASAAS_WEBHOOK_TOKEN;
+  if (!expected || req.get("asaas-access-token") !== expected) {
+    return res.status(401).json({ error: "Webhook não autorizado." });
+  }
+
   const { event, payment } = req.body as { event: string; payment?: { externalReference?: string; dueDate?: string } };
   if (!payment?.externalReference) return res.json({ ok: true });
 
