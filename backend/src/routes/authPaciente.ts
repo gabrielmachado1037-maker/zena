@@ -291,24 +291,7 @@ router.post("/reenviar-verificacao", emailLimiter, authPacienteMiddleware, async
   res.json({ ok: true });
 });
 
-// POST /api/auth/paciente/gerar-codigo — nutricionista gera/renova código de vínculo
-router.post("/gerar-codigo", authMiddleware, async (req: AuthRequest, res: Response) => {
-  const codigo = crypto.randomInt(100000, 999999).toString();
-  const nutri = await prisma.nutricionista.update({
-    where: { id: req.nutricionistaId! },
-    data: { codigoVinculo: codigo },
-    select: { codigoVinculo: true },
-  });
-  res.json({ codigoVinculo: nutri.codigoVinculo });
-});
-
-// GET /api/auth/paciente/codigo-vinculo — nutricionista consulta código atual
-router.get("/codigo-vinculo", authMiddleware, async (req: AuthRequest, res: Response) => {
-  const nutri = await prisma.nutricionista.findUnique({
-    where: { id: req.nutricionistaId! },
-    select: { codigoVinculo: true },
-  });
-  res.json({ codigoVinculo: nutri?.codigoVinculo ?? null });
-});
+// (Removidas as rotas do código de vínculo GLOBAL da clínica — gerar-codigo /
+//  codigo-vinculo. O vínculo agora é individual por paciente, gerado no cadastro.)
 
 export default router;
