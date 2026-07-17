@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronRight, Sparkles, ShieldAlert, TrendingUp, TrendingDown, Minus,
-  MessageSquare, Target, ArrowRight, Trophy, Utensils, Dumbbell, Droplets, Moon, CheckCircle2,
+  MessageSquare, Target, ArrowRight, Trophy, Utensils, Dumbbell, Droplets, Moon, CheckCircle2, Settings,
 } from "lucide-react";
 import { useFetch } from "../hooks/useFetch";
 import Avatar from "../components/Avatar";
@@ -143,9 +143,16 @@ export default function Dashboard() {
           <button
             onClick={() => setContaOpen(true)}
             aria-label="Abrir menu da conta"
-            className="lg:hidden shrink-0 rounded-full ring-1 ring-nx-border hover:ring-nx-evo/50 transition-all active:scale-95"
+            className="relative lg:hidden shrink-0 rounded-full ring-1 ring-nx-border hover:ring-nx-evo/50 transition-all active:scale-95"
           >
             <Avatar src={nutricionista?.foto} nome={nutricionista?.nome ?? ""} tamanho={42} className="rounded-full" />
+            {/* Badge de engrenagem: indica que a foto abre configurações (não muda tamanho/posição do avatar) */}
+            <span
+              aria-hidden
+              className="absolute -bottom-0.5 -right-0.5 grid size-5 place-items-center rounded-full border-2 border-nx-bg-lowest bg-nx-container-high text-nx-on-surface-variant"
+            >
+              <Settings className="size-3" />
+            </span>
           </button>
         </header>
 
