@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  User, Building2, KeyRound, CreditCard, Bell, Settings, HelpCircle, LogOut,
-  ChevronRight, ChevronLeft, Copy, Share2, Check, Users, BadgeCheck, Loader2,
+  User, Building2, CreditCard, Bell, Settings, HelpCircle, LogOut,
+  ChevronRight, ChevronLeft, Users, BadgeCheck,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
@@ -11,7 +11,7 @@ import { BottomSheetNx } from "./ui-nx";
 
 const SUPORTE_EMAIL = "contato@nexvel.tech";
 
-type Vista = "menu" | "clinica" | "codigo" | "sair";
+type Vista = "menu" | "clinica" | "sair";
 
 /**
  * AccountSheet — folha inferior de conta do nutricionista (somente mobile).
@@ -34,7 +34,6 @@ export default function AccountSheet({ open, onClose }: { open: boolean; onClose
   const ITENS: { icon: typeof User; label: string; onClick: () => void; tint?: "danger" }[] = [
     { icon: User, label: "Meu Perfil", onClick: () => irPara("/app/perfil") },
     { icon: Building2, label: "Minha Clínica", onClick: () => setVista("clinica") },
-    { icon: KeyRound, label: "Código da Clínica", onClick: () => setVista("codigo") },
     { icon: CreditCard, label: "Plano", onClick: () => irPara("/app/planos") },
     { icon: Bell, label: "Notificações", onClick: () => irPara("/app/perfil") },
     { icon: Settings, label: "Configurações", onClick: () => irPara("/app/perfil") },
@@ -42,7 +41,7 @@ export default function AccountSheet({ open, onClose }: { open: boolean; onClose
     { icon: LogOut, label: "Sair da Conta", onClick: () => setVista("sair"), tint: "danger" },
   ];
 
-  const titulo = vista === "menu" ? "Conta" : vista === "clinica" ? "Minha Clínica" : vista === "codigo" ? "Código da Clínica" : "Sair da conta";
+  const titulo = vista === "menu" ? "Conta" : vista === "clinica" ? "Minha Clínica" : "Sair da conta";
 
   return (
     <BottomSheetNx open={open} onClose={onClose} title={vista === "menu" ? undefined : titulo} ariaLabel="Menu da conta">
@@ -86,7 +85,6 @@ export default function AccountSheet({ open, onClose }: { open: boolean; onClose
       )}
 
       {vista === "clinica" && <MinhaClinica nome={nutricionista?.nomeConsultorio?.trim() || "Minha Clínica"} />}
-      {vista === "codigo" && <CodigoClinica />}
       {vista === "sair" && (
         <div className="pb-1">
           <p className="text-body-md text-nx-on-surface">Tem certeza que deseja sair?</p>
@@ -159,77 +157,3 @@ function MinhaClinica({ nome }: { nome: string }) {
   );
 }
 
-/* ───────── Código da Clínica ───────── */
-function CodigoClinica() {
-  const [codigo, setCodigo] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [copiado, setCopiado] = useState(false);
-
-  useEffect(() => {
-    let vivo = true;
-    api.get<{ codigoVinculo: string | null }>("/auth/paciente/codigo-vinculo")
-      .then((r) => vivo && setCodigo(r.data.codigoVinculo))
-      .catch(() => vivo && setCodigo(null))
-      .finally(() => vivo && setLoading(false));
-    return () => { vivo = false; };
-  }, []);
-
-  const texto = codigo
-    ? `Use o código ${codigo} para se vincular à minha clínica no app Nexvel.`
-    : "";
-
-  async function copiar() {
-    if (!codigo) return;
-    try {
-      await navigator.clipboard.writeText(codigo);
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 1800);
-    } catch { /* clipboard indisponível */ }
-  }
-
-  async function compartilhar() {
-    if (!codigo) return;
-    if (navigator.share) {
-      try { await navigator.share({ title: "Código da clínica", text: texto }); } catch { /* cancelado */ }
-    } else {
-      void copiar();
-    }
-  }
-
-  return (
-    <div className="pb-1">
-      <p className="text-body-sm text-nx-on-surface-variant mb-3">
-        Compartilhe este código com seus pacientes para que eles se vinculem à sua clínica.
-      </p>
-
-      <div className="rounded-2xl border border-nx-border bg-nx-container/50 py-6 grid place-items-center">
-        {loading ? (
-          <Loader2 size={22} className="animate-spin text-nx-on-surface-variant" />
-        ) : codigo ? (
-          <span className="text-[34px] leading-none font-extrabold tracking-[0.25em] text-nx-on-surface tabular-nums">{codigo}</span>
-        ) : (
-          <span className="text-body-sm text-nx-on-surface-variant px-4 text-center">
-            Nenhum código gerado ainda. Gere na tela de Pacientes ao convidar alguém.
-          </span>
-        )}
-      </div>
-
-      <div className="mt-4 flex gap-3">
-        <button
-          onClick={copiar}
-          disabled={!codigo}
-          className="flex-1 flex items-center justify-center gap-2 rounded-xl border border-nx-border py-3 text-body-md font-semibold text-nx-on-surface hover:bg-nx-surface-hover transition-colors disabled:opacity-50"
-        >
-          {copiado ? <><Check size={16} className="text-nx-evo" /> Copiado</> : <><Copy size={16} /> Copiar Código</>}
-        </button>
-        <button
-          onClick={compartilhar}
-          disabled={!codigo}
-          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-nx-evo py-3 text-body-md font-bold text-nx-on-evo hover:bg-nx-evo-2 transition-colors disabled:opacity-50"
-        >
-          <Share2 size={16} /> Compartilhar
-        </button>
-      </div>
-    </div>
-  );
-}
