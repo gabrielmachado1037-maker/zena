@@ -29,8 +29,10 @@ export default function Login() {
       if (lembrar) localStorage.setItem(REMEMBER_KEY, email);
       else localStorage.removeItem(REMEMBER_KEY);
       navigate("/app/dashboard");
-    } catch {
-      setError("E-mail ou senha incorretos.");
+    } catch (err: any) {
+      // Mostra a mensagem real do backend (ex.: 429 "Muitas tentativas… 15 min"),
+      // senão a nutri fica batendo achando que é senha errada.
+      setError(err?.response?.data?.error || "E-mail ou senha incorretos.");
     } finally { setLoading(false); }
   }
 

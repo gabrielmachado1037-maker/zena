@@ -56,10 +56,13 @@ export default function NutriOnboarding() {
     const pac = data?.primeiroPaciente;
     if (!pac?.conviteCodigo) { navigate("/app/pacientes"); return; }
     const texto = `Olá, ${pac.nome}! Seu convite para o app Nexvel é ${pac.conviteCodigo}. Baixe o app, escolha "Criar conta" e informe este código + os últimos 4 dígitos do seu telefone. O código é individual e de uso único.`;
+    let compartilhou = false;
     try {
-      if (navigator.share) await navigator.share({ title: "Convite Nexvel", text: texto });
-      else await navigator.clipboard.writeText(pac.conviteCodigo);
-    } catch { /* cancelado */ }
+      if (navigator.share) { await navigator.share({ title: "Convite Nexvel", text: texto }); compartilhou = true; }
+      else if (navigator.clipboard) { await navigator.clipboard.writeText(pac.conviteCodigo); compartilhou = true; }
+    } catch { compartilhou = false; /* usuário cancelou ou clipboard indisponível */ }
+    // Só marca a etapa como concluída se REALMENTE compartilhou/copiou o convite.
+    if (!compartilhou) { navigate("/app/pacientes"); return; }
     await api.post("/onboarding/convite-enviado").catch(() => {});
     carregar();
   }

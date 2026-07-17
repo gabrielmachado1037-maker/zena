@@ -188,7 +188,11 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
         })
         void reload()
       }
-    } catch { /* best-effort */ }
+    } catch {
+      // NÃO engolir: a UI é otimista (mostra +XP na hora). Se o save falha, o paciente
+      // acha que registrou e perde o dado. Avisa para ele saber que precisa tentar de novo.
+      push("Não foi possível salvar agora. Verifique sua conexão e tente de novo.", { tone: "streak" })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metaMl, finalizado, user.league, user.streak, totalAoFechar, reload])
 
