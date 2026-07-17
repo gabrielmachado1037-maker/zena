@@ -92,6 +92,15 @@ export default function Dashboard() {
 
   const lista = data?.pacientesLista ?? [];
   const criticos = useMemo(() => lista.filter((p) => p.risco === "risco"), [lista]);
+  // Paciente (em atenção) com a maior dificuldade de adesão na semana — para "Prioridades do dia".
+  const baixaAdesao = useMemo(() => {
+    const cand = lista
+      .filter((p) => p.risco === "atencao" && p.maiorDificuldade && p.maiorDificuldade.pct < 40)
+      .sort((a, b) => a.maiorDificuldade!.pct - b.maiorDificuldade!.pct)[0];
+    return cand?.maiorDificuldade
+      ? { nome: cand.nome, label: cand.maiorDificuldade.label, pct: cand.maiorDificuldade.pct }
+      : null;
+  }, [lista]);
   const listaFiltrada = useMemo(() => {
     let base = lista;
     if (filtro === "criticos") base = criticos;
@@ -140,14 +149,13 @@ export default function Dashboard() {
           </button>
         </header>
 
-        {/* 1 · Resumo Inteligente (será preenchido pela IA no futuro) */}
+        {/* 1 · Prioridades do dia (regras do sistema, sem IA) */}
         <section className="mb-6">
           <ResumoInteligente
             loading={loading}
-            emRisco={k?.emRisco}
-            evoluiram={data?.subiramSemana?.length}
+            criticos={criticos}
+            baixaAdesao={baixaAdesao}
             mensagens={conversas ? mensagensNaoLidas : undefined}
-            desafios={data?.desafiosResumo?.ativos}
             onPrioridades={irParaPrioridades}
           />
         </section>
@@ -261,24 +269,34 @@ export default function Dashboard() {
   );
 }
 
-/* ───────── 1 · Resumo Inteligente ───────── */
+/* ───────── 1 · Prioridades do dia (regras do sistema, sem IA) ───────── */
 function ResumoInteligente({
-  loading, emRisco, evoluiram, mensagens, desafios, onPrioridades,
+  loading, criticos, baixaAdesao, mensagens, onPrioridades,
 }: {
-  loading: boolean; emRisco?: number; evoluiram?: number; mensagens?: number; desafios?: number;
+  loading: boolean;
+  criticos: PacienteLinha[];
+  baixaAdesao: { nome: string; label: string; pct: number } | null;
+  mensagens?: number;
   onPrioridades: () => void;
 }) {
+  const pN = (nome: string) => nome.trim().split(/\s+/)[0] || nome;
+  // Prioridades por ordem de importância — só o que realmente existe agora. Máx. 3.
   const linhas: { cor: string; texto: React.ReactNode }[] = [];
-  if (emRisco != null)
-    linhas.push({ cor: "#FF5D5D", texto: emRisco > 0
-      ? <><b className="text-nx-on-surface">{emRisco}</b> {emRisco === 1 ? "paciente precisa" : "pacientes precisam"} de atenção.</>
-      : <>Ninguém em risco agora — carteira saudável 💚</> });
-  if (evoluiram != null && evoluiram > 0)
-    linhas.push({ cor: "#7CFF5B", texto: <><b className="text-nx-on-surface">{evoluiram}</b> {evoluiram === 1 ? "paciente evoluiu" : "pacientes evoluíram"} muito bem esta semana.</> });
+  if (criticos.length > 0) {
+    const top = [...criticos].sort((a, b) => b.diasInativo - a.diasInativo)[0];
+    const dias = top.diasInativo === 1 ? "dia" : "dias";
+    const base = top.ultimoCheckin
+      ? `${pN(top.nome)} está há ${top.diasInativo} ${dias} sem check-in`
+      : `${pN(top.nome)} nunca registrou`;
+    linhas.push({ cor: "#FF5D5D", texto: criticos.length > 1
+      ? <>{base} <span className="text-nx-on-surface-variant">· +{criticos.length - 1} em risco</span>.</>
+      : <>{base}.</> });
+  }
+  if (baixaAdesao)
+    linhas.push({ cor: "#FF8A1F", texto: <>{pN(baixaAdesao.nome)} bateu apenas <b className="text-nx-on-surface">{baixaAdesao.pct}%</b> em {baixaAdesao.label}.</> });
   if (mensagens != null && mensagens > 0)
-    linhas.push({ cor: "#49A8FF", texto: <><b className="text-nx-on-surface">{mensagens}</b> {mensagens === 1 ? "mensagem aguarda" : "mensagens aguardam"} resposta.</> });
-  if (desafios != null && desafios > 0)
-    linhas.push({ cor: "#F8C84B", texto: <><b className="text-nx-on-surface">{desafios}</b> {desafios === 1 ? "desafio ativo" : "desafios ativos"} em andamento.</> });
+    linhas.push({ cor: "#7CFF5B", texto: <><b className="text-nx-on-surface">{mensagens}</b> {mensagens === 1 ? "mensagem sem resposta" : "mensagens sem resposta"}.</> });
+  const top3 = linhas.slice(0, 3);
 
   return (
     <div className="relative overflow-hidden rounded-nx-lg border border-nx-evo/25 bg-nx-surface p-5 sm:p-6">
@@ -290,8 +308,7 @@ function ResumoInteligente({
             <span className="grid size-8 place-items-center rounded-nx-md bg-nx-evo/12">
               <Sparkles className="size-4 text-nx-evo" />
             </span>
-            <h2 className="text-body-lg font-semibold text-nx-on-surface">Resumo Inteligente</h2>
-            <span className="rounded-full border border-nx-border px-2 py-0.5 text-label-sm uppercase tracking-wide text-nx-on-surface-variant">IA em breve</span>
+            <h2 className="text-body-lg font-semibold text-nx-on-surface">Prioridades do dia</h2>
           </div>
 
           {loading ? (
@@ -300,9 +317,14 @@ function ResumoInteligente({
                 <div key={i} className="h-4 w-64 max-w-full animate-pulse rounded bg-nx-container/60" />
               ))}
             </div>
+          ) : top3.length === 0 ? (
+            <p className="flex items-start gap-2.5 text-body-md text-nx-on-surface-variant">
+              <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: "#7CFF5B", boxShadow: "0 0 8px #7CFF5B" }} />
+              <span>Nenhuma prioridade no momento. Sua clínica está em dia.</span>
+            </p>
           ) : (
             <ul className="grid gap-2.5 sm:grid-cols-2 sm:gap-x-8">
-              {linhas.map((l, i) => (
+              {top3.map((l, i) => (
                 <li key={i} className="flex items-start gap-2.5 text-body-md text-nx-on-surface-variant">
                   <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: l.cor, boxShadow: `0 0 8px ${l.cor}` }} />
                   <span>{l.texto}</span>
