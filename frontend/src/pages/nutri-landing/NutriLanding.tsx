@@ -1,22 +1,23 @@
-import { useEffect } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { TrendingUp, Trophy, MessageCircle, Star, ArrowRight, User, type LucideIcon } from "lucide-react";
+import { motion } from "framer-motion";
+import {
+  ArrowRight, Check, X, Menu, Star, Flame, Trophy, Target, Award, TrendingUp,
+  Smartphone, Monitor, FileText, ShieldCheck, Droplets, Moon, Utensils, Dumbbell,
+  Zap, ChevronDown, Users, CalendarClock, BellRing, type LucideIcon,
+} from "lucide-react";
 import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
-import Avatar from "../../components/Avatar";
-import { ProLogo, PrimaryBtn } from "./components/shared";
+import { NexvelLogo } from "../onboarding/components/NexvelLogo";
+import { PrimaryBtn } from "./components/shared";
 import { DashboardPreview } from "./DashboardPreview";
 
-/** Resultados (foco no que o nutri alcança — não é lista de funcionalidades). */
-const RESULTADOS: { icon: LucideIcon; label: string }[] = [
-  { icon: TrendingUp, label: "Mais aderência ao plano" },
-  { icon: Trophy, label: "Resultados que aparecem" },
-  { icon: MessageCircle, label: "Pacientes mais engajados" },
-];
+const CADASTRO = "/cadastro";
 
-/** TELA 1 — Landing / entrada da área do nutricionista (NEXVEL NUTRITION PRO). */
+/* ─────────────────────────── página ─────────────────────────── */
 export default function NutriLanding() {
   const navigate = useNavigate();
   const { token: pacienteToken, loading: authLoading } = usePacienteAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Porta de entrada (/) — quem já está logado não fica na landing: vai direto pra sua área.
   const nutriToken = typeof localStorage !== "undefined" ? localStorage.getItem("zena_token") : null;
@@ -27,110 +28,778 @@ export default function NutriLanding() {
     else if (nutriToken) navigate("/app/dashboard", { replace: true });
   }, [authLoading, pacienteToken, nutriToken, navigate]);
 
-  // Evita flash da landing enquanto resolve a sessão / redireciona logado.
-  if (authLoading || redireciona) return <div className="min-h-[100dvh] w-full bg-[#0A0A0A]" />;
+  const irCadastro = () => navigate(CADASTRO);
+  const irSecao = (id: string) => {
+    setMenuOpen(false);
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  if (authLoading || redireciona) return <div className="min-h-[100dvh] w-full bg-[#080A08]" />;
+
+  const NAV = [
+    { id: "como-funciona", label: "Como funciona" },
+    { id: "recursos", label: "Recursos" },
+    { id: "beneficios", label: "Benefícios" },
+    { id: "planos", label: "Planos" },
+    { id: "faq", label: "FAQ" },
+  ];
 
   return (
-    <div className="relative min-h-[100dvh] w-full overflow-hidden bg-[#0A0A0A] text-white">
-      {/* glow verde no topo */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[460px]"
-        style={{ background: "radial-gradient(58% 100% at 68% 0%, rgba(124,255,91,0.13), transparent 70%)" }} />
-
-      <div className="relative mx-auto max-w-[1440px] px-6 pb-10 pt-[calc(2.5rem+env(safe-area-inset-top))] lg:px-12 lg:pb-14 lg:pt-14">
-        <header className="mb-14 flex items-center justify-between gap-4 lg:mb-20">
-          <ProLogo />
-          <button
-            type="button"
-            onClick={() => navigate("/login-paciente")}
-            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/12 bg-white/[0.02] px-4 py-2 text-body-sm font-medium text-[#A1A1AA] transition-colors hover:border-white/25 hover:text-white active:scale-[0.98]"
-          >
-            <User className="size-4" strokeWidth={2} /> Sou paciente
+    <div className="min-h-[100dvh] w-full bg-[#080A08] text-white [scroll-behavior:smooth]">
+      {/* ── Header sticky ── */}
+      <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#080A08]/85 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-5 py-3.5 lg:px-8">
+          <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Nexvel" className="shrink-0">
+            <NexvelLogo className="h-[26px]" />
           </button>
-        </header>
-
-        <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-16">
-          {/* Coluna esquerda — a mensagem */}
-          <div className="max-w-xl">
-            <h1 className="text-[36px] font-extrabold leading-[1.06] tracking-tight text-white text-balance sm:text-[44px] lg:text-[52px]">
-              Faça seus pacientes seguirem o plano com{" "}
-              <span className="text-nx-evo">mais consistência.</span>
-            </h1>
-
-            <p className="mt-6 text-body-lg font-semibold text-white sm:text-[19px]">
-              Teste gratuito por <span className="text-nx-evo">14 dias.</span>
-            </p>
-            <p className="mt-1.5 text-body-md text-[#A1A1AA]">
-              Sem cartão de crédito • Cancele quando quiser.
-            </p>
-
-            {/* Ações principais */}
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <PrimaryBtn
-                onClick={() => navigate("/cadastro")}
-                className="h-14 w-full px-8 text-body-lg sm:w-auto"
-              >
-                Começar teste gratuito <ArrowRight className="size-5" />
-              </PrimaryBtn>
-              <button
-                type="button"
-                onClick={() => navigate("/login")}
-                className="inline-flex h-14 w-full items-center justify-center rounded-xl border border-white/12 bg-white/[0.02] px-8 text-body-lg font-semibold text-white transition-colors hover:border-white/25 hover:bg-white/[0.05] active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 sm:w-auto"
-              >
+          <nav className="hidden items-center gap-7 lg:flex">
+            {NAV.map((n) => (
+              <button key={n.id} onClick={() => irSecao(n.id)}
+                className="text-body-sm font-medium text-[#A1A1AA] transition-colors hover:text-white">
+                {n.label}
+              </button>
+            ))}
+          </nav>
+          <div className="hidden items-center gap-3 lg:flex">
+            <button onClick={() => navigate("/login")}
+              className="text-body-sm font-medium text-[#A1A1AA] transition-colors hover:text-white">
+              Entrar
+            </button>
+            <PrimaryBtn onClick={irCadastro} className="h-10 px-5 text-body-sm">Comece grátis</PrimaryBtn>
+          </div>
+          <button onClick={() => setMenuOpen((v) => !v)} aria-label="Menu"
+            className="grid size-10 place-items-center rounded-lg text-white lg:hidden">
+            {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
+        </div>
+        {menuOpen && (
+          <div className="border-t border-white/[0.06] bg-[#080A08] px-5 py-4 lg:hidden">
+            <nav className="flex flex-col gap-1">
+              {NAV.map((n) => (
+                <button key={n.id} onClick={() => irSecao(n.id)}
+                  className="rounded-lg px-2 py-2.5 text-left text-body-md font-medium text-[#A1A1AA] hover:bg-white/[0.04] hover:text-white">
+                  {n.label}
+                </button>
+              ))}
+              <button onClick={() => { setMenuOpen(false); navigate("/login"); }}
+                className="rounded-lg px-2 py-2.5 text-left text-body-md font-medium text-[#A1A1AA] hover:bg-white/[0.04] hover:text-white">
                 Entrar
               </button>
+              <PrimaryBtn onClick={irCadastro} className="mt-2 h-12 w-full">Comece grátis</PrimaryBtn>
+            </nav>
+          </div>
+        )}
+      </header>
+
+      <main>
+        <Hero onCadastro={irCadastro} onDemo={() => irSecao("recursos")} />
+        <TrustBar />
+        <Problema />
+        <ComoFunciona />
+        <Recursos />
+        <Beneficios />
+        <Relatorios />
+        <Validacao />
+        <Planos onCadastro={irCadastro} />
+        <Faq />
+        <CtaFinal onCadastro={irCadastro} />
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
+/* ─────────────────────────── utilitários ─────────────────────────── */
+function Reveal({ children, delay = 0, className = "" }: { children: ReactNode; delay?: number; className?: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 22 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function Section({ id, children, className = "" }: { id?: string; children: ReactNode; className?: string }) {
+  return (
+    <section id={id} className={`mx-auto max-w-[1200px] px-5 py-16 lg:px-8 lg:py-24 ${className}`}>
+      {children}
+    </section>
+  );
+}
+
+function GreenGlow({ className = "" }: { className?: string }) {
+  return (
+    <div className={`pointer-events-none absolute -z-10 ${className}`}
+      style={{ background: "radial-gradient(50% 50% at 50% 50%, rgba(124,255,91,0.14), transparent 72%)" }} />
+  );
+}
+
+/* ─────────────────────────── Hero ─────────────────────────── */
+function Hero({ onCadastro, onDemo }: { onCadastro: () => void; onDemo: () => void }) {
+  return (
+    <div className="relative overflow-hidden border-b border-white/[0.05]">
+      <GreenGlow className="left-1/2 top-[-140px] h-[560px] w-[900px] -translate-x-1/2" />
+      <div className="mx-auto grid max-w-[1200px] items-center gap-14 px-5 pb-14 pt-12 lg:grid-cols-[1fr_1.1fr] lg:gap-10 lg:px-8 lg:pb-20 lg:pt-16">
+        {/* copy */}
+        <Reveal className="max-w-xl">
+          <span className="inline-flex items-center gap-2 rounded-full border border-nx-evo/25 bg-nx-evo/[0.07] px-3 py-1 text-label-md font-semibold text-nx-evo">
+            <Zap className="size-3.5" /> Para nutricionistas
+          </span>
+          <h1 className="mt-5 text-[34px] font-extrabold leading-[1.07] tracking-tight text-balance sm:text-[42px] lg:text-[52px]">
+            Seu paciente não abandona a dieta.{" "}
+            <span className="text-nx-evo">Ele evolui porque quer continuar jogando.</span>
+          </h1>
+          <p className="mt-6 text-body-lg leading-relaxed text-[#B4B4BB]">
+            O Nexvel transforma o acompanhamento nutricional em uma experiência envolvente com
+            gamificação, desafios, ligas, XP, missões e relatórios inteligentes.
+          </p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <PrimaryBtn onClick={onCadastro} className="h-14 w-full px-8 text-body-lg sm:w-auto">
+              Começar gratuitamente <ArrowRight className="size-5" />
+            </PrimaryBtn>
+            <button onClick={onDemo}
+              className="inline-flex h-14 w-full items-center justify-center rounded-xl border border-white/12 bg-white/[0.02] px-7 text-body-lg font-semibold text-white transition-colors hover:border-white/25 hover:bg-white/[0.05] active:scale-[0.98] sm:w-auto">
+              Ver demonstração
+            </button>
+          </div>
+          <div className="mt-5 flex items-center gap-2 text-body-sm text-[#8b8b93]">
+            <div className="flex gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="size-4 text-nx-gold" fill="#F8C84B" strokeWidth={0} />)}
             </div>
-
-            <SocialProof />
+            <span className="font-medium text-[#B4B4BB]">Mais adesão. Mais resultados. Mais pacientes.</span>
           </div>
+        </Reveal>
 
-          {/* Coluna direita — preview do dashboard */}
-          <div className="lg:pt-2">
-            <DashboardPreview />
+        {/* visual: dashboard + telefone */}
+        <Reveal delay={0.12} className="relative">
+          <DashboardPreview />
+          <div className="absolute -bottom-8 -right-2 hidden w-[210px] lg:block xl:w-[230px]">
+            <PhoneHero />
           </div>
-        </div>
-
-        {/* Resultados — faixa enxuta, ícones minimalistas */}
-        <div className="mt-16 grid gap-4 sm:grid-cols-3 lg:mt-20">
-          {RESULTADOS.map((r) => <Resultado key={r.label} {...r} />)}
-        </div>
+        </Reveal>
       </div>
     </div>
   );
 }
 
-function Resultado({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+/* Telefone do hero — app do paciente (Liga + missões). */
+function PhoneFrame({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className="flex items-center gap-3.5 rounded-2xl border border-white/[0.06] bg-[#111311] px-5 py-4 transition-colors hover:border-nx-evo/25">
-      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-nx-evo/10">
-        <Icon className="size-5 text-nx-evo" strokeWidth={2} />
-      </span>
-      <p className="text-body-lg font-semibold text-white">{label}</p>
+    <div className={`overflow-hidden rounded-[26px] border border-white/[0.12] bg-[#0B0F0C] p-1.5 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.7)] ${className}`}>
+      <div className="overflow-hidden rounded-[20px] bg-[#0A0D0A]">
+        <div className="mx-auto mt-1.5 h-1 w-14 rounded-full bg-white/15" />
+        {children}
+      </div>
     </div>
   );
 }
 
-function SocialProof() {
-  const nomes = ["Marcos", "Julia", "Rafael", "Camila"];
+function PhoneHero() {
   return (
-    <div className="mt-12 flex flex-wrap items-center gap-x-5 gap-y-3">
-      <div className="flex -space-x-2.5">
-        {nomes.map((n) => (
-          <span key={n} className="rounded-full ring-2 ring-[#0A0A0A]"><Avatar nome={n} tamanho={34} /></span>
+    <PhoneFrame>
+      <div className="space-y-2.5 p-3">
+        <div className="flex items-center justify-between">
+          <p className="text-[12px] font-bold text-white">Olá, Ana! 👋</p>
+          <Flame className="size-4 text-nx-streak" />
+        </div>
+        {/* Liga Ouro */}
+        <div className="rounded-xl border border-nx-gold/25 bg-gradient-to-b from-nx-gold/[0.12] to-transparent p-2.5">
+          <div className="flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-lg bg-nx-gold/20"><Trophy className="size-4 text-nx-gold" /></span>
+            <div className="leading-tight">
+              <p className="text-[11px] font-bold text-white">Liga Ouro</p>
+              <p className="text-[8.5px] text-[#8b8b93]">2.460 XP</p>
+            </div>
+            <span className="ml-auto text-[8.5px] font-semibold text-nx-gold">#3</span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="h-full w-[72%] rounded-full bg-nx-gold" />
+          </div>
+        </div>
+        {/* missões */}
+        <p className="pt-0.5 text-[9px] font-bold uppercase tracking-wide text-[#8b8b93]">Missões de hoje</p>
+        {[
+          { icon: Utensils, t: "Registrar café da manhã", done: true },
+          { icon: Droplets, t: "Beber 2L de água", done: true },
+          { icon: Dumbbell, t: "Registrar treino", done: false },
+        ].map((m) => (
+          <div key={m.t} className={`flex items-center gap-2 rounded-lg border p-2 ${m.done ? "border-nx-evo/25 bg-nx-evo/[0.06]" : "border-white/[0.07] bg-white/[0.02]"}`}>
+            <span className={`grid size-6 place-items-center rounded-md ${m.done ? "bg-nx-evo text-nx-on-evo" : "bg-white/[0.06] text-[#8b8b93]"}`}>
+              {m.done ? <Check className="size-3.5" /> : <m.icon className="size-3.5" />}
+            </span>
+            <span className={`text-[9.5px] font-medium ${m.done ? "text-[#8b8b93] line-through" : "text-white"}`}>{m.t}</span>
+            {!m.done && <span className="ml-auto text-[8px] font-bold text-nx-evo">+2 XP</span>}
+          </div>
         ))}
       </div>
-      <div>
-        <div className="flex items-center gap-1.5">
-          <div className="flex gap-0.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Star key={i} className="size-4 text-nx-gold" fill="#F8C84B" strokeWidth={0} />
+      <div className="flex items-center justify-around border-t border-white/[0.06] px-2 py-2 text-[#6b6b73]">
+        {[Target, Trophy, Award, TrendingUp].map((I, i) => (
+          <I key={i} className={`size-4 ${i === 0 ? "text-nx-evo" : ""}`} />
+        ))}
+      </div>
+    </PhoneFrame>
+  );
+}
+
+/* ─────────────────────────── Trust bar ─────────────────────────── */
+function TrustBar() {
+  const items = [
+    { icon: Smartphone, t: "Funciona no iPhone" },
+    { icon: Smartphone, t: "Funciona no Android" },
+    { icon: Monitor, t: "Dashboard Web" },
+    { icon: FileText, t: "Relatórios em PDF" },
+    { icon: ShieldCheck, t: "Dados protegidos pela LGPD" },
+  ];
+  return (
+    <div className="border-b border-white/[0.05] bg-[#0A0D0A]">
+      <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-center gap-x-8 gap-y-3 px-5 py-5 lg:px-8">
+        {items.map((i) => (
+          <div key={i.t} className="flex items-center gap-2 text-body-sm font-medium text-[#B4B4BB]">
+            <i.icon className="size-4 text-nx-evo" strokeWidth={2} /> {i.t}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────── Problema ─────────────────────────── */
+function Problema() {
+  const cards = [
+    "Você só descobre que ele abandonou semanas depois.",
+    "Você vira refém do WhatsApp, cobrando paciente por paciente.",
+    "Sem dados reais, você nunca sabe onde o paciente começou a desistir.",
+    "Na próxima consulta você tenta lembrar tudo de cabeça. Sem histórico, sem evolução, sem contexto.",
+  ];
+  return (
+    <div className="relative overflow-hidden border-b border-white/[0.05] bg-[#0A0D0A]">
+      <GreenGlow className="left-[-120px] top-1/2 h-[420px] w-[520px] -translate-y-1/2 opacity-60" />
+      <Section>
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          <Reveal>
+            <h2 className="text-[28px] font-extrabold leading-tight tracking-tight sm:text-[34px]">
+              Você monta o plano perfeito.{" "}
+              <span className="text-nx-evo">O paciente desaparece depois da consulta.</span>
+            </h2>
+            <div className="mt-8 space-y-3">
+              {cards.map((c) => (
+                <div key={c} className="flex items-start gap-3 rounded-2xl border border-white/[0.06] bg-[#0E120E] p-4">
+                  <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-nx-evo/10">
+                    <X className="size-4 text-nx-evo/80" strokeWidth={2.5} />
+                  </span>
+                  <p className="text-body-md leading-relaxed text-[#B4B4BB]">{c}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-7 text-body-lg font-bold text-white">
+              Menor adesão. Menores resultados. <span className="text-nx-evo">Mais cancelamentos.</span>
+            </p>
+          </Reveal>
+
+          {/* dashboard escurecido (mesma identidade) */}
+          <Reveal delay={0.1} className="relative">
+            <div className="pointer-events-none opacity-[0.5] grayscale-[0.15]">
+              <DashboardPreview />
+            </div>
+            <div className="pointer-events-none absolute inset-0 rounded-[18px] bg-gradient-to-t from-[#0A0D0A] via-transparent to-transparent" />
+          </Reveal>
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+/* ─────────────────────────── Como funciona ─────────────────────────── */
+function ComoFunciona() {
+  const passos = [
+    { n: 1, icon: Users, t: "Cadastre o paciente e envie o convite." },
+    { n: 2, icon: Smartphone, t: "Ele instala o app e começa a ganhar XP, entrar em ligas e cumprir missões." },
+    { n: 3, icon: TrendingUp, t: "Você acompanha tudo em tempo real — quem engaja e quem precisa de atenção." },
+    { n: 4, icon: BellRing, t: "Receba relatórios prontos e reative o paciente para a próxima consulta." },
+  ];
+  const nutri = [
+    "Acompanhe tudo em um painel", "Identifique riscos com alertas", "Poupe horas de tarefas repetitivas",
+    "Relatórios visuais e prontos", "Mais segurança e profissionalismo", "Decisões mais estratégicas",
+  ];
+  const paciente = [
+    "Missões diárias", "Ligas e desafios", "XP e recompensas",
+    "Ranking entre pacientes", "Acompanhamento da evolução", "Hábito que gera resultado",
+  ];
+  return (
+    <Section id="como-funciona">
+      <Reveal>
+        <SectionHeading
+          titulo={<>O Nexvel faz o paciente <span className="text-nx-evo">querer voltar todos os dias</span></>}
+          sub="Gamificação que transforma o plano em hábito. Você acompanha tudo sem precisar cobrar e decide com dados reais."
+        />
+      </Reveal>
+
+      <Reveal delay={0.05}>
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {passos.map((p) => (
+            <div key={p.n} className="relative rounded-2xl border border-white/[0.06] bg-[#0E120E] p-5">
+              <div className="flex items-center gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-nx-evo text-body-sm font-extrabold text-nx-on-evo">{p.n}</span>
+                <p.icon className="size-5 text-nx-evo/70" />
+              </div>
+              <p className="mt-4 text-body-md leading-relaxed text-[#B4B4BB]">{p.t}</p>
+            </div>
+          ))}
+        </div>
+      </Reveal>
+
+      <Reveal delay={0.1}>
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <ChecklistCard titulo="Para o nutricionista" icon={Monitor} itens={nutri} />
+          <ChecklistCard titulo="Para o paciente" icon={Trophy} itens={paciente} />
+        </div>
+      </Reveal>
+    </Section>
+  );
+}
+
+function ChecklistCard({ titulo, icon: Icon, itens }: { titulo: string; icon: LucideIcon; itens: string[] }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-[#0E120E] p-6">
+      <div className="mb-4 flex items-center gap-2.5">
+        <span className="grid size-8 place-items-center rounded-lg bg-nx-evo/10"><Icon className="size-4 text-nx-evo" /></span>
+        <h3 className="text-body-lg font-bold text-white">{titulo}</h3>
+      </div>
+      <ul className="grid gap-2.5 sm:grid-cols-2">
+        {itens.map((i) => (
+          <li key={i} className="flex items-center gap-2 text-body-sm text-[#B4B4BB]">
+            <Check className="size-4 shrink-0 text-nx-evo" strokeWidth={2.5} /> {i}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/* ─────────────────────────── Recursos (gamificação) ─────────────────────────── */
+function Recursos() {
+  const tiles: { icon: LucideIcon; t: string }[] = [
+    { icon: Target, t: "Missões" }, { icon: Flame, t: "Desafios" }, { icon: Zap, t: "XP" },
+    { icon: Trophy, t: "Ligas" }, { icon: Award, t: "Sequências" }, { icon: TrendingUp, t: "Evolução real" },
+  ];
+  return (
+    <div className="relative overflow-hidden border-y border-white/[0.05] bg-[#0A0D0A]">
+      <GreenGlow className="right-[-120px] top-[-80px] h-[420px] w-[520px]" />
+      <Section id="recursos">
+        <Reveal>
+          <SectionHeading
+            titulo={<>Gamificação que <span className="text-nx-evo">gera resultados</span></>}
+            sub="Mais do que registrar: o Nexvel transforma o acompanhamento numa jornada motivadora que aumenta a adesão e entrega resultado real."
+          />
+        </Reveal>
+
+        <Reveal delay={0.05}>
+          <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {tiles.map((t) => (
+              <div key={t.t} className="flex flex-col items-center gap-3 rounded-2xl border border-white/[0.06] bg-[#0E120E] px-4 py-6 text-center transition-colors hover:border-nx-evo/25">
+                <span className="grid size-12 place-items-center rounded-xl bg-nx-evo/10"><t.icon className="size-6 text-nx-evo" /></span>
+                <span className="text-body-sm font-semibold text-white">{t.t}</span>
+              </div>
             ))}
           </div>
-          <span className="text-body-sm font-semibold text-white">4.9/5</span>
+        </Reveal>
+
+        <Reveal delay={0.1}>
+          <div className="mt-10 grid gap-4 lg:grid-cols-3">
+            <MiniLiga />
+            <MiniRanking />
+            <MiniEvolucao />
+          </div>
+        </Reveal>
+      </Section>
+    </div>
+  );
+}
+
+function MockCard({ titulo, children }: { titulo: string; children: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-[#0B0F0C] p-5">
+      <p className="mb-4 text-body-sm font-bold text-white">{titulo}</p>
+      {children}
+    </div>
+  );
+}
+
+function MiniLiga() {
+  return (
+    <MockCard titulo="Liga & recompensas">
+      <div className="rounded-xl border border-nx-gold/25 bg-gradient-to-b from-nx-gold/[0.12] to-transparent p-4 text-center">
+        <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-nx-gold/20"><Trophy className="size-7 text-nx-gold" /></span>
+        <p className="mt-3 text-body-lg font-extrabold text-white">Liga Ouro</p>
+        <p className="text-body-sm text-nx-gold">2.460 XP · 3º no ranking</p>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full w-[72%] rounded-full bg-nx-gold" />
         </div>
-        <p className="mt-0.5 text-body-sm text-[#A1A1AA]">
-          Mais de <span className="font-semibold text-white">2.500 nutricionistas</span> já confiam na Nexvel
-        </p>
+        <p className="mt-2 text-label-md text-[#8b8b93]">Faltam 340 XP para a Liga Diamante</p>
       </div>
+    </MockCard>
+  );
+}
+
+function MiniRanking() {
+  const linhas = [
+    { n: 1, nome: "Ana Silva", xp: "3.240", me: false },
+    { n: 2, nome: "Pedro A.", xp: "2.680", me: false },
+    { n: 3, nome: "Você", xp: "2.460", me: true },
+    { n: 4, nome: "Carla L.", xp: "2.180", me: false },
+  ];
+  return (
+    <MockCard titulo="Ranking entre pacientes">
+      <div className="space-y-2">
+        {linhas.map((l) => (
+          <div key={l.n} className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${l.me ? "border-nx-evo/40 bg-nx-evo/[0.08]" : "border-white/[0.06] bg-white/[0.02]"}`}>
+            <span className={`text-body-sm font-extrabold ${l.n === 1 ? "text-nx-gold" : l.me ? "text-nx-evo" : "text-[#8b8b93]"}`}>{l.n}º</span>
+            <span className={`text-body-sm font-semibold ${l.me ? "text-nx-evo" : "text-white"}`}>{l.nome}</span>
+            <span className="ml-auto text-body-sm tabular-nums text-[#B4B4BB]">{l.xp} XP</span>
+          </div>
+        ))}
+      </div>
+    </MockCard>
+  );
+}
+
+function MiniEvolucao() {
+  const pct = 85, r = 46, c = 2 * Math.PI * r, off = c * (1 - pct / 100);
+  return (
+    <MockCard titulo="Evolução do paciente">
+      <div className="flex flex-col items-center py-2">
+        <div className="relative grid size-[128px] place-items-center">
+          <svg viewBox="0 0 120 120" className="size-full -rotate-90">
+            <circle cx="60" cy="60" r={r} fill="none" stroke="#ffffff14" strokeWidth="10" />
+            <circle cx="60" cy="60" r={r} fill="none" stroke="#7CFF5B" strokeWidth="10" strokeLinecap="round"
+              strokeDasharray={c} strokeDashoffset={off} />
+          </svg>
+          <div className="absolute text-center">
+            <p className="text-[26px] font-extrabold leading-none text-white">{pct}%</p>
+            <p className="text-label-md text-[#8b8b93]">adesão</p>
+          </div>
+        </div>
+        <div className="mt-4 grid w-full grid-cols-2 gap-2 text-center">
+          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] py-2">
+            <p className="text-body-md font-bold text-white">24/25</p>
+            <p className="text-label-md text-[#8b8b93]">registros</p>
+          </div>
+          <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] py-2">
+            <p className="text-body-md font-bold text-nx-evo">16 🔥</p>
+            <p className="text-label-md text-[#8b8b93]">sequência</p>
+          </div>
+        </div>
+      </div>
+    </MockCard>
+  );
+}
+
+/* ─────────────────────────── Benefícios ─────────────────────────── */
+function Beneficios() {
+  const cards = [
+    { icon: TrendingUp, t: "Menos abandono", d: "O paciente volta sozinho — motivado, não cobrado." },
+    { icon: Trophy, t: "Mais retenção", d: "Quem engaja continua com você por mais tempo." },
+    { icon: Target, t: "Consultas mais produtivas", d: "Você chega sabendo exatamente o que aconteceu." },
+    { icon: Zap, t: "Dados em tempo real", d: "Aderência, humor, treino, água e sono, atualizados." },
+  ];
+  const detalhes = [
+    "Quantas refeições o paciente pulou", "Quantos dias ficou sem treinar", "Quantos dias não bateu a água",
+    "Evolução da aderência", "Evolução do humor", "Maior sequência", "Pontos críticos — automaticamente",
+  ];
+  return (
+    <Section id="beneficios">
+      <Reveal>
+        <SectionHeading
+          titulo={<>Benefícios reais <span className="text-nx-evo">para o seu consultório</span></>}
+          sub="Menos trabalho manual, mais controle e consultas que realmente evoluem o paciente."
+        />
+      </Reveal>
+      <div className="mt-12 grid gap-4 lg:grid-cols-2">
+        <Reveal>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {cards.map((c) => (
+              <div key={c.t} className="rounded-2xl border border-white/[0.06] bg-[#0E120E] p-5">
+                <span className="grid size-10 place-items-center rounded-xl bg-nx-evo/10"><c.icon className="size-5 text-nx-evo" /></span>
+                <p className="mt-4 text-body-lg font-bold text-white">{c.t}</p>
+                <p className="mt-1.5 text-body-sm leading-relaxed text-[#8b8b93]">{c.d}</p>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+        <Reveal delay={0.1}>
+          <div className="h-full rounded-2xl border border-nx-evo/15 bg-gradient-to-b from-nx-evo/[0.05] to-transparent p-6">
+            <p className="text-body-lg font-bold text-white">Chegue à consulta sabendo tudo</p>
+            <p className="mt-1.5 text-body-sm text-[#8b8b93]">O Nexvel centraliza automaticamente:</p>
+            <ul className="mt-5 space-y-3">
+              {detalhes.map((d) => (
+                <li key={d} className="flex items-center gap-3 text-body-md text-[#B4B4BB]">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-nx-evo/15"><Check className="size-3.5 text-nx-evo" strokeWidth={3} /></span>
+                  {d}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Reveal>
+      </div>
+    </Section>
+  );
+}
+
+/* ─────────────────────────── Relatórios ─────────────────────────── */
+function Relatorios() {
+  const insights = [
+    "Almoço ignorado 8 vezes no mês", "Água abaixo da meta em 13 dias", "Treino em 21 de 30 dias",
+    "Maior sequência: 16 dias", "Aderência subindo semana a semana", "Padrões de comportamento detectados",
+  ];
+  return (
+    <div className="relative overflow-hidden border-y border-white/[0.05] bg-[#0A0D0A]">
+      <Section>
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          <Reveal>
+            <SectionHeading
+              alinhar="left"
+              titulo={<>Relatórios que <span className="text-nx-evo">chegam prontos</span></>}
+              sub="Sem montar nada na mão. O Nexvel lê o comportamento do paciente e entrega um resumo inteligente para cada consulta."
+            />
+            <ul className="mt-7 grid gap-3 sm:grid-cols-2">
+              {insights.map((i) => (
+                <li key={i} className="flex items-start gap-2.5 text-body-sm text-[#B4B4BB]">
+                  <Check className="mt-0.5 size-4 shrink-0 text-nx-evo" strokeWidth={2.5} /> {i}
+                </li>
+              ))}
+            </ul>
+          </Reveal>
+          <Reveal delay={0.1}>
+            <ReportMock />
+          </Reveal>
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+function ReportMock() {
+  return (
+    <div className="relative">
+      <GreenGlow className="inset-0" />
+      <div className="rounded-2xl border border-white/[0.08] bg-[#0E120E] p-5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.7)]">
+        <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+          <div className="flex items-center gap-2">
+            <FileText className="size-4 text-nx-evo" />
+            <p className="text-body-sm font-bold text-white">Relatório mensal — Ana Souza</p>
+          </div>
+          <span className="rounded-md bg-nx-evo/10 px-2 py-0.5 text-label-md font-semibold text-nx-evo">PDF</span>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2.5">
+          {[["Aderência", "86%"], ["Sequência", "16 d"], ["Registros", "24/25"]].map(([l, v]) => (
+            <div key={l} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5 text-center">
+              <p className="text-body-lg font-extrabold text-white">{v}</p>
+              <p className="text-label-md text-[#8b8b93]">{l}</p>
+            </div>
+          ))}
+        </div>
+        {/* barrinhas por hábito */}
+        <div className="mt-4 space-y-2.5">
+          {[["Alimentação", 78], ["Treino", 70], ["Água", 55], ["Sono", 84]].map(([l, v]) => (
+            <div key={l as string}>
+              <div className="mb-1 flex justify-between text-label-md text-[#8b8b93]"><span>{l}</span><span>{v}%</span></div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                <div className="h-full rounded-full bg-nx-evo" style={{ width: `${v}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 rounded-lg border border-nx-evo/15 bg-nx-evo/[0.05] p-3">
+          <p className="text-label-md font-bold uppercase tracking-wide text-nx-evo">Resumo inteligente</p>
+          <p className="mt-1 text-body-sm leading-relaxed text-[#B4B4BB]">
+            Boa evolução geral. Maior dificuldade na hidratação (fins de semana). Sono acima da meta — manter.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────── Validação (honesta) ─────────────────────────── */
+function Validacao() {
+  const padroes = ["Refeições ignoradas", "Dias sem treino", "Hidratação insuficiente", "Queda de aderência", "Evolução do comportamento"];
+  return (
+    <Section>
+      <Reveal>
+        <div className="rounded-3xl border border-white/[0.07] bg-gradient-to-b from-[#0E120E] to-[#0A0D0A] p-8 text-center lg:p-12">
+          <span className="mx-auto inline-flex items-center gap-2 rounded-full border border-nx-evo/25 bg-nx-evo/[0.07] px-3 py-1 text-label-md font-semibold text-nx-evo">
+            <ShieldCheck className="size-3.5" /> Feito com nutricionistas
+          </span>
+          <h2 className="mx-auto mt-5 max-w-3xl text-[26px] font-extrabold leading-tight tracking-tight sm:text-[32px]">
+            Criado para resolver <span className="text-nx-evo">o maior desafio da profissão:</span> a baixa adesão do paciente ao tratamento.
+          </h2>
+          <p className="mx-auto mt-5 max-w-2xl text-body-lg leading-relaxed text-[#B4B4BB]">
+            O Nexvel foi desenvolvido em conjunto com nutricionistas para aumentar o engajamento do paciente
+            através da gamificação e dar a você uma visão muito mais completa do comportamento dele. Em poucos
+            minutos de análise, é possível identificar padrões como:
+          </p>
+          <div className="mx-auto mt-7 flex max-w-3xl flex-wrap justify-center gap-2.5">
+            {padroes.map((p) => (
+              <span key={p} className="rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-body-sm font-medium text-[#B4B4BB]">{p}</span>
+            ))}
+          </div>
+        </div>
+      </Reveal>
+    </Section>
+  );
+}
+
+/* ─────────────────────────── Planos ─────────────────────────── */
+function Planos({ onCadastro }: { onCadastro: () => void }) {
+  const recursos = [
+    "Pacientes ilimitados", "Dashboard completo", "Gamificação completa", "Relatórios em PDF com resumo inteligente",
+    "Ligas, ranking e desafios", "Notificações inteligentes", "Planos personalizados por paciente", "Suporte e atualizações",
+  ];
+  return (
+    <div className="relative overflow-hidden border-y border-white/[0.05] bg-[#0A0D0A]">
+      <GreenGlow className="left-1/2 top-[-60px] h-[420px] w-[700px] -translate-x-1/2" />
+      <Section id="planos">
+        <Reveal>
+          <SectionHeading
+            titulo={<>Um plano. <span className="text-nx-evo">Tudo incluso.</span></>}
+            sub="Comece com 14 dias grátis, sem cartão. Cancele quando quiser."
+          />
+        </Reveal>
+        <Reveal delay={0.05}>
+          <div className="mx-auto mt-10 max-w-lg rounded-3xl border border-nx-evo/25 bg-gradient-to-b from-nx-evo/[0.06] to-[#0B0F0C] p-8 shadow-nx-evo">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-body-md font-semibold text-white">Nexvel Pro</p>
+                <p className="text-label-md text-[#8b8b93]">Para o seu consultório</p>
+              </div>
+              <span className="rounded-full bg-nx-evo/12 px-3 py-1 text-label-md font-bold text-nx-evo">14 dias grátis</span>
+            </div>
+            <div className="mt-5 flex items-end gap-1">
+              <span className="text-[46px] font-extrabold leading-none text-white">R$149</span>
+              <span className="mb-1 text-body-md text-[#8b8b93]">/mês</span>
+            </div>
+            <p className="mt-1 text-body-sm text-[#8b8b93]">ou R$1.490/ano — <span className="text-nx-evo">2 meses grátis</span></p>
+
+            <ul className="mt-6 grid gap-2.5">
+              {recursos.map((r) => (
+                <li key={r} className="flex items-center gap-2.5 text-body-sm text-[#B4B4BB]">
+                  <span className="grid size-5 shrink-0 place-items-center rounded-full bg-nx-evo/15"><Check className="size-3 text-nx-evo" strokeWidth={3} /></span>
+                  {r}
+                </li>
+              ))}
+            </ul>
+
+            <PrimaryBtn onClick={onCadastro} className="mt-7 h-14 w-full text-body-lg">
+              Começar gratuitamente <ArrowRight className="size-5" />
+            </PrimaryBtn>
+            <p className="mt-3 text-center text-body-sm text-[#8b8b93]">Sem cartão de crédito • Cancele quando quiser</p>
+          </div>
+        </Reveal>
+      </Section>
+    </div>
+  );
+}
+
+/* ─────────────────────────── FAQ ─────────────────────────── */
+function Faq() {
+  const itens = [
+    { q: "Meu paciente vai usar mesmo?", a: "A gamificação existe justamente para aumentar o engajamento diário — missões, ligas e sequências fazem o paciente querer voltar sozinho, sem você cobrar." },
+    { q: "Preciso entender de tecnologia?", a: "Não. O cadastro do paciente leva poucos minutos e o painel foi feito para ser simples e direto." },
+    { q: "Funciona no iPhone e no Android?", a: "Sim, nos dois. O app roda direto no navegador do celular (pode ser instalado como aplicativo) e você tem o dashboard no computador." },
+    { q: "Meus dados estão seguros?", a: "Sim. O Nexvel segue a LGPD, com dados protegidos e consentimento do paciente no cadastro." },
+    { q: "Posso cancelar?", a: "Sim, quando quiser — sem multa e sem burocracia. O teste de 14 dias não pede cartão." },
+  ];
+  const [aberto, setAberto] = useState<number | null>(0);
+  return (
+    <Section id="faq">
+      <Reveal>
+        <SectionHeading titulo={<>Perguntas <span className="text-nx-evo">frequentes</span></>} sub="" />
+      </Reveal>
+      <Reveal delay={0.05}>
+        <div className="mx-auto mt-10 max-w-2xl space-y-3">
+          {itens.map((it, i) => {
+            const on = aberto === i;
+            return (
+              <div key={it.q} className="overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0E120E]">
+                <button onClick={() => setAberto(on ? null : i)}
+                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left">
+                  <span className="text-body-md font-semibold text-white">{it.q}</span>
+                  <ChevronDown className={`size-5 shrink-0 text-nx-evo transition-transform ${on ? "rotate-180" : ""}`} />
+                </button>
+                {on && <p className="px-5 pb-5 text-body-sm leading-relaxed text-[#B4B4BB]">{it.a}</p>}
+              </div>
+            );
+          })}
+        </div>
+      </Reveal>
+    </Section>
+  );
+}
+
+/* ─────────────────────────── CTA final ─────────────────────────── */
+function CtaFinal({ onCadastro }: { onCadastro: () => void }) {
+  return (
+    <Section>
+      <Reveal>
+        <div className="relative overflow-hidden rounded-3xl border border-nx-evo/20 bg-gradient-to-b from-[#0E120E] to-[#0A0D0A] p-10 text-center lg:p-16">
+          <GreenGlow className="left-1/2 top-[-40px] h-[360px] w-[620px] -translate-x-1/2" />
+          <h2 className="mx-auto max-w-2xl text-[28px] font-extrabold leading-tight tracking-tight sm:text-[36px]">
+            Seu paciente pode estar abandonando a dieta hoje.{" "}
+            <span className="text-nx-evo">Você só ainda não sabe.</span>
+          </h2>
+          <p className="mx-auto mt-5 max-w-xl text-body-lg text-[#B4B4BB]">
+            Comece gratuitamente, acompanhe tudo em tempo real e entregue consultas muito mais inteligentes.
+          </p>
+          <div className="mt-8 flex justify-center">
+            <PrimaryBtn onClick={onCadastro} className="h-14 px-9 text-body-lg">
+              Começar gratuitamente <ArrowRight className="size-5" />
+            </PrimaryBtn>
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-body-sm text-[#8b8b93]">
+            {["Sem cartão de crédito", "14 dias grátis", "Cancele quando quiser"].map((t) => (
+              <span key={t} className="flex items-center gap-1.5"><Check className="size-4 text-nx-evo" strokeWidth={2.5} /> {t}</span>
+            ))}
+          </div>
+        </div>
+      </Reveal>
+    </Section>
+  );
+}
+
+/* ─────────────────────────── Footer ─────────────────────────── */
+function Footer() {
+  return (
+    <footer className="border-t border-white/[0.06] bg-[#0A0D0A]">
+      <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-6 px-5 py-10 lg:flex-row lg:px-8">
+        <NexvelLogo className="h-6" />
+        <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+          {[["Termos", "/termos"], ["Privacidade", "/privacidade"]].map(([l, href]) => (
+            <a key={l} href={href} className="text-body-sm text-[#8b8b93] transition-colors hover:text-white">{l}</a>
+          ))}
+          <a href="mailto:contato@nexvel.tech" className="text-body-sm text-[#8b8b93] transition-colors hover:text-white">contato@nexvel.tech</a>
+          <span className="inline-flex items-center gap-1.5 text-body-sm text-[#8b8b93]"><ShieldCheck className="size-4 text-nx-evo/70" /> LGPD</span>
+        </nav>
+      </div>
+      <div className="border-t border-white/[0.05] py-5 text-center text-label-md text-[#6b6b73]">
+        © {new Date().getFullYear()} Nexvel. Todos os direitos reservados.
+      </div>
+    </footer>
+  );
+}
+
+/* ─────────────────────────── heading compartilhado ─────────────────────────── */
+function SectionHeading({ titulo, sub, alinhar = "center" }: { titulo: ReactNode; sub?: ReactNode; alinhar?: "center" | "left" }) {
+  const center = alinhar === "center";
+  return (
+    <div className={center ? "mx-auto max-w-2xl text-center" : "max-w-xl"}>
+      <h2 className="text-[28px] font-extrabold leading-tight tracking-tight sm:text-[34px]">{titulo}</h2>
+      {sub && <p className={`mt-4 text-body-lg leading-relaxed text-[#B4B4BB] ${center ? "mx-auto" : ""}`}>{sub}</p>}
     </div>
   );
 }
