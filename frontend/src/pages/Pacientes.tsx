@@ -4,12 +4,13 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   Plus, Search, Users, MessageCircle, Award,
   ArrowUpRight, Flame, Clock, X, ImageOff, MoreVertical,
-  TrendingUp, TrendingDown, Minus, FileText, Trash2, AlertTriangle,
+  TrendingUp, TrendingDown, Minus, FileText, Trash2, AlertTriangle, Copy, Check,
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
 import { LeagueEmblem } from "../components/ui-nx";
 import { progressoLiga, diasDesde, CORES_LIGA } from "../lib/ligas";
+import { gerarUrlWhatsApp } from "../lib/utils";
 
 interface Paciente {
   id: string;
@@ -106,7 +107,7 @@ export default function Pacientes() {
             onClick={() => setNovoAberto(true)}
             className="flex items-center gap-2 bg-nx-evo hover:bg-nx-evo-2 text-nx-on-evo text-label-md font-bold px-4 py-2.5 rounded-nx-md transition-colors shadow-[0_8px_30px_-10px_rgba(124,255,91,0.5)]"
           >
-            <Plus size={16} /> Novo Paciente
+            <Plus size={16} /> Convidar Paciente
           </button>
         </div>
 
@@ -491,54 +492,116 @@ function ExcluirModal({ paciente, onClose, onExcluido }: {
 function NovoPacienteModal({ onClose, onCriado }: { onClose: () => void; onCriado: () => void }) {
   const [form, setForm] = useState({ nome: "", email: "", telefone: "", objetivo: "", pesoMeta: "" });
   const [salvando, setSalvando] = useState(false);
+  const [criado, setCriado] = useState<{ conviteCodigo: string; nome: string; telefone: string | null } | null>(null);
+  const [copiado, setCopiado] = useState(false);
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   async function salvar() {
     if (!form.nome.trim()) return;
     setSalvando(true);
     try {
-      await api.post("/pacientes", { ...form, dataInicio: new Date().toISOString() });
-      onCriado();
+      const r = await api.post("/pacientes", { ...form, dataInicio: new Date().toISOString() });
+      // Mantém a lógica atual de cadastro; apenas mostra o convite já gerado no backend.
+      setCriado({ conviteCodigo: r.data.conviteCodigo, nome: r.data.nome, telefone: r.data.telefone ?? null });
     } catch {
       setSalvando(false);
     }
   }
 
+  function copiarCodigo() {
+    if (!criado) return;
+    navigator.clipboard.writeText(criado.conviteCodigo);
+    setCopiado(true);
+    setTimeout(() => setCopiado(false), 2500);
+  }
+
+  function compartilharWhatsApp() {
+    if (!criado) return;
+    const primeiro = criado.nome.trim().split(/\s+/)[0] || criado.nome;
+    const texto = `Olá, ${primeiro}! Seu convite para o app Nexvel é ${criado.conviteCodigo}. Baixe o app, escolha "Criar conta" e informe este código + os últimos 4 dígitos do seu telefone. O código é individual e de uso único.`;
+    const tel = (criado.telefone ?? "").replace(/\D/g, "");
+    const url = tel ? gerarUrlWhatsApp(criado.telefone as string, texto) : `https://wa.me/?text=${encodeURIComponent(texto)}`;
+    window.open(url, "_blank", "noopener");
+  }
+
+  // Ao fechar depois de criar, atualiza a lista de pacientes.
+  const fechar = () => (criado ? onCriado() : onClose());
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4" onClick={fechar}>
       <div
         className="w-full md:max-w-md bg-nx-surface border border-nx-border rounded-t-3xl md:rounded-2xl p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-body-lg font-bold">Novo paciente</h2>
-          <button onClick={onClose} aria-label="Fechar" className="text-nx-outline hover:text-nx-on-surface"><X size={20} /></button>
-        </div>
-        <div className="space-y-3">
-          {[
-            { k: "nome", label: "Nome *", type: "text" },
-            { k: "email", label: "E-mail", type: "email" },
-            { k: "telefone", label: "Telefone", type: "text" },
-            { k: "objetivo", label: "Objetivo", type: "text" },
-            { k: "pesoMeta", label: "Peso meta (kg)", type: "number" },
-          ].map((f) => (
-            <input
-              key={f.k}
-              type={f.type}
-              placeholder={f.label}
-              value={(form as any)[f.k]}
-              onChange={(e) => set(f.k, e.target.value)}
-              className="w-full bg-nx-container border border-nx-border rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface placeholder:text-nx-on-surface-variant focus:outline-none focus:border-nx-evo/50 focus:ring-1 focus:ring-nx-evo/40 transition-colors"
-            />
-          ))}
-        </div>
-        <button
-          onClick={salvar}
-          disabled={salvando || !form.nome.trim()}
-          className="w-full mt-5 bg-nx-evo hover:bg-nx-evo-2 disabled:opacity-40 text-nx-on-evo text-label-md font-bold py-3 rounded-xl transition-colors"
-        >
-          {salvando ? "Salvando..." : "Criar paciente"}
-        </button>
+        {!criado ? (
+          <>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-body-lg font-bold">Novo paciente</h2>
+              <button onClick={onClose} aria-label="Fechar" className="text-nx-outline hover:text-nx-on-surface"><X size={20} /></button>
+            </div>
+            <div className="space-y-3">
+              {[
+                { k: "nome", label: "Nome *", type: "text" },
+                { k: "email", label: "E-mail", type: "email" },
+                { k: "telefone", label: "Telefone", type: "text" },
+                { k: "objetivo", label: "Objetivo", type: "text" },
+                { k: "pesoMeta", label: "Peso meta (kg)", type: "number" },
+              ].map((f) => (
+                <input
+                  key={f.k}
+                  type={f.type}
+                  placeholder={f.label}
+                  value={(form as any)[f.k]}
+                  onChange={(e) => set(f.k, e.target.value)}
+                  className="w-full bg-nx-container border border-nx-border rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface placeholder:text-nx-on-surface-variant focus:outline-none focus:border-nx-evo/50 focus:ring-1 focus:ring-nx-evo/40 transition-colors"
+                />
+              ))}
+            </div>
+            <button
+              onClick={salvar}
+              disabled={salvando || !form.nome.trim()}
+              className="w-full mt-5 bg-nx-evo hover:bg-nx-evo-2 disabled:opacity-40 text-nx-on-evo text-label-md font-bold py-3 rounded-xl transition-colors"
+            >
+              {salvando ? "Salvando..." : "Criar paciente"}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-body-lg font-bold">Convite do paciente</h2>
+              <button onClick={fechar} aria-label="Fechar" className="text-nx-outline hover:text-nx-on-surface"><X size={20} /></button>
+            </div>
+            <div className="text-center">
+              <div className="mx-auto mb-3 grid size-12 place-items-center rounded-full bg-nx-evo/12"><Check size={22} className="text-nx-evo" /></div>
+              <p className="mb-4 text-body-sm text-nx-on-surface-variant">
+                <span className="font-semibold text-nx-on-surface">{criado.nome}</span> foi cadastrado. Envie o código de acesso ao app:
+              </p>
+              <div className="mb-3 rounded-xl border border-nx-border bg-nx-container px-4 py-4">
+                <p className="text-headline-lg font-extrabold tracking-[0.25em] tabular-nums text-nx-on-surface">{criado.conviteCodigo}</p>
+              </div>
+              <p className="mb-5 text-label-sm leading-relaxed text-nx-on-surface-variant">
+                Este código é exclusivo deste paciente e poderá ser utilizado apenas para vincular este paciente ao aplicativo.
+              </p>
+              <div className="space-y-2">
+                <button
+                  onClick={copiarCodigo}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-nx-border bg-nx-container py-3 text-label-md font-semibold text-nx-on-surface transition-colors hover:border-nx-outline"
+                >
+                  {copiado ? <Check size={16} className="text-nx-evo" /> : <Copy size={16} />} {copiado ? "Copiado!" : "Copiar código"}
+                </button>
+                <button
+                  onClick={compartilharWhatsApp}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-nx-evo py-3 text-label-md font-bold text-nx-on-evo transition-colors hover:bg-nx-evo-2"
+                >
+                  <MessageCircle size={16} /> Compartilhar via WhatsApp
+                </button>
+              </div>
+              <button onClick={fechar} className="mt-3 w-full py-2 text-body-sm text-nx-on-surface-variant transition-colors hover:text-nx-on-surface">
+                Concluir
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
