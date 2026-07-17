@@ -84,7 +84,7 @@ export default function NutriOnboarding() {
   if (data.status === "pendente") {
     return (
       <div className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
-        <CardNx className="w-full max-w-md p-8 text-center animate-nx-rise">
+        <CardNx className="w-full max-w-md p-8 text-center animate-nx-pop">
           <span className="mx-auto mb-5 grid size-14 place-items-center rounded-full bg-nx-evo/12 text-nx-evo">
             <Sparkles className="size-7" />
           </span>
