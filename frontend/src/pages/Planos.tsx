@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import api from "../lib/api";
 import { usePermissao } from "../hooks/usePermissao";
+import { useAuth } from "../contexts/AuthContext";
 import { CardNx, ButtonNx } from "../components/ui-nx";
 
 interface BillingStatus {
@@ -54,16 +55,27 @@ function fmt(v: number) {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function maskCpf(v: string) {
+  return v.replace(/\D/g, "").slice(0, 11)
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d)/, "$1.$2")
+    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+}
+
 export default function Planos() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { planoSlug: planoAtualSlug } = usePermissao();
+  const { nutricionista } = useAuth();
 
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [ciclo, setCiclo] = useState<"mensal" | "anual">("mensal");
   const [loadingPlano, setLoadingPlano] = useState<string | null>(null);
   const [pixData, setPixData] = useState<PixData | null>(null);
+  const [pixForm, setPixForm] = useState(false);
+  const [cpf, setCpf] = useState("");
+  const [nomeCpf, setNomeCpf] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [polling, setPolling] = useState(false);
   const [error, setError] = useState("");
@@ -90,11 +102,15 @@ export default function Planos() {
   }, [polling, navigate]);
 
   async function assinarPix(planoSlug: string) {
+    const cpfDigits = cpf.replace(/\D/g, "");
+    if (cpfDigits.length !== 11) { setError("Informe um CPF válido (11 dígitos)."); return; }
+    if (!nomeCpf.trim()) { setError("Informe o nome completo."); return; }
     setError("");
     setLoadingPlano(`pix-${planoSlug}`);
     try {
-      const r = await api.post<PixData>("/billing/checkout-pix", { plano_slug: planoSlug, tipo: ciclo });
+      const r = await api.post<PixData>("/billing/checkout-pix", { plano_slug: planoSlug, tipo: ciclo, cpf: cpfDigits, nome: nomeCpf.trim() });
       setPixData(r.data);
+      setPixForm(false);
       setPolling(true);
     } catch (e: any) {
       setError(e.response?.data?.error || "Erro ao gerar Pix. Tente novamente.");
@@ -224,7 +240,7 @@ export default function Planos() {
         )}
 
         {/* Card do plano */}
-        {!pixData && (
+        {!pixData && !pixForm && (
           <CardNx glow className="p-7">
             {isAtual && (
               <span className="mb-4 inline-flex rounded-full bg-nx-evo/12 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-nx-evo">
@@ -306,8 +322,8 @@ export default function Planos() {
                     size="lg"
                     block
                     disabled={!!loadingPlano}
-                    onClick={() => assinarPix(PLANO.slug)}
-                    leftIcon={loadingPlano === `pix-${PLANO.slug}` ? <Loader2 size={18} className="animate-spin" /> : <QrCode size={18} />}
+                    onClick={() => { setError(""); setNomeCpf((n) => n || nutricionista?.nome || ""); setPixForm(true); }}
+                    leftIcon={<QrCode size={18} />}
                   >
                     Pagar com Pix
                   </ButtonNx>
@@ -315,6 +331,47 @@ export default function Planos() {
                 </div>
               )}
             </div>
+          </CardNx>
+        )}
+
+        {/* Nome + CPF (Asaas exige CPF/CNPJ para gerar o Pix e emitir a nota) */}
+        {pixForm && !pixData && (
+          <CardNx className="p-7">
+            <button onClick={() => setPixForm(false)} className="mb-4 text-body-sm text-nx-on-surface-variant transition-colors hover:text-nx-on-surface">← Voltar</button>
+            <h2 className="text-headline-md font-bold text-nx-on-surface">Dados para o Pix</h2>
+            <p className="mt-2 text-body-sm text-nx-on-surface-variant">Precisamos do seu nome e CPF para gerar a cobrança e a nota fiscal.</p>
+            <div className="mt-6 space-y-4">
+              <label className="block">
+                <span className="mb-1.5 block text-label-sm font-medium text-nx-on-surface-variant">Nome completo</span>
+                <input
+                  value={nomeCpf}
+                  onChange={(e) => setNomeCpf(e.target.value)}
+                  placeholder="Seu nome completo"
+                  className="w-full rounded-nx-md border border-nx-border bg-nx-container px-4 py-3 text-body-md text-nx-on-surface placeholder:text-nx-on-surface-variant focus:border-nx-evo focus:outline-none"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-label-sm font-medium text-nx-on-surface-variant">CPF</span>
+                <input
+                  value={cpf}
+                  onChange={(e) => setCpf(maskCpf(e.target.value))}
+                  inputMode="numeric"
+                  placeholder="000.000.000-00"
+                  className="w-full rounded-nx-md border border-nx-border bg-nx-container px-4 py-3 text-body-md tabular-nums text-nx-on-surface placeholder:text-nx-on-surface-variant focus:border-nx-evo focus:outline-none"
+                />
+              </label>
+            </div>
+            <ButtonNx
+              variant="evo"
+              size="lg"
+              block
+              className="mt-6"
+              disabled={!!loadingPlano}
+              onClick={() => assinarPix(PLANO.slug)}
+              leftIcon={loadingPlano === `pix-${PLANO.slug}` ? <Loader2 size={18} className="animate-spin" /> : <QrCode size={18} />}
+            >
+              Gerar Pix · R${totalCiclo}{ciclo === "anual" ? "/ano" : "/mês"}
+            </ButtonNx>
           </CardNx>
         )}
 

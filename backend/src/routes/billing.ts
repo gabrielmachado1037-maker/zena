@@ -13,6 +13,8 @@ const planoBodySchema = z.object({
   plano_slug: z.string().optional().nullable(),
   tipo: z.string().optional().nullable(),
   periodo: z.string().optional().nullable(),
+  cpf: z.string().optional().nullable(),
+  nome: z.string().optional().nullable(),
 });
 const upgradeSchema = z.object({
   novo_plano_slug: z.string({ error: "Plano inválido" }).min(1, "Plano inválido"),
@@ -143,46 +145,64 @@ router.post("/checkout-pix", authMiddleware, validateBody(planoBodySchema), asyn
     return res.status(503).json({ error: "Pagamento via Pix não configurado ainda." });
   }
 
-  const body = req.body as { plano_slug?: string; tipo?: string; periodo?: string };
+  const body = req.body as { plano_slug?: string; tipo?: string; periodo?: string; cpf?: string; nome?: string };
   const planoSlug = body.plano_slug ?? "ecossistema";
   const periodo = (body.tipo ?? body.periodo ?? "mensal") as "mensal" | "anual";
   const valor = getValorPix(planoSlug, periodo);
 
+  // O Asaas EXIGE CPF/CNPJ para gerar cobrança Pix (e para nota fiscal).
+  const cpf = (body.cpf ?? "").replace(/\D/g, "");
+  if (cpf.length !== 11 && cpf.length !== 14) {
+    return res.status(400).json({ error: "Informe um CPF (ou CNPJ) válido para gerar o Pix." });
+  }
+
   const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId as string } });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
+  const nomeCliente = (body.nome ?? "").trim() || nutri.nome;
 
-  const cliente = await criarClienteNexvel(nutri.nome, nutri.email);
-  const { subscription, pix } = await criarAssinaturaPix(
-    cliente.id, valor,
-    periodo === "anual" ? "YEARLY" : "MONTHLY",
-    `Nexvel — ${planoSlug} ${periodo}`,
-    nutri.id,
-  );
+  try {
+    const cliente = await criarClienteNexvel(nomeCliente, nutri.email, cpf);
+    const { subscription, pix } = await criarAssinaturaPix(
+      cliente.id, valor,
+      periodo === "anual" ? "YEARLY" : "MONTHLY",
+      `Nexvel — ${planoSlug} ${periodo}`,
+      nutri.id,
+    );
 
-  const vencimento = new Date();
-  if (periodo === "anual") vencimento.setFullYear(vencimento.getFullYear() + 1);
-  else vencimento.setMonth(vencimento.getMonth() + 1);
+    const vencimento = new Date();
+    if (periodo === "anual") vencimento.setFullYear(vencimento.getFullYear() + 1);
+    else vencimento.setMonth(vencimento.getMonth() + 1);
 
-  await prisma.nutricionista.update({
-    where: { id: nutri.id },
-    data: {
-      asaasCustomerId: cliente.id,
-      asaasSubscriptionId: subscription.id,
-      planoVencimento: vencimento,
-      plano: periodo,
+    await prisma.nutricionista.update({
+      where: { id: nutri.id },
+      data: {
+        asaasCustomerId: cliente.id,
+        asaasSubscriptionId: subscription.id,
+        planoVencimento: vencimento,
+        plano: periodo,
+        planoSlug,
+        subscriptionType: periodo,
+      },
+    });
+
+    res.json({
+      subscriptionId: subscription.id,
+      pixCopiaECola: pix?.payload,
+      pixQrCode: pix?.encodedImage,
+      valor,
+      periodo,
       planoSlug,
-      subscriptionType: periodo,
-    },
-  });
-
-  res.json({
-    subscriptionId: subscription.id,
-    pixCopiaECola: pix?.payload,
-    pixQrCode: pix?.encodedImage,
-    valor,
-    periodo,
-    planoSlug,
-  });
+    });
+  } catch (e) {
+    // Erro do Asaas (ex.: CPF inválido) — mensagem amigável em vez de 500 genérico.
+    console.error("[checkout-pix] Asaas falhou:", (e as Error).message);
+    const msg = (e as Error).message || "";
+    return res.status(502).json({
+      error: /cpf|cnpj|inv[aá]lid|obrigat/i.test(msg)
+        ? "Não foi possível gerar o Pix: confira o CPF/CNPJ informado."
+        : "Não foi possível gerar o Pix agora. Tente novamente em instantes.",
+    });
+  }
 });
 
 // ── POST /billing/upgrade ─────────────────────────────────────────────────────

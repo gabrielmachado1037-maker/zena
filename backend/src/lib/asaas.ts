@@ -61,7 +61,15 @@ export async function nexvelReq(method: string, path: string, body?: any) {
 
 export async function criarClienteNexvel(nome: string, email: string, cpfCnpj?: string) {
   const existing = await nexvelReq("GET", `/customers?email=${encodeURIComponent(email)}&limit=1`);
-  if (existing.data?.length > 0) return existing.data[0];
+  const found = existing.data?.[0] as { id: string; cpfCnpj?: string | null } | undefined;
+  if (found) {
+    // Cliente já existe (possivelmente criado sem CPF numa tentativa anterior).
+    // O Asaas exige CPF/CNPJ para Pix → garante que esteja preenchido/atualizado.
+    if (cpfCnpj && found.cpfCnpj !== cpfCnpj) {
+      return nexvelReq("POST", `/customers/${found.id}`, { name: nome, cpfCnpj });
+    }
+    return found;
+  }
   return nexvelReq("POST", "/customers", {
     name: nome,
     email,
