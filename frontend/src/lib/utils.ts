@@ -100,49 +100,6 @@ function getISOWeekData(date: Date): { semana: number; ano: number } {
   return { semana, ano: d.getUTCFullYear() };
 }
 
-// WhatsApp message generator
-export interface WhatsAppContext {
-  pacienteId?: string;
-  pacienteNome: string;
-  pacienteTelefone?: string;
-  pacienteLinkUnico: string;
-  nutricionistaNome: string;
-  consultaData?: string;
-  cobrancaValor?: number;
-  cobrancaVencimento?: string;
-}
-
-export type TemplateWhatsApp = "lembrete_consulta" | "envio_plano" | "lembrete_checkin" | "lembrete_cobranca" | "confirmar_consulta" | "aniversario";
-
-export function gerarMensagemWhatsApp(template: TemplateWhatsApp, ctx: WhatsAppContext): string {
-  const primeiroNome = ctx.pacienteNome.split(" ")[0];
-  const nomeNutri = ctx.nutricionistaNome.split(" ")[0];
-  const link = `${window.location.origin}/p/${ctx.pacienteLinkUnico}`;
-
-  switch (template) {
-    case "lembrete_consulta":
-      return `Olá, ${primeiroNome}! 🌿\n\nPassando pra lembrar da sua consulta *${ctx.consultaData || "em breve"}*.\n\nAguardo você! 😊\n\n— ${nomeNutri}`;
-
-    case "confirmar_consulta":
-      return `Olá, ${primeiroNome}! 📅\n\nPassando para confirmar sua consulta *${ctx.consultaData || "em breve"}*.\n\nVocê confirma a presença? 😊\n\n— ${nomeNutri}`;
-
-    case "envio_plano":
-      return `Olá, ${primeiroNome}! 🥗\n\nSeu plano alimentar atualizado está disponível. Acesse pelo link abaixo para ver seu plano e acompanhar sua evolução:\n\n👉 ${link}\n\nQualquer dúvida, é só me chamar! 💪\n\n— ${nomeNutri}`;
-
-    case "lembrete_checkin":
-      return `Olá, ${primeiroNome}! ✨\n\nHora do seu *check-in semanal*! São só 2 minutinhos e me ajuda muito a acompanhar seu progresso 💚\n\n👉 ${link}\n\n— ${nomeNutri}`;
-
-    case "lembrete_cobranca":
-      return `Olá, ${primeiroNome}! 💚\n\nPassando pra lembrar que sua consulta vence no dia *${ctx.cobrancaVencimento || ""}*.\n\nValor: *R$ ${ctx.cobrancaValor?.toFixed(2).replace(".", ",") || ""}*\n\nQualquer dúvida é só falar. Obrigada! 🙏\n\n— ${nomeNutri}`;
-
-    case "aniversario":
-      return `Olá, ${primeiroNome}! 🎂\n\nDesejando um *feliz aniversário* cheio de saúde, alegria e conquistas! 🌿\n\nConto com você seguindo firme nessa jornada. Muitas felicidades! 🎉\n\n— ${nomeNutri}`;
-
-    default:
-      return "";
-  }
-}
-
 export function gerarUrlWhatsApp(telefone: string, texto: string): string {
   const numero = telefone.replace(/\D/g, "");
   const numeroCompleto = numero.startsWith("55") ? numero : `55${numero}`;
