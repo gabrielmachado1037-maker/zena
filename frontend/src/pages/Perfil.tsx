@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Bell, UserCircle2, Pencil, BadgeCheck, MapPin, Camera, X, Loader2,
   IdCard, Lock, ShieldCheck, ChevronRight, Eye, EyeOff, LifeBuoy,
-  FileText, ShieldQuestion, Activity, MessageCircle,
+  FileText, ShieldQuestion, MessageCircle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
@@ -169,7 +169,6 @@ export default function Perfil() {
           {/* ── Coluna lateral ───────────────────────────── */}
           <div className="space-y-5">
             <AjudaCard />
-            <StatusCard />
           </div>
         </div>
       </main>
@@ -417,36 +416,6 @@ function AjudaCard() {
             <ChevronRight size={18} className="text-nx-outline shrink-0" />
           </a>
         ))}
-      </div>
-    </section>
-  );
-}
-
-/* ── Status do sistema (estático) ─────────────────────────────────────── */
-
-function StatusCard() {
-  const servicos = ["API principal", "Notificações", "Sincronização"];
-  return (
-    <section>
-      <p className="text-label-md uppercase tracking-wider text-nx-on-surface-variant px-1 mb-3">Status do sistema</p>
-      <div className={`${GLASS} p-5`}>
-        <div className="flex items-center gap-2.5 mb-4">
-          <span className="relative flex size-2.5">
-            <span className="absolute inline-flex h-full w-full rounded-full bg-nx-evo opacity-60 animate-ping" />
-            <span className="relative inline-flex size-2.5 rounded-full bg-nx-evo" />
-          </span>
-          <p className="text-body-md font-bold text-nx-on-surface">Todos os sistemas operacionais</p>
-        </div>
-        <ul className="space-y-2.5">
-          {servicos.map((s) => (
-            <li key={s} className="flex items-center justify-between text-body-sm">
-              <span className="flex items-center gap-2 text-nx-on-surface-variant">
-                <Activity size={14} className="text-nx-outline" /> {s}
-              </span>
-              <span className="text-nx-evo font-semibold">Operacional</span>
-            </li>
-          ))}
-        </ul>
       </div>
     </section>
   );
