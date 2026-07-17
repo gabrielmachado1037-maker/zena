@@ -266,30 +266,10 @@ router.put("/foto-perfil", validateBody(fotoPerfilSchema), async (req: PacienteA
 
 // GET /api/paciente-app/frase-motivacional
 router.get("/frase-motivacional", async (_req: PacienteAuthRequest, res: Response) => {
+  // IA reservada AO RELATÓRIO/PDF para economizar crédito da Anthropic (esta rota NÃO
+  // era cacheada — chamava a IA a cada request). Frase fixa aqui.
   const fallback = "Cada escolha saudável é um passo em direção à sua melhor versão.";
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.json({ frase: fallback });
-  try {
-    const r = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 60,
-        messages: [{ role: "user", content: `Gere UMA frase motivacional curta (8 a 14 palavras) para um paciente em acompanhamento nutricional. Positiva e encorajadora. Responda APENAS JSON: {"frase": "texto"}` }],
-      }),
-    });
-    const data = await r.json() as { content?: Array<{ text?: string }> };
-    const text = data?.content?.[0]?.text ?? "";
-    const parsed = JSON.parse(text) as { frase?: string };
-    return res.json({ frase: parsed.frase ?? fallback });
-  } catch {
-    return res.json({ frase: fallback });
-  }
+  return res.json({ frase: fallback });
 });
 
 // PUT /api/paciente-app/perfil

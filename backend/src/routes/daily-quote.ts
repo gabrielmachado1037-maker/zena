@@ -14,39 +14,10 @@ router.get("/", async (_req: AuthRequest, res: Response) => {
     return res.json({ quote: existing.quote, date: existing.date });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return res.json({ quote: "Cada consulta é uma semente plantada na vida de alguém.", date: today });
-  }
-
-  try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 80,
-        messages: [{
-          role: "user",
-          content: `Gere UMA frase motivacional curta e poderosa para nutricionistas. Entre 10 e 20 palavras. Inspiradora, profissional, sobre saúde, propósito ou impacto na vida das pessoas. Responda APENAS no formato JSON sem nenhum texto extra: {"quote": "frase aqui"}`,
-        }],
-      }),
-    });
-
-    const data = await response.json() as { content?: Array<{ text?: string }> };
-    const text = data?.content?.[0]?.text ?? "";
-    const parsed = JSON.parse(text) as { quote?: string };
-    const quote = parsed.quote ?? "Cada consulta é uma semente plantada na vida de alguém.";
-
-    await prisma.dailyQuote.create({ data: { date: today, quote } });
-    return res.json({ quote, date: today });
-  } catch {
-    return res.json({ quote: "Cada consulta é uma semente plantada na vida de alguém.", date: today });
-  }
+  // IA reservada AO RELATÓRIO/PDF para economizar crédito da Anthropic. Aqui usamos
+  // frase fixa. (Cotações já geradas em dias anteriores seguem servindo pelo cache acima.)
+  // Para reativar: restaurar a chamada à Anthropic gated por process.env.ANTHROPIC_API_KEY.
+  return res.json({ quote: "Cada consulta é uma semente plantada na vida de alguém.", date: today });
 });
 
 export default router;
