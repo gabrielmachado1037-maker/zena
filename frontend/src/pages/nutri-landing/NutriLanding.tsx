@@ -36,7 +36,7 @@ export default function NutriLanding() {
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[460px]"
         style={{ background: "radial-gradient(58% 100% at 68% 0%, rgba(124,255,91,0.13), transparent 70%)" }} />
 
-      <div className="relative mx-auto max-w-[1440px] px-6 py-10 lg:px-12 lg:py-14">
+      <div className="relative mx-auto max-w-[1440px] px-6 pb-10 pt-[calc(2.5rem+env(safe-area-inset-top))] lg:px-12 lg:pb-14 lg:pt-14">
         <header className="mb-14 flex items-center justify-between gap-4 lg:mb-20">
           <ProLogo />
           <button
