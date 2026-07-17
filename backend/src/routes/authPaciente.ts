@@ -140,11 +140,12 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
   const last4 = ultimos4Telefone(paciente.telefone);
   if (last4) {
     if (String(telefone4 ?? "").replace(/\D/g, "").slice(-4) !== last4) {
-      return res.status(403).json({ error: MSG_CONVITE_INDIVIDUAL });
+      // Mensagem específica: é falha de IDENTIDADE (dígitos errados), não "convite usado".
+      return res.status(403).json({ error: "Os últimos 4 dígitos do telefone não conferem com o cadastro feito pela sua nutricionista." });
     }
   } else if (paciente.email) {
     if (paciente.email.trim().toLowerCase() !== String(email).trim().toLowerCase()) {
-      return res.status(403).json({ error: MSG_CONVITE_INDIVIDUAL });
+      return res.status(403).json({ error: "O e-mail informado não confere com o cadastrado pela sua nutricionista. Use o mesmo e-mail." });
     }
   }
 
