@@ -213,18 +213,18 @@ function TemplateCard({ t, onCriar }: { t: TemplateDesafio; onCriar: () => void 
   return (
     <div className="rounded-xl border border-nx-border bg-nx-container/40 p-3.5">
       <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-[18px]">{t.icone}</span>
-        <span className="text-label-sm uppercase tracking-wide font-semibold" style={{ color: cat.cor }}>{cat.label}</span>
+        <span className="text-[20px]">{t.icone}</span>
+        <span className="text-label-md uppercase tracking-wide font-semibold" style={{ color: cat.cor }}>{cat.label}</span>
       </div>
-      <p className="text-body-sm font-semibold text-nx-on-surface">{t.titulo}</p>
-      <p className="text-label-sm text-nx-on-surface-variant mt-1 leading-relaxed">{t.descricao}</p>
-      <div className="flex items-center gap-3 mt-2 text-label-sm text-nx-on-surface-variant">
-        <span className="flex items-center gap-1"><CalendarClock size={13} /> {t.duracaoDias} dias</span>
-        <span className="flex items-center gap-1 font-semibold text-nx-gold"><Zap size={13} /> +{t.pontosBonus} XP</span>
+      <p className="text-body-md font-semibold text-nx-on-surface">{t.titulo}</p>
+      <p className="text-body-sm text-nx-on-surface-variant mt-1 leading-relaxed">{t.descricao}</p>
+      <div className="flex items-center gap-3 mt-2 text-body-sm text-nx-on-surface-variant">
+        <span className="flex items-center gap-1.5"><CalendarClock size={16} /> {t.duracaoDias} dias</span>
+        <span className="flex items-center gap-1.5 font-semibold text-nx-gold"><Zap size={16} /> +{t.pontosBonus} XP</span>
       </div>
       <button onClick={onCriar}
-        className="w-full mt-3 rounded-lg bg-nx-evo text-nx-on-evo py-2 text-label-md font-bold hover:bg-nx-evo-2 transition-colors flex items-center justify-center gap-2">
-        <Plus size={14} /> Criar desafio
+        className="w-full mt-3 rounded-lg bg-nx-evo text-nx-on-evo py-2.5 text-body-sm font-bold hover:bg-nx-evo-2 transition-colors flex items-center justify-center gap-2">
+        <Plus size={16} /> Criar desafio
       </button>
     </div>
   );
