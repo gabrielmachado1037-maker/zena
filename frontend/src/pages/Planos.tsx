@@ -55,11 +55,20 @@ function fmt(v: number) {
   return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function maskCpf(v: string) {
-  return v.replace(/\D/g, "").slice(0, 11)
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+// Máscara para CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00): formata conforme
+// a quantidade de dígitos — até 11 = CPF, 12–14 = CNPJ. O Asaas aceita os dois.
+function maskCpfCnpj(v: string) {
+  const d = v.replace(/\D/g, "").slice(0, 14);
+  if (d.length <= 11) {
+    let out = d.slice(0, 3);
+    if (d.length > 3) out += "." + d.slice(3, 6);
+    if (d.length > 6) out += "." + d.slice(6, 9);
+    if (d.length > 9) out += "-" + d.slice(9, 11);
+    return out;
+  }
+  let out = d.slice(0, 2) + "." + d.slice(2, 5) + "." + d.slice(5, 8) + "/" + d.slice(8, 12);
+  if (d.length > 12) out += "-" + d.slice(12, 14);
+  return out;
 }
 
 export default function Planos() {
@@ -105,7 +114,7 @@ export default function Planos() {
 
   async function assinarPix(planoSlug: string) {
     const cpfDigits = cpf.replace(/\D/g, "");
-    if (cpfDigits.length !== 11) { setError("Informe um CPF válido (11 dígitos)."); return; }
+    if (cpfDigits.length !== 11 && cpfDigits.length !== 14) { setError("Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido."); return; }
     if (!nomeCpf.trim()) { setError("Informe o nome completo."); return; }
     setError("");
     setLoadingPlano(`pix-${planoSlug}`);
@@ -341,7 +350,7 @@ export default function Planos() {
           <CardNx className="p-7">
             <button onClick={() => setPixForm(false)} className="mb-4 text-body-sm text-nx-on-surface-variant transition-colors hover:text-nx-on-surface">← Voltar</button>
             <h2 className="text-headline-md font-bold text-nx-on-surface">Dados para o Pix</h2>
-            <p className="mt-2 text-body-sm text-nx-on-surface-variant">Precisamos do seu nome e CPF para gerar a cobrança e a nota fiscal.</p>
+            <p className="mt-2 text-body-sm text-nx-on-surface-variant">Precisamos do seu nome e CPF ou CNPJ para gerar a cobrança e a nota fiscal.</p>
             <div className="mt-6 space-y-4">
               <label className="block">
                 <span className="mb-1.5 block text-label-sm font-medium text-nx-on-surface-variant">Nome completo</span>
@@ -353,12 +362,12 @@ export default function Planos() {
                 />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-label-sm font-medium text-nx-on-surface-variant">CPF</span>
+                <span className="mb-1.5 block text-label-sm font-medium text-nx-on-surface-variant">CPF ou CNPJ</span>
                 <input
                   value={cpf}
-                  onChange={(e) => setCpf(maskCpf(e.target.value))}
+                  onChange={(e) => setCpf(maskCpfCnpj(e.target.value))}
                   inputMode="numeric"
-                  placeholder="000.000.000-00"
+                  placeholder="CPF ou CNPJ"
                   className="w-full rounded-nx-md border border-nx-border bg-nx-container px-4 py-3 text-body-md tabular-nums text-nx-on-surface placeholder:text-nx-on-surface-variant focus:border-nx-evo focus:outline-none"
                 />
               </label>
