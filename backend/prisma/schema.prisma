@@ -489,6 +489,11 @@ model PacienteUser {
   fotoUrl           String?
   postPublicoPadrao Boolean  @default(true)
   emailVerificado   Boolean  @default(false)
+  // Consentimento LGPD registrado no cadastro (aceite explícito dos Termos + Privacidade).
+  // Contas antigas ficam false/null (não houve fluxo de aceite quando criadas).
+  aceiteTermos       Boolean   @default(false)
+  aceiteTermosEm     DateTime?
+  aceiteTermosVersao String?
   pacienteId        String   @unique
   paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())

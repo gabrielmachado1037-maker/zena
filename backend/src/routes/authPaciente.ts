@@ -17,7 +17,14 @@ const registerSchema = z.object({
   codigoVinculo: z.string({ error: "Informe o código de convite." }).trim().min(1, "Informe o código de convite."),
   // 2ª validação de identidade: últimos 4 dígitos do telefone cadastrado pela nutri.
   telefone4: z.string().trim().optional(),
+  // Consentimento LGPD: aceite explícito dos Termos + Política de Privacidade (obrigatório).
+  aceiteTermos: z.boolean({ error: "É necessário aceitar os Termos de Uso e a Política de Privacidade." })
+    .refine((v) => v === true, { error: "É necessário aceitar os Termos de Uso e a Política de Privacidade." }),
 });
+
+// Versão vigente dos Termos/Privacidade (bate com "Última atualização" mostrada ao usuário).
+// O servidor é a autoridade — carimba a versão que considera atual, não o cliente.
+const TERMOS_VERSAO = "2026-06";
 
 const loginSchema = z.object({
   email: z.string({ error: "Informe o e-mail." }).trim().min(1, "Informe o e-mail."),
@@ -104,12 +111,15 @@ const MSG_CONVITE_INDIVIDUAL =
 
 // POST /api/auth/paciente/register
 router.post("/register", registerLimiter, validateBody(registerSchema), async (req: Request, res: Response) => {
-  const { email, senha, codigoVinculo, telefone4 } = req.body;
+  const { email, senha, codigoVinculo, telefone4, aceiteTermos } = req.body;
   if (!email || !senha || !codigoVinculo) {
     return res.status(400).json({ error: "E-mail, senha e código de convite são obrigatórios." });
   }
   if (senha.length < 6) {
     return res.status(400).json({ error: "Senha deve ter pelo menos 6 caracteres." });
+  }
+  if (aceiteTermos !== true) {
+    return res.status(400).json({ error: "É necessário aceitar os Termos de Uso e a Política de Privacidade." });
   }
 
   const codigo = normalizarCodigo(codigoVinculo);
@@ -164,7 +174,16 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
   let pacienteUser;
   try {
     pacienteUser = await prisma.$transaction(async (tx) => {
-      const pu = await tx.pacienteUser.create({ data: { email, senha: hash, pacienteId: paciente.id } });
+      const pu = await tx.pacienteUser.create({
+        data: {
+          email,
+          senha: hash,
+          pacienteId: paciente.id,
+          aceiteTermos: true,
+          aceiteTermosEm: new Date(),
+          aceiteTermosVersao: TERMOS_VERSAO,
+        },
+      });
       await tx.paciente.update({
         where: { id: paciente.id },
         data: { conviteStatus: "utilizado", conviteUsadoEm: new Date() },

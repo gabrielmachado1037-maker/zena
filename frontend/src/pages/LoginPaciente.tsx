@@ -18,6 +18,7 @@ export default function LoginPaciente() {
   const [senha, setSenha] = useState("");
   const [codigo, setCodigo] = useState("");
   const [telefone4, setTelefone4] = useState("");
+  const [aceite, setAceite] = useState(false);
   const [showSenha, setShowSenha] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,9 +38,13 @@ export default function LoginPaciente() {
 
   async function handleRegister(e: FormEvent) {
     e.preventDefault();
+    if (!aceite) {
+      setError("É necessário aceitar os Termos de Uso e a Política de Privacidade.");
+      return;
+    }
     setError(""); setLoading(true);
     try {
-      await register(email, senha, codigo.trim(), telefone4.trim());
+      await register(email, senha, codigo.trim(), telefone4.trim(), aceite);
       navigate("/completar-perfil");
     } catch (err: any) {
       setError(err.response?.data?.error || "Erro ao criar conta.");
@@ -132,6 +137,21 @@ export default function LoginPaciente() {
                   />
                   <p className="mt-1.5 text-body-sm text-[#71717A]">Confirma que o convite é seu — o telefone cadastrado pela sua nutricionista.</p>
                 </div>
+
+                {/* Consentimento LGPD — aceite explícito e obrigatório */}
+                <label className="flex cursor-pointer items-start gap-3 pt-1">
+                  <input
+                    type="checkbox" checked={aceite}
+                    onChange={(e) => setAceite(e.target.checked)}
+                    className="mt-0.5 size-5 shrink-0 cursor-pointer appearance-none rounded-md border border-white/[0.15] bg-[#141414] transition-colors checked:border-nx-evo checked:bg-nx-evo focus:outline-none focus:ring-2 focus:ring-nx-evo/40 checked:bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22%2308130A%22><path fill-rule=%22evenodd%22 d=%22M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 011.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z%22 clip-rule=%22evenodd%22/></svg>')] checked:bg-center checked:bg-no-repeat"
+                  />
+                  <span className="text-body-sm leading-snug text-[#A1A1AA]">
+                    Li e aceito os{" "}
+                    <Link to="/termos" target="_blank" rel="noopener noreferrer" className="font-semibold text-nx-evo underline-offset-2 hover:underline">Termos de Uso</Link>
+                    {" "}e a{" "}
+                    <Link to="/privacidade" target="_blank" rel="noopener noreferrer" className="font-semibold text-nx-evo underline-offset-2 hover:underline">Política de Privacidade</Link>.
+                  </span>
+                </label>
               </>
             )}
 
@@ -141,7 +161,7 @@ export default function LoginPaciente() {
               </p>
             )}
 
-            <PrimaryButton type="submit" disabled={loading} className="mt-2">
+            <PrimaryButton type="submit" disabled={loading || (!isLogin && !aceite)} className="mt-2">
               {loading ? (isLogin ? "Entrando…" : "Criando…") : isLogin ? "Entrar" : "Criar conta"}
             </PrimaryButton>
           </form>
