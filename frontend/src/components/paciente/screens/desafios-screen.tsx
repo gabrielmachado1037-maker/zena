@@ -56,9 +56,9 @@ function EventCard({
   return (
     <article className="overflow-hidden rounded-nx-xl border border-nx-border bg-nx-surface">
       {/* Banner do evento */}
-      <div className="relative h-14 overflow-hidden" style={{ background: t.grad }}>
+      <div className="relative h-8 overflow-hidden" style={{ background: t.grad }}>
         <Icon className="pointer-events-none absolute -bottom-4 -right-3 size-28 text-white/15" strokeWidth={1.5} />
-        <div className="relative flex h-full items-start justify-between p-3">
+        <div className="relative flex h-full items-center justify-between p-2.5">
           <span className="rounded-full bg-black/35 px-2.5 py-1 text-label-sm font-bold uppercase tracking-wide text-white backdrop-blur">
             {t.label}
           </span>
@@ -74,7 +74,7 @@ function EventCard({
       </div>
 
       {/* Corpo */}
-      <div className="space-y-2 p-3">
+      <div className="space-y-1 p-2.5">
         <div>
           <h3 className="text-body-lg font-semibold text-nx-on-surface">{c.title}</h3>
           {c.description && <p className="mt-0.5 text-body-sm text-nx-on-surface-variant">{c.description}</p>}
@@ -83,7 +83,7 @@ function EventCard({
         {!done && (
           <>
             {/* Bloco de progresso + sequência */}
-            <div className="rounded-nx-md border border-nx-border bg-nx-container-low p-2">
+            <div className="rounded-nx-md border border-nx-border bg-nx-container-low p-1.5">
               <div className="flex items-center gap-2">
                 <Flame className="size-4 text-nx-streak" />
                 <span className="text-body-sm text-nx-on-surface-variant">Sequência atual</span>
@@ -92,7 +92,7 @@ function EventCard({
                 </span>
               </div>
 
-              <div className="mt-1.5">
+              <div className="mt-1">
                 <ProgressBarNx value={c.progress} tone={t.tone} aria-label={`Progresso do desafio ${c.title}`} />
                 <div className="mt-1 flex items-center justify-between text-body-sm">
                   <span className="font-semibold tabular-nums" style={{ color: t.accent }}>
@@ -102,7 +102,7 @@ function EventCard({
                 </div>
               </div>
 
-              <p className="mt-1 text-body-sm text-nx-on-surface-variant">
+              <p className="mt-0.5 text-body-sm text-nx-on-surface-variant">
                 {bateuMeta ? (
                   <span className="font-semibold text-nx-evo">Recompensa garantida! 🎉</span>
                 ) : (
@@ -117,7 +117,7 @@ function EventCard({
                 <div className="flex flex-wrap gap-1.5">
                   {c.dias.map((d) => <DayDot key={d.dia} status={d.status} accent={t.accent} />)}
                 </div>
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-label-sm text-nx-on-surface-variant">
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-label-sm text-nx-on-surface-variant">
                   <span className="flex items-center gap-1"><span className="size-2.5 rounded-full" style={{ background: t.accent }} /> concluído</span>
                   <span className="flex items-center gap-1"><span className="size-2.5 rounded-full border-2" style={{ borderColor: t.accent }} /> hoje</span>
                   <span className="flex items-center gap-1"><span className="size-2.5 rounded-full border border-nx-outline" /> pendente</span>
@@ -165,7 +165,7 @@ function EventCard({
         )}
 
         {/* Recompensas */}
-        <div className="flex items-center gap-2 border-t border-nx-border pt-2">
+        <div className="flex items-center gap-2 border-t border-nx-border pt-1.5">
           <span className="text-label-md uppercase text-nx-on-surface-variant">Recompensa</span>
           <div className="ml-auto flex items-center gap-2">
             {c.xp != null && c.xp > 0 && (
@@ -267,7 +267,7 @@ export function DesafiosScreen() {
   const CelebIcon = celeb?.icon ?? Trophy
 
   return (
-    <div className="space-y-3 px-5 pb-6 pt-4">
+    <div className="space-y-1.5 px-5 pb-6 pt-2">
       <header>
         <h1 className="text-headline-lg text-nx-on-surface">Desafios</h1>
         <p className="mt-0.5 text-body-md text-nx-on-surface-variant">Acompanhe seu progresso e evolua todo dia</p>
@@ -301,7 +301,7 @@ export function DesafiosScreen() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-1.5">
           {lista.map((c) => (
             <div
               key={c.id}
