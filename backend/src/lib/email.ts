@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import * as Sentry from "@sentry/node";
 
 function getResend(): Resend | null {
   if (!process.env.RESEND_API_KEY) {
@@ -6,6 +7,23 @@ function getResend(): Resend | null {
     return null;
   }
   return new Resend(process.env.RESEND_API_KEY);
+}
+
+// Envio com visibilidade: o Resend NÃO lança em erro de API (domínio não verificado,
+// chave inválida, rate-limit) — devolve no campo `error`. Sem checar isso, um envio
+// falho fica invisível (usuário sem e-mail de reset/verificação = lockout silencioso).
+// Reporta ao Sentry para que a falha apareça no monitoramento.
+async function enviarSeguro(resend: Resend, payload: Parameters<Resend["emails"]["send"]>[0]) {
+  try {
+    const { error } = await resend.emails.send(payload);
+    if (error) {
+      console.error("[email] Resend recusou o envio:", error);
+      Sentry.captureException(new Error(`Resend falhou: ${JSON.stringify(error)}`));
+    }
+  } catch (e) {
+    console.error("[email] envio lançou exceção:", (e as Error).message);
+    Sentry.captureException(e);
+  }
 }
 
 // Remetente configurável. Precisa ser um domínio VERIFICADO no Resend.
@@ -45,7 +63,7 @@ function base(titulo: string, corpo: string) {
 export async function emailBoasVindas(nome: string, email: string) {
   const resend = getResend();
   if (!resend) return;
-  await resend.emails.send({
+  await enviarSeguro(resend, {
     from: FROM,
     to: email,
     subject: "Bem-vinda à Nexvel! 🌿",
@@ -70,7 +88,7 @@ export async function emailRecuperacaoSenha(email: string, token: string, nome?:
   if (!resend) return;
   const link = `${BASE_URL}/redefinir-senha?token=${token}`;
   const saudacao = nome ? `Olá, ${nome.split(" ")[0]}!` : "Olá!";
-  await resend.emails.send({
+  await enviarSeguro(resend, {
     from: FROM,
     to: email,
     subject: "Redefinição de senha — Nexvel",
@@ -89,7 +107,7 @@ export async function emailVerificacao(email: string, token: string, nome?: stri
   if (!resend) return;
   const link = `${BASE_URL}/verificar-email?token=${token}`;
   const saudacao = nome ? `Olá, ${nome.split(" ")[0]}!` : "Olá!";
-  await resend.emails.send({
+  await enviarSeguro(resend, {
     from: FROM,
     to: email,
     subject: "Confirme seu e-mail — Nexvel",
@@ -108,7 +126,7 @@ export async function emailVerificacaoPaciente(email: string, token: string, nom
   if (!resend) return;
   const link = `${BASE_URL}/verificar-email-paciente?token=${token}`;
   const saudacao = nome ? `Olá, ${nome.split(" ")[0]}!` : "Olá!";
-  await resend.emails.send({
+  await enviarSeguro(resend, {
     from: FROM,
     to: email,
     subject: "Confirme seu e-mail — Nexvel",
@@ -125,7 +143,7 @@ export async function emailVerificacaoPaciente(email: string, token: string, nom
 export async function emailTrialExpirando(nome: string, email: string, diasRestantes: number) {
   const resend = getResend();
   if (!resend) return;
-  await resend.emails.send({
+  await enviarSeguro(resend, {
     from: FROM,
     to: email,
     subject: `Seu trial Nexvel expira em ${diasRestantes} dia${diasRestantes !== 1 ? "s" : ""} ⏰`,
@@ -150,7 +168,7 @@ export async function emailConfirmacaoConsulta(
   const dataFmt = new Intl.DateTimeFormat("pt-BR", {
     weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
   }).format(data);
-  await resend.emails.send({
+  await enviarSeguro(resend, {
     from: FROM,
     to: emailNutri,
     subject: `Nova consulta solicitada — ${nomePaciente}`,

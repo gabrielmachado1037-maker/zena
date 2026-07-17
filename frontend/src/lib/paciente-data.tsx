@@ -133,6 +133,7 @@ export const usePacienteData = () => {
 
 export function PacienteDataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<PacienteData | null>(null);
+  const [erro, setErro] = useState(false);
 
   const load = useCallback(async () => {
       const [resumoR, rankingR, desafiosR, evolucaoR] = await Promise.allSettled([
@@ -141,6 +142,12 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
         apiPaciente.get<DesafioResp[]>("/registros/desafios"),
         apiPaciente.get<EvolucaoResp>("/registros/evolucao"),
       ]);
+
+      // O resumo é o dado CENTRAL. Se falhou (5xx/rede — o 401 já é tratado pelo
+      // interceptor), NÃO montar conta "fantasma" com plano/dados default: sinaliza erro.
+      // (Se já havia dados de um load anterior, o provider os mantém — ver render.)
+      if (resumoR.status === "rejected") { setErro(true); return; }
+      setErro(false);
 
       const resumo = resumoR.status === "fulfilled" ? resumoR.value.data : null;
       const rankingRaw = rankingR.status === "fulfilled" ? rankingR.value.data : [];
@@ -311,6 +318,23 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Falha no carregamento inicial (sem dados) → tela de erro com retry, não conta fantasma.
+  if (erro && !data) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-8 text-center" style={{ background: "#09090B" }}>
+        <p className="text-base font-semibold text-white/90">Não foi possível carregar seus dados</p>
+        <p className="max-w-xs text-sm text-white/50">Verifique sua conexão e tente novamente.</p>
+        <button
+          onClick={() => { setErro(false); void load(); }}
+          className="rounded-xl px-6 py-3 text-sm font-bold"
+          style={{ background: "#7CFF5B", color: "#08130A" }}
+        >
+          Tentar de novo
+        </button>
+      </div>
+    );
+  }
 
   if (!data) {
     return (
