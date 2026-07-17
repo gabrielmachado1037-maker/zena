@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
-import { criarClienteNexvel, criarAssinaturaPix, cancelarAssinatura } from "../lib/asaas";
+import { criarClienteNexvel, criarAssinaturaPix, cancelarAssinatura, assinaturaTemPagamentoConfirmado } from "../lib/asaas";
 import { MODULOS_POR_PLANO } from "../middleware/checkModulo";
 
 const router = Router();
@@ -252,7 +252,15 @@ router.get("/pix-status", authMiddleware, async (req: AuthRequest, res: Response
     select: { planoAtivo: true, plano: true, asaasSubscriptionId: true, subscriptionStatus: true, planoSlug: true },
   });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
-  res.json({ planoAtivo: nutri.planoAtivo, plano: nutri.plano, subscriptionStatus: nutri.subscriptionStatus, planoSlug: nutri.planoSlug, asaasSubscriptionId: nutri.asaasSubscriptionId });
+
+  // "pago" = pagamento Pix REALMENTE confirmado no Asaas (não o estado geral da
+  // conta — que já pode estar ativa por trial/cortesia). Só isso libera o "sucesso".
+  let pago = false;
+  if (nutri.asaasSubscriptionId && process.env.NEXVEL_ASAAS_API_KEY) {
+    try { pago = await assinaturaTemPagamentoConfirmado(nutri.asaasSubscriptionId); }
+    catch { pago = false; }
+  }
+  res.json({ pago, planoAtivo: nutri.planoAtivo, plano: nutri.plano, subscriptionStatus: nutri.subscriptionStatus, planoSlug: nutri.planoSlug, asaasSubscriptionId: nutri.asaasSubscriptionId });
 });
 
 // ── POST /billing/portal (Stripe portal) ─────────────────────────────────────

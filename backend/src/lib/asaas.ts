@@ -107,3 +107,11 @@ export async function cancelarAssinatura(subscriptionId: string) {
 export async function buscarAssinatura(subscriptionId: string) {
   return nexvelReq("GET", `/subscriptions/${subscriptionId}`);
 }
+
+/** true se ALGUM pagamento da assinatura já foi efetivamente pago (Pix compensado).
+ *  Usado para liberar o acesso SÓ após o pagamento real — não pelo estado da conta. */
+export async function assinaturaTemPagamentoConfirmado(subscriptionId: string): Promise<boolean> {
+  const r = await nexvelReq("GET", `/subscriptions/${subscriptionId}/payments?limit=10`);
+  const PAGOS = ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"];
+  return ((r.data ?? []) as Array<{ status?: string }>).some((p) => PAGOS.includes(p.status ?? ""));
+}

@@ -92,7 +92,9 @@ export default function Planos() {
     if (!polling) return;
     const interval = setInterval(async () => {
       const r = await api.get("/billing/pix-status");
-      if (r.data.planoAtivo || r.data.subscriptionStatus === "ativo") {
+      // Só libera o "sucesso" quando o Pix foi REALMENTE pago (confirmado no Asaas),
+      // e não porque a conta já estava ativa (trial/cortesia).
+      if (r.data.pago) {
         setPolling(false);
         setPixData(null);
         navigate("/app/billing?sucesso=1");
