@@ -106,8 +106,13 @@ const BASE_CSS = `
 .rp{ --ink:${C.ink}; --sub:${C.sub}; --muted:${C.muted}; --line:${C.line}; --soft:${C.soft};
   font-family:Inter,ui-sans-serif,system-ui,sans-serif; }
 .rp-report{ }
-/* folha = 1 página */
-.rp-page{ width:820px; max-width:100%; margin:0 auto 24px; background:#fff; color:var(--ink);
+/* folha = 1 página. As variáveis de cor/fonte são declaradas AQUI (não só no .rp)
+   porque o Paged.js clona apenas .rp-report — sem o ancestral .rp, var(--ink) etc.
+   ficariam indefinidas no PDF e o texto perderia a cor. Custom properties herdam,
+   então declará-las no .rp-page cobre todo o conteúdo na tela E na impressão. */
+.rp-page{ --ink:${C.ink}; --sub:${C.sub}; --muted:${C.muted}; --line:${C.line}; --soft:${C.soft};
+  font-family:Inter,ui-sans-serif,system-ui,sans-serif;
+  width:820px; max-width:100%; margin:0 auto 24px; background:#fff; color:var(--ink);
   border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,.26); padding:34px 38px; box-sizing:border-box; }
 .rp-page + .rp-page{ break-before:page; page-break-before:always; }
 .rp-page > * + *{ margin-top:22px; }
