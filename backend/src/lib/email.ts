@@ -19,16 +19,16 @@ function base(titulo: string, corpo: string) {
 <html lang="pt-BR">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  body{margin:0;padding:0;background:#0F0F1A;font-family:'Inter',system-ui,sans-serif}
-  .wrap{max-width:560px;margin:40px auto;background:#16213E;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.3)}
-  .header{background:linear-gradient(135deg,#7C3AED 0%,#A855F7 100%);padding:32px 40px;text-align:center}
-  .logo{color:#fff;font-size:28px;font-weight:700;letter-spacing:-1px}
+  body{margin:0;padding:0;background:#09090B;font-family:'Inter',system-ui,sans-serif}
+  .wrap{max-width:560px;margin:40px auto;background:#111318;border:1px solid #2A2F38;border-radius:16px;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+  .header{background:linear-gradient(135deg,#7CFF5B 0%,#53F27C 100%);padding:32px 40px;text-align:center}
+  .logo{color:#08130A;font-size:28px;font-weight:800;letter-spacing:-1px}
   .body{padding:40px}
-  h2{color:#F1F5F9;margin:0 0 16px}
-  p{color:#94A3B8;line-height:1.7;margin:0 0 16px}
-  .btn{display:inline-block;background:#7C3AED;color:#fff!important;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:600;margin:8px 0}
-  .footer{background:#1A1A2E;padding:20px 40px;text-align:center;color:#94A3B8;font-size:13px}
-  .footer a{color:#A855F7}
+  h2{color:#F8FAFC;margin:0 0 16px}
+  p{color:#9CA3AF;line-height:1.7;margin:0 0 16px}
+  .btn{display:inline-block;background:#7CFF5B;color:#08130A!important;text-decoration:none;padding:14px 28px;border-radius:10px;font-weight:700;margin:8px 0}
+  .footer{background:#0D0F14;padding:20px 40px;text-align:center;color:#9CA3AF;font-size:13px;border-top:1px solid #2A2F38}
+  .footer a{color:#7CFF5B;text-decoration:none}
 </style></head>
 <body>
 <div class="wrap">
@@ -53,7 +53,7 @@ export async function emailBoasVindas(nome: string, email: string) {
       `Olá, ${nome}! 🌿`,
       `<p>Seu período de teste de <strong>14 dias grátis</strong> começa agora. Nenhum cartão necessário.</p>
        <p>Com a Nexvel você vai:</p>
-       <ul style="color:#4a4a4a;line-height:2">
+       <ul style="color:#9CA3AF;line-height:2">
          <li>Enviar planos alimentares em PDF profissional</li>
          <li>Acompanhar seus pacientes pelo portal digital</li>
          <li>Receber check-ins semanais automáticos</li>
@@ -157,7 +157,7 @@ export async function emailConfirmacaoConsulta(
     html: base(
       "Nova solicitação de consulta",
       `<p>Sua paciente <strong>${nomePaciente}</strong> solicitou uma consulta para:</p>
-       <p style="font-size:18px;color:#7C3AED;font-weight:600">${dataFmt}</p>
+       <p style="font-size:18px;color:#7CFF5B;font-weight:600">${dataFmt}</p>
        <a href="${BASE_URL}/dashboard" class="btn">Ver solicitação →</a>`
     ),
   });
