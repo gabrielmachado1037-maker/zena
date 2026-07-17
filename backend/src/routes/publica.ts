@@ -67,7 +67,17 @@ router.get("/paciente/:link", async (req: Request, res: Response) => {
     .filter((c) => new Date(c.data) >= now && c.status !== "cancelada")
     .slice(0, 1);
 
-  res.json({ ...paciente, consultas: proximasConsultas });
+  // SEGURANÇA/LGPD: o link público (sem auth) NÃO pode expor o conviteCodigo — junto
+  // com telefone/e-mail ele permitiria registrar/sequestrar a conta do paciente no app.
+  // linkUnico e prefs/timezone/ultimoAcesso são internos. Removidos da resposta.
+  const {
+    conviteCodigo, conviteStatus, conviteExpiraEm, conviteUsadoEm,
+    linkUnico, prefsNotificacao, timezone, ultimoAcesso,
+    ...pacientePublico
+  } = paciente;
+  void conviteCodigo; void conviteStatus; void conviteExpiraEm; void conviteUsadoEm;
+  void linkUnico; void prefsNotificacao; void timezone; void ultimoAcesso;
+  res.json({ ...pacientePublico, consultas: proximasConsultas });
 });
 
 router.post("/paciente/:link/checkin", validateBody(checkinSchema), async (req: Request, res: Response) => {

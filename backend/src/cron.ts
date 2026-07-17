@@ -119,22 +119,27 @@ export function initCron() {
         include: { paciente: true },
       });
       for (const plano of planos) {
-        if (plano.diaVencimento !== diaHoje) continue;
-        const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-        const jaExiste = await prisma.cobranca.findFirst({
-          where: { pacienteId: plano.pacienteId, vencimento: { gte: inicioMes }, status: { not: "cancelada" } },
-        });
-        if (!jaExiste) {
-          const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), plano.diaVencimento);
-          await prisma.cobranca.create({
-            data: {
-              pacienteId: plano.pacienteId,
-              valor: plano.valor,
-              vencimento,
-              metodo: "pix",
-              descricao: `Mensalidade ${hoje.toLocaleString("pt-BR", { month: "long" })}`,
-            },
+        // try/catch POR ITEM: uma cobrança que falha não impede as demais no mês.
+        try {
+          if (plano.diaVencimento !== diaHoje) continue;
+          const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+          const jaExiste = await prisma.cobranca.findFirst({
+            where: { pacienteId: plano.pacienteId, vencimento: { gte: inicioMes }, status: { not: "cancelada" } },
           });
+          if (!jaExiste) {
+            const vencimento = new Date(hoje.getFullYear(), hoje.getMonth(), plano.diaVencimento);
+            await prisma.cobranca.create({
+              data: {
+                pacienteId: plano.pacienteId,
+                valor: plano.valor,
+                vencimento,
+                metodo: "pix",
+                descricao: `Mensalidade ${hoje.toLocaleString("pt-BR", { month: "long" })}`,
+              },
+            });
+          }
+        } catch (e) {
+          console.error("Cron plano_cobranca item error:", plano.pacienteId, e);
         }
       }
     } catch (e) {
@@ -173,7 +178,9 @@ export function initCron() {
           planoVencimento: { lt: tresAtraso },
           plano: { in: ["mensal", "anual"] },
         },
-        data: { planoAtivo: false },
+        // subscriptionStatus tem precedência no paywall (checkModulo/plano) — precisa
+        // mudar aqui também, senão o vencido continua "ativo" e o acesso não fecha.
+        data: { planoAtivo: false, subscriptionStatus: "inadimplente" },
       });
     } catch (e) {
       console.error("Cron assinatura_vencida error:", e);

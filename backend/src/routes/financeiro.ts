@@ -92,8 +92,9 @@ router.get("/dashboard", async (req: AuthRequest, res: Response) => {
 
 // Plano de cobrança por paciente
 router.get("/plano/:pacienteId", async (req: AuthRequest, res: Response) => {
+  // Escopa por tenant (evita IDOR: ler plano de paciente de outra nutri).
   const plano = await prisma.planoCobranca.findFirst({
-    where: { pacienteId: req.params["pacienteId"] as string },
+    where: { pacienteId: req.params["pacienteId"] as string, paciente: { nutricionistaId: req.nutricionistaId! } },
   });
   res.json(plano || null);
 });

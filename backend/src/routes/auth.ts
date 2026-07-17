@@ -69,6 +69,16 @@ const emailLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Cadastro de nutri — sem isto, um script cria contas em massa (cada uma dispara
+// e-mails de boas-vindas/verificação = e-mail bombing pelo domínio verificado).
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: "Muitas tentativas de cadastro. Tente novamente em 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Versão vigente dos Termos/Privacidade aceitos no cadastro (LGPD).
 const TERMOS_VERSAO = "2026-07-12";
 
@@ -80,7 +90,7 @@ async function criarEnviarVerificacao(nutricionistaId: string, email: string, no
   emailVerificacao(email, token, nome).catch(console.error);
 }
 
-router.post("/register", validateBody(registerSchema), async (req: Request, res: Response) => {
+router.post("/register", registerLimiter, validateBody(registerSchema), async (req: Request, res: Response) => {
   const { nome, email, senha, crn, nomeConsultorio, aceiteTermos } = req.body;
   if (!nome || !email || !senha || !crn) {
     return res.status(400).json({ error: "Campos obrigatórios faltando" });

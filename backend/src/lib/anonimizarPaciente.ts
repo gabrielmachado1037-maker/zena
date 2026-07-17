@@ -6,26 +6,43 @@ import { deleteFotoPorUrl } from "./supabase";
 // Usado tanto pelo próprio paciente (DELETE /paciente-app/conta) quanto pela nutri
 // (DELETE /pacientes/:id). Irreversível por design.
 export async function anonimizarPaciente(pid: string): Promise<void> {
-  // 1) Remove as fotos (dado biométrico) do storage — best-effort.
-  const [fotos, regFotos, pac] = await Promise.all([
+  // 1) Remove TODAS as fotos/anexos (dado biométrico) do storage — best-effort.
+  //    Inclui evolução, registro-fotos, avatar, foto do check-in semanal, foto do
+  //    diário, anexos do chat e fotos do feed (os buckets são públicos → a URL
+  //    continuaria baixável para sempre se não deletarmos o arquivo).
+  const [fotos, regFotos, pac, checkins, registros, mensagens, posts] = await Promise.all([
     prisma.fotoEvolucao.findMany({ where: { pacienteId: pid }, select: { imagem: true } }),
     prisma.registroFotos.findMany({ where: { pacienteId: pid }, select: { frenteUrl: true, perfilUrl: true, costasUrl: true } }),
     prisma.paciente.findUnique({ where: { id: pid }, select: { fotoInicial: true, fotoPerfilUrl: true } }),
+    prisma.checkIn.findMany({ where: { pacienteId: pid }, select: { foto: true } }),
+    prisma.registro.findMany({ where: { pacienteId: pid }, select: { fotoUrl: true } }),
+    prisma.mensagemChat.findMany({ where: { pacienteId: pid }, select: { anexoUrl: true } }),
+    prisma.feedPost.findMany({ where: { pacienteId: pid }, select: { fotoUrl: true, autorAvatarUrl: true } }),
   ]);
   const urls = [
     ...fotos.map((f) => f.imagem),
     ...regFotos.flatMap((r) => [r.frenteUrl, r.perfilUrl, r.costasUrl]),
     pac?.fotoInicial, pac?.fotoPerfilUrl,
+    ...checkins.map((c) => c.foto),
+    ...registros.map((r) => r.fotoUrl),
+    ...mensagens.map((m) => m.anexoUrl),
+    ...posts.flatMap((p) => [p.fotoUrl, p.autorAvatarUrl]),
   ].filter((u): u is string => !!u);
   await Promise.allSettled(urls.map((u) => deleteFotoPorUrl(u)));
 
-  // 2) Apaga fotos/posts/dispositivos e anonimiza o cadastro + remove o login (atômico).
-  //    Cancela o convite: um paciente removido não pode mais vincular conta.
+  // 2) Apaga PII/posts/mensagens/dispositivos, anonimiza cadastro + comentários e
+  //    remove o login (atômico). Cancela o convite: paciente removido não vincula conta.
   await prisma.$transaction([
     prisma.fotoEvolucao.deleteMany({ where: { pacienteId: pid } }),
     prisma.registroFotos.deleteMany({ where: { pacienteId: pid } }),
     prisma.feedPost.deleteMany({ where: { pacienteId: pid } }),
+    prisma.mensagemChat.deleteMany({ where: { pacienteId: pid } }),
     prisma.pushSubscriptionPaciente.deleteMany({ where: { pacienteId: pid } }),
+    // Nome real do paciente em comentários que ele fez em posts de OUTROS pacientes.
+    prisma.feedComentario.updateMany({ where: { autorId: pid, autorTipo: "PACIENTE" }, data: { autorNome: "Paciente removido", autorAvatarUrl: null } }),
+    // Zera as referências de foto no prontuário clínico que é mantido anonimizado.
+    prisma.checkIn.updateMany({ where: { pacienteId: pid }, data: { foto: null } }),
+    prisma.registro.updateMany({ where: { pacienteId: pid }, data: { fotoUrl: null } }),
     prisma.paciente.update({
       where: { id: pid },
       data: {

@@ -31,15 +31,14 @@ function getStripePriceId(planoSlug: string, tipo: string): string {
   return process.env[key] || process.env[`STRIPE_PRICE_${tipo.toUpperCase()}`] || "";
 }
 
-// Valores Pix por plano e ciclo
+// Valores Pix — produto é PLANO ÚNICO (Nexvel Pro). O tier "hub" foi removido para
+// não divergir do preço do cartão (Stripe). Qualquer slug desconhecido → ecossistema.
 const VALORES_PIX: Record<string, Record<string, number>> = {
-  hub:         { mensal: 67,   anual: 670  },
   ecossistema: { mensal: 149,  anual: 1490 },
 };
 
-function getValorPix(planoSlug: string, tipo: string): number {
-  return VALORES_PIX[planoSlug]?.[tipo]
-    ?? (Number(tipo === "anual" ? process.env.PLANO_ANUAL_VALOR : process.env.PLANO_MENSAL_VALOR) || (tipo === "anual" ? 670 : 67));
+function getValorPix(_planoSlug: string, tipo: string): number {
+  return tipo === "anual" ? 1490 : 149;
 }
 
 // ── GET /billing/status ───────────────────────────────────────────────────────
@@ -107,35 +106,40 @@ router.post("/checkout", authMiddleware, validateBody(planoBodySchema), async (r
   const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId as string } });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
 
-  let customerId = nutri.stripeCustomerId;
-  // O customer salvo pode ter sido criado em outro modo (ex.: teste) e não
-  // existir para a chave atual (live) → Stripe retorna "No such customer".
-  // Valida o customer salvo e recria se estiver ausente/excluído.
-  if (customerId) {
-    try {
-      const existente = await stripe.customers.retrieve(customerId);
-      if ((existente as any).deleted) customerId = null;
-    } catch {
-      customerId = null;
+  try {
+    let customerId = nutri.stripeCustomerId;
+    // O customer salvo pode ter sido criado em outro modo (ex.: teste) e não
+    // existir para a chave atual (live) → Stripe retorna "No such customer".
+    // Valida o customer salvo e recria se estiver ausente/excluído.
+    if (customerId) {
+      try {
+        const existente = await stripe.customers.retrieve(customerId);
+        if ((existente as any).deleted) customerId = null;
+      } catch {
+        customerId = null;
+      }
     }
-  }
-  if (!customerId) {
-    const customer = await stripe.customers.create({ email: nutri.email, name: nutri.nome });
-    customerId = customer.id;
-    await prisma.nutricionista.update({ where: { id: nutri.id }, data: { stripeCustomerId: customerId } });
-  }
+    if (!customerId) {
+      const customer = await stripe.customers.create({ email: nutri.email, name: nutri.nome });
+      customerId = customer.id;
+      await prisma.nutricionista.update({ where: { id: nutri.id }, data: { stripeCustomerId: customerId } });
+    }
 
-  const session = await stripe.checkout.sessions.create({
-    customer: customerId,
-    mode: "subscription",
-    line_items: [{ price: priceId, quantity: 1 }],
-    metadata: { plano_slug: planoSlug, tipo },
-    success_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/app/billing?sucesso=1`,
-    cancel_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/app/planos`,
-    locale: "pt-BR",
-  });
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: "subscription",
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: { plano_slug: planoSlug, tipo },
+      success_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/app/billing?sucesso=1`,
+      cancel_url: `${process.env.FRONTEND_URL || "http://localhost:5173"}/app/planos`,
+      locale: "pt-BR",
+    });
 
-  res.json({ url: session.url });
+    res.json({ url: session.url });
+  } catch (e) {
+    console.error("[checkout] Stripe falhou:", (e as Error).message);
+    return res.status(502).json({ error: "Não foi possível abrir o checkout agora. Tente novamente." });
+  }
 });
 
 // ── POST /billing/checkout-pix (Asaas) ───────────────────────────────────────
@@ -168,6 +172,11 @@ router.post("/checkout-pix", authMiddleware, validateBody(planoBodySchema), asyn
       `Nexvel — ${planoSlug} ${periodo}`,
       nutri.id,
     );
+
+    // Se o Asaas não materializou o QR, não devolver "sucesso" com QR vazio.
+    if (!pix?.payload || !pix?.encodedImage) {
+      throw new Error("Asaas não retornou o QR do Pix.");
+    }
 
     const vencimento = new Date();
     if (periodo === "anual") vencimento.setFullYear(vencimento.getFullYear() + 1);
@@ -215,30 +224,43 @@ router.post("/upgrade", authMiddleware, validateBody(upgradeSchema), async (req:
 
   const nutri = await prisma.nutricionista.findUnique({
     where: { id: req.nutricionistaId as string },
-    select: { stripeSubscriptionId: true, subscriptionType: true, planoSlug: true },
+    select: { stripeSubscriptionId: true, asaasSubscriptionId: true, subscriptionStatus: true, subscriptionType: true, planoSlug: true },
   });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
 
-  if (nutri.stripeSubscriptionId) {
-    const stripe = getStripe();
-    if (!stripe) return res.status(503).json({ error: "Stripe não configurado" });
-
-    const tipo = nutri.subscriptionType ?? "mensal";
-    const priceId = getStripePriceId(novo_plano_slug, tipo);
-    if (!priceId) return res.status(400).json({ error: "Price ID não configurado para este plano" });
-
-    const sub = await stripe.subscriptions.retrieve(nutri.stripeSubscriptionId);
-    await stripe.subscriptions.update(nutri.stripeSubscriptionId, {
-      items: [{ id: sub.items.data[0].id, price: priceId }],
-      proration_behavior: "always_invoice",
-    });
+  // SEGURANÇA: só quem JÁ é pagante (assinatura ativa Stripe/Asaas) pode trocar de
+  // plano por aqui. Sem isso, um usuário em trial/sem assinatura chamaria /upgrade e
+  // ganharia acesso vitalício de graça. Nunca setar subscriptionStatus="ativo" aqui.
+  const pagante = nutri.subscriptionStatus === "ativo" && !!(nutri.stripeSubscriptionId || nutri.asaasSubscriptionId);
+  if (!pagante) {
+    return res.status(402).json({ error: "assinatura_necessaria", message: "Assine o Nexvel Pro para liberar este recurso.", redirect: "/planos" });
   }
 
-  // Atualiza imediatamente no DB (módulos liberados mesmo sem pagamento confirmado no Stripe)
+  try {
+    if (nutri.stripeSubscriptionId) {
+      const stripe = getStripe();
+      if (!stripe) return res.status(503).json({ error: "Stripe não configurado" });
+
+      const tipo = nutri.subscriptionType ?? "mensal";
+      const priceId = getStripePriceId(novo_plano_slug, tipo);
+      if (!priceId) return res.status(400).json({ error: "Price ID não configurado para este plano" });
+
+      const sub = await stripe.subscriptions.retrieve(nutri.stripeSubscriptionId);
+      await stripe.subscriptions.update(nutri.stripeSubscriptionId, {
+        items: [{ id: sub.items.data[0].id, price: priceId }],
+        proration_behavior: "always_invoice",
+      });
+    }
+  } catch (e) {
+    console.error("[upgrade] Stripe falhou:", (e as Error).message);
+    return res.status(502).json({ error: "Não foi possível atualizar o plano agora. Tente novamente." });
+  }
+
+  // Pagante confirmado: aplica a troca de plano/módulos (não mexe em subscriptionStatus).
   const modulosAtivos = MODULOS_POR_PLANO[novo_plano_slug] ?? [];
   await prisma.nutricionista.update({
     where: { id: req.nutricionistaId as string },
-    data: { planoSlug: novo_plano_slug, modulosAtivos, subscriptionStatus: "ativo" },
+    data: { planoSlug: novo_plano_slug, modulosAtivos },
   });
 
   res.json({ ok: true, planoSlug: novo_plano_slug, modulosAtivos });
@@ -260,6 +282,18 @@ router.get("/pix-status", authMiddleware, async (req: AuthRequest, res: Response
     try { pago = await assinaturaTemPagamentoConfirmado(nutri.asaasSubscriptionId); }
     catch { pago = false; }
   }
+
+  // Defesa em profundidade: se o Asaas confirma o pagamento mas o webhook ainda não
+  // ativou (falhou/atrasou/token divergente), ativa aqui de forma idempotente — assim
+  // "pagou = tem acesso" mesmo que o webhook não chegue.
+  if (pago && nutri.subscriptionStatus !== "ativo") {
+    const planoSlug = nutri.planoSlug ?? "ecossistema";
+    await prisma.nutricionista.update({
+      where: { id: req.nutricionistaId as string },
+      data: { planoAtivo: true, subscriptionStatus: "ativo", modulosAtivos: MODULOS_POR_PLANO[planoSlug] ?? [] },
+    });
+  }
+
   res.json({ pago, planoAtivo: nutri.planoAtivo, plano: nutri.plano, subscriptionStatus: nutri.subscriptionStatus, planoSlug: nutri.planoSlug, asaasSubscriptionId: nutri.asaasSubscriptionId });
 });
 
@@ -285,7 +319,12 @@ router.post("/cancelar-pix", authMiddleware, async (req: AuthRequest, res: Respo
   const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId as string } });
   if (!nutri?.asaasSubscriptionId) return res.status(400).json({ error: "Sem assinatura Pix" });
 
-  await cancelarAssinatura(nutri.asaasSubscriptionId);
+  try {
+    await cancelarAssinatura(nutri.asaasSubscriptionId);
+  } catch (e) {
+    console.error("[cancelar-pix] Asaas falhou:", (e as Error).message);
+    return res.status(502).json({ error: "Não foi possível cancelar a assinatura agora. Tente novamente." });
+  }
   await prisma.nutricionista.update({
     where: { id: nutri.id },
     data: {
@@ -300,7 +339,7 @@ router.post("/cancelar-pix", authMiddleware, async (req: AuthRequest, res: Respo
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────
 
-export function webhookHandler(req: Request, res: Response) {
+export async function webhookHandler(req: Request, res: Response) {
   const stripe = getStripe();
   if (!stripe) return res.status(503).json({ error: "Não configurado" });
 
@@ -313,7 +352,7 @@ export function webhookHandler(req: Request, res: Response) {
     return res.status(400).json({ error: "Webhook inválido" });
   }
 
-  (async () => {
+  try {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -379,17 +418,21 @@ export function webhookHandler(req: Request, res: Response) {
       case "invoice.payment_succeeded": {
         const inv = event.data.object as Stripe.Invoice;
         if (inv.customer) {
+          // Guard contra evento fora de ordem: não reativa quem já cancelou.
           await prisma.nutricionista.updateMany({
-            where: { stripeCustomerId: inv.customer as string },
+            where: { stripeCustomerId: inv.customer as string, subscriptionStatus: { not: "cancelado" } },
             data: { planoAtivo: true, subscriptionStatus: "ativo" },
           });
         }
         break;
       }
     }
-  })().catch(console.error);
-
-  res.json({ received: true });
+    res.json({ received: true });
+  } catch (e) {
+    // 500 → o Stripe reentrega o evento; não perde a ativação de um pagamento.
+    console.error("[stripe-webhook] processamento falhou:", (e as Error).message);
+    res.status(500).json({ error: "erro ao processar webhook" });
+  }
 }
 
 // Webhook Asaas
@@ -398,6 +441,11 @@ router.post("/asaas-webhook", async (req: Request, res: Response) => {
   // header `asaas-access-token`. Sem esta checagem, qualquer um poderia forjar
   // um PAYMENT_CONFIRMED e ativar um plano de graça (bypass do paywall).
   const expected = process.env.ASAAS_WEBHOOK_TOKEN;
+  if (!expected) {
+    // Sem token, o fail-closed abaixo rejeita 100% dos pagamentos Pix. Log explícito
+    // para não ficar invisível (Sentry capta) — é uma MISCONFIGURAÇÃO, não um ataque.
+    console.error("[asaas-webhook] ASAAS_WEBHOOK_TOKEN não configurado no Render — TODOS os pagamentos Pix serão rejeitados. Configure a env.");
+  }
   if (!expected || req.get("asaas-access-token") !== expected) {
     return res.status(401).json({ error: "Webhook não autorizado." });
   }
