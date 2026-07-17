@@ -53,6 +53,10 @@ interface Relatorio {
   insightsIA: string[] | null;
   focoRegras: string[];
   focoIA: string[] | null;
+  chamaAtencao: string[];
+  padroes: string[];
+  metas: string[];
+  maiorSequenciaPeriodo: number;
 }
 
 const HUMOR_LABEL: Record<string, string> = { otimo: "Ótimo", bom: "Bom", neutro: "Neutro", dificil: "Difícil", pessimo: "Péssimo" };
@@ -221,6 +225,19 @@ const BASE_CSS = `
 .rp-runfoot{ display:none; align-items:center; gap:7px; font-size:8pt; color:${C.muted}; }
 .rp-runfoot .m{ width:14px; height:14px; border-radius:4px; background:#0F1115; display:inline-grid; place-items:center; }
 .rp-runfoot b{ color:${C.ink}; font-weight:700; letter-spacing:.04em; }
+
+/* KPIs do resumo executivo */
+.rp-kpis{ display:grid; grid-template-columns:repeat(6,1fr); gap:9px; }
+.rp-kpi{ border:1px solid var(--line); border-radius:10px; padding:11px 9px; text-align:center; }
+.rp-kpi .t{ font-size:9px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+.rp-kpi .v{ font-size:17px; font-weight:800; line-height:1.15; margin-top:3px; color:var(--ink); }
+.rp-kpi .v small{ font-size:11px; font-weight:600; color:var(--muted); }
+
+/* resumo lateral da linha do tempo (contagem de status) */
+.rp-sumline{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.rp-sumcell{ display:flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:99px; padding:5px 12px; font-size:11px; color:var(--sub); }
+.rp-sumcell b{ font-weight:800; color:var(--ink); }
+.rp-sumcell .dot{ width:8px; height:8px; border-radius:50%; flex:none; }
 `;
 
 /* CSS aplicado na TELA e na impressão nativa (caminho de sucesso: só imprime o Paged.js) */
@@ -308,6 +325,14 @@ export default function RelatorioMensal() {
     const humorTot = Object.values(rel.humor).reduce((s, n) => s + n, 0);
     const temAlgo = !!ev.peso || medidas.length > 0 || ev.fotos.length > 0 || !!(ev.laudo || ev.observacoes) || humorTot > 0;
     return { ev, medidas, humorTot, temAlgo };
+  }, [rel]);
+
+  /* linha do tempo — contagem de status do dia (resumo lateral da tabela) */
+  const stCounts = useMemo(() => {
+    if (!rel) return null;
+    const c = { green: 0, blue: 0, amber: 0, muted: 0 };
+    for (const d of rel.dias) c[statusDia(d, rel.agua.meta, rel.sono.meta).tone] += 1;
+    return c;
   }, [rel]);
 
   const textoWhatsApp = useMemo(() => {
@@ -474,6 +499,16 @@ export default function RelatorioMensal() {
                 })}
               </section>
 
+              {/* Resumo executivo — KPIs */}
+              <section className="rp-kpis">
+                <div className="rp-kpi"><div className="t">Liga</div><div className="v" style={{ fontSize: 13 }}>{rel.resumo.ligaAtual}<small> {rel.resumo.ligaNivel}</small></div></div>
+                <div className="rp-kpi"><div className="t">XP total</div><div className="v">{nf(rel.resumo.pontosTotal)}</div></div>
+                <div className="rp-kpi"><div className="t">Seq. atual</div><div className="v">{rel.resumo.streakAtual}<small> d</small></div></div>
+                <div className="rp-kpi"><div className="t">Melhor seq.</div><div className="v">{rel.resumo.streakMaximo}<small> d</small></div></div>
+                <div className="rp-kpi"><div className="t">Check-ins</div><div className="v">{rel.resumo.diasRegistrados}<small>/{rel.periodo.dias}</small></div></div>
+                <div className="rp-kpi"><div className="t">Aderência</div><div className="v">{rel.resumo.aderenciaPct}<small>%</small></div></div>
+              </section>
+
               {/* Resumo Inteligente (destaque) */}
               <section className="rp-block hl">
                 <h3><Sparkles size={14} style={{ color: "#B08D57" }} /> Resumo inteligente <span className="tag">{iaAtiva ? "Gerado por IA" : "Leitura automática"}</span></h3>
@@ -482,46 +517,26 @@ export default function RelatorioMensal() {
                 )}
               </section>
 
-              {/* Plano de ação sugerido (foco da próxima consulta) */}
-              <section className="rp-block plain">
-                <h3><CalendarCheck size={14} style={{ color: C.water }} /> Plano de ação sugerido {focoAtiva && <span className="tag">IA</span>}</h3>
-                {foco.length === 0 ? <p className="rp-empty">Sem prioridades definidas.</p> : (
-                  <ul className="rp-list">{foco.slice(0, 3).map((t, i) => <li key={i}>{t}</li>)}</ul>
-                )}
-              </section>
+              {/* O que mais chama atenção */}
+              {rel.chamaAtencao.length > 0 && (
+                <section className="rp-block plain">
+                  <h3><AlertTriangle size={14} style={{ color: C.amber }} /> O que mais chama atenção</h3>
+                  <ul className="rp-list rp-dif">{rel.chamaAtencao.map((t, i) => <li key={i}>{t}</li>)}</ul>
+                </section>
+              )}
 
-              <section className="rp-cols2">
-                {/* Principais dificuldades */}
-                <div className="rp-block plain">
-                  <h3><AlertTriangle size={14} style={{ color: C.amber }} /> Principais dificuldades</h3>
-                  {rel.dificuldades.length === 0 ? <p className="rp-empty">Nenhuma dificuldade relevante no período.</p> : (
-                    <ul className="rp-list rp-dif">
-                      {rel.dificuldades.slice(0, 6).map((d, i) => (
-                        <li key={i}>{d.texto}<span className="n">{d.vezes}×</span></li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+              {/* Padrões identificados */}
+              {rel.padroes.length > 0 && (
+                <section className="rp-block plain">
+                  <h3><AlertCircle size={14} style={{ color: C.water }} /> Padrões identificados</h3>
+                  <ul className="rp-list">{rel.padroes.map((t, i) => <li key={i}>{t}</li>)}</ul>
+                </section>
+              )}
 
-                {/* Dias que merecem atenção */}
-                <div className="rp-block plain">
-                  <h3><AlertCircle size={14} style={{ color: C.red }} /> Dias que merecem atenção</h3>
-                  {(rel.diasAtencao ?? []).length === 0 ? <p className="rp-empty">Nenhum dia crítico no período.</p> : (
-                    <table className="rp-mini"><tbody>
-                      {(rel.diasAtencao ?? []).map((d, i) => (
-                        <tr key={i}><td className="dt">{brData(d.data)}</td><td>{d.motivo}</td></tr>
-                      ))}
-                    </tbody></table>
-                  )}
-                </div>
-              </section>
-
-              {/* Evolução vs. período anterior (por dimensão) */}
-              <section className="rp-block plain">
-                <h3><TrendingUp size={14} style={{ color: C.green }} /> Evolução vs. período anterior</h3>
-                {rel.mesAnterior == null || !rel.evolucao?.length ? (
-                  <p className="rp-empty">Sem período anterior para comparar.</p>
-                ) : (
+              {/* Evolução vs. período anterior — só quando há período anterior */}
+              {rel.mesAnterior != null && !!rel.evolucao?.length && (
+                <section className="rp-block plain">
+                  <h3><TrendingUp size={14} style={{ color: C.green }} /> Evolução vs. período anterior</h3>
                   <div className="rp-evogrid">
                     {rel.evolucao.map((e, i) => {
                       const est = e.delta == null ? null : (e.unidade === "nivel" ? Math.round(e.delta) : e.delta);
@@ -538,13 +553,39 @@ export default function RelatorioMensal() {
                       );
                     })}
                   </div>
-                )}
-              </section>
+                </section>
+              )}
+
+              {/* Principais pontos para a consulta */}
+              {foco.length > 0 && (
+                <section className="rp-block plain">
+                  <h3><CalendarCheck size={14} style={{ color: C.water }} /> Principais pontos para a consulta {focoAtiva && <span className="tag">IA</span>}</h3>
+                  <ul className="rp-list">{foco.slice(0, 5).map((t, i) => <li key={i}>{t}</li>)}</ul>
+                </section>
+              )}
+
+              {/* Metas para o próximo ciclo */}
+              {rel.metas.length > 0 && (
+                <section className="rp-block plain">
+                  <h3><Target size={14} style={{ color: C.green }} /> Metas para o próximo ciclo</h3>
+                  <ul className="rp-list">{rel.metas.map((t, i) => <li key={i}>{t}</li>)}</ul>
+                </section>
+              )}
             </section>
 
-            {/* ───────── PÁGINA 2 — HISTÓRICO DIÁRIO ───────── */}
+            {/* ───────── PÁGINA 2 — LINHA DO TEMPO (só se houver registros) ───────── */}
+            {rel.resumo.diasRegistrados > 0 && (
             <section className="rp-page">
-              <p className="rp-page-tag">Histórico diário</p>
+              <p className="rp-page-tag">Linha do tempo do mês</p>
+              {stCounts && (
+                <div className="rp-sumline">
+                  <span className="rp-sumcell"><span className="dot" style={{ background: C.green }} />Dias excelentes <b>{stCounts.green}</b></span>
+                  <span className="rp-sumcell"><span className="dot" style={{ background: C.water }} />Dias bons <b>{stCounts.blue}</b></span>
+                  <span className="rp-sumcell"><span className="dot" style={{ background: C.amber }} />Atenção <b>{stCounts.amber}</b></span>
+                  <span className="rp-sumcell"><span className="dot" style={{ background: C.muted }} />Sem registro <b>{stCounts.muted}</b></span>
+                  <span className="rp-sumcell">Maior sequência <b>{rel.maiorSequenciaPeriodo} {rel.maiorSequenciaPeriodo === 1 ? "dia" : "dias"}</b></span>
+                </div>
+              )}
               <table className="rp-tbl">
                 <thead>
                   <tr>
@@ -586,6 +627,7 @@ export default function RelatorioMensal() {
                 </tbody>
               </table>
             </section>
+            )}
 
             {/* ───────── PÁGINA 3 — EVOLUÇÃO FÍSICA ───────── */}
             {fis.temAlgo && (

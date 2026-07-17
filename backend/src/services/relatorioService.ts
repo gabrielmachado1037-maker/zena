@@ -135,6 +135,10 @@ export interface RelatorioMensal {
   insightsIA: string[] | null;
   focoRegras: string[];
   focoIA: string[] | null;
+  chamaAtencao: string[];         // "O que mais chama atenção" — eventos concretos
+  padroes: string[];              // "Padrões identificados" — correlações comprovadas
+  metas: string[];                // "Metas para o próximo ciclo"
+  maiorSequenciaPeriodo: number;  // maior sequência de check-ins DENTRO do período
 }
 
 /** Monta o relatório determinístico do paciente no intervalo [inicio, fim] (inclusive). */
@@ -377,6 +381,89 @@ export async function gerarRelatorioMensal(
   if (totalFds > 0 && pct(registradosFds, totalFds) <= 60) focoRegras.push("Definir uma estratégia para manter os registros nos fins de semana.");
   if (!focoRegras.length) focoRegras.push("Manter a consistência atual e seguir acompanhando os indicadores.");
 
+  // ─── Sequências de check-in DENTRO do período (perdas, maior sequência, lacunas) ──
+  let perdasSeq = 0, runAtual = 0, maiorRun = 0;
+  const gapsAposPerda: number[] = [];
+  let jaTeveCheckin = false, gapCorrente = 0;
+  for (const d of dias) {
+    if (d.checkin) {
+      if (gapCorrente > 0 && jaTeveCheckin) gapsAposPerda.push(gapCorrente);
+      gapCorrente = 0;
+      runAtual += 1; if (runAtual > maiorRun) maiorRun = runAtual;
+      jaTeveCheckin = true;
+    } else {
+      if (runAtual > 0) perdasSeq += 1;
+      runAtual = 0;
+      if (jaTeveCheckin) gapCorrente += 1;
+    }
+  }
+
+  // ─── Treino por dia da semana (faltas concentradas em um dia específico) ─────
+  const NOMES_DOW_EXT = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+  const treinoDow = Array.from({ length: 7 }, () => ({ nao: 0, tot: 0 }));
+  for (const d of dias) {
+    if (d.treino == null) continue;
+    const dow = new Date(`${d.data}T00:00:00Z`).getUTCDay();
+    treinoDow[dow]!.tot += 1;
+    if (d.treino === "nao") treinoDow[dow]!.nao += 1;
+  }
+  const piorDowTreino = treinoDow
+    .map((v, dow) => ({ dow, ...v }))
+    .filter((v) => v.tot >= 2 && v.nao >= 2 && v.nao / v.tot >= 0.6)
+    .sort((a, b) => b.nao - a.nao)[0];
+
+  const humorNeg = (humor["dificil"] ?? 0) + (humor["pessimo"] ?? 0);
+
+  // ─── O QUE MAIS CHAMA ATENÇÃO — eventos concretos (negativos + positivos) ────
+  const atencaoRaw: Array<{ t: string; p: number }> = [];
+  for (const r of refAgg) {
+    if (r.pulou >= 2) atencaoRaw.push({ t: `Pulou o ${r.label.toLowerCase()} em ${r.pulou} ${plural(r.pulou)}`, p: r.pulou * 3 });
+    if (r.adaptou >= 3) atencaoRaw.push({ t: `Adaptou o ${r.label.toLowerCase()} em ${r.adaptou} ${plural(r.adaptou)}`, p: r.adaptou });
+  }
+  if (piorDowTreino) atencaoRaw.push({ t: `Não treinou em ${piorDowTreino.nao} de ${piorDowTreino.tot} ${NOMES_DOW_EXT[piorDowTreino.dow]}s`, p: piorDowTreino.nao * 3 });
+  else if (tNao >= 2) atencaoRaw.push({ t: `Não treinou em ${tNao} ${plural(tNao)}`, p: tNao * 2 });
+  if (aguaAbaixo >= 3) atencaoRaw.push({ t: `Ficou abaixo da meta de água em ${aguaAbaixo} ${plural(aguaAbaixo)}`, p: aguaAbaixo * 2 });
+  if (sonoAbaixo >= 3) atencaoRaw.push({ t: `Dormiu menos de ${metaSono}h em ${sonoAbaixo} ${plural(sonoAbaixo)}`, p: sonoAbaixo * 2 });
+  if (humorNeg >= 2) atencaoRaw.push({ t: `Registrou humor negativo em ${humorNeg} ${plural(humorNeg)}`, p: humorNeg * 2 });
+  if (perdasSeq >= 2) atencaoRaw.push({ t: `Perdeu a sequência ${perdasSeq} vezes`, p: perdasSeq * 2 });
+  if (maiorRun >= 5) atencaoRaw.push({ t: `Registrou tudo por ${maiorRun} dias consecutivos`, p: maiorRun });
+  const chamaAtencao = atencaoRaw.sort((a, b) => b.p - a.p).slice(0, 8).map((a) => a.t);
+
+  // ─── PADRÕES IDENTIFICADOS — correlações só quando os dados comprovam ─────────
+  const padroes: string[] = [];
+  const ehFds = (iso: string) => { const wd = new Date(`${iso}T00:00:00Z`).getUTCDay(); return wd === 0 || wd === 6; };
+  // 1) Alimentação piora no fim de semana
+  { let fp = 0, ft = 0, up = 0, ut = 0;
+    for (const d of dias) { if (d.alimentacao == null) continue; if (ehFds(d.data)) { ft++; if (d.alimentacao === "pulou") fp++; } else { ut++; if (d.alimentacao === "pulou") up++; } }
+    if (ft >= 3 && ut >= 3 && pct(fp, ft) - pct(up, ut) >= 20) padroes.push("A alimentação tende a piorar nos fins de semana."); }
+  // 2) Esquece o café da manhã (café é a refeição mais pulada, com amostra)
+  { const cafe = refAgg.find((r) => r.key === "cafe");
+    const piorPulo = [...refAgg].filter((r) => r.total >= 3).sort((a, b) => b.pulou - a.pulou)[0];
+    if (cafe && cafe.total >= 4 && cafe.pulou >= 3 && piorPulo?.key === "cafe") padroes.push("Costuma pular o café da manhã com frequência."); }
+  // 3) Humor piora com pouco sono
+  { let bs = 0, bn = 0, as = 0, an = 0;
+    for (const d of dias) { if (!d.checkin || d.sonoHoras == null || d.humor == null) continue; const hs = HUMOR_SCORE_MAP[d.humor] ?? 3; if (d.sonoHoras < metaSono) { bs += hs; bn++; } else { as += hs; an++; } }
+    if (bn >= 3 && an >= 3 && (as / an) - (bs / bn) >= 0.7) padroes.push(`O humor tende a piorar nos dias em que dorme menos de ${metaSono}h.`); }
+  // 4) Hidratação melhora nos dias de treino
+  { let to = 0, tn = 0, no = 0, nn = 0;
+    for (const d of dias) { if (d.aguaMl == null || d.treino == null) continue; const bateu = d.aguaMl >= metaAgua; if (d.treino === "sim") { tn++; if (bateu) to++; } else { nn++; if (bateu) no++; } }
+    if (tn >= 3 && nn >= 3 && pct(to, tn) - pct(no, nn) >= 20) padroes.push("A hidratação melhora nos dias em que treina."); }
+  // 5) Some por dias após perder a sequência
+  { const avg = gapsAposPerda.length ? gapsAposPerda.reduce((a, b) => a + b, 0) / gapsAposPerda.length : 0;
+    if (gapsAposPerda.length >= 2 && avg >= 2) padroes.push("Costuma ficar dois ou mais dias sem registrar após perder a sequência."); }
+
+  // ─── METAS PARA O PRÓXIMO CICLO — objetivos concretos derivados do desempenho ──
+  const semanas = Math.max(1, Math.round(diasPeriodo / 7));
+  const metas: string[] = [];
+  if (aguaDias >= 3) {
+    const alvoAgua = Math.min(diasPeriodo, Math.max(aguaDias - aguaAbaixo + Math.ceil(aguaAbaixo / 2), Math.round(diasPeriodo * 0.8)));
+    metas.push(`Bater a meta de água em pelo menos ${alvoAgua} dias.`);
+  }
+  const foraPlano = refAgg.reduce((s, r) => s + r.adaptou + r.pulou + r.comeuMal, 0);
+  if (foraPlano > 0) metas.push(`Manter no máximo ${Math.max(1, Math.floor((foraPlano / semanas) * 0.6))} refeições fora do plano por semana.`);
+  if (tConforme + tParcial + tNao > 0) metas.push(`Completar ${Math.min(6, Math.max(3, Math.ceil((tConforme + tParcial) / semanas) + 1))} treinos por semana.`);
+  metas.push(`Manter uma sequência de registros superior a ${Math.max(15, Math.ceil((maiorRun || paciente.streakMaximo || 7) / 5) * 5)} dias.`);
+
   // ─── Evolução física: medidas (primeira→última leitura), laudo/obs recentes, fotos ──
   const MEDIDAS_KEYS = ["gordura", "musculo", "cintura", "quadril", "braco", "coxa"] as const;
   const medidas: Record<string, { inicial: number; final: number; delta: number } | null> = {};
@@ -439,6 +526,10 @@ export async function gerarRelatorioMensal(
     insightsIA: null,
     focoRegras: focoRegras.slice(0, 3),
     focoIA: null,
+    chamaAtencao,
+    padroes,
+    metas: metas.slice(0, 4),
+    maiorSequenciaPeriodo: maiorRun,
   };
 
   relatorio.insightsRegras = gerarInsightsRegras(relatorio, primeiroNome(paciente.nome));
@@ -510,20 +601,27 @@ export async function gerarInsightsIA(r: RelatorioMensal): Promise<{ resumo: str
     finaisDeSemana: r.finaisDeSemana,
     peso: r.peso,
     dificuldades: r.dificuldades,
+    chamaAtencao: r.chamaAtencao,
+    padroes: r.padroes,
+    evolucao: r.evolucao,
+    maiorSequenciaPeriodo: r.maiorSequenciaPeriodo,
     mesAnterior: r.mesAnterior,
     conquistas: r.conquistas.length,
     motivosRefeicoes: r.motivosRefeicoes.slice(0, 20),
   };
 
   const prompt =
-    `Você é um(a) nutricionista experiente escrevendo a ficha de consulta de um paciente. ` +
-    `Use SOMENTE os dados fornecidos (nunca invente números nem fatos). Português, tom profissional e humano. ` +
+    `Você é um(a) nutricionista experiente escrevendo a ficha clínica de um paciente para consulta rápida. ` +
+    `Use SOMENTE os dados fornecidos (NUNCA invente números nem fatos; se um dado não existe, não cite). ` +
+    `Português, tom profissional, humano e específico — nada de frases genéricas. ` +
     `Produza DOIS blocos:\n` +
-    `1) "resumo": 4 a 6 frases curtas resumindo como foi o mês — adesão, alimentação, hidratação, treino, sono, humor, ` +
-    `consistência/sequência, comparação com o período anterior e padrões de comportamento. Seja específico com os números.\n` +
-    `2) "foco": 2 a 3 itens de plano de ação para a PRÓXIMA consulta, priorizando as maiores dificuldades ` +
-    `(ex.: revisar a refeição que mais falha, retomar treino, monitorar sono). Cada item é uma frase acionável e concreta.\n` +
-    `Responda APENAS JSON no formato {"resumo": ["..."], "foco": ["..."]}.\n\nDADOS:\n` +
+    `1) "resumo": um RESUMO INTELIGENTE do mês em 4 a 6 frases corridas e específicas, no espírito do exemplo ` +
+    `"apresentou boa consistência nos dias úteis, mas houve queda importante nos fins de semana; a alimentação ` +
+    `permaneceu estável enquanto os treinos reduziram; o humor caiu após dias com menos sono". Baseie-se nos números, ` +
+    `nos padrões (campo "padroes") e no que chama atenção (campo "chamaAtencao"), citando comportamentos concretos.\n` +
+    `2) "foco": 3 a 5 PRINCIPAIS PONTOS PARA A CONSULTA — assuntos que o nutricionista deveria abordar, ` +
+    `priorizando as maiores dificuldades. Cada item é uma frase curta e acionável.\n` +
+    `Responda APENAS JSON no formato {"resumo": ["frase 1", "frase 2", ...], "foco": ["...", "..."]}.\n\nDADOS:\n` +
     JSON.stringify(dados);
 
   try {
