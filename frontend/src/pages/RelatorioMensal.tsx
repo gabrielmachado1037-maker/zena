@@ -240,18 +240,26 @@ const BASE_CSS = `
 .rp-sumcell .dot{ width:8px; height:8px; border-radius:50%; flex:none; }
 `;
 
-/* CSS aplicado na TELA e na impressão nativa (caminho de sucesso: só imprime o Paged.js) */
+/* CSS de tela + impressão. Dois modos (data-print-mode no <body>, setado pelo export):
+   - "paged": o Paged.js já paginou tudo em .rp-print-root → o resto do app sai do
+     fluxo com display:none (NÃO visibility:hidden, que ocuparia espaço e geraria
+     páginas em branco junto com a saída paginada).
+   - "native": fallback sem Paged.js → imprime a árvore do relatório on-screen. */
 const SCREEN_CSS = `
 .rp-print-root{ position:absolute; left:-100000px; top:0; width:820px; }
 @media print{
   html,body{ background:#fff !important; }
-  body *{ visibility:hidden !important; }
-  .rp-print-root, .rp-print-root *{ visibility:visible !important; }
-  .no-print{ display:none !important; }
-  .rp-print-root{ position:static !important; left:0 !important; width:auto !important; }
   @page{ margin:0; }
-  .pagedjs_page{ margin:0 !important; box-shadow:none !important; }
   *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
+  .pagedjs_page{ margin:0 !important; box-shadow:none !important; }
+  .no-print{ display:none !important; }
+
+  body[data-print-mode="paged"] > *:not(.rp-print-root){ display:none !important; }
+  body[data-print-mode="paged"] .rp-print-root{ position:static !important; left:0 !important; top:0 !important; width:auto !important; }
+
+  body[data-print-mode="native"] *{ visibility:hidden !important; }
+  body[data-print-mode="native"] .rp-report, body[data-print-mode="native"] .rp-report *{ visibility:visible !important; }
+  body[data-print-mode="native"] .rp-report{ position:absolute !important; left:0 !important; top:0 !important; width:100% !important; }
 }
 `;
 
@@ -357,8 +365,8 @@ export default function RelatorioMensal() {
     const src = reportRef.current;
     const original = document.title;
     document.title = `Nexvel - Relatório - ${rel?.paciente.nome ?? "paciente"}`;
-    const restaurar = () => { document.title = original; };
-    if (!src) { window.print(); restaurar(); return; }
+    const restaurar = () => { document.title = original; delete document.body.dataset.printMode; };
+    if (!src) { document.body.dataset.printMode = "native"; window.print(); restaurar(); return; }
 
     setGerando(true);
     let root: HTMLDivElement | null = null;
@@ -380,6 +388,7 @@ export default function RelatorioMensal() {
       const onAfter = () => limpar();
       window.addEventListener("afterprint", onAfter);
       setGerando(false);
+      document.body.dataset.printMode = "paged";
       window.print();
       setTimeout(() => { if (root && document.body.contains(root)) limpar(); }, 120000);
     } catch (e) {
@@ -387,6 +396,7 @@ export default function RelatorioMensal() {
       if (root && document.body.contains(root)) root.remove();
       if (cssUrl) URL.revokeObjectURL(cssUrl);
       setGerando(false);
+      document.body.dataset.printMode = "native";
       window.print();
       restaurar();
     }

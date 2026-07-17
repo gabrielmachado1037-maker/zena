@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Plus, FileDown, Award, AlertTriangle, Sparkles, Bell, X, Loader2,
+  Plus, Award, AlertTriangle, Sparkles, Bell, X, Loader2,
   CalendarClock, Users, CheckCircle2, Flag, Play, Zap,
 } from "lucide-react";
 import { useFetch } from "../hooks/useFetch";
@@ -70,9 +70,6 @@ export default function Desafios() {
             <p className="text-body-sm text-nx-on-surface-variant mt-0.5">Engajamento e gamificação dos seus pacientes</p>
           </div>
           <div className="flex items-center gap-2 print:hidden">
-            <button onClick={() => window.print()} className="flex items-center gap-2 rounded-xl border border-nx-border px-4 py-2.5 text-body-sm text-nx-on-surface-variant hover:text-nx-on-surface transition-colors">
-              <FileDown size={16} /> Exportar PDF
-            </button>
             <button onClick={() => abrirCriar(null)} className="flex items-center gap-2 rounded-xl bg-nx-evo text-nx-on-evo px-4 py-2.5 text-body-sm font-semibold hover:bg-nx-evo-2 transition-colors">
               <Plus size={16} /> Novo Desafio
             </button>
@@ -158,15 +155,6 @@ export default function Desafios() {
                   <TemplateCard key={t.id} t={t} onCriar={() => abrirCriar(t)} />
                 ))}
               </div>
-            </Card>
-
-            {/* Seção 5: Relatório mensal */}
-            <Card className="p-5">
-              <h3 className="text-body-md font-semibold mb-1">Relatório Mensal</h3>
-              <p className="text-body-sm text-nx-on-surface-variant mb-4">Engajamento dos desafios em PDF.</p>
-              <button onClick={() => window.print()} className="w-full flex items-center justify-center gap-2 rounded-xl border border-nx-border py-3 text-body-sm text-nx-on-surface hover:bg-nx-surface-hover transition-colors">
-                <FileDown size={16} /> Exportar PDF
-              </button>
             </Card>
           </div>
         </div>
