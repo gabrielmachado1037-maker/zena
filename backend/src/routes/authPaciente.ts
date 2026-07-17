@@ -7,7 +7,7 @@ import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest, authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
-import { emailVerificacaoPaciente } from "../lib/email";
+import { emailVerificacaoPaciente, emailRecuperacaoSenhaPaciente } from "../lib/email";
 import { normalizarCodigo, ultimos4Telefone } from "../lib/convite";
 
 const registerSchema = z.object({
@@ -214,6 +214,47 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
       emailVerificado: false,
     },
   });
+});
+
+// POST /api/auth/paciente/esqueci-senha — envia link de redefinição (sempre 200, não revela se o e-mail existe).
+router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) => {
+  const email = String(req.body?.email ?? "").trim().toLowerCase();
+  if (!email) return res.status(400).json({ error: "Informe o e-mail." });
+
+  const pacienteUser = await prisma.pacienteUser.findUnique({
+    where: { email },
+    include: { paciente: { select: { nome: true } } },
+  });
+  // Sempre 200 — não vaza se o e-mail tem conta.
+  if (!pacienteUser) return res.json({ ok: true });
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60); // 1 hora
+  await prisma.tokenRedefinicaoPaciente.create({
+    data: { pacienteUserId: pacienteUser.id, token, expiresAt },
+  });
+  emailRecuperacaoSenhaPaciente(pacienteUser.email, token, pacienteUser.paciente.nome).catch(console.error);
+  res.json({ ok: true });
+});
+
+// POST /api/auth/paciente/redefinir-senha — troca a senha via token do e-mail.
+router.post("/redefinir-senha", async (req: Request, res: Response) => {
+  const token = String(req.body?.token ?? "");
+  const novaSenha = String(req.body?.novaSenha ?? "");
+  if (!token || !novaSenha) return res.status(400).json({ error: "Dados inválidos." });
+  if (novaSenha.length < 6) return res.status(400).json({ error: "A senha deve ter ao menos 6 caracteres." });
+
+  const registro = await prisma.tokenRedefinicaoPaciente.findUnique({ where: { token } });
+  if (!registro || registro.usado || registro.expiresAt < new Date()) {
+    return res.status(400).json({ error: "Link inválido ou expirado. Solicite um novo." });
+  }
+
+  const hash = await bcrypt.hash(novaSenha, 10);
+  await prisma.$transaction([
+    prisma.pacienteUser.update({ where: { id: registro.pacienteUserId }, data: { senha: hash } }),
+    prisma.tokenRedefinicaoPaciente.update({ where: { token }, data: { usado: true } }),
+  ]);
+  res.json({ ok: true });
 });
 
 // POST /api/auth/paciente/login

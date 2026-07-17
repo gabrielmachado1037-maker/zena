@@ -102,6 +102,25 @@ export async function emailRecuperacaoSenha(email: string, token: string, nome?:
   });
 }
 
+export async function emailRecuperacaoSenhaPaciente(email: string, token: string, nome?: string) {
+  const resend = getResend();
+  if (!resend) return;
+  const link = `${BASE_URL}/redefinir-senha-paciente?token=${token}`;
+  const saudacao = nome ? `Olá, ${nome.split(" ")[0]}!` : "Olá!";
+  await enviarSeguro(resend, {
+    from: FROM,
+    to: email,
+    subject: "Redefinição de senha — Nexvel",
+    html: base(
+      "Redefinir sua senha",
+      `<p>${saudacao} Recebemos uma solicitação para redefinir a senha do seu acesso ao app Nexvel.</p>
+       <p>Clique no botão abaixo para criar uma nova senha. O link é válido por <strong>1 hora</strong>.</p>
+       <a href="${link}" class="btn">Redefinir senha →</a>
+       <p style="margin-top:24px;font-size:14px;color:#999">Se você não solicitou isso, ignore este e-mail. Sua senha permanece a mesma.</p>`
+    ),
+  });
+}
+
 export async function emailVerificacao(email: string, token: string, nome?: string) {
   const resend = getResend();
   if (!resend) return;

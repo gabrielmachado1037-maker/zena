@@ -510,6 +510,16 @@ model TokenVerificacaoEmailPaciente {
   criadoEm       DateTime @default(now())
 }
 
+// Redefinição de senha do paciente ("esqueci a senha"). Espelha TokenRedefinicao (nutri).
+model TokenRedefinicaoPaciente {
+  id             String   @id @default(cuid())
+  pacienteUserId String
+  token          String   @unique
+  expiresAt      DateTime
+  usado          Boolean  @default(false)
+  criadoEm       DateTime @default(now())
+}
+
 model PushSubscriptionPaciente {
   id         String   @id @default(cuid())
   pacienteId String

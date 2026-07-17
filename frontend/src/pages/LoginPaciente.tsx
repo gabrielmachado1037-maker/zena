@@ -114,6 +114,14 @@ export default function LoginPaciente() {
               autoComplete={isLogin ? "current-password" : "new-password"}
             />
 
+            {isLogin && (
+              <div className="-mt-1 flex justify-end">
+                <Link to="/esqueci-senha-paciente" className="text-body-sm font-medium text-nx-evo transition-colors hover:text-nx-evo-2">
+                  Esqueci a senha
+                </Link>
+              </div>
+            )}
+
             {!isLogin && (
               <>
                 <div>
