@@ -5,6 +5,7 @@ import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
 import { NotificationEngine } from "../services/notificationEngine";
 import { uploadImagemChat, UploadError } from "../lib/supabase";
+import { parseMsgPaginacao, buscarPaginaMensagens } from "../lib/mensagensPaginacao";
 
 const router = Router();
 router.use(authMiddleware);
@@ -38,20 +39,24 @@ router.get("/conversas", async (req: AuthRequest, res: Response) => {
     include: { consultas: { orderBy: { data: "desc" }, take: 1 } },
   });
 
-  const msgs = await prisma.mensagemChat.findMany({
-    where: { nutricionistaId },
-    orderBy: { criadoEm: "asc" },
-  });
+  // Escala: em vez de carregar TODAS as mensagens do nutri, derivamos por paciente
+  // direto no banco — 1 linha por paciente (última mensagem) + contagem de não-lidas.
+  const ultimasMsgs = await prisma.$queryRaw<
+    Array<{ pacienteId: string; conteudo: string; criadoEm: Date }>
+  >`
+    SELECT DISTINCT ON ("pacienteId") "pacienteId", "conteudo", "criadoEm"
+    FROM "MensagemChat"
+    WHERE "nutricionistaId" = ${nutricionistaId}
+    ORDER BY "pacienteId", "criadoEm" DESC
+  `;
+  const ultima = new Map(ultimasMsgs.map((m) => [m.pacienteId, m]));
 
-  // Agrupa por paciente: última mensagem + contagem de não lidas (autor=paciente).
-  const ultima = new Map<string, (typeof msgs)[number]>();
-  const naoLidas = new Map<string, number>();
-  for (const m of msgs) {
-    ultima.set(m.pacienteId, m); // asc → sobrescreve com a mais recente
-    if (m.autor === "paciente" && !m.lida) {
-      naoLidas.set(m.pacienteId, (naoLidas.get(m.pacienteId) ?? 0) + 1);
-    }
-  }
+  const naoLidasGrp = await prisma.mensagemChat.groupBy({
+    by: ["pacienteId"],
+    where: { nutricionistaId, autor: "paciente", lida: false },
+    _count: { _all: true },
+  });
+  const naoLidas = new Map(naoLidasGrp.map((g) => [g.pacienteId, g._count._all]));
 
   const agora = new Date();
   const conversas = pacientes.map((p) => {
@@ -84,7 +89,9 @@ router.get("/conversas", async (req: AuthRequest, res: Response) => {
   res.json(conversas);
 });
 
-// GET /api/mensagens/thread/:pacienteId — mensagens da conversa (asc) + marca as do paciente como lidas.
+// GET /api/mensagens/thread/:pacienteId — página de mensagens (asc), mais recentes primeiro.
+// 1ª página (sem ?before): inclui contexto do paciente e marca as do paciente como lidas.
+// Páginas anteriores (?before=<cursor>): só as mensagens + cursor (nada de contexto/marcar).
 router.get("/thread/:pacienteId", async (req: AuthRequest, res: Response) => {
   const nutricionistaId = req.nutricionistaId as string;
   const pacienteId = req.params["pacienteId"] as string;
@@ -94,17 +101,25 @@ router.get("/thread/:pacienteId", async (req: AuthRequest, res: Response) => {
   });
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrada" });
 
+  const { limit, before } = parseMsgPaginacao(req.query as Record<string, unknown>);
+  const { pagina, hasMore, nextCursor } = await buscarPaginaMensagens(
+    { nutricionistaId, pacienteId }, limit, before,
+  );
+  const mensagens = pagina.map((m) => ({
+    id: m.id, autor: m.autor, conteudo: m.conteudo, anexoUrl: m.anexoUrl, criadoEm: m.criadoEm,
+  }));
+
+  // Página anterior (scroll pra cima): só o histórico, sem recomputar contexto/marcar lida.
+  if (before) {
+    return res.json({ mensagens, hasMore, nextCursor });
+  }
+
   const nutri = await prisma.nutricionista.findUnique({
     where: { id: nutricionistaId },
     select: { foto: true },
   });
 
-  const mensagens = await prisma.mensagemChat.findMany({
-    where: { nutricionistaId, pacienteId },
-    orderBy: { criadoEm: "asc" },
-  });
-
-  // Marca como lidas as mensagens que o paciente mandou.
+  // Marca como lidas as mensagens que o paciente mandou (só ao abrir a conversa).
   await prisma.mensagemChat.updateMany({
     where: { nutricionistaId, pacienteId, autor: "paciente", lida: false },
     data: { lida: true },
@@ -133,13 +148,9 @@ router.get("/thread/:pacienteId", async (req: AuthRequest, res: Response) => {
       online: paciente.ultimoCheckin ? mesmoDia(paciente.ultimoCheckin, agora) : false,
       score: Math.min(100, Math.round((checkins30 / 30) * 100)),
     },
-    mensagens: mensagens.map((m) => ({
-      id: m.id,
-      autor: m.autor,
-      conteudo: m.conteudo,
-      anexoUrl: m.anexoUrl,
-      criadoEm: m.criadoEm,
-    })),
+    mensagens,
+    hasMore,
+    nextCursor,
   });
 });
 

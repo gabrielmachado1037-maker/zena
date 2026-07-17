@@ -47,6 +47,8 @@ export interface Thread {
   nutriAvatarUrl: string | null;
   pacienteAvatarUrl: string | null;
   paciente: PacienteContexto | null;
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 interface ThreadResp {
@@ -54,6 +56,8 @@ interface ThreadResp {
   nutriAvatarUrl: string | null;
   paciente?: PacienteContexto | null;
   mensagens: { id: string; autor: Autor; conteudo: string; anexoUrl?: string | null; criadoEm: string }[];
+  hasMore?: boolean;
+  nextCursor?: string | null;
 }
 
 // Respostas rápidas (client-side) — botão "Rápidas".
@@ -72,7 +76,24 @@ export async function getConversas(): Promise<Conversa[]> {
   return data;
 }
 
-// Thread por id/nome do paciente (usada na Central de Conversas / chat).
+function mapMensagens(
+  msgs: ThreadResp["mensagens"],
+  nutriAvatarUrl: string | null,
+  pacienteAvatarUrl: string | null,
+  primeiroNome: string,
+): Mensagem[] {
+  return msgs.map((m) => ({
+    id: m.id,
+    autor: m.autor,
+    texto: m.conteudo,
+    hora: formatHora(m.criadoEm),
+    avatarUrl: m.autor === "nutri" ? nutriAvatarUrl : pacienteAvatarUrl,
+    anexoUrl: m.anexoUrl ?? null,
+    nome: m.autor === "paciente" ? primeiroNome : undefined,
+  }));
+}
+
+// 1ª página da thread (mensagens mais recentes) + contexto do paciente.
 export async function getThreadById(pacienteId: string, pacienteNome: string): Promise<Thread> {
   const { data } = await api.get<ThreadResp>(`/mensagens/thread/${pacienteId}`);
   const primeiroNome = pacienteNome.split(" ")[0];
@@ -80,15 +101,23 @@ export async function getThreadById(pacienteId: string, pacienteNome: string): P
     nutriAvatarUrl: data.nutriAvatarUrl,
     pacienteAvatarUrl: data.pacienteAvatarUrl,
     paciente: data.paciente ?? null,
-    mensagens: data.mensagens.map((m) => ({
-      id: m.id,
-      autor: m.autor,
-      texto: m.conteudo,
-      hora: formatHora(m.criadoEm),
-      avatarUrl: m.autor === "nutri" ? data.nutriAvatarUrl : data.pacienteAvatarUrl,
-      anexoUrl: m.anexoUrl ?? null,
-      nome: m.autor === "paciente" ? primeiroNome : undefined,
-    })),
+    mensagens: mapMensagens(data.mensagens, data.nutriAvatarUrl, data.pacienteAvatarUrl, primeiroNome),
+    hasMore: !!data.hasMore,
+    nextCursor: data.nextCursor ?? null,
+  };
+}
+
+// Página anterior (scroll pra cima): mensagens mais antigas que o cursor.
+export async function getMensagensAnteriores(
+  pacienteId: string,
+  before: string,
+  ctx: { nutriAvatarUrl: string | null; pacienteAvatarUrl: string | null; primeiroNome: string },
+): Promise<{ mensagens: Mensagem[]; hasMore: boolean; nextCursor: string | null }> {
+  const { data } = await api.get<ThreadResp>(`/mensagens/thread/${pacienteId}`, { params: { before } });
+  return {
+    mensagens: mapMensagens(data.mensagens, ctx.nutriAvatarUrl, ctx.pacienteAvatarUrl, ctx.primeiroNome),
+    hasMore: !!data.hasMore,
+    nextCursor: data.nextCursor ?? null,
   };
 }
 

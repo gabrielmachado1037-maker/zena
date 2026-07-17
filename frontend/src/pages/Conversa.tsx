@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronLeft, ExternalLink, Flame, Lightbulb } from "lucide-react";
+import { ChevronLeft, ExternalLink, Flame, Lightbulb, ChevronUp } from "lucide-react";
 import {
-  getThreadById, enviarMensagem, formatHora,
+  getThreadById, getMensagensAnteriores, enviarMensagem, formatHora,
   type Thread, type Mensagem, type Conversa as ConversaTipo,
 } from "../lib/mensagens";
 import { rascunho, intentLabel, type Intent } from "../lib/comunicacao";
@@ -20,13 +20,19 @@ export default function Conversa() {
   const [erro, setErro] = useState<string | null>(null);
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [carregandoAntes, setCarregandoAntes] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const ultimoIdRef = useRef<string | null>(null);
+  // Guarda a altura do scroll antes de um prepend, pra restaurar a posição depois (sem "pulo").
+  const prependRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!id) return;
     let vivo = true;
     setLoading(true);
     setErro(null);
+    ultimoIdRef.current = null;
     getThreadById(id, "")
       .then((t) => vivo && setThread(t))
       .catch(() => vivo && setErro("Não foi possível carregar a conversa."))
@@ -34,10 +40,44 @@ export default function Conversa() {
     return () => { vivo = false; };
   }, [id]);
 
-  // Rola pro fim quando a thread carrega/cresce.
+  // Rola pro fim só quando a ÚLTIMA mensagem muda (carga inicial ou nova mensagem) —
+  // nunca ao carregar anteriores (prepend não altera a última).
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "end" });
-  }, [thread?.mensagens.length]);
+    const msgs = thread?.mensagens;
+    if (!msgs || msgs.length === 0) return;
+    const ultimoId = msgs[msgs.length - 1]!.id;
+    if (ultimoId !== ultimoIdRef.current) {
+      ultimoIdRef.current = ultimoId;
+      endRef.current?.scrollIntoView({ block: "end" });
+    }
+  }, [thread?.mensagens]);
+
+  // Após um prepend, restaura a posição de leitura (mantém a mensagem que estava no topo).
+  useLayoutEffect(() => {
+    if (prependRef.current != null && scrollRef.current) {
+      scrollRef.current.scrollTop += scrollRef.current.scrollHeight - prependRef.current;
+      prependRef.current = null;
+    }
+  });
+
+  async function carregarAnteriores() {
+    if (!id || !thread?.nextCursor || carregandoAntes) return;
+    const cont = scrollRef.current;
+    prependRef.current = cont ? cont.scrollHeight : null;
+    setCarregandoAntes(true);
+    try {
+      const r = await getMensagensAnteriores(id, thread.nextCursor, {
+        nutriAvatarUrl: thread.nutriAvatarUrl,
+        pacienteAvatarUrl: thread.pacienteAvatarUrl,
+        primeiroNome: (thread.paciente?.nome ?? "").split(" ")[0],
+      });
+      setThread((t) => (t ? { ...t, mensagens: [...r.mensagens, ...t.mensagens], hasMore: r.hasMore, nextCursor: r.nextCursor } : t));
+    } catch {
+      prependRef.current = null;
+    } finally {
+      setCarregandoAntes(false);
+    }
+  }
 
   const pac = thread?.paciente ?? null;
 
@@ -80,9 +120,9 @@ export default function Conversa() {
   const nome = pac?.nome ?? "Paciente";
 
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-4rem)] lg:min-h-screen bg-nx-bg-lowest">
+    <div className="flex flex-col h-[calc(100dvh-4rem)] lg:h-screen bg-nx-bg-lowest">
       {/* Cabeçalho de contexto */}
-      <header className="sticky top-0 z-20 bg-nx-surface/95 backdrop-blur border-b border-nx-border">
+      <header className="shrink-0 z-20 bg-nx-surface/95 backdrop-blur border-b border-nx-border">
         <div className="mx-auto max-w-3xl px-3 py-2.5">
           <div className="flex items-center gap-3">
             <button onClick={() => navigate("/app/mensagens")} aria-label="Voltar" className="p-1 -ml-1 text-nx-on-surface-variant hover:text-nx-on-surface">
@@ -119,8 +159,8 @@ export default function Conversa() {
       </header>
 
       {/* Thread */}
-      <div className="flex-1 flex flex-col">
-        <div className="mx-auto w-full max-w-3xl flex-1 flex flex-col gap-4 px-4 py-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-3xl min-h-full flex flex-col gap-4 px-4 py-4">
           {loading ? (
             <div className="space-y-3">
               {[...Array(4)].map((_, i) => <div key={i} className={`h-14 w-2/3 animate-pulse rounded-2xl bg-nx-container/60 ${i % 2 ? "self-end" : ""}`} />)}
@@ -128,7 +168,20 @@ export default function Conversa() {
           ) : erro ? (
             <div className="m-auto text-body-md text-nx-danger">{erro}</div>
           ) : thread && thread.mensagens.length > 0 ? (
-            thread.mensagens.map((m) => <MessageBubble key={m.id} msg={m} />)
+            <>
+              {thread.hasMore && (
+                <div className="flex justify-center">
+                  <button
+                    onClick={carregarAnteriores}
+                    disabled={carregandoAntes}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-nx-border bg-nx-surface px-3.5 py-1.5 text-label-md text-nx-on-surface-variant hover:text-nx-on-surface hover:bg-nx-surface-hover transition-colors disabled:opacity-60"
+                  >
+                    <ChevronUp size={14} /> {carregandoAntes ? "Carregando…" : "Carregar anteriores"}
+                  </button>
+                </div>
+              )}
+              {thread.mensagens.map((m) => <MessageBubble key={m.id} msg={m} />)}
+            </>
           ) : (
             <div className="m-auto text-center text-nx-on-surface-variant">
               <p className="text-body-md">Nenhuma mensagem ainda.</p>
@@ -140,7 +193,7 @@ export default function Conversa() {
       </div>
 
       {/* Composer + sugestão discreta */}
-      <div className="sticky bottom-0 z-20 bg-nx-surface border-t border-nx-border">
+      <div className="shrink-0 z-20 bg-nx-surface border-t border-nx-border">
         <div className="mx-auto max-w-3xl">
           {sugestao && (
             <div className="px-4 pt-2">

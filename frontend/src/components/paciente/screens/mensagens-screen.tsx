@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ChevronLeft, RotateCw, Send, Stethoscope } from "lucide-react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { ChevronLeft, ChevronUp, RotateCw, Send, Stethoscope } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
-  getMensagensNutri, enviarMensagemNutri, formatHora, rotuloDia,
+  getMensagensNutri, getMensagensNutriAnteriores, enviarMensagemNutri, formatHora, rotuloDia,
   type MensagemNutri,
 } from "@/lib/mensagens-paciente"
 import type { NavigateFn } from "../types"
@@ -31,18 +31,27 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const [erro, setErro] = useState(false)
   const [texto, setTexto] = useState("")
   const [enviando, setEnviando] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  const [cursor, setCursor] = useState<string | null>(null)
+  const [carregandoAntes, setCarregandoAntes] = useState(false)
 
   const fimRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const ultimoIdRef = useRef<string | null>(null)
+  const prependRef = useRef<number | null>(null)
 
   const carregar = useCallback(async () => {
     setLoading(true)
     setErro(false)
+    ultimoIdRef.current = null
     try {
       const t = await getMensagensNutri()
       setMsgs(t.mensagens)
       setNutriNome(t.nutriNome)
       setNutriAvatar(t.nutriAvatarUrl)
+      setHasMore(t.hasMore)
+      setCursor(t.nextCursor)
     } catch {
       setErro(true)
     } finally {
@@ -52,9 +61,41 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
 
   useEffect(() => { carregar() }, [carregar])
 
+  // Rola pro fim só quando a ÚLTIMA mensagem muda (carga inicial / nova mensagem) —
+  // nunca ao carregar anteriores (prepend não altera a última).
   useEffect(() => {
-    fimRef.current?.scrollIntoView({ behavior: loading ? "auto" : "smooth" })
-  }, [msgs.length, loading])
+    if (msgs.length === 0) return
+    const ultimoId = msgs[msgs.length - 1]!.id
+    if (ultimoId !== ultimoIdRef.current) {
+      ultimoIdRef.current = ultimoId
+      fimRef.current?.scrollIntoView({ behavior: loading ? "auto" : "smooth" })
+    }
+  }, [msgs, loading])
+
+  // Após um prepend, restaura a posição de leitura (sem "pulo").
+  useLayoutEffect(() => {
+    if (prependRef.current != null && scrollRef.current) {
+      scrollRef.current.scrollTop += scrollRef.current.scrollHeight - prependRef.current
+      prependRef.current = null
+    }
+  })
+
+  const carregarAnteriores = useCallback(async () => {
+    if (!cursor || carregandoAntes) return
+    const cont = scrollRef.current
+    prependRef.current = cont ? cont.scrollHeight : null
+    setCarregandoAntes(true)
+    try {
+      const r = await getMensagensNutriAnteriores(cursor)
+      setMsgs((prev) => [...r.mensagens, ...prev])
+      setHasMore(r.hasMore)
+      setCursor(r.nextCursor)
+    } catch {
+      prependRef.current = null
+    } finally {
+      setCarregandoAntes(false)
+    }
+  }, [cursor, carregandoAntes])
 
   // Agrupa por dia pra separadores da timeline.
   const grupos = useMemo(() => {
@@ -132,7 +173,7 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
       </header>
 
       {/* Timeline de mensagens */}
-      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 py-5">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto hide-scrollbar px-4 py-5">
         {loading ? (
           <p className="mt-8 text-center text-body-sm text-nx-on-surface-variant">Carregando conversa…</p>
         ) : erro ? (
@@ -162,6 +203,18 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           </div>
         ) : (
           <div className="space-y-5">
+            {hasMore && (
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={carregarAnteriores}
+                  disabled={carregandoAntes}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-nx-border bg-nx-surface px-3.5 py-1.5 text-label-md text-nx-on-surface-variant transition-colors hover:bg-nx-container-high disabled:opacity-60"
+                >
+                  <ChevronUp className="size-3.5" /> {carregandoAntes ? "Carregando…" : "Carregar anteriores"}
+                </button>
+              </div>
+            )}
             {grupos.map((g) => (
               <div key={g.dia} className="space-y-2.5">
                 <div className="flex justify-center">

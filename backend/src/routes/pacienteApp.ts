@@ -7,6 +7,7 @@ import { enviarNotificacao } from "./notificacoes";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { validateBody } from "../middleware/validate";
+import { parseMsgPaginacao, buscarPaginaMensagens } from "../lib/mensagensPaginacao";
 
 const router = Router();
 router.use(authPacienteMiddleware);
@@ -506,18 +507,25 @@ router.get("/mensagens", async (req: PacienteAuthRequest, res: Response) => {
   const pacienteId = req.pacienteId!;
   const nutricionistaId = req.nutricionistaId!;
 
-  const [nutri, mensagens] = await Promise.all([
-    prisma.nutricionista.findUnique({
-      where: { id: nutricionistaId },
-      select: { nome: true, foto: true },
-    }),
-    prisma.mensagemChat.findMany({
-      where: { nutricionistaId, pacienteId },
-      orderBy: { criadoEm: "asc" },
-    }),
-  ]);
+  const { limit, before } = parseMsgPaginacao(req.query as Record<string, unknown>);
+  const { pagina, hasMore, nextCursor } = await buscarPaginaMensagens(
+    { nutricionistaId, pacienteId }, limit, before,
+  );
+  const mensagens = pagina.map((m) => ({
+    id: m.id, autor: m.autor, conteudo: m.conteudo, anexoUrl: m.anexoUrl, criadoEm: m.criadoEm,
+  }));
 
-  // Marca como lidas as mensagens que a nutri mandou (o paciente acabou de abrir).
+  // Página anterior (scroll pra cima): só o histórico, sem dados da nutri/marcar lida.
+  if (before) {
+    return res.json({ mensagens, hasMore, nextCursor });
+  }
+
+  const nutri = await prisma.nutricionista.findUnique({
+    where: { id: nutricionistaId },
+    select: { nome: true, foto: true },
+  });
+
+  // Marca como lidas as mensagens que a nutri mandou (só ao abrir a conversa).
   await prisma.mensagemChat.updateMany({
     where: { nutricionistaId, pacienteId, autor: "nutri", lida: false },
     data: { lida: true },
@@ -526,13 +534,9 @@ router.get("/mensagens", async (req: PacienteAuthRequest, res: Response) => {
   res.json({
     nutriNome: nutri?.nome ?? "Sua nutricionista",
     nutriAvatarUrl: nutri?.foto ?? null,
-    mensagens: mensagens.map((m) => ({
-      id: m.id,
-      autor: m.autor,
-      conteudo: m.conteudo,
-      anexoUrl: m.anexoUrl,
-      criadoEm: m.criadoEm,
-    })),
+    mensagens,
+    hasMore,
+    nextCursor,
   });
 });
 

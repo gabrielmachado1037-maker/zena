@@ -18,12 +18,16 @@ export interface ThreadNutri {
   nutriNome: string;
   nutriAvatarUrl: string | null;
   mensagens: MensagemNutri[];
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 interface ThreadResp {
   nutriNome: string;
   nutriAvatarUrl: string | null;
   mensagens: { id: string; autor: Autor; conteudo: string; anexoUrl?: string | null; criadoEm: string }[];
+  hasMore?: boolean;
+  nextCursor?: string | null;
 }
 
 export function formatHora(iso: string | Date): string {
@@ -46,19 +50,38 @@ export function rotuloDia(iso: string): string {
 
 /* ── API ── */
 
+function mapMensagens(msgs: ThreadResp["mensagens"]): MensagemNutri[] {
+  return msgs.map((m) => ({
+    id: m.id,
+    autor: m.autor,
+    texto: m.conteudo,
+    hora: formatHora(m.criadoEm),
+    anexoUrl: m.anexoUrl ?? null,
+    criadoEm: m.criadoEm,
+  }));
+}
+
+// 1ª página da conversa (mensagens mais recentes) + dados da nutri.
 export async function getMensagensNutri(): Promise<ThreadNutri> {
   const { data } = await apiPaciente.get<ThreadResp>("/paciente-app/mensagens");
   return {
     nutriNome: data.nutriNome,
     nutriAvatarUrl: data.nutriAvatarUrl,
-    mensagens: data.mensagens.map((m) => ({
-      id: m.id,
-      autor: m.autor,
-      texto: m.conteudo,
-      hora: formatHora(m.criadoEm),
-      anexoUrl: m.anexoUrl ?? null,
-      criadoEm: m.criadoEm,
-    })),
+    mensagens: mapMensagens(data.mensagens),
+    hasMore: !!data.hasMore,
+    nextCursor: data.nextCursor ?? null,
+  };
+}
+
+// Página anterior (scroll pra cima): mensagens mais antigas que o cursor.
+export async function getMensagensNutriAnteriores(
+  before: string,
+): Promise<{ mensagens: MensagemNutri[]; hasMore: boolean; nextCursor: string | null }> {
+  const { data } = await apiPaciente.get<ThreadResp>("/paciente-app/mensagens", { params: { before } });
+  return {
+    mensagens: mapMensagens(data.mensagens),
+    hasMore: !!data.hasMore,
+    nextCursor: data.nextCursor ?? null,
   };
 }
 
