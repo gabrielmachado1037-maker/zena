@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, SlidersHorizontal, Trophy, Send, Check, ArrowRight, Sparkles, type LucideIcon } from "lucide-react";
+import { Users, SlidersHorizontal, Trophy, Send, Check, ArrowRight, Sparkles, ChevronDown, type LucideIcon } from "lucide-react";
 import api from "../lib/api";
 import { CardNx, ButtonNx, ProgressBarNx, LevelUpOverlay } from "./ui-nx";
 
@@ -26,6 +26,17 @@ export default function NutriOnboarding() {
   const [carregado, setCarregado] = useState(false);
   const [fechado, setFechado] = useState(false);
   const [celebrando, setCelebrando] = useState(false);
+  const [colapsado, setColapsado] = useState(() => {
+    try { return localStorage.getItem("nx-onb-colapsado") === "1"; } catch { return false; }
+  });
+
+  function alternarColapso() {
+    setColapsado((c) => {
+      const n = !c;
+      try { localStorage.setItem("nx-onb-colapsado", n ? "1" : "0"); } catch { /* ignore */ }
+      return n;
+    });
+  }
 
   const carregar = useCallback(() => {
     api.get<OnboardingResp>("/onboarding")
@@ -98,57 +109,71 @@ export default function NutriOnboarding() {
   ];
   const pct = Math.round((data.concluidos / data.total) * 100);
 
+  const proxima = etapas.find((e) => !data.passos[e.key]);
+
   return (
     <>
-      <div className="mx-auto max-w-6xl px-4 pt-6 md:px-6">
-        <CardNx className="p-5 sm:p-6">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-nx-sm bg-nx-evo/12 text-nx-evo">
-              <Sparkles className="size-5" />
+      <div className="mx-auto max-w-6xl px-4 pt-4 md:px-6">
+        <CardNx className="p-3.5 sm:p-4">
+          {/* Cabeçalho compacto — clicável pra recolher/expandir */}
+          <button
+            type="button"
+            onClick={alternarColapso}
+            aria-expanded={!colapsado}
+            className="flex w-full items-center gap-3 text-left"
+          >
+            <span className="grid size-8 shrink-0 place-items-center rounded-nx-sm bg-nx-evo/12 text-nx-evo">
+              <Sparkles className="size-4" />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="text-headline-md text-nx-on-surface">Configure sua clínica</h2>
-              <p className="mt-0.5 text-body-sm text-nx-on-surface-variant">
-                Conclua estes passos para começar a acompanhar seus pacientes.
+              <h2 className="truncate text-body-md font-bold text-nx-on-surface">Configure sua clínica</h2>
+              <p className="text-label-sm text-nx-on-surface-variant">
+                {colapsado && proxima ? `Próximo: ${proxima.titulo}` : `${data.concluidos} de ${data.total} etapas concluídas`}
               </p>
             </div>
-            <span className="shrink-0 rounded-full bg-nx-container-high px-2.5 py-1 text-label-sm font-bold tabular-nums text-nx-on-surface">
+            <span className="shrink-0 rounded-full bg-nx-container-high px-2 py-0.5 text-label-sm font-bold tabular-nums text-nx-on-surface">
               {data.concluidos}/{data.total}
             </span>
-          </div>
+            <ChevronDown className={`size-4 shrink-0 text-nx-on-surface-variant transition-transform ${colapsado ? "" : "rotate-180"}`} />
+          </button>
 
-          <div className="mt-4">
+          <div className="mt-3">
             <ProgressBarNx value={pct} tone="evo" />
-            <p className="mt-1.5 text-label-sm text-nx-on-surface-variant">{data.concluidos} de {data.total} etapas concluídas</p>
           </div>
 
-          <ul className="mt-5 space-y-2.5">
-            {etapas.map((e, i) => {
-              const done = data.passos[e.key];
-              return (
-                <li key={e.key} className={`flex flex-col gap-3 rounded-nx-md border p-3.5 transition-colors sm:flex-row sm:items-center sm:gap-3.5 ${done ? "border-nx-evo/30 bg-nx-evo/[0.06]" : "border-nx-border bg-nx-container/40"}`}>
-                  <div className="flex min-w-0 flex-1 items-start gap-3.5">
-                    <span className={`grid size-9 shrink-0 place-items-center rounded-full ${done ? "bg-nx-evo text-nx-on-evo" : "bg-nx-container-high text-nx-on-surface-variant"}`}>
-                      {done ? <Check className="size-5" /> : <e.icon className="size-5" />}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-body-md font-semibold ${done ? "text-nx-on-surface line-through decoration-nx-on-surface-variant/50" : "text-nx-on-surface"}`}>
-                        <span className="mr-1.5 text-nx-on-surface-variant">{i + 1}.</span>{e.titulo}
-                      </p>
-                      {!done && <p className="mt-0.5 text-body-sm text-nx-on-surface-variant">{e.desc}</p>}
-                    </div>
-                  </div>
-                  {done ? (
-                    <span className="shrink-0 pl-[3.125rem] text-label-sm font-semibold text-nx-evo sm:self-center sm:pl-0">Concluído</span>
-                  ) : (
-                    <ButtonNx variant="surface" size="sm" onClick={e.acao} className="w-full shrink-0 gap-1.5 sm:w-auto sm:self-center">
-                      {e.cta} <ArrowRight className="size-4" />
-                    </ButtonNx>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+          {/* Etapas — linhas compactas, sem descrições longas (economiza altura) */}
+          {!colapsado && (
+            <ul className="mt-3 space-y-1.5">
+              {etapas.map((e, i) => {
+                const done = data.passos[e.key];
+                const IconeEtapa = (
+                  <span className={`grid size-7 shrink-0 place-items-center rounded-full ${done ? "bg-nx-evo text-nx-on-evo" : "bg-nx-container-high text-nx-on-surface-variant"}`}>
+                    {done ? <Check className="size-4" /> : <e.icon className="size-4" />}
+                  </span>
+                );
+                const Titulo = (
+                  <p className={`min-w-0 flex-1 truncate text-body-sm font-semibold ${done ? "text-nx-on-surface-variant line-through" : "text-nx-on-surface"}`}>
+                    <span className="mr-1 text-nx-on-surface-variant">{i + 1}.</span>{e.titulo}
+                  </p>
+                );
+                return (
+                  <li key={e.key} className={`rounded-nx-md border transition-colors ${done ? "border-nx-evo/30 bg-nx-evo/[0.06]" : "border-nx-border bg-nx-container/40 hover:bg-nx-container/70"}`}>
+                    {done ? (
+                      <div className="flex items-center gap-2.5 p-2">
+                        {IconeEtapa}{Titulo}
+                        <span className="shrink-0 text-label-sm font-semibold text-nx-evo">Concluído</span>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={e.acao} aria-label={e.cta} className="flex w-full items-center gap-2.5 p-2 text-left">
+                        {IconeEtapa}{Titulo}
+                        <ArrowRight className="size-4 shrink-0 text-nx-on-surface-variant" />
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </CardNx>
       </div>
 
