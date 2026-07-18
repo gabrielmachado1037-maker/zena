@@ -92,7 +92,7 @@ export default function NutriLanding() {
       </header>
 
       <main>
-        <Hero onCadastro={irCadastro} onDemo={() => irSecao("recursos")} />
+        <Hero onCadastro={irCadastro} onEntrar={() => navigate("/login")} />
         <TrustBar />
         <Problema />
         <ComoFunciona />
@@ -141,11 +141,11 @@ function GreenGlow({ className = "" }: { className?: string }) {
 }
 
 /* ─────────────────────────── Hero ─────────────────────────── */
-function Hero({ onCadastro, onDemo }: { onCadastro: () => void; onDemo: () => void }) {
+function Hero({ onCadastro, onEntrar }: { onCadastro: () => void; onEntrar: () => void }) {
   return (
     <div className="relative overflow-hidden border-b border-white/[0.05]">
       <GreenGlow className="left-1/2 top-[-140px] h-[560px] w-[900px] -translate-x-1/2" />
-      <div className="mx-auto grid max-w-[1200px] items-center gap-14 px-5 pb-14 pt-12 lg:grid-cols-[1fr_1.1fr] lg:gap-10 lg:px-8 lg:pb-20 lg:pt-16">
+      <div className="mx-auto grid max-w-[1200px] items-center gap-14 px-5 pb-14 pt-12 lg:grid-cols-[1fr_1.12fr] lg:gap-8 lg:px-8 lg:pb-24 lg:pt-16">
         {/* copy */}
         <Reveal className="max-w-xl">
           <span className="inline-flex items-center gap-2 rounded-full border border-nx-evo/25 bg-nx-evo/[0.07] px-3 py-1 text-label-md font-semibold text-nx-evo">
@@ -163,12 +163,12 @@ function Hero({ onCadastro, onDemo }: { onCadastro: () => void; onDemo: () => vo
             <PrimaryBtn onClick={onCadastro} className="h-14 w-full px-8 text-body-lg sm:w-auto">
               Começar gratuitamente <ArrowRight className="size-5" />
             </PrimaryBtn>
-            <button onClick={onDemo}
+            <button onClick={onEntrar}
               className="inline-flex h-14 w-full items-center justify-center rounded-xl border border-white/12 bg-white/[0.02] px-7 text-body-lg font-semibold text-white transition-colors hover:border-white/25 hover:bg-white/[0.05] active:scale-[0.98] sm:w-auto">
-              Ver demonstração
+              Entrar
             </button>
           </div>
-          <div className="mt-5 flex items-center gap-2 text-body-sm text-[#8b8b93]">
+          <div className="mt-5 flex items-center gap-2 text-body-sm">
             <div className="flex gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => <Star key={i} className="size-4 text-nx-gold" fill="#F8C84B" strokeWidth={0} />)}
             </div>
@@ -176,10 +176,10 @@ function Hero({ onCadastro, onDemo }: { onCadastro: () => void; onDemo: () => vo
           </div>
         </Reveal>
 
-        {/* visual: dashboard + telefone */}
-        <Reveal delay={0.12} className="relative">
-          <DashboardPreview />
-          <div className="absolute -bottom-8 -right-2 hidden w-[210px] lg:block xl:w-[230px]">
+        {/* visual: laptop (dashboard) + telefone ao lado */}
+        <Reveal delay={0.12} className="relative mx-auto w-full max-w-[560px] lg:mr-0">
+          <Laptop><DashboardPreview /></Laptop>
+          <div className="absolute -bottom-6 -right-1 w-[150px] sm:-right-4 sm:w-[188px] lg:-bottom-10 lg:w-[196px]">
             <PhoneHero />
           </div>
         </Reveal>
@@ -188,12 +188,29 @@ function Hero({ onCadastro, onDemo }: { onCadastro: () => void; onDemo: () => vo
   );
 }
 
-/* Telefone do hero — app do paciente (Liga + missões). */
+/* Moldura de laptop (tela + base) que abraça o dashboard. */
+function Laptop({ children }: { children: ReactNode }) {
+  return (
+    <div className="relative">
+      <div className="pointer-events-none absolute -inset-8 -z-10"
+        style={{ background: "radial-gradient(58% 46% at 55% 12%, rgba(124,255,91,0.18), transparent 72%)" }} />
+      {/* tela */}
+      <div className="rounded-[16px] border border-white/[0.1] bg-[#0B0F0C] p-2 shadow-[0_30px_70px_-25px_rgba(0,0,0,0.85)]">
+        {children}
+      </div>
+      {/* base / dobradiça */}
+      <div className="mx-auto h-2.5 w-[112%] max-w-none -translate-x-[5.3%] rounded-b-[10px] border-x border-b border-white/[0.08] bg-gradient-to-b from-[#141814] to-[#0A0D0A]" />
+      <div className="mx-auto h-1 w-[24%] rounded-b-lg bg-[#0A0D0A]" />
+    </div>
+  );
+}
+
+/* Telefone do hero — app do paciente (Liga + medições), fiel à tela real. */
 function PhoneFrame({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`overflow-hidden rounded-[26px] border border-white/[0.12] bg-[#0B0F0C] p-1.5 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.7)] ${className}`}>
+    <div className={`overflow-hidden rounded-[26px] border border-white/[0.14] bg-[#0B0F0C] p-1.5 shadow-[0_24px_55px_-12px_rgba(0,0,0,0.8)] ${className}`}>
       <div className="overflow-hidden rounded-[20px] bg-[#0A0D0A]">
-        <div className="mx-auto mt-1.5 h-1 w-14 rounded-full bg-white/15" />
+        <div className="mx-auto mt-1.5 h-1 w-12 rounded-full bg-white/15" />
         {children}
       </div>
     </div>
@@ -204,36 +221,36 @@ function PhoneHero() {
   return (
     <PhoneFrame>
       <div className="space-y-2.5 p-3">
-        <div className="flex items-center justify-between">
-          <p className="text-[12px] font-bold text-white">Olá, Ana! 👋</p>
-          <Flame className="size-4 text-nx-streak" />
+        <div>
+          <p className="text-[12px] font-bold text-white">Olá, Ana! <span className="text-nx-gold">★</span></p>
+          <p className="text-[8px] text-[#8b8b93]">Continue de onde parou</p>
         </div>
         {/* Liga Ouro */}
-        <div className="rounded-xl border border-nx-gold/25 bg-gradient-to-b from-nx-gold/[0.12] to-transparent p-2.5">
+        <div className="rounded-xl border border-nx-gold/25 bg-gradient-to-b from-nx-gold/[0.14] to-transparent p-2.5">
           <div className="flex items-center gap-2">
             <span className="grid size-8 place-items-center rounded-lg bg-nx-gold/20"><Trophy className="size-4 text-nx-gold" /></span>
             <div className="leading-tight">
               <p className="text-[11px] font-bold text-white">Liga Ouro</p>
-              <p className="text-[8.5px] text-[#8b8b93]">2.460 XP</p>
+              <p className="text-[8.5px] text-[#8b8b93]">3º no ranking</p>
             </div>
-            <span className="ml-auto text-[8.5px] font-semibold text-nx-gold">#3</span>
+            <span className="ml-auto text-[11px] font-extrabold tabular-nums text-nx-gold">2.460 <span className="text-[7.5px] font-semibold">XP</span></span>
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
             <div className="h-full w-[72%] rounded-full bg-nx-gold" />
           </div>
         </div>
-        {/* missões */}
-        <p className="pt-0.5 text-[9px] font-bold uppercase tracking-wide text-[#8b8b93]">Missões de hoje</p>
+        {/* medições de hoje */}
+        <p className="pt-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#8b8b93]">Medições de hoje</p>
         {[
           { icon: Utensils, t: "Registrar café da manhã", done: true },
           { icon: Droplets, t: "Beber 2L de água", done: true },
           { icon: Dumbbell, t: "Registrar treino", done: false },
         ].map((m) => (
           <div key={m.t} className={`flex items-center gap-2 rounded-lg border p-2 ${m.done ? "border-nx-evo/25 bg-nx-evo/[0.06]" : "border-white/[0.07] bg-white/[0.02]"}`}>
-            <span className={`grid size-6 place-items-center rounded-md ${m.done ? "bg-nx-evo text-nx-on-evo" : "bg-white/[0.06] text-[#8b8b93]"}`}>
-              {m.done ? <Check className="size-3.5" /> : <m.icon className="size-3.5" />}
+            <span className={`grid size-5 place-items-center rounded-md ${m.done ? "bg-nx-evo text-nx-on-evo" : "bg-white/[0.06] text-[#8b8b93]"}`}>
+              {m.done ? <Check className="size-3" /> : <m.icon className="size-3" />}
             </span>
-            <span className={`text-[9.5px] font-medium ${m.done ? "text-[#8b8b93] line-through" : "text-white"}`}>{m.t}</span>
+            <span className={`text-[9px] font-medium ${m.done ? "text-[#8b8b93] line-through" : "text-white"}`}>{m.t}</span>
             {!m.done && <span className="ml-auto text-[8px] font-bold text-nx-evo">+2 XP</span>}
           </div>
         ))}
@@ -279,37 +296,33 @@ function Problema() {
   ];
   return (
     <div className="relative overflow-hidden border-b border-white/[0.05] bg-[#0A0D0A]">
-      <GreenGlow className="left-[-120px] top-1/2 h-[420px] w-[520px] -translate-y-1/2 opacity-60" />
+      <GreenGlow className="left-[-160px] top-1/2 h-[440px] w-[560px] -translate-y-1/2 opacity-50" />
       <Section>
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-          <Reveal>
-            <h2 className="text-[28px] font-extrabold leading-tight tracking-tight sm:text-[34px]">
-              Você monta o plano perfeito.{" "}
-              <span className="text-nx-evo">O paciente desaparece depois da consulta.</span>
-            </h2>
-            <div className="mt-8 space-y-3">
-              {cards.map((c) => (
-                <div key={c} className="flex items-start gap-3 rounded-2xl border border-white/[0.06] bg-[#0E120E] p-4">
-                  <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-nx-evo/10">
-                    <X className="size-4 text-nx-evo/80" strokeWidth={2.5} />
-                  </span>
-                  <p className="text-body-md leading-relaxed text-[#B4B4BB]">{c}</p>
-                </div>
-              ))}
-            </div>
-            <p className="mt-7 text-body-lg font-bold text-white">
-              Menor adesão. Menores resultados. <span className="text-nx-evo">Mais cancelamentos.</span>
-            </p>
-          </Reveal>
+        <Reveal className="mx-auto max-w-3xl text-center">
+          <h2 className="text-[28px] font-extrabold leading-tight tracking-tight text-balance sm:text-[36px]">
+            Você monta o plano perfeito.{" "}
+            <span className="text-nx-evo">O paciente desaparece depois da consulta.</span>
+          </h2>
+        </Reveal>
 
-          {/* dashboard escurecido (mesma identidade) */}
-          <Reveal delay={0.1} className="relative">
-            <div className="pointer-events-none opacity-[0.5] grayscale-[0.15]">
-              <DashboardPreview />
-            </div>
-            <div className="pointer-events-none absolute inset-0 rounded-[18px] bg-gradient-to-t from-[#0A0D0A] via-transparent to-transparent" />
-          </Reveal>
-        </div>
+        <Reveal delay={0.05}>
+          <div className="mx-auto mt-12 grid max-w-4xl gap-4 sm:grid-cols-2">
+            {cards.map((c) => (
+              <div key={c} className="flex items-start gap-3.5 rounded-2xl border border-white/[0.06] bg-[#0E120E] p-5">
+                <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-nx-evo/10">
+                  <X className="size-4 text-nx-evo/80" strokeWidth={2.5} />
+                </span>
+                <p className="text-body-md leading-relaxed text-[#B4B4BB]">{c}</p>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+
+        <Reveal delay={0.1}>
+          <p className="mx-auto mt-10 max-w-xl text-center text-body-lg font-bold text-white sm:text-[22px]">
+            Menor adesão. Menores resultados. <span className="text-nx-evo">Mais cancelamentos.</span>
+          </p>
+        </Reveal>
       </Section>
     </div>
   );
