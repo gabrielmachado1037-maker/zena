@@ -61,21 +61,21 @@ export default function NutriLanding() {
             ))}
           </nav>
           {/* ações desktop */}
-          <div className="hidden items-center gap-4 lg:flex">
-            <button onClick={() => navigate("/login-paciente")}
-              className="text-body-sm font-medium text-[#A1A1AA] transition-colors hover:text-white">
-              Sou paciente
-            </button>
+          <div className="hidden items-center gap-3 lg:flex">
             <button onClick={() => navigate("/login")}
               className="text-body-sm font-medium text-[#A1A1AA] transition-colors hover:text-white">
               Entrar
             </button>
+            <button onClick={() => navigate("/login-paciente")}
+              className="inline-flex items-center rounded-full border border-white/15 bg-white/[0.03] px-4 py-1.5 text-body-sm font-semibold text-white transition-colors hover:border-nx-evo/50 hover:text-nx-evo">
+              Sou paciente
+            </button>
             <PrimaryBtn onClick={irCadastro} className="h-10 px-5 text-body-sm">Comece grátis</PrimaryBtn>
           </div>
-          {/* ações mobile: "Sou paciente" sempre visível + menu */}
-          <div className="flex items-center gap-1 lg:hidden">
+          {/* ações mobile: "Sou paciente" (pílula) sempre visível + menu */}
+          <div className="flex items-center gap-2 lg:hidden">
             <button onClick={() => navigate("/login-paciente")}
-              className="rounded-full px-3 py-1.5 text-body-sm font-medium text-[#A1A1AA] transition-colors hover:text-white">
+              className="inline-flex items-center rounded-full border border-white/15 bg-white/[0.03] px-3.5 py-1.5 text-body-sm font-semibold text-white transition-colors hover:border-nx-evo/50 hover:text-nx-evo active:scale-[0.98]">
               Sou paciente
             </button>
             <button onClick={() => setMenuOpen((v) => !v)} aria-label="Menu"
