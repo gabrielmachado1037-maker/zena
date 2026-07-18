@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 const STORAGE_KEY = "nexvel_install_fechado";
 
 export default function BannerInstalacao() {
+  const { pathname } = useLocation();
   const [mostrar, setMostrar] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -43,7 +45,7 @@ export default function BannerInstalacao() {
     localStorage.setItem(STORAGE_KEY, "1");
   };
 
-  if (!mostrar) return null;
+  if (!mostrar || pathname === "/instalar") return null;
 
   return (
     <div
@@ -69,12 +71,18 @@ export default function BannerInstalacao() {
         <div className="flex-1 min-w-0">
           <p className="text-white text-[14px] font-semibold">Instale o Nexvel</p>
           <p className="text-white/65 text-[12px] mt-0.5">
-            {isIOS
-              ? "Toque em Compartilhar → Adicionar à Tela de Início"
-              : "Acesso rápido sem abrir o navegador"}
+            Acesso rápido, com ícone próprio na tela de início.
           </p>
         </div>
-        {!isIOS && (
+        {isIOS ? (
+          <Link
+            to="/instalar"
+            onClick={() => setMostrar(false)}
+            className="flex-shrink-0 px-4 py-2 rounded-xl bg-[#7CFF5B] text-[#08130A] text-[13px] font-semibold"
+          >
+            Como instalar
+          </Link>
+        ) : (
           <button
             onClick={instalar}
             className="flex-shrink-0 px-4 py-2 rounded-xl bg-[#7CFF5B] text-[#08130A] text-[13px] font-semibold"
@@ -84,12 +92,10 @@ export default function BannerInstalacao() {
         )}
       </div>
 
-      {isIOS && (
-        <div className="mt-3 flex flex-wrap items-center gap-1.5 text-white/75 text-[11px]">
-          <span>1. Toque em</span>
-          <span className="px-2 py-0.5 rounded bg-white/20 font-medium">⬆️ Compartilhar</span>
-          <span>2. "Adicionar à Tela de Início"</span>
-        </div>
+      {!isIOS && (
+        <Link to="/instalar" onClick={() => setMostrar(false)} className="mt-2.5 block text-[11px] font-medium text-[#7CFF5B]">
+          Apareceu um aviso do Google? Veja o passo a passo →
+        </Link>
       )}
     </div>
   );

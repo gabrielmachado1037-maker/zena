@@ -41,6 +41,7 @@ const AtivarNotificacoes = lazy(() => import("./pages/paciente/AtivarNotificacoe
 const VerificarEmailPaciente = lazy(() => import("./pages/VerificarEmailPaciente"));
 const EsqueciSenhaPaciente = lazy(() => import("./pages/EsqueciSenhaPaciente"));
 const RedefinirSenhaPaciente = lazy(() => import("./pages/RedefinirSenhaPaciente"));
+const Instalar = lazy(() => import("./pages/Instalar"));
 const Onboarding         = lazy(() => import("./pages/onboarding/OnboardingScreen"));
 const NutriLanding       = lazy(() => import("./pages/nutri-landing/NutriLanding"));
 const RankingPaciente    = lazy(() => import("./pages/paciente/RankingPaciente"));
@@ -116,6 +117,7 @@ function AppRoutes() {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/nutri" element={<NutriLanding />} />
         <Route path="/login-paciente" element={<LoginPaciente />} />
+        <Route path="/instalar" element={<Instalar />} />
         <Route path="/esqueci-senha-paciente" element={<EsqueciSenhaPaciente />} />
         <Route path="/redefinir-senha-paciente" element={<RedefinirSenhaPaciente />} />
         <Route path="/completar-perfil" element={<CompletarPerfil />} />
