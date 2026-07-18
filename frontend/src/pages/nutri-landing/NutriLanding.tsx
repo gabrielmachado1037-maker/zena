@@ -378,10 +378,10 @@ function TrustBar() {
 /* ─────────────────────────── Problema ─────────────────────────── */
 function Problema() {
   const cards = [
-    "Você só descobre que ele abandonou semanas depois.",
-    "Você vira refém do WhatsApp, cobrando paciente por paciente.",
-    "Sem dados reais, você nunca sabe onde o paciente começou a desistir.",
-    "Na próxima consulta você tenta lembrar tudo de cabeça. Sem histórico, sem evolução, sem contexto.",
+    "Você só descobre semanas depois que ele abandonou o tratamento.",
+    "Vira refém do WhatsApp, cobrando paciente por paciente.",
+    "Sem dados reais, você nunca sabe exatamente onde ele perdeu a consistência.",
+    "Na consulta seguinte, tenta reconstruir tudo pela memória.",
   ];
   return (
     <div className="relative overflow-hidden border-b border-white/[0.05] bg-[#0A0D0A]">
@@ -409,7 +409,7 @@ function Problema() {
 
         <Reveal delay={0.1}>
           <p className="mx-auto mt-10 max-w-xl text-center text-body-lg font-bold text-white sm:text-[22px]">
-            Menor adesão. Menores resultados. <span className="text-nx-evo">Mais cancelamentos.</span>
+            Menos adesão. Menores resultados. <span className="text-nx-evo">Mais cancelamentos.</span>
           </p>
         </Reveal>
       </Section>
@@ -420,25 +420,17 @@ function Problema() {
 /* ─────────────────────────── Como funciona ─────────────────────────── */
 function ComoFunciona() {
   const passos = [
-    { n: 1, icon: Users, t: "Cadastre o paciente e envie o convite." },
-    { n: 2, icon: Smartphone, t: "Ele instala o app e começa a ganhar XP, entrar em ligas e cumprir missões." },
-    { n: 3, icon: TrendingUp, t: "Você acompanha tudo em tempo real — quem engaja e quem precisa de atenção." },
-    { n: 4, icon: BellRing, t: "Receba relatórios prontos e reative o paciente para a próxima consulta." },
-  ];
-  const nutri = [
-    "Acompanhe tudo em um painel", "Identifique riscos com alertas", "Poupe horas de tarefas repetitivas",
-    "Relatórios visuais e prontos", "Mais segurança e profissionalismo", "Decisões mais estratégicas",
-  ];
-  const paciente = [
-    "Missões diárias", "Ligas e desafios", "XP e recompensas",
-    "Ranking entre pacientes", "Acompanhamento da evolução", "Hábito que gera resultado",
+    { n: 1, icon: Users, t: "Cadastre o paciente e envie um convite individual." },
+    { n: 2, icon: Smartphone, t: "Ele instala o aplicativo e começa sua evolução com missões, XP, desafios e ligas." },
+    { n: 3, icon: TrendingUp, t: "Acompanhe em tempo real quem está evoluindo e quem precisa da sua atenção." },
+    { n: 4, icon: BellRing, t: "Chegue à próxima consulta com um relatório inteligente e uma visão completa da evolução do paciente." },
   ];
   return (
     <Section id="como-funciona">
       <Reveal>
         <SectionHeading
-          titulo={<>O Nexvel faz o paciente <span className="text-nx-evo">querer voltar todos os dias</span></>}
-          sub="Gamificação que transforma o plano em hábito. Você acompanha tudo sem precisar cobrar e decide com dados reais."
+          titulo={<>O Nexvel transforma <span className="text-nx-evo">consistência em resultado.</span></>}
+          sub="Através da gamificação, o paciente mantém o hábito de registrar sua evolução todos os dias. Enquanto isso, você acompanha tudo em tempo real e toma decisões baseadas em dados, não em suposições."
         />
       </Reveal>
 
@@ -453,13 +445,6 @@ function ComoFunciona() {
               <p className="mt-4 text-body-md leading-relaxed text-[#B4B4BB]">{p.t}</p>
             </div>
           ))}
-        </div>
-      </Reveal>
-
-      <Reveal delay={0.1}>
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <ChecklistCard titulo="Para o nutricionista" icon={Monitor} itens={nutri} />
-          <ChecklistCard titulo="Para o paciente" icon={Trophy} itens={paciente} />
         </div>
       </Reveal>
     </Section>
@@ -604,51 +589,34 @@ function MiniEvolucao() {
 
 /* ─────────────────────────── Benefícios ─────────────────────────── */
 function Beneficios() {
-  const cards = [
-    { icon: TrendingUp, t: "Menos abandono", d: "O paciente volta sozinho — motivado, não cobrado." },
-    { icon: Trophy, t: "Mais retenção", d: "Quem engaja continua com você por mais tempo." },
-    { icon: Target, t: "Consultas mais produtivas", d: "Você chega sabendo exatamente o que aconteceu." },
-    { icon: Zap, t: "Dados em tempo real", d: "Aderência, humor, treino, água e sono, atualizados." },
+  const nutri = [
+    "Mais adesão ao tratamento",
+    "Menos abandono entre consultas",
+    "Acompanhe toda a evolução em um único painel",
+    "Identifique rapidamente pacientes em risco",
+    "Relatórios inteligentes prontos para cada consulta",
+    "Decisões baseadas em dados reais",
   ];
-  const detalhes = [
-    "Quantas refeições o paciente pulou", "Quantos dias ficou sem treinar", "Quantos dias não bateu a água",
-    "Evolução da aderência", "Evolução do humor", "Maior sequência", "Pontos críticos — automaticamente",
+  const paciente = [
+    "Mais motivação para seguir o plano",
+    "Missões diárias que incentivam a consistência",
+    "XP, ligas e desafios que tornam a evolução visível",
+    "Sensação constante de progresso",
+    "Hábitos que geram resultados duradouros",
   ];
   return (
     <Section id="beneficios">
       <Reveal>
         <SectionHeading
-          titulo={<>Benefícios reais <span className="text-nx-evo">para o seu consultório</span></>}
-          sub="Menos trabalho manual, mais controle e consultas que realmente evoluem o paciente."
+          titulo={<>Tudo o que você precisa para <span className="text-nx-evo">aumentar a adesão dos seus pacientes.</span></>}
         />
       </Reveal>
-      <div className="mt-12 grid gap-4 lg:grid-cols-2">
-        <Reveal>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {cards.map((c) => (
-              <div key={c.t} className="rounded-2xl border border-white/[0.06] bg-[#0E120E] p-5">
-                <span className="grid size-10 place-items-center rounded-xl bg-nx-evo/10"><c.icon className="size-5 text-nx-evo" /></span>
-                <p className="mt-4 text-body-lg font-bold text-white">{c.t}</p>
-                <p className="mt-1.5 text-body-sm leading-relaxed text-[#8b8b93]">{c.d}</p>
-              </div>
-            ))}
-          </div>
-        </Reveal>
-        <Reveal delay={0.1}>
-          <div className="h-full rounded-2xl border border-nx-evo/15 bg-gradient-to-b from-nx-evo/[0.05] to-transparent p-6">
-            <p className="text-body-lg font-bold text-white">Chegue à consulta sabendo tudo</p>
-            <p className="mt-1.5 text-body-sm text-[#8b8b93]">O Nexvel centraliza automaticamente:</p>
-            <ul className="mt-5 space-y-3">
-              {detalhes.map((d) => (
-                <li key={d} className="flex items-center gap-3 text-body-md text-[#B4B4BB]">
-                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-nx-evo/15"><Check className="size-3.5 text-nx-evo" strokeWidth={3} /></span>
-                  {d}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </Reveal>
-      </div>
+      <Reveal delay={0.08}>
+        <div className="mt-12 grid gap-4 lg:grid-cols-2">
+          <ChecklistCard titulo="Para o nutricionista" icon={Monitor} itens={nutri} />
+          <ChecklistCard titulo="Para o paciente" icon={Trophy} itens={paciente} />
+        </div>
+      </Reveal>
     </Section>
   );
 }
