@@ -449,7 +449,7 @@ function ScoreCircle({ score }: { score: number }) {
   return (
     <span
       title={`Score de aderência ${score}%`}
-      className="grid size-9 shrink-0 place-items-center rounded-full text-label-sm font-bold tabular-nums"
+      className="grid size-11 shrink-0 place-items-center rounded-full text-body-sm font-bold tabular-nums"
       style={{ color: cor, border: `2px solid ${cor}`, background: `${cor}14` }}
     >
       {score}
@@ -462,9 +462,9 @@ function AcaoBtn({ Icon, label, onClick }: { Icon: typeof MessageSquare; label: 
     <button
       title={label} aria-label={label}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className="grid size-8 place-items-center rounded-nx-sm border border-nx-border bg-nx-container text-nx-on-surface-variant transition-colors hover:border-nx-outline hover:text-nx-on-surface"
+      className="grid size-9 place-items-center rounded-nx-sm border border-nx-border bg-nx-container text-nx-on-surface-variant transition-colors hover:border-nx-outline hover:text-nx-on-surface"
     >
-      <Icon className="size-4" />
+      <Icon className="size-[18px]" />
     </button>
   );
 }
@@ -476,35 +476,35 @@ function PrioridadeRow({ p, onOpen, navigate }: { p: PacienteLinha; onOpen: () =
   return (
     <li
       onClick={onOpen}
-      className="group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-nx-container/40"
+      className="group flex cursor-pointer items-center gap-4 px-5 py-4 transition-colors hover:bg-nx-container/40"
     >
       {/* Foto + status + nome + motivo */}
       <div className="relative shrink-0">
-        <Avatar src={p.foto} nome={p.nome} tamanho={40} />
+        <Avatar src={p.foto} nome={p.nome} tamanho={44} />
         <span className={`absolute -right-0.5 -top-0.5 size-2.5 rounded-full ring-2 ring-nx-surface ${
           p.risco === "risco" ? "bg-nx-danger" : p.risco === "atencao" ? "bg-nx-streak" : "bg-nx-evo"}`} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-body-md font-semibold text-nx-on-surface">{p.nome}</p>
-        <p className={`truncate text-body-sm ${TONE_TEXT[ins.tone]}`}>{ins.texto}</p>
+        <p className="truncate text-body-lg font-semibold text-nx-on-surface">{p.nome}</p>
+        <p className={`truncate text-[15px] ${TONE_TEXT[ins.tone]}`}>{ins.texto}</p>
       </div>
 
       {/* Liga */}
-      <span className="hidden w-24 shrink-0 items-center gap-1.5 whitespace-nowrap text-body-sm text-nx-on-surface md:inline-flex">
-        <span className="size-2.5 rounded-full" style={{ background: ligaCor }} />
+      <span className="hidden w-36 shrink-0 items-center gap-2 whitespace-nowrap text-body-md text-nx-on-surface md:inline-flex">
+        <span className="size-3 rounded-full" style={{ background: ligaCor }} />
         {p.liga} {p.ligaNivel}
       </span>
 
       {/* XP + barra de progresso + % */}
-      <div className="hidden w-40 shrink-0 lg:block">
-        <div className="mb-1 flex items-baseline justify-between">
-          <span className="text-label-md font-semibold tabular-nums text-nx-on-surface">{nf(p.pontos)} <span className="font-normal text-nx-on-surface-variant">XP</span></span>
-          <span className="text-label-sm font-semibold tabular-nums" style={{ color: ligaCor }}>{proxima ? `${pct}%` : "MÁX"}</span>
+      <div className="hidden w-64 shrink-0 lg:block">
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <span className="text-body-md font-semibold tabular-nums text-nx-on-surface">{nf(p.pontos)} <span className="font-normal text-nx-on-surface-variant">XP</span></span>
+          <span className="text-body-sm font-semibold tabular-nums" style={{ color: ligaCor }}>{proxima ? `${pct}%` : "MÁX"}</span>
         </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-nx-container-low">
+        <div className="h-2 overflow-hidden rounded-full bg-nx-container-low">
           <div className="h-full rounded-full" style={{ width: `${pct}%`, background: ligaCor }} />
         </div>
-        <p className="mt-1 truncate text-label-sm text-nx-on-surface-variant">
+        <p className="mt-1.5 truncate text-[13px] text-nx-on-surface-variant">
           {proxima ? `Faltam ${nf(faltam)} XP p/ ${proxima.liga} ${proxima.nivel}` : "Liga máxima 👑"}
         </p>
       </div>
@@ -513,8 +513,8 @@ function PrioridadeRow({ p, onOpen, navigate }: { p: PacienteLinha; onOpen: () =
       <ScoreCircle score={p.score} />
 
       {/* Ações + abrir */}
-      <div className="flex shrink-0 items-center gap-1.5">
-        <span className="hidden items-center gap-1.5 sm:flex">
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="hidden items-center gap-2 sm:flex">
           <AcaoBtn Icon={MessageSquare} label="Mensagem" onClick={() => navigate(`/app/mensagens/${p.id}`)} />
           <AcaoBtn Icon={Target} label="Criar desafio" onClick={() => navigate("/app/desafios")} />
         </span>
