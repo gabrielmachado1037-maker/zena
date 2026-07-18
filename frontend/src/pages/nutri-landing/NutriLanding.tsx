@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowRight, Check, X, Menu, Star, Flame, Trophy, Target, Award, TrendingUp,
-  Smartphone, Monitor, FileText, ShieldCheck, Droplets, Moon, Utensils, Dumbbell,
-  Zap, ChevronDown, Users, CalendarClock, BellRing, type LucideIcon,
+  Smartphone, Monitor, FileText, ShieldCheck,
+  Zap, ChevronDown, ChevronRight, Users, BellRing, Home, PencilLine, BarChart3, User,
+  type LucideIcon,
 } from "lucide-react";
 import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
 import { NexvelLogo } from "../onboarding/components/NexvelLogo";
+import { LeagueEmblem } from "../../components/ui-nx";
 import { PrimaryBtn } from "./components/shared";
 import { DashboardPreview } from "./DashboardPreview";
 
@@ -234,47 +236,89 @@ function PhoneFrame({ children, className = "" }: { children: ReactNode; classNa
   );
 }
 
+const MOODS: [string, string][] = [["😄", "Ótimo"], ["🙂", "Bom"], ["😐", "Neutro"], ["😕", "Difícil"], ["😣", "Péssimo"]];
+const NAV_PACIENTE: [LucideIcon, string, boolean][] = [
+  [Home, "Início", true], [PencilLine, "Registro", false], [Trophy, "Desafios", false], [BarChart3, "Ranking", false], [User, "Perfil", false],
+];
+
+function RingMissao({ feitas, total }: { feitas: number; total: number }) {
+  const r = 15, c = 2 * Math.PI * r, off = c * (1 - feitas / total);
+  return (
+    <div className="relative grid size-11 shrink-0 place-items-center">
+      <svg viewBox="0 0 40 40" className="size-full -rotate-90">
+        <circle cx="20" cy="20" r={r} fill="none" stroke="#ffffff14" strokeWidth="4" />
+        <circle cx="20" cy="20" r={r} fill="none" stroke="#7CFF5B" strokeWidth="4" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} />
+      </svg>
+      <span className="absolute text-[10px] font-extrabold text-white">{feitas}<span className="text-[7px] text-[#8b8b93]">/{total}</span></span>
+    </div>
+  );
+}
+
 function PhoneHero() {
   return (
     <PhoneFrame>
-      <div className="space-y-2.5 p-3">
-        <div>
-          <p className="text-[12px] font-bold text-white">Olá, Ana! <span className="text-nx-gold">★</span></p>
-          <p className="text-[8px] text-[#8b8b93]">Continue de onde parou</p>
+      <div className="space-y-2 p-2.5">
+        {/* header */}
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[13px] font-extrabold leading-none text-white">Olá, Ana</p>
+            <p className="mt-1 text-[8px] text-[#8b8b93]">Bora começar o dia?</p>
+          </div>
+          <span className="grid size-6 place-items-center rounded-full bg-nx-container text-[8px] font-bold text-white">A</span>
         </div>
-        {/* Liga Ouro */}
-        <div className="rounded-xl border border-nx-gold/25 bg-gradient-to-b from-nx-gold/[0.14] to-transparent p-2.5">
+        {/* humor */}
+        <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-2">
+          <p className="mb-1.5 text-[6px] font-bold uppercase tracking-wide text-[#8b8b93]">Como você está hoje?</p>
+          <div className="grid grid-cols-5 gap-1">
+            {MOODS.map(([e, l]) => (
+              <div key={l} className="flex flex-col items-center gap-0.5 rounded-md border border-white/[0.06] py-1">
+                <span className="text-[11px] leading-none">{e}</span>
+                <span className="text-[5px] text-[#8b8b93]">{l}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* sequência */}
+        <div className="flex items-center gap-2 rounded-xl border border-nx-streak/25 bg-nx-streak/[0.06] p-2.5">
+          <Flame className="size-5 shrink-0 text-nx-streak" />
+          <div className="leading-tight">
+            <p className="text-[13px] font-extrabold text-white">12 <span className="text-[8px] font-semibold text-[#8b8b93]">dias de sequência</span></p>
+            <p className="text-[7px] text-[#8b8b93]">Sua chama está acesa 🔥</p>
+          </div>
+        </div>
+        {/* sua liga */}
+        <div className="rounded-xl border border-nx-gold/25 bg-gradient-to-b from-nx-gold/[0.1] to-transparent p-2.5">
           <div className="flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-lg bg-nx-gold/20"><Trophy className="size-4 text-nx-gold" /></span>
+            <LeagueEmblem liga="Ouro" size={26} />
             <div className="leading-tight">
-              <p className="text-[11px] font-bold text-white">Liga Ouro</p>
-              <p className="text-[8.5px] text-[#8b8b93]">3º no ranking</p>
+              <p className="text-[6px] font-bold uppercase tracking-wide text-[#8b8b93]">Sua liga</p>
+              <p className="text-[11px] font-extrabold text-white">Ouro II</p>
             </div>
-            <span className="ml-auto text-[11px] font-extrabold tabular-nums text-nx-gold">2.460 <span className="text-[7.5px] font-semibold">XP</span></span>
+            <span className="ml-auto text-[12px] font-extrabold tabular-nums text-nx-gold">2.460 <span className="text-[7px] font-semibold">XP</span></span>
           </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full w-[72%] rounded-full bg-nx-gold" />
-          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full w-[72%] rounded-full bg-nx-gold" /></div>
+          <p className="mt-1 text-[7px] text-[#8b8b93]">Faltam 340 XP pra Ouro I</p>
         </div>
-        {/* medições de hoje */}
-        <p className="pt-0.5 text-[8.5px] font-bold uppercase tracking-wide text-[#8b8b93]">Medições de hoje</p>
-        {[
-          { icon: Utensils, t: "Registrar café da manhã", done: true },
-          { icon: Droplets, t: "Beber 2L de água", done: true },
-          { icon: Dumbbell, t: "Registrar treino", done: false },
-        ].map((m) => (
-          <div key={m.t} className={`flex items-center gap-2 rounded-lg border p-2 ${m.done ? "border-nx-evo/25 bg-nx-evo/[0.06]" : "border-white/[0.07] bg-white/[0.02]"}`}>
-            <span className={`grid size-5 place-items-center rounded-md ${m.done ? "bg-nx-evo text-nx-on-evo" : "bg-white/[0.06] text-[#8b8b93]"}`}>
-              {m.done ? <Check className="size-3" /> : <m.icon className="size-3" />}
-            </span>
-            <span className={`text-[9px] font-medium ${m.done ? "text-[#8b8b93] line-through" : "text-white"}`}>{m.t}</span>
-            {!m.done && <span className="ml-auto text-[8px] font-bold text-nx-evo">+2 XP</span>}
+        {/* missão de hoje */}
+        <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-2.5">
+          <div className="flex items-center gap-3">
+            <RingMissao feitas={3} total={4} />
+            <div className="min-w-0 flex-1">
+              <p className="text-[6px] font-bold uppercase tracking-wide text-[#8b8b93]">Missão de hoje</p>
+              <p className="text-[11px] font-extrabold text-white">1 missão pra fechar</p>
+              <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-1.5 py-0.5 text-[6.5px] font-bold text-white"><Trophy className="size-2 text-nx-gold" /> #1 na liga</span>
+            </div>
           </div>
-        ))}
+          <button className="mt-2.5 flex w-full items-center justify-center gap-1 rounded-lg bg-nx-evo py-1.5 text-[9px] font-bold text-nx-on-evo">Continuar missões <ChevronRight className="size-3" /></button>
+        </div>
       </div>
-      <div className="flex items-center justify-around border-t border-white/[0.06] px-2 py-2 text-[#6b6b73]">
-        {[Target, Trophy, Award, TrendingUp].map((I, i) => (
-          <I key={i} className={`size-4 ${i === 0 ? "text-nx-evo" : ""}`} />
+      {/* bottom nav */}
+      <div className="flex items-center justify-around border-t border-white/[0.06] px-1 py-1.5">
+        {NAV_PACIENTE.map(([I, l, active]) => (
+          <div key={l} className={`flex flex-col items-center gap-0.5 ${active ? "text-nx-evo" : "text-[#6b6b73]"}`}>
+            <I className="size-3.5" />
+            <span className="text-[5px] font-medium">{l}</span>
+          </div>
         ))}
       </div>
     </PhoneFrame>
