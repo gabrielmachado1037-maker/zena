@@ -153,7 +153,7 @@ export default function Pacientes() {
         {loading ? (
           <div className="space-y-2.5">
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="h-[108px] animate-pulse rounded-2xl bg-nx-surface/70 sm:h-[92px]" />
+              <div key={i} className="h-[108px] animate-pulse rounded-2xl bg-nx-surface/70 sm:h-[104px]" />
             ))}
           </div>
         ) : erro ? (
@@ -311,7 +311,7 @@ function PacienteCard({ p, i, navigate, onExcluir }: {
       whileHover={reduce ? undefined : { y: -2, boxShadow: `0 14px 40px -22px ${cor}55`, transition: { duration: 0.18 } }}
       whileTap={reduce ? undefined : { scale: 0.995 }}
       onClick={() => navigate(`/app/pacientes/${p.id}`)}
-      className="group relative flex cursor-pointer flex-col gap-3 rounded-2xl border border-nx-border bg-nx-surface p-3.5 transition-colors duration-[180ms] hover:border-nx-outline sm:flex-row sm:items-center sm:gap-4 sm:p-4"
+      className="group relative flex cursor-pointer flex-col gap-3 rounded-2xl border border-nx-border bg-nx-surface p-3.5 transition-colors duration-[180ms] hover:border-nx-outline sm:flex-row sm:items-center sm:gap-5 sm:px-4 sm:py-5"
     >
       {/* Identidade */}
       <div className="flex items-center gap-3 sm:min-w-0 sm:flex-1">
@@ -330,10 +330,10 @@ function PacienteCard({ p, i, navigate, onExcluir }: {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <p className="truncate text-body-lg font-bold leading-tight text-nx-on-surface">{p.nome}</p>
+            <p className="truncate text-body-lg font-bold leading-tight text-nx-on-surface sm:text-[19px]">{p.nome}</p>
             <StatusBadge label={status.label} cor={status.cor} />
           </div>
-          <p className="mt-0.5 truncate text-body-sm font-medium" style={{ color: motivo.cor }}>{motivo.texto}</p>
+          <p className="mt-0.5 truncate text-body-sm font-medium sm:text-[15px]" style={{ color: motivo.cor }}>{motivo.texto}</p>
           <p className="mt-0.5 flex items-center gap-1.5 truncate text-label-sm text-nx-on-surface-variant">
             {p.streakAtual > 0 && (
               <span className="inline-flex items-center gap-1 font-semibold text-nx-streak"><Flame size={12} /> Sequência: {p.streakAtual} dias</span>
@@ -358,7 +358,7 @@ function PacienteCard({ p, i, navigate, onExcluir }: {
           <span className="whitespace-nowrap text-label-sm font-bold leading-none" style={{ color: cor }}>{p.ligaAtual} {p.ligaNivel}</span>
         </div>
 
-        <div className="min-w-0 flex-1 sm:w-52 sm:flex-none">
+        <div className="min-w-0 flex-1 sm:w-60 sm:flex-none">
           <div className="flex items-baseline gap-1.5">
             <span className="text-body-lg font-extrabold leading-none tabular-nums text-nx-on-surface">{nf(p.pontosTotal)}</span>
             <span className="text-label-md font-semibold text-nx-on-surface-variant">XP</span>
@@ -383,7 +383,7 @@ function PacienteCard({ p, i, navigate, onExcluir }: {
       </div>
 
       {/* score + ações — DESKTOP */}
-      <div className="hidden shrink-0 items-center gap-2 sm:flex">
+      <div className="hidden shrink-0 items-center gap-2.5 sm:flex">
         <ScoreBadge score={p.score} />
         <RowActions p={p} menu={menu} setMenu={setMenu} go={go} menuItens={menuItens} />
       </div>
