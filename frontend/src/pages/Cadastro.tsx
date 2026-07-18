@@ -44,7 +44,7 @@ export default function Cadastro() {
   }
 
   return (
-    <div className="relative flex min-h-[100dvh] w-full items-center justify-center overflow-hidden bg-[#0A0A0A] px-5 py-10">
+    <div className="relative flex min-h-[100dvh] w-full items-center justify-center overflow-hidden bg-[#0A0A0A] px-5 pb-10 pt-[calc(2.5rem+env(safe-area-inset-top))]">
       {/* fix autofill escuro */}
       <style>{`.nx-input:-webkit-autofill{-webkit-box-shadow:0 0 0 1000px #0B0F0C inset;-webkit-text-fill-color:#fff;caret-color:#fff}`}</style>
 
