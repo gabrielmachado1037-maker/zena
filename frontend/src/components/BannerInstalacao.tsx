@@ -45,7 +45,9 @@ export default function BannerInstalacao() {
     localStorage.setItem(STORAGE_KEY, "1");
   };
 
-  if (!mostrar || pathname === "/instalar") return null;
+  // Não aparece na landing de conversão da nutri (nem na própria /instalar).
+  const OCULTAR_EM = ["/", "/nutri", "/landing", "/instalar"];
+  if (!mostrar || OCULTAR_EM.includes(pathname)) return null;
 
   return (
     <div
