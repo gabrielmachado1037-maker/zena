@@ -1,11 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 export default function Termos() {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-nx-bg">
-      <nav className="bg-nx-surface border-b border-nx-border px-6 py-4 flex items-center justify-between">
+      <nav className="bg-nx-surface border-b border-nx-border px-6 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] flex items-center justify-between">
         <Link to="/"><img src="/nexvel-wordmark.png" alt="Nexvel" className="h-6 w-auto" /></Link>
-        <Link to="/login" className="text-sm text-nx-evo font-medium hover:text-nx-on-surface">Entrar</Link>
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-sm text-nx-evo font-medium hover:text-nx-on-surface">
+          <ArrowLeft className="size-4" /> Voltar
+        </button>
       </nav>
       <div className="max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-4xl font-bold text-nx-on-surface mb-2">Termos de Uso</h1>
