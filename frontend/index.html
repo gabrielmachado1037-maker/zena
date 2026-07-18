@@ -33,6 +33,37 @@
     <meta name="twitter:image" content="https://nexvel.tech/og-image.png" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://nexvel.tech" />
+    <!-- Dados estruturados: ajuda o Google a entender a marca e o produto -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://nexvel.tech/#organization",
+          "name": "Nexvel",
+          "url": "https://nexvel.tech",
+          "logo": "https://nexvel.tech/icons/icon-512.png",
+          "description": "Plataforma de acompanhamento nutricional com gamificação para nutricionistas: missões, ligas, desafios e relatórios de adesão.",
+          "email": "contato@nexvel.tech"
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "Nexvel",
+          "url": "https://nexvel.tech",
+          "applicationCategory": "HealthApplication",
+          "operatingSystem": "Web, Android, iOS",
+          "description": "Aumente a adesão dos seus pacientes com gamificação. Missões, ligas, desafios e relatórios inteligentes para o nutricionista acompanhar tudo em tempo real.",
+          "offers": {
+            "@type": "Offer",
+            "price": "149.00",
+            "priceCurrency": "BRL"
+          },
+          "publisher": { "@id": "https://nexvel.tech/#organization" }
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
