@@ -35,7 +35,7 @@ export function DashboardPreview() {
     <div className="overflow-hidden rounded-[14px] border border-nx-evo/15 bg-[#0A0C0A]">
       <div className="flex">
         {/* Sidebar */}
-        <aside className="hidden w-[128px] shrink-0 flex-col justify-between border-r border-white/[0.06] bg-[#080A08] p-3 sm:flex">
+        <aside className="flex w-[128px] shrink-0 flex-col justify-between border-r border-white/[0.06] bg-[#080A08] p-3">
           <div>
             <div className="mb-1 px-1"><NexvelLogo className="h-[14px]" /></div>
             <p className="mb-4 px-1 text-[6px] font-semibold uppercase tracking-[0.28em] text-[#6b6b73]">Nutrition Pro</p>

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -195,14 +195,40 @@ function Hero({ onCadastro, onEntrar }: { onCadastro: () => void; onEntrar: () =
           </div>
         </Reveal>
 
-        {/* visual: laptop (dashboard) + telefone. Desktop: lado a lado sobreposto.
-            Mobile/tablet: empilhado, telefone em tamanho normal abaixo. */}
-        <Reveal delay={0.12} className="relative mx-auto w-full max-w-[560px] lg:mr-0">
-          <Laptop><DashboardPreview /></Laptop>
-          <div className="mx-auto mt-9 w-[220px] lg:absolute lg:-bottom-10 lg:-right-4 lg:mt-0 lg:w-[196px]">
-            <PhoneHero />
-          </div>
+        {/* visual: laptop + telefone SEMPRE lado a lado (como a referência),
+            escalando como uma imagem única — a proporção nunca quebra nem empilha. */}
+        <Reveal delay={0.12} className="w-full">
+          <HeroVisual />
         </Reveal>
+      </div>
+    </div>
+  );
+}
+
+/* Composição laptop + telefone que escala como UMA imagem só: mantém a proporção
+   lado a lado em qualquer largura (nunca empilha nem estica o telefone). */
+function HeroVisual() {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const DW = 660, DH = 470;
+  useLayoutEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const upd = () => setScale(Math.min(1, el.clientWidth / DW));
+    upd();
+    const ro = new ResizeObserver(upd);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={wrapRef} className="relative mx-auto w-full max-w-[600px]" style={{ height: DH * scale }}>
+      <div className="absolute left-0 top-0 origin-top-left" style={{ width: DW, height: DH, transform: `scale(${scale})` }}>
+        <div className="absolute left-0 top-0" style={{ width: 484 }}>
+          <Laptop><DashboardPreview /></Laptop>
+        </div>
+        <div className="absolute bottom-0 right-0" style={{ width: 202 }}>
+          <PhoneHero />
+        </div>
       </div>
     </div>
   );
