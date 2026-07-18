@@ -46,9 +46,9 @@ export default function NutriLanding() {
 
   return (
     <div className="min-h-[100dvh] w-full bg-[#080A08] text-white [scroll-behavior:smooth]">
-      {/* ── Header sticky ── */}
-      <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#080A08]/85 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4 px-5 py-3.5 lg:px-8">
+      {/* ── Header sticky (respeita o notch via safe-area) ── */}
+      <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-[#080A08]/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-3 px-5 py-3.5 lg:px-8">
           <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Nexvel" className="shrink-0">
             <NexvelLogo className="h-[26px]" />
           </button>
@@ -60,17 +60,29 @@ export default function NutriLanding() {
               </button>
             ))}
           </nav>
-          <div className="hidden items-center gap-3 lg:flex">
+          {/* ações desktop */}
+          <div className="hidden items-center gap-4 lg:flex">
+            <button onClick={() => navigate("/login-paciente")}
+              className="text-body-sm font-medium text-[#A1A1AA] transition-colors hover:text-white">
+              Sou paciente
+            </button>
             <button onClick={() => navigate("/login")}
               className="text-body-sm font-medium text-[#A1A1AA] transition-colors hover:text-white">
               Entrar
             </button>
             <PrimaryBtn onClick={irCadastro} className="h-10 px-5 text-body-sm">Comece grátis</PrimaryBtn>
           </div>
-          <button onClick={() => setMenuOpen((v) => !v)} aria-label="Menu"
-            className="grid size-10 place-items-center rounded-lg text-white lg:hidden">
-            {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-          </button>
+          {/* ações mobile: "Sou paciente" sempre visível + menu */}
+          <div className="flex items-center gap-1 lg:hidden">
+            <button onClick={() => navigate("/login-paciente")}
+              className="rounded-full px-3 py-1.5 text-body-sm font-medium text-[#A1A1AA] transition-colors hover:text-white">
+              Sou paciente
+            </button>
+            <button onClick={() => setMenuOpen((v) => !v)} aria-label="Menu"
+              className="grid size-10 place-items-center rounded-lg text-white">
+              {menuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            </button>
+          </div>
         </div>
         {menuOpen && (
           <div className="border-t border-white/[0.06] bg-[#080A08] px-5 py-4 lg:hidden">
@@ -81,9 +93,14 @@ export default function NutriLanding() {
                   {n.label}
                 </button>
               ))}
+              <div className="my-1 h-px bg-white/[0.06]" />
+              <button onClick={() => { setMenuOpen(false); navigate("/login-paciente"); }}
+                className="rounded-lg px-2 py-2.5 text-left text-body-md font-medium text-[#A1A1AA] hover:bg-white/[0.04] hover:text-white">
+                Sou paciente
+              </button>
               <button onClick={() => { setMenuOpen(false); navigate("/login"); }}
                 className="rounded-lg px-2 py-2.5 text-left text-body-md font-medium text-[#A1A1AA] hover:bg-white/[0.04] hover:text-white">
-                Entrar
+                Entrar como nutricionista
               </button>
               <PrimaryBtn onClick={irCadastro} className="mt-2 h-12 w-full">Comece grátis</PrimaryBtn>
             </nav>
@@ -792,7 +809,7 @@ function Footer() {
       <div className="mx-auto flex max-w-[1200px] flex-col items-center justify-between gap-6 px-5 py-10 lg:flex-row lg:px-8">
         <NexvelLogo className="h-6" />
         <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          {[["Termos", "/termos"], ["Privacidade", "/privacidade"]].map(([l, href]) => (
+          {[["Sou paciente", "/login-paciente"], ["Termos", "/termos"], ["Privacidade", "/privacidade"]].map(([l, href]) => (
             <a key={l} href={href} className="text-body-sm text-[#8b8b93] transition-colors hover:text-white">{l}</a>
           ))}
           <a href="mailto:contato@nexvel.tech" className="text-body-sm text-[#8b8b93] transition-colors hover:text-white">contato@nexvel.tech</a>
