@@ -1,7 +1,9 @@
 {
+  "id": "/",
   "name": "Nexvel",
   "short_name": "Nexvel",
   "description": "Plataforma para nutricionistas",
+  "lang": "pt-BR",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
