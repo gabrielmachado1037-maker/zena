@@ -10,6 +10,7 @@ import {
   MoreVertical, Trash2, X, MessageSquare, type LucideIcon,
 } from "lucide-react";
 import api from "../lib/api";
+import { mensagemConvite } from "../lib/convitePaciente";
 import Avatar from "../components/Avatar";
 import { progressoLiga, diasDesde, resolverPlanoRefeicoes, PLANO_REFEICOES_PADRAO, CORES_LIGA, type RefeicaoPlano } from "../lib/ligas";
 import { gerarInsights, type Insight, type InsightTone } from "../lib/insights";
@@ -110,9 +111,7 @@ function ConviteCard({ pacienteId, nome, inicial }: { pacienteId: string; nome: 
     } finally { setGerando(false); }
   }
 
-  const texto = convite.codigo
-    ? `Olá, ${nome}! Seu convite para o app Nexvel é ${convite.codigo}. Baixe o app, escolha "Criar conta" e informe este código + os últimos 4 dígitos do seu telefone. O código é individual e de uso único.`
-    : "";
+  const texto = convite.codigo ? mensagemConvite(nome, convite.codigo) : "";
 
   async function copiar() {
     if (!convite.codigo) return;
@@ -120,8 +119,9 @@ function ConviteCard({ pacienteId, nome, inicial }: { pacienteId: string; nome: 
   }
   async function compartilhar() {
     if (!convite.codigo) return;
-    if (navigator.share) { try { await navigator.share({ title: "Convite Nexvel", text: texto }); } catch { /* cancelado */ } }
-    else void copiar();
+    if (navigator.share) { try { await navigator.share({ title: "Convite Nexvel", text: texto }); } catch { /* cancelado */ } return; }
+    // Desktop (sem share nativo): copia a MENSAGEM completa (com o link clicável).
+    try { await navigator.clipboard.writeText(texto); setCopiado(true); setTimeout(() => setCopiado(false), 1800); } catch { /* indisponível */ }
   }
 
   return (

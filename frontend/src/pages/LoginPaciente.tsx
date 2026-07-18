@@ -13,10 +13,14 @@ import { cn } from "../lib/utils";
  */
 export default function LoginPaciente() {
   const [sp] = useSearchParams();
-  const [tab, setTab] = useState<"login" | "register">(sp.get("tab") === "register" ? "register" : "login");
+  // Convite: ?codigo= vem do link que a nutri encaminha (já abre no cadastro, código preenchido).
+  const codigoParam = (sp.get("codigo") ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+  const [tab, setTab] = useState<"login" | "register">(
+    sp.get("tab") === "register" || codigoParam ? "register" : "login",
+  );
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [codigo, setCodigo] = useState("");
+  const [codigo, setCodigo] = useState(codigoParam);
   const [telefone4, setTelefone4] = useState("");
   const [aceite, setAceite] = useState(false);
   const [showSenha, setShowSenha] = useState(false);

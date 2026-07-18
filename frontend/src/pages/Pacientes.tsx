@@ -11,6 +11,7 @@ import Avatar from "../components/Avatar";
 import { LeagueEmblem } from "../components/ui-nx";
 import { progressoLiga, diasDesde, CORES_LIGA } from "../lib/ligas";
 import { gerarUrlWhatsApp } from "../lib/utils";
+import { mensagemConvite } from "../lib/convitePaciente";
 
 interface Paciente {
   id: string;
@@ -517,8 +518,7 @@ function NovoPacienteModal({ onClose, onCriado }: { onClose: () => void; onCriad
 
   function compartilharWhatsApp() {
     if (!criado) return;
-    const primeiro = criado.nome.trim().split(/\s+/)[0] || criado.nome;
-    const texto = `Olá, ${primeiro}! Seu convite para o app Nexvel é ${criado.conviteCodigo}. Baixe o app, escolha "Criar conta" e informe este código + os últimos 4 dígitos do seu telefone. O código é individual e de uso único.`;
+    const texto = mensagemConvite(criado.nome, criado.conviteCodigo);
     const tel = (criado.telefone ?? "").replace(/\D/g, "");
     const url = tel ? gerarUrlWhatsApp(criado.telefone as string, texto) : `https://wa.me/?text=${encodeURIComponent(texto)}`;
     window.open(url, "_blank", "noopener");
