@@ -137,14 +137,15 @@ function GuiaIOS() {
       <Card>
         <div className="flex items-center gap-2.5">
           <span className="grid size-9 place-items-center rounded-lg bg-nx-evo/10"><Smartphone className="size-5 text-nx-evo" /></span>
-          <h2 className="text-body-lg font-bold text-white">No iPhone (Safari)</h2>
+          <h2 className="text-body-lg font-bold text-white">No iPhone</h2>
         </div>
-        <ul className="mt-5 space-y-4">
+        <p className="mt-2 text-body-sm text-[#8b8b93]">Funciona no Safari e no Chrome — os passos são os mesmos.</p>
+        <ul className="mt-4 space-y-4">
           <Passo n={1}>
-            Toque no ícone <span className="mx-1 inline-flex size-7 -translate-y-0.5 items-center justify-center rounded-md bg-nx-water/15 align-middle"><Share className="size-4 text-nx-water" /></span> <span className="font-semibold text-white">Compartilhar</span>, na barra do Safari.
+            Toque no ícone <span className="mx-1 inline-flex size-7 -translate-y-0.5 items-center justify-center rounded-md bg-nx-water/15 align-middle"><Share className="size-4 text-nx-water" /></span> <span className="font-semibold text-white">Compartilhar</span>. No <span className="font-semibold text-white">Safari</span> ele fica na barra de baixo (se não achar, toque em <span className="font-semibold text-white">•••</span>); no <span className="font-semibold text-white">Chrome</span>, no canto de cima.
           </Passo>
           <Passo n={2}>
-            Role para baixo e toque em <span className="inline-flex items-center gap-1 font-semibold text-white"><Plus className="size-4" /> Adicionar à Tela de Início</span>.
+            Na janela que abrir, <span className="font-semibold text-white">role para baixo</span> (ou toque em <span className="font-semibold text-white">"Ver mais"</span>) até achar <span className="inline-flex items-center gap-1 font-semibold text-white"><Plus className="size-4" /> Adicionar à Tela de Início</span>.
           </Passo>
           <Passo n={3}>Toque em <span className="font-semibold text-white">Adicionar</span> no canto superior.</Passo>
         </ul>
@@ -152,7 +153,7 @@ function GuiaIOS() {
       <div className="flex items-start gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5">
         <Info className="mt-0.5 size-4 shrink-0 text-[#8b8b93]" />
         <p className="text-body-sm leading-relaxed text-[#A1A1AA]">
-          Precisa estar no <span className="font-semibold text-white">Safari</span>. Se abriu por um link do WhatsApp, toque em <span className="font-semibold text-white">•••</span> → <span className="font-semibold text-white">"Abrir no Safari"</span> primeiro.
+          No iPhone, o mais tranquilo é pelo <span className="font-semibold text-white">Safari</span>. Se abriu por um link do WhatsApp, toque em <span className="font-semibold text-white">•••</span> → <span className="font-semibold text-white">"Abrir no Safari"</span> primeiro.
         </p>
       </div>
     </div>
