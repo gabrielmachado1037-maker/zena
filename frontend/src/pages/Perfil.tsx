@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Bell, UserCircle2, Pencil, BadgeCheck, MapPin, Camera, X, Loader2,
   IdCard, Lock, ShieldCheck, ChevronRight, Eye, EyeOff, LifeBuoy,
-  FileText, ShieldQuestion, MessageCircle,
+  FileText, ShieldQuestion, MessageCircle, Download, Trash2, AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import api from "../lib/api";
@@ -162,6 +162,9 @@ export default function Perfil() {
 
                 {/* Notificações push (toggle) */}
                 <NotificacoesRow />
+
+                {/* Dados e privacidade (LGPD): exportar + excluir conta */}
+                <DadosLgpdRow />
               </div>
             </section>
           </div>
@@ -305,6 +308,116 @@ function SegurancaRow() {
           >
             {loading ? <><Loader2 size={16} className="animate-spin" /> Salvando...</> : "Salvar senha"}
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Dados e privacidade (LGPD): exportar + excluir conta ─────────────── */
+
+function DadosLgpdRow() {
+  const { logout } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [busyExp, setBusyExp] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+  const [senha, setSenha] = useState("");
+  const [busyDel, setBusyDel] = useState(false);
+  const [err, setErr] = useState("");
+
+  async function exportar() {
+    setBusyExp(true); setErr("");
+    try {
+      const res = await api.get("/auth/exportar", { responseType: "blob" });
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "dados-nexvel-clinica.json";
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setErr("Não foi possível exportar agora. Tente de novo.");
+    } finally {
+      setBusyExp(false);
+    }
+  }
+
+  async function excluir() {
+    if (!senha) { setErr("Informe a senha para confirmar."); return; }
+    setBusyDel(true); setErr("");
+    try {
+      await api.delete("/auth/conta", { data: { senha } });
+      logout(); // sessão encerrada; conta e dados apagados
+    } catch (e: any) {
+      setErr(e?.response?.data?.error ?? "Não foi possível excluir a conta.");
+      setBusyDel(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3.5 px-5 py-4 text-left transition-colors hover:bg-nx-surface-hover"
+      >
+        <IconChip tint="tertiary"><ShieldQuestion size={16} /></IconChip>
+        <div className="flex-1 min-w-0">
+          <p className="text-body-md font-semibold text-nx-on-surface">Meus dados e privacidade</p>
+          <p className="text-body-sm text-nx-on-surface-variant">Exportar seus dados ou excluir a conta (LGPD)</p>
+        </div>
+        <ChevronRight size={18} className="text-nx-outline shrink-0 transition-transform" style={{ transform: open ? "rotate(90deg)" : "none" }} />
+      </button>
+
+      {open && (
+        <div className="px-5 pb-5 space-y-3">
+          <button
+            onClick={exportar} disabled={busyExp}
+            className="w-full flex items-center justify-center gap-2 border border-nx-border bg-nx-container hover:bg-nx-surface-hover disabled:opacity-50 text-nx-on-surface text-label-md font-bold py-3 rounded-xl transition-colors"
+          >
+            {busyExp ? <><Loader2 size={16} className="animate-spin" /> Preparando...</> : <><Download size={16} /> Exportar meus dados</>}
+          </button>
+
+          <div className="rounded-xl border border-nx-danger/30 bg-nx-danger/[0.06] p-4">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle size={15} className="text-nx-danger shrink-0" />
+              <p className="text-body-sm font-bold text-nx-danger">Excluir minha conta</p>
+            </div>
+            <p className="text-body-sm text-nx-on-surface-variant">
+              Apaga permanentemente sua conta e <strong>todos os dados das suas pacientes</strong>. Esta ação é irreversível.
+            </p>
+
+            {!confirmando ? (
+              <button
+                onClick={() => { setConfirmando(true); setErr(""); }}
+                className="mt-3 w-full border border-nx-danger/40 text-nx-danger hover:bg-nx-danger/10 text-label-md font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <Trash2 size={15} /> Excluir minha conta
+              </button>
+            ) : (
+              <div className="mt-3 space-y-2.5">
+                <input
+                  type="password" placeholder="Digite sua senha para confirmar" value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  className="w-full bg-nx-container border border-nx-border rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface focus:outline-none focus:ring-1 focus:ring-nx-danger"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setConfirmando(false); setSenha(""); setErr(""); }}
+                    className="flex-1 border border-nx-border text-nx-on-surface-variant hover:text-nx-on-surface text-label-md font-bold py-2.5 rounded-xl transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={excluir} disabled={busyDel}
+                    className="flex-1 bg-nx-danger hover:brightness-110 disabled:opacity-50 text-white text-label-md font-bold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                  >
+                    {busyDel ? <><Loader2 size={16} className="animate-spin" /> Excluindo...</> : "Excluir definitivamente"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {err && <p className="text-nx-danger text-body-sm">{err}</p>}
         </div>
       )}
     </div>

@@ -9,6 +9,7 @@ import { emailBoasVindas, emailRecuperacaoSenha, emailVerificacao } from "../lib
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { uploadFoto } from "../lib/supabase";
 import { validateBody } from "../middleware/validate";
+import { excluirNutricionista } from "../lib/excluirNutricionista";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -289,6 +290,92 @@ router.put("/consultorio", authMiddleware, async (req: AuthRequest, res: Respons
     select: { id: true, nome: true, email: true, crn: true, nomeConsultorio: true, logoConsultorio: true, enderecoConsultorio: true },
   });
   res.json(atualizado);
+});
+
+// GET /api/auth/exportar — portabilidade (LGPD, Art. 18): baixa os dados do nutri
+// (a clínica) + os dados das pacientes vinculadas, em JSON.
+router.get("/exportar", authMiddleware, async (req: AuthRequest, res: Response) => {
+  const nid = req.nutricionistaId as string;
+
+  const [nutri, pacientes] = await Promise.all([
+    prisma.nutricionista.findUnique({
+      where: { id: nid },
+      select: {
+        nome: true, email: true, crn: true, tipoProfissional: true, plano: true,
+        nomeConsultorio: true, enderecoConsultorio: true, aceiteTermosEm: true,
+        aceiteTermosVersao: true, createdAt: true,
+      },
+    }),
+    prisma.paciente.findMany({ where: { nutricionistaId: nid }, orderBy: { dataInicio: "asc" } }),
+  ]);
+  const pids = pacientes.map((p) => p.id);
+  const P = { in: pids };
+
+  const [
+    anamneses, medicoes, registros, checkins, consultas, cobrancas, planos,
+    desafios, progressoDesafios, conquistas, mensagensChat, mensagensNutri,
+    ciclos, horarios,
+  ] = await Promise.all([
+    prisma.anamnese.findMany({ where: { pacienteId: P } }),
+    prisma.medicao.findMany({ where: { pacienteId: P }, orderBy: { data: "asc" } }),
+    prisma.registro.findMany({ where: { pacienteId: P }, orderBy: { data: "asc" } }),
+    prisma.checkIn.findMany({ where: { pacienteId: P }, orderBy: { criadoEm: "asc" } }),
+    prisma.consulta.findMany({ where: { pacienteId: P }, orderBy: { data: "asc" } }),
+    prisma.cobranca.findMany({ where: { pacienteId: P }, orderBy: { vencimento: "asc" } }),
+    prisma.planoAlimentar.findMany({ where: { pacienteId: P } }),
+    prisma.desafio.findMany({ where: { nutricionistaId: nid } }),
+    prisma.desafioProgresso.findMany({ where: { pacienteId: P } }),
+    prisma.conquista.findMany({ where: { pacienteId: P } }),
+    prisma.mensagemChat.findMany({ where: { nutricionistaId: nid }, orderBy: { criadoEm: "asc" } }),
+    prisma.mensagemNutri.findMany({ where: { nutricionistaId: nid }, orderBy: { createdAt: "asc" } }),
+    prisma.ciclo.findMany({ where: { nutricionistaId: nid }, orderBy: { numero: "asc" } }),
+    prisma.horarioDisponivel.findMany({ where: { nutricionistaId: nid } }),
+  ]);
+
+  const dump = {
+    _meta: {
+      exportadoEm: new Date().toISOString(),
+      formato: "JSON",
+      descricao: "Exportação de dados (LGPD, Art. 18 — portabilidade). Dados do nutricionista e das pacientes vinculadas.",
+      titular: nutri?.nome ?? null,
+    },
+    nutricionista: nutri,
+    pacientes,
+    anamneses,
+    medicoes,
+    registros,
+    checkins,
+    consultas,
+    cobrancas,
+    planosAlimentares: planos,
+    desafios,
+    progressoDesafios,
+    conquistas,
+    mensagensChat,
+    mensagensNutri,
+    ciclos,
+    horarios,
+  };
+
+  res.setHeader("Content-Disposition", 'attachment; filename="dados-nexvel-clinica.json"');
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.status(200).send(JSON.stringify(dump, null, 2));
+});
+
+// DELETE /api/auth/conta — eliminação (LGPD): apaga a conta do nutri E todos os
+// dados das pacientes vinculadas. Exige a senha atual (ação destrutiva/irreversível).
+router.delete("/conta", authMiddleware, async (req: AuthRequest, res: Response) => {
+  const { senha } = req.body as { senha?: string };
+  if (!senha) return res.status(400).json({ error: "Informe a senha para confirmar a exclusão." });
+
+  const nutri = await prisma.nutricionista.findUnique({ where: { id: req.nutricionistaId as string } });
+  if (!nutri) return res.status(404).json({ error: "Não encontrado" });
+
+  const ok = await bcrypt.compare(senha, nutri.senha);
+  if (!ok) return res.status(400).json({ error: "Senha incorreta." });
+
+  await excluirNutricionista(nutri.id);
+  return res.json({ ok: true });
 });
 
 export default router;
