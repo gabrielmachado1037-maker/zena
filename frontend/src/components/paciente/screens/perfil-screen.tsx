@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import {
   Flame, Zap, Medal, Trophy, Camera, Crown, Lock,
   MessageCircle, Settings, TrendingUp, HelpCircle, LogOut, ChevronRight,
+  Download,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -8,6 +11,7 @@ import { usePacienteData } from "@/lib/paciente-data"
 import { usePacienteAuth } from "@/contexts/PacienteAuthContext"
 import { LeagueFrame, LeagueBadge, LeagueEmblem } from "@/components/ui-nx"
 import { CORES_LIGA } from "@/lib/ligas"
+import { isStandalone } from "@/lib/pwaInstall"
 import type { NavigateFn, Screen } from "../types"
 
 /* Catálogo de conquistas — dá o efeito de COLEÇÃO (o que falta desbloquear aparece). */
@@ -36,6 +40,16 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const { user, achievements, challenges, missions } = usePacienteData()
   const { logout, paciente } = usePacienteAuth()
 
+  // App instalado? Checado ao vivo: some quando roda na tela de início,
+  // reaparece se a pessoa abre pelo navegador (nunca instalou ou desinstalou).
+  const [instalado, setInstalado] = useState(isStandalone)
+  useEffect(() => {
+    const mq = window.matchMedia("(display-mode: standalone)")
+    const on = () => setInstalado(isStandalone())
+    mq.addEventListener?.("change", on)
+    return () => mq.removeEventListener?.("change", on)
+  }, [])
+
   const ligaKey = user.league.split(" ")[0]
   const foto = paciente?.fotoUrl
 
@@ -49,8 +63,20 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const desafiosAtivos = challenges.filter((c) => c.status === "ativo").length
   const missoesFeitas = missions.filter((m) => m.done).length
 
-  const menu: { icon: LucideIcon; label: string; screen?: Screen; action?: () => void }[] = [
+  const menu: {
+    icon: LucideIcon; label: string; sub?: string; screen?: Screen;
+    action?: () => void; href?: string; destaque?: boolean;
+  }[] = [
     { icon: MessageCircle, label: "Mensagens da nutri", screen: "mensagens" },
+    ...(!instalado
+      ? [{
+          icon: Download,
+          label: "Instalar o app",
+          sub: "Ícone na tela, lembretes e acesso em 1 toque",
+          href: "/instalar",
+          destaque: true,
+        } as const]
+      : []),
     { icon: TrendingUp, label: "Minha evolução", screen: "evolucao" },
     { icon: Settings, label: "Configurações", screen: "configuracoes" },
     { icon: HelpCircle, label: "Ajuda e suporte", action: () => { window.location.href = "mailto:contato@nexvel.tech" } },
@@ -191,16 +217,39 @@ export function PerfilScreen({ onNavigate }: { onNavigate: NavigateFn }) {
       <div className="overflow-hidden rounded-nx-lg border border-nx-border bg-nx-surface">
         {menu.map((item) => {
           const Icon = item.icon
+          const inner = (
+            <>
+              <Icon className={cn("size-5", item.destaque ? "text-nx-evo" : "text-nx-on-surface-variant")} />
+              <span className="flex-1">
+                <span className={cn("block text-body-md", item.destaque ? "font-semibold text-nx-evo" : "text-nx-on-surface")}>
+                  {item.label}
+                </span>
+                {item.sub && (
+                  <span className="mt-0.5 block text-label-sm text-nx-on-surface-variant">{item.sub}</span>
+                )}
+              </span>
+              <ChevronRight className="size-4 text-nx-outline" />
+            </>
+          )
+          const cls = cn(
+            "flex w-full items-center gap-3 border-b border-nx-border px-4 py-3.5 text-left last:border-b-0 hover:bg-nx-surface-hover",
+            item.destaque && "bg-nx-evo/[0.06]",
+          )
+          if (item.href) {
+            return (
+              <Link key={item.label} to={item.href} className={cls}>
+                {inner}
+              </Link>
+            )
+          }
           return (
             <button
               key={item.label}
               type="button"
               onClick={() => (item.screen ? onNavigate(item.screen) : item.action?.())}
-              className="flex w-full items-center gap-3 border-b border-nx-border px-4 py-3.5 text-left last:border-b-0 hover:bg-nx-surface-hover"
+              className={cls}
             >
-              <Icon className="size-5 text-nx-on-surface-variant" />
-              <span className="flex-1 text-body-md text-nx-on-surface">{item.label}</span>
-              <ChevronRight className="size-4 text-nx-outline" />
+              {inner}
             </button>
           )
         })}
