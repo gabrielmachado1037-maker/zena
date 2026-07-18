@@ -336,7 +336,7 @@ export default function Feed() {
         />
       </div>
 
-      <div className="w-full">
+      <div className="mx-auto w-full max-w-7xl">
         {/* Header */}
         <header className="mb-4">
           <div className="flex items-center justify-between gap-3 mb-4">
