@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowRight, Check, X, Menu, Star, Flame, Trophy, Target, Award, TrendingUp,
-  Smartphone, Monitor, FileText, ShieldCheck,
+  Smartphone, Monitor, FileText, ShieldCheck, Clock, Sparkles,
   Zap, ChevronDown, ChevronRight, Users, BellRing, Home, PencilLine, BarChart3, User,
   type LucideIcon,
 } from "lucide-react";
@@ -655,10 +655,6 @@ function Beneficios() {
 
 /* ─────────────────────────── Relatórios ─────────────────────────── */
 function Relatorios() {
-  const insights = [
-    "Almoço ignorado 8 vezes no mês", "Água abaixo da meta em 13 dias", "Treino em 21 de 30 dias",
-    "Maior sequência: 16 dias", "Aderência subindo semana a semana", "Padrões de comportamento detectados",
-  ];
   return (
     <div className="relative overflow-hidden border-y border-white/[0.05] bg-[#0A0D0A]">
       <Section>
@@ -666,16 +662,19 @@ function Relatorios() {
           <Reveal>
             <SectionHeading
               alinhar="left"
-              titulo={<>Relatórios que <span className="text-nx-evo">chegam prontos</span></>}
-              sub="Sem montar nada na mão. O Nexvel lê o comportamento do paciente e entrega um resumo inteligente para cada consulta."
+              titulo={<>Chegue à consulta <span className="text-nx-evo">sabendo exatamente o que aconteceu.</span></>}
+              sub="O Nexvel analisa automaticamente o comportamento do paciente e gera um relatório inteligente com os principais padrões do tratamento. Em poucos minutos, você identifica onde houve evolução, onde a consistência caiu e quais pontos precisam ser trabalhados na próxima consulta."
             />
-            <ul className="mt-7 grid gap-3 sm:grid-cols-2">
-              {insights.map((i) => (
-                <li key={i} className="flex items-start gap-2.5 text-body-sm text-[#B4B4BB]">
-                  <Check className="mt-0.5 size-4 shrink-0 text-nx-evo" strokeWidth={2.5} /> {i}
-                </li>
-              ))}
-            </ul>
+            {/* selo de valor — discreto, não compete com o título */}
+            <div className="mt-7 flex items-start gap-3 rounded-xl border border-nx-evo/15 bg-nx-evo/[0.04] p-4">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-nx-evo/12">
+                <Clock className="size-4 text-nx-evo" />
+              </span>
+              <p className="text-body-sm leading-relaxed text-[#B4B4BB]">
+                Economize tempo na análise e conduza consultas com{" "}
+                <span className="font-semibold text-white">decisões baseadas em dados, não em memória.</span>
+              </p>
+            </div>
           </Reveal>
           <Reveal delay={0.1}>
             <ReportMock />
@@ -687,40 +686,44 @@ function Relatorios() {
 }
 
 function ReportMock() {
+  const achados: { t: ReactNode; bom?: boolean }[] = [
+    { t: <>Almoço ignorado <span className="font-semibold text-white">8 vezes</span> no mês</> },
+    { t: <>Meta de água atingida em <span className="font-semibold text-white">17 de 30</span> dias</> },
+    { t: <>Treino realizado em <span className="font-semibold text-white">21 de 30</span> dias</> },
+    { t: <>Maior sequência: <span className="font-semibold text-white">16 dias</span></>, bom: true },
+    { t: <>Aderência aumentou <span className="font-semibold text-nx-evo">14%</span> em relação ao mês anterior</>, bom: true },
+    { t: <>Principais padrões de comportamento identificados</> },
+  ];
   return (
     <div className="relative">
       <GreenGlow className="inset-0" />
       <div className="rounded-2xl border border-white/[0.08] bg-[#0E120E] p-5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.7)]">
+        {/* cabeçalho do relatório */}
         <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
           <div className="flex items-center gap-2">
             <FileText className="size-4 text-nx-evo" />
-            <p className="text-body-sm font-bold text-white">Relatório mensal — Ana Souza</p>
+            <p className="text-body-sm font-bold text-white">Relatório Mensal — Ana Souza</p>
           </div>
           <span className="rounded-md bg-nx-evo/10 px-2 py-0.5 text-label-md font-semibold text-nx-evo">PDF</span>
         </div>
-        <div className="mt-4 grid grid-cols-3 gap-2.5">
-          {[["Aderência", "86%"], ["Sequência", "16 d"], ["Registros", "24/25"]].map(([l, v]) => (
-            <div key={l} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5 text-center">
-              <p className="text-body-lg font-extrabold text-white">{v}</p>
-              <p className="text-label-md text-[#8b8b93]">{l}</p>
-            </div>
+        {/* achados */}
+        <ul className="mt-4 space-y-2.5">
+          {achados.map((a, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-body-sm text-[#B4B4BB]">
+              <span className={`mt-[7px] size-1.5 shrink-0 rounded-full ${a.bom ? "bg-nx-evo" : "bg-nx-outline"}`} />
+              <span className="leading-relaxed">{a.t}</span>
+            </li>
           ))}
-        </div>
-        {/* barrinhas por hábito */}
-        <div className="mt-4 space-y-2.5">
-          {[["Alimentação", 78], ["Treino", 70], ["Água", 55], ["Sono", 84]].map(([l, v]) => (
-            <div key={l as string}>
-              <div className="mb-1 flex justify-between text-label-md text-[#8b8b93]"><span>{l}</span><span>{v}%</span></div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-                <div className="h-full rounded-full bg-nx-evo" style={{ width: `${v}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 rounded-lg border border-nx-evo/15 bg-nx-evo/[0.05] p-3">
-          <p className="text-label-md font-bold uppercase tracking-wide text-nx-evo">Resumo inteligente</p>
-          <p className="mt-1 text-body-sm leading-relaxed text-[#B4B4BB]">
-            Boa evolução geral. Maior dificuldade na hidratação (fins de semana). Sono acima da meta — manter.
+        </ul>
+        {/* resumo inteligente (parece análise por IA) */}
+        <div className="mt-5 rounded-lg border border-nx-evo/15 bg-nx-evo/[0.05] p-3.5">
+          <p className="flex items-center gap-1.5 text-label-md font-bold uppercase tracking-wide text-nx-evo">
+            <Sparkles className="size-3.5" /> Resumo inteligente
+          </p>
+          <p className="mt-1.5 text-body-sm leading-relaxed text-[#B4B4BB]">
+            Nas últimas duas semanas, a paciente apresentou melhora na aderência alimentar, porém
+            reduziu a frequência dos treinos e apresentou maior dificuldade em manter a hidratação
+            aos finais de semana.
           </p>
         </div>
       </div>
