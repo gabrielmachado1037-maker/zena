@@ -24,9 +24,9 @@ const KPIS = [
   { label: "Desafios", valor: "5", icon: Target, tone: "text-white" },
 ];
 const RISCO = [
-  { nome: "Ana Souza", motivo: "5 dias sem check-in" },
-  { nome: "Ricardo Alves", motivo: "Sequência zerada" },
-  { nome: "Juliana Pires", motivo: "Adesão em queda" },
+  { nome: "Marina Costa", motivo: "5 dias sem check-in", foto: "https://i.pravatar.cc/80?img=47" },
+  { nome: "Ricardo Alves", motivo: "Sequência zerada", foto: "https://i.pravatar.cc/80?img=13" },
+  { nome: "Juliana Pires", motivo: "Adesão em queda", foto: "https://i.pravatar.cc/80?img=45" },
 ];
 
 /** Preview ESTÁTICO do dashboard da nutri (tela do computador) — layout real. */
@@ -120,7 +120,7 @@ export function DashboardPreview() {
             <div className="space-y-1.5">
               {RISCO.map((r) => (
                 <div key={r.nome} className="flex items-center gap-2">
-                  <Avatar nome={r.nome} tamanho={18} />
+                  <Avatar src={r.foto} nome={r.nome} tamanho={20} />
                   <div className="min-w-0 flex-1 leading-tight">
                     <p className="truncate text-[9px] font-semibold text-white">{r.nome}</p>
                     <p className="truncate text-[7.5px] text-[#8b8b93]">{r.motivo}</p>

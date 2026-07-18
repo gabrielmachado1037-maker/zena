@@ -195,10 +195,11 @@ function Hero({ onCadastro, onEntrar }: { onCadastro: () => void; onEntrar: () =
           </div>
         </Reveal>
 
-        {/* visual: laptop (dashboard) + telefone ao lado */}
+        {/* visual: laptop (dashboard) + telefone. Desktop: lado a lado sobreposto.
+            Mobile/tablet: empilhado, telefone em tamanho normal abaixo. */}
         <Reveal delay={0.12} className="relative mx-auto w-full max-w-[560px] lg:mr-0">
           <Laptop><DashboardPreview /></Laptop>
-          <div className="absolute -bottom-6 -right-1 w-[150px] sm:-right-4 sm:w-[188px] lg:-bottom-10 lg:w-[196px]">
+          <div className="mx-auto mt-9 w-[220px] lg:absolute lg:-bottom-10 lg:-right-4 lg:mt-0 lg:w-[196px]">
             <PhoneHero />
           </div>
         </Reveal>
@@ -261,10 +262,10 @@ function PhoneHero() {
         {/* header */}
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[13px] font-extrabold leading-none text-white">Olá, Ana</p>
+            <p className="text-[13px] font-extrabold leading-none text-white">Olá, Lucas</p>
             <p className="mt-1 text-[8px] text-[#8b8b93]">Bora começar o dia?</p>
           </div>
-          <span className="grid size-6 place-items-center rounded-full bg-nx-container text-[8px] font-bold text-white">A</span>
+          <span className="grid size-6 place-items-center rounded-full bg-nx-container text-[8px] font-bold text-white">L</span>
         </div>
         {/* humor */}
         <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-2">
