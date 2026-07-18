@@ -61,10 +61,13 @@ export default function Privacidade() {
           </Section>
 
           <Section titulo="6. Retenção e exclusão">
-            Mantemos os dados enquanto a conta estiver ativa. Após o cancelamento, os dados são mantidos por
-            90 dias para fins de auditoria e, em seguida, excluídos permanentemente.
-            Para solicitar a exclusão antecipada, envie um e-mail para{" "}
+            Mantemos os dados enquanto a conta estiver ativa. A exclusão pode ser solicitada a qualquer
+            momento — pelo próprio aplicativo ou por e-mail para{" "}
             <a href="mailto:contato@nexvel.tech" className="text-nx-evo underline">contato@nexvel.tech</a>.
+            Ao ser solicitada, os dados pessoais e de saúde (anamnese, medições, registros, check-ins e
+            fotos) são eliminados de forma permanente e irreversível. Registros financeiros e fiscais
+            podem ser retidos pelo prazo legal exigido, e as cópias de segurança são sobrescritas nos
+            ciclos regulares de backup.
           </Section>
 
           <Section titulo="7. Seus direitos">

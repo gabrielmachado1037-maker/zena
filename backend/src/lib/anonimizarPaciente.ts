@@ -1,10 +1,12 @@
 import prisma from "./prisma";
 import { deleteFotoPorUrl } from "./supabase";
 
-// LGPD — direito de exclusão. Anonimiza os dados pessoais/biométricos do paciente,
-// remove o login e as fotos, e preserva o prontuário clínico anonimizado.
-// Usado tanto pelo próprio paciente (DELETE /paciente-app/conta) quanto pela nutri
-// (DELETE /pacientes/:id). Irreversível por design.
+// LGPD — direito de eliminação. Apaga dados pessoais/biométricos, o login, as fotos
+// E o prontuário clínico (dado de saúde: anamnese, medições, registros, check-ins,
+// planos e consultas). O cadastro é mantido apenas como âncora anonimizada para os
+// registros financeiros/fiscais (retenção legal). Usado tanto pelo próprio paciente
+// (DELETE /paciente-app/conta) quanto pela nutri (DELETE /pacientes/:id).
+// Irreversível por design.
 export async function anonimizarPaciente(pid: string): Promise<void> {
   // 1) Remove TODAS as fotos/anexos (dado biométrico) do storage — best-effort.
   //    Inclui evolução, registro-fotos, avatar, foto do check-in semanal, foto do
@@ -40,9 +42,13 @@ export async function anonimizarPaciente(pid: string): Promise<void> {
     prisma.pushSubscriptionPaciente.deleteMany({ where: { pacienteId: pid } }),
     // Nome real do paciente em comentários que ele fez em posts de OUTROS pacientes.
     prisma.feedComentario.updateMany({ where: { autorId: pid, autorTipo: "PACIENTE" }, data: { autorNome: "Paciente removido", autorAvatarUrl: null } }),
-    // Zera as referências de foto no prontuário clínico que é mantido anonimizado.
-    prisma.checkIn.updateMany({ where: { pacienteId: pid }, data: { foto: null } }),
-    prisma.registro.updateMany({ where: { pacienteId: pid }, data: { fotoUrl: null } }),
+    // Prontuário clínico / dado de saúde — eliminação plena (direito de exclusão LGPD).
+    prisma.anamnese.deleteMany({ where: { pacienteId: pid } }),
+    prisma.medicao.deleteMany({ where: { pacienteId: pid } }),
+    prisma.planoAlimentar.deleteMany({ where: { pacienteId: pid } }),
+    prisma.consulta.deleteMany({ where: { pacienteId: pid } }),
+    prisma.checkIn.deleteMany({ where: { pacienteId: pid } }),
+    prisma.registro.deleteMany({ where: { pacienteId: pid } }),
     prisma.paciente.update({
       where: { id: pid },
       data: {
