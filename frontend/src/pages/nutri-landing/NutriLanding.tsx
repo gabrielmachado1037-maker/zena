@@ -170,13 +170,14 @@ function Hero({ onCadastro, onEntrar }: { onCadastro: () => void; onEntrar: () =
           <span className="inline-flex items-center gap-2 rounded-full border border-nx-evo/25 bg-nx-evo/[0.07] px-3 py-1 text-label-md font-semibold text-nx-evo">
             <Zap className="size-3.5" /> Para nutricionistas
           </span>
-          <h1 className="mt-5 text-[34px] font-extrabold leading-[1.07] tracking-tight text-balance sm:text-[42px] lg:text-[52px]">
-            Seu paciente não abandona a dieta.{" "}
-            <span className="text-nx-evo">Ele evolui porque quer continuar jogando.</span>
+          <h1 className="mt-5 text-[34px] font-extrabold leading-[1.07] tracking-tight text-balance sm:text-[42px] lg:text-[50px]">
+            Faça seus pacientes seguirem o plano{" "}
+            <span className="text-nx-evo">com mais consistência.</span>
           </h1>
           <p className="mt-6 text-body-lg leading-relaxed text-[#B4B4BB]">
-            O Nexvel transforma o acompanhamento nutricional em uma experiência envolvente com
-            gamificação, desafios, ligas, XP, missões e relatórios inteligentes.
+            O Nexvel aumenta a adesão ao tratamento através da gamificação. Enquanto seus pacientes
+            evoluem com missões, desafios e ligas, você acompanha tudo em tempo real e chega à consulta
+            sabendo exatamente quem está evoluindo e quem precisa da sua atenção.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <PrimaryBtn onClick={onCadastro} className="h-14 w-full px-8 text-body-lg sm:w-auto">
