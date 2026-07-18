@@ -7,6 +7,10 @@ import { cn } from "@/lib/utils"
 import { usePacienteData, type MealState, type TodayState, XP_TREINO } from "@/lib/paciente-data"
 import { calcularXpAlimentacao, valorRefeicaoXp, calcularXpSonoMeta, CORES_LIGA } from "@/lib/ligas"
 import apiPaciente from "@/lib/apiPaciente"
+import { PromptInstalacao } from "../PromptInstalacao"
+import {
+  registrarCheckin, devePromptInstalar, marcarInstalarExibido, marcarInstalarDispensado,
+} from "@/lib/installStrategy"
 import {
   ProgressBarNx, LevelUpOverlay, LeagueEmblem,
   WaterProgress, MealSheet, ChoiceSheet, SleepSheet, DaySummarySheet, MOODS,
@@ -125,6 +129,7 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState("")
   const [celeb, setCeleb] = useState<Celebracao | null>(null)
+  const [promptInstalar, setPromptInstalar] = useState(false)
   const saveTimer = useRef<number | null>(null)
 
   // Deep-link ?foco=agua|alimentacao|treino|sono (lembrete de hábito) — rola/abre a seção.
@@ -186,6 +191,7 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
           subiu: novaLiga !== user.league,
           liga: novaLiga,
         })
+        registrarCheckin()
         void reload()
       }
     } catch {
@@ -252,6 +258,7 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
         subiu: novaLiga !== user.league, liga: novaLiga,
       })
       setFinalizado(true)
+      registrarCheckin()
       void reload()
     } catch (e: any) {
       if (e?.response?.status === 409) { setFinalizado(true); setResumoOpen(false) }
@@ -407,7 +414,13 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
       <LevelUpOverlay
         open={!!celeb}
         nivel={celeb?.streak ?? 0}
-        onClose={() => setCeleb(null)}
+        onClose={() => {
+          setCeleb(null)
+          // Empurrão de instalação logo após a celebração, se for o momento certo.
+          if (devePromptInstalar()) {
+            window.setTimeout(() => { marcarInstalarExibido(); setPromptInstalar(true) }, 350)
+          }
+        }}
         eyebrow={celeb?.subiu ? "Nova liga" : "Dia completo"}
         ariaLabel={celeb?.subiu ? `Você subiu para a ${celeb.liga}` : "Dia registrado"}
         bigContent={
@@ -421,6 +434,13 @@ export function RegistroScreen({ onNavigate }: { onNavigate: NavigateFn }) {
             : `Sequência de ${celeb?.streak ?? 0} ${celeb?.streak === 1 ? "dia" : "dias"} 🔥`
         }
         ctaLabel="Seguir evoluindo"
+      />
+
+      {/* Empurrão de instalação (aparece após a celebração, no momento certo) */}
+      <PromptInstalacao
+        open={promptInstalar}
+        onInstalar={() => setPromptInstalar(false)}
+        onDispensar={() => { marcarInstalarDispensado(); setPromptInstalar(false) }}
       />
     </div>
   )
