@@ -404,7 +404,7 @@ function AdesaoPremium({ ader, retencao, loading }: {
     { key: "atual", label: "Esta semana", val: ader.atual, cor: "#7CFF5B" },
   ];
   return (
-    <div className="flex flex-col gap-6 rounded-nx-lg border border-nx-border bg-nx-surface p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+    <div className="flex flex-col gap-6 rounded-nx-lg border border-nx-border bg-nx-surface p-5 sm:flex-row sm:items-center sm:justify-start sm:gap-10 sm:p-6">
       {/* valor grande + status */}
       <div className="min-w-0">
         <div className="mb-2 flex items-center gap-2">
