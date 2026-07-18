@@ -124,7 +124,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-nx-bg-lowest text-nx-on-surface font-sans">
-      <main className="mx-auto max-w-6xl px-4 py-6 pb-24 md:px-6 lg:pb-8">
+      <main className="px-5 py-6 pb-24 md:px-8 lg:pb-8">
         {/* Boas-vindas */}
         <header className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">

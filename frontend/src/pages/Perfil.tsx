@@ -68,7 +68,7 @@ export default function Perfil() {
           </div>
         </header>
 
-        <div className="p-5 md:p-8 mx-auto max-w-6xl w-full grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+        <div className="p-5 md:p-8 w-full grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
           {/* ── Coluna principal ──────────────────────────── */}
           <div className="lg:col-span-2 space-y-5">
             {/* Card de perfil */}

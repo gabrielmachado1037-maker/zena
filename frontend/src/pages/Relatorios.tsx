@@ -64,7 +64,7 @@ export default function Relatorios() {
 
   return (
     <div className="flex min-h-screen bg-nx-bg-lowest text-nx-on-surface font-sans">
-      <main className="mx-auto w-full max-w-6xl min-w-0 px-4 py-6 pb-24 md:px-6 lg:pb-8">
+      <main className="w-full min-w-0 px-5 py-6 pb-24 md:px-8 lg:pb-8">
         <header className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-headline-lg text-nx-on-surface">Insights</h1>

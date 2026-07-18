@@ -50,7 +50,7 @@ export default function Mensagens() {
   ];
 
   return (
-    <div className="mx-auto max-w-3xl px-3 py-4 md:px-6 md:py-6">
+    <div className="px-5 py-4 md:px-8 md:py-6">
       <h1 className="text-headline-md font-bold text-nx-on-surface mb-4 px-1">Mensagens</h1>
 
       {/* Busca */}
