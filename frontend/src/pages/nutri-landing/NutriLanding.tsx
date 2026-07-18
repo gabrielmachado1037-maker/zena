@@ -471,9 +471,13 @@ function ChecklistCard({ titulo, icon: Icon, itens }: { titulo: string; icon: Lu
 
 /* ─────────────────────────── Recursos (gamificação) ─────────────────────────── */
 function Recursos() {
-  const tiles: { icon: LucideIcon; t: string }[] = [
-    { icon: Target, t: "Missões" }, { icon: Flame, t: "Desafios" }, { icon: Zap, t: "XP" },
-    { icon: Trophy, t: "Ligas" }, { icon: Award, t: "Sequências" }, { icon: TrendingUp, t: "Evolução real" },
+  const tiles: { icon: LucideIcon; t: string; d: string }[] = [
+    { icon: Target, t: "Missões", d: "Metas simples todo dia" },
+    { icon: Flame, t: "Desafios", d: "Motivação pra continuar" },
+    { icon: Zap, t: "XP", d: "Recompensa por evoluir" },
+    { icon: Trophy, t: "Ligas", d: "Competição saudável" },
+    { icon: Award, t: "Sequências", d: "Constância vira hábito" },
+    { icon: TrendingUp, t: "Evolução real", d: "Vê o próprio progresso" },
   ];
   return (
     <div className="relative overflow-hidden border-y border-white/[0.05] bg-[#0A0D0A]">
@@ -487,21 +491,30 @@ function Recursos() {
         </Reveal>
 
         <Reveal delay={0.05}>
-          <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          {/* Mobile: grid compacto 2-col com frase de benefício. Desktop (lg): 6-col grande, sem frase. */}
+          <div className="mt-8 grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:mt-10 lg:grid-cols-6">
             {tiles.map((t) => (
-              <div key={t.t} className="flex flex-col items-center gap-3 rounded-2xl border border-white/[0.06] bg-[#0E120E] px-4 py-6 text-center transition-colors hover:border-nx-evo/25">
-                <span className="grid size-12 place-items-center rounded-xl bg-nx-evo/10"><t.icon className="size-6 text-nx-evo" /></span>
+              <div key={t.t} className="flex flex-col items-center gap-2 rounded-xl border border-white/[0.06] bg-[#0E120E] p-3.5 text-center transition-colors hover:border-nx-evo/25 sm:gap-3 sm:rounded-2xl lg:px-4 lg:py-6">
+                <span className="grid size-10 place-items-center rounded-lg bg-nx-evo/10 sm:size-12 sm:rounded-xl">
+                  <t.icon className="size-5 text-nx-evo sm:size-6" />
+                </span>
                 <span className="text-body-sm font-semibold text-white">{t.t}</span>
+                <span className="text-label-md leading-tight text-[#8b8b93] lg:hidden">{t.d}</span>
               </div>
             ))}
           </div>
         </Reveal>
 
         <Reveal delay={0.1}>
-          <div className="mt-10 grid gap-4 lg:grid-cols-3">
+          {/* Desktop: 3 cards lado a lado. */}
+          <div className="mt-10 hidden gap-4 lg:grid lg:grid-cols-3">
             <MiniLiga />
             <MiniRanking />
             <MiniEvolucao />
+          </div>
+          {/* Mobile: Liga + Ranking + Evolução unificados num card só (menos rolagem). */}
+          <div className="mt-8 lg:hidden">
+            <ResultadosMobile />
           </div>
         </Reveal>
       </Section>
@@ -584,6 +597,74 @@ function MiniEvolucao() {
         </div>
       </div>
     </MockCard>
+  );
+}
+
+/* Mobile: Liga + Ranking + Evolução unificados num único card coeso (menos rolagem). */
+function ResultadosMobile() {
+  const rank = [
+    { n: 1, nome: "Ana Silva", xp: "3.240", me: false },
+    { n: 2, nome: "Pedro A.", xp: "2.680", me: false },
+    { n: 3, nome: "Você", xp: "2.460", me: true },
+    { n: 4, nome: "Carla L.", xp: "2.180", me: false },
+  ];
+  const pct = 85, r = 34, c = 2 * Math.PI * r, off = c * (1 - pct / 100);
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0B0F0C]">
+      {/* Liga */}
+      <div className="border-b border-white/[0.06] p-4">
+        <div className="rounded-xl border border-nx-gold/25 bg-gradient-to-b from-nx-gold/[0.1] to-transparent p-3.5">
+          <div className="flex items-center gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-nx-gold/20"><Trophy className="size-5 text-nx-gold" /></span>
+            <div className="min-w-0">
+              <p className="text-body-md font-extrabold text-white">Liga Ouro</p>
+              <p className="text-label-md text-nx-gold">2.460 XP · 3º no ranking</p>
+            </div>
+          </div>
+          <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full w-[72%] rounded-full bg-nx-gold" /></div>
+          <p className="mt-1.5 text-label-md text-[#8b8b93]">Faltam 340 XP para a Liga Diamante</p>
+        </div>
+      </div>
+      {/* Ranking */}
+      <div className="border-b border-white/[0.06] p-4">
+        <p className="mb-2.5 text-body-sm font-bold text-white">Ranking entre pacientes</p>
+        <div className="space-y-1.5">
+          {rank.map((l) => (
+            <div key={l.n} className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${l.me ? "border-nx-evo/40 bg-nx-evo/[0.08]" : "border-white/[0.06] bg-white/[0.02]"}`}>
+              <span className={`text-body-sm font-extrabold ${l.n === 1 ? "text-nx-gold" : l.me ? "text-nx-evo" : "text-[#8b8b93]"}`}>{l.n}º</span>
+              <span className={`text-body-sm font-semibold ${l.me ? "text-nx-evo" : "text-white"}`}>{l.nome}</span>
+              <span className="ml-auto text-body-sm tabular-nums text-[#B4B4BB]">{l.xp} XP</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Evolução */}
+      <div className="p-4">
+        <p className="mb-2.5 text-body-sm font-bold text-white">Evolução do paciente</p>
+        <div className="flex items-center gap-4">
+          <div className="relative grid size-[92px] shrink-0 place-items-center">
+            <svg viewBox="0 0 88 88" className="size-full -rotate-90">
+              <circle cx="44" cy="44" r={r} fill="none" stroke="#ffffff14" strokeWidth="8" />
+              <circle cx="44" cy="44" r={r} fill="none" stroke="#7CFF5B" strokeWidth="8" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} />
+            </svg>
+            <div className="absolute text-center">
+              <p className="text-[20px] font-extrabold leading-none text-white">{pct}%</p>
+              <p className="text-[8px] text-[#8b8b93]">adesão</p>
+            </div>
+          </div>
+          <div className="grid flex-1 grid-cols-2 gap-2 text-center">
+            <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] py-2.5">
+              <p className="text-body-md font-bold text-white">24/25</p>
+              <p className="text-label-md text-[#8b8b93]">registros</p>
+            </div>
+            <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] py-2.5">
+              <p className="text-body-md font-bold text-nx-evo">16 🔥</p>
+              <p className="text-label-md text-[#8b8b93]">sequência</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
