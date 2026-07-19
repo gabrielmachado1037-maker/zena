@@ -12,7 +12,7 @@ import {
 import api from "../lib/api";
 import { mensagemConvite } from "../lib/convitePaciente";
 import Avatar from "../components/Avatar";
-import { progressoLiga, diasDesde, resolverPlanoRefeicoes, PLANO_REFEICOES_PADRAO, CORES_LIGA, type RefeicaoPlano } from "../lib/ligas";
+import { progressoLiga, formatarXp, diasDesde, resolverPlanoRefeicoes, PLANO_REFEICOES_PADRAO, CORES_LIGA, type RefeicaoPlano } from "../lib/ligas";
 import { gerarInsights, type Insight, type InsightTone } from "../lib/insights";
 import { LeagueEmblem, LeagueBadge, ProgressBarNx } from "../components/ui-nx";
 import DesafiosTab from "../components/diario/DesafiosTab";
@@ -422,9 +422,9 @@ export default function DiarioBordo() {
                 <div className="flex items-center gap-3">
                   <span className="inline-flex shrink-0" style={{ filter: `drop-shadow(0 0 10px ${CORES_LIGA[ligaKey] ?? "#7CFF5B"}55)` }}><LeagueEmblem liga={ligaKey} size={48} /></span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-body-lg font-bold tabular-nums text-nx-on-surface">{pac.pontosTotal.toLocaleString("pt-BR")} XP</p>
+                    <p className="text-body-lg font-bold tabular-nums text-nx-on-surface">{formatarXp(pac.pontosTotal)} XP</p>
                     <div className="mt-1.5"><ProgressBarNx value={prog?.pct ?? 0} tone="gold" /></div>
-                    {prog?.proxima && <p className="mt-1 text-label-sm text-nx-on-surface-variant">faltam {prog.faltam} pra {prog.proxima.liga} {prog.proxima.nivel}</p>}
+                    {prog?.proxima && <p className="mt-1 text-label-sm text-nx-on-surface-variant">faltam {prog.faltam.toLocaleString("pt-BR")} XP pra {prog.proxima.liga} {prog.proxima.nivel}</p>}
                   </div>
                 </div>
               </div>

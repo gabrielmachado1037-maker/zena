@@ -40,13 +40,21 @@ export function proximaLiga(pontos: number): LigaTier | null {
   return LIGAS[LIGAS.indexOf(atual) + 1] ?? null;
 }
 
+// O XP é fracionário por construção (cada refeição vale 4÷N, "adaptou" vale 0,75),
+// então totais como 1846.83 são normais — mas ninguém deve LER "faltam
+// 253.17000000000007". Exibimos o total por baixo (o que o paciente de fato já
+// tem) e o que falta por cima (o mínimo que ainda precisa ganhar): floor(total) +
+// ceil(falta) cai exatamente no corte da liga, sem erro de ponto flutuante à vista.
+export const formatarXp = (pontos: number) => Math.floor(pontos).toLocaleString("pt-BR");
+
 // Progresso 0-100 dentro da liga atual + pontos que faltam para a próxima
 export function progressoLiga(pontos: number): { pct: number; faltam: number; proxima: LigaTier | null } {
   const atual = calcularLiga(pontos);
   if (atual.ate === null) return { pct: 100, faltam: 0, proxima: null };
   const range = atual.ate - atual.de;
   const pct = Math.min(100, Math.round(((pontos - atual.de) / range) * 100));
-  return { pct, faltam: Math.max(0, atual.ate - pontos), proxima: proximaLiga(pontos) };
+  // ceil: arredondar pra baixo mostraria um alvo que não cruza o corte de verdade.
+  return { pct, faltam: Math.max(0, Math.ceil(atual.ate - pontos)), proxima: proximaLiga(pontos) };
 }
 
 // Cores de identidade das ligas = matiz da arte 3D dos emblemas (LeagueEmblem).

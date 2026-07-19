@@ -1,5 +1,5 @@
 import { Award, Flame, Trophy, Zap, Star } from "lucide-react";
-import { calcularLiga, progressoLiga, CORES_LIGA } from "../../lib/ligas";
+import { calcularLiga, progressoLiga, formatarXp, CORES_LIGA } from "../../lib/ligas";
 import {
   GLASS, dataCurta, rotuloTipoPontos,
   type PontosLogItem, type StreakMarcoItem, type ConquistaItem,
@@ -51,7 +51,7 @@ export default function LigaPontosTab({ paciente, pontosLog, streakMarcos, conqu
               <span className="text-label-md text-nx-on-surface-variant truncate">
                 {prog.proxima ? `Promoção para ${prog.proxima.liga} ${prog.proxima.nivel}` : "Nível máximo atingido"}
               </span>
-              <span className="text-label-sm text-nx-on-surface-variant shrink-0">{paciente.pontosTotal} pts</span>
+              <span className="text-label-sm text-nx-on-surface-variant shrink-0">{formatarXp(paciente.pontosTotal)} pts</span>
             </div>
             <div className="w-full bg-nx-container-high h-2 rounded-full overflow-hidden">
               <div className="h-full rounded-full" style={{ width: `${prog.pct}%`, background: cor, boxShadow: `0 0 8px ${cor}80` }} />
@@ -62,7 +62,7 @@ export default function LigaPontosTab({ paciente, pontosLog, streakMarcos, conqu
         <div className="grid grid-cols-3 gap-3">
           <div className="p-3 bg-nx-container-low rounded-xl text-center">
             <span className="text-label-sm text-nx-on-surface-variant block mb-1">XP Total</span>
-            <span className="text-headline-md font-bold text-nx-tertiary">{paciente.pontosTotal}</span>
+            <span className="text-headline-md font-bold text-nx-tertiary">{formatarXp(paciente.pontosTotal)}</span>
           </div>
           <div className="p-3 bg-nx-container-low rounded-xl text-center">
             <span className="text-label-sm text-nx-on-surface-variant block mb-1">Streak atual</span>

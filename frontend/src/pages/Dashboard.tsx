@@ -37,7 +37,7 @@ interface LigasResp {
   alimentacaoBreakdown: { seguiu: number | null; adaptou: number | null; comeu_mal: number | null; pulou: number | null; amostra: number };
 }
 
-const nf = (n: number) => n.toLocaleString("pt-BR");
+const nf = (n: number) => Math.floor(n).toLocaleString("pt-BR");
 const RISCO_RANK: Record<Risco, number> = { risco: 0, atencao: 1, ok: 2 };
 
 const HABITO = {

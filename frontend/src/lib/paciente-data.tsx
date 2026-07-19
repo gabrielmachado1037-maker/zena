@@ -164,7 +164,9 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
         firstName: (p?.nome ?? "—").split(" ")[0],
         avatar: "/placeholder.svg",
         league: p ? `${p.ligaAtual} ${p.ligaNivel}` : "—",
-        points: pontos,
+        // XP é fracionário (refeição vale 4÷N); a UI mostra sempre inteiro. O
+        // progresso da liga segue calculado do valor cheio, sem perder precisão.
+        points: Math.floor(pontos),
         nextLeague: prog.proxima ? `${prog.proxima.liga} ${prog.proxima.nivel}` : "Liga máxima",
         pointsToNext: prog.faltam,
         streak: p?.streakAtual ?? 0,
@@ -257,7 +259,7 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
 
       const ranking: RankUser[] = rankingRaw.map((r) => ({
         position: r.pos, name: r.nome, league: `${r.ligaAtual} ${r.ligaNivel}`,
-        points: r.pontosTotal, avatar: r.fotoPerfilUrl || "/placeholder.svg", me: r.isMe,
+        points: Math.floor(r.pontosTotal), avatar: r.fotoPerfilUrl || "/placeholder.svg", me: r.isMe,
       }));
       const myPosition = ranking.find((r) => r.me)?.position ?? 0;
 

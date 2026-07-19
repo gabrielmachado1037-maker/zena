@@ -11,7 +11,7 @@ import type { RankUser } from "@/lib/nexvel-data"
 const glow = (liga: string, blur = 14) => ({ filter: `drop-shadow(0 0 ${blur}px ${CORES_LIGA[liga] ?? "#7CFF5B"}55)` })
 
 const TIERS = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"] as const
-const nf = (n: number) => n.toLocaleString("pt-BR")
+const nf = (n: number) => Math.floor(n).toLocaleString("pt-BR")
 
 type Zone = "promo" | "safe" | "releg"
 
