@@ -15,5 +15,7 @@ services:
         sync: false
       - key: MCP_API_KEY
         generateValue: true
+      - key: MCP_OAUTH_SENHA
+        sync: false
       - key: NODE_VERSION
         value: "20"

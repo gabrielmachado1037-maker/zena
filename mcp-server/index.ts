@@ -461,16 +461,64 @@ function setupOAuth(app: express.Application, apiKey: string) {
     });
   });
 
-  // Authorize — auto-aprova (ferramenta pessoal, 1 usuário)
-  app.get("/oauth/authorize", (req: Request, res: Response) => {
-    const { redirect_uri, state } = req.query as Record<string, string>;
-    if (!redirect_uri) { res.status(400).send("redirect_uri obrigatório"); return; }
+  // Senha do dono. Sem ela definida, o authorize AUTO-APROVA qualquer um — o que
+  // expõe dado de saúde de paciente (LGPD). Defina MCP_OAUTH_SENHA no Render.
+  const oauthSenha = process.env.MCP_OAUTH_SENHA;
+  if (!oauthSenha) {
+    console.error(
+      "[nexvel-mcp] ⚠️  MCP_OAUTH_SENHA NÃO definida — /oauth/authorize está ABERTO. " +
+      "Qualquer um com a URL obtém acesso. Defina a variável no Render para fechar."
+    );
+  }
+
+  const emitirCode = (redirect_uri: string, state: string | undefined, res: Response) => {
     const code = crypto.randomBytes(16).toString("hex");
     authCodes.set(code, { expiresAt: Date.now() + 5 * 60_000 });
     const url = new URL(redirect_uri);
     url.searchParams.set("code", code);
     if (state) url.searchParams.set("state", state);
     res.redirect(url.toString());
+  };
+
+  const formConsentimento = (redirect_uri: string, state: string | undefined, erro: boolean) => `<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Conectar Nexvel</title><style>
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#09090B;color:#F8FAFC;font-family:system-ui,-apple-system,sans-serif}
+.card{width:100%;max-width:360px;padding:32px;background:#111318;border:1px solid #2A2F38;border-radius:20px}
+h1{font-size:19px;margin:0 0 6px}p{color:#9CA3AF;font-size:14px;margin:0 0 20px;line-height:1.5}
+label{display:block;font-size:13px;color:#9CA3AF;margin-bottom:8px}
+input{width:100%;box-sizing:border-box;padding:12px 14px;background:#141414;border:1px solid ${erro ? "#FF5D5D" : "#2A2F38"};border-radius:12px;color:#fff;font-size:15px;outline:none}
+input:focus{border-color:#7CFF5B}
+button{width:100%;margin-top:16px;padding:13px;background:#7CFF5B;color:#08130A;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer}
+.err{color:#FF5D5D;font-size:13px;margin-top:12px}
+</style></head><body><form class="card" method="post" action="/oauth/authorize">
+<h1>Conectar ao Nexvel</h1><p>Digite a senha de acesso para autorizar este conector.</p>
+<input type="hidden" name="redirect_uri" value="${redirect_uri.replace(/"/g, "&quot;")}">
+<input type="hidden" name="state" value="${(state ?? "").replace(/"/g, "&quot;")}">
+<label for="s">Senha de acesso</label>
+<input id="s" type="password" name="senha" autofocus autocomplete="current-password">
+${erro ? '<div class="err">Senha incorreta.</div>' : ""}
+<button type="submit">Autorizar</button></form></body></html>`;
+
+  // Authorize (GET) — abre o formulário de consentimento (ou auto-aprova se sem senha).
+  app.get("/oauth/authorize", (req: Request, res: Response) => {
+    const { redirect_uri, state } = req.query as Record<string, string>;
+    if (!redirect_uri) { res.status(400).send("redirect_uri obrigatório"); return; }
+    if (!oauthSenha) { emitirCode(redirect_uri, state, res); return; } // legado inseguro
+    res.type("html").send(formConsentimento(redirect_uri, state, false));
+  });
+
+  // Authorize (POST) — valida a senha antes de emitir o code.
+  app.post("/oauth/authorize", (req: Request, res: Response) => {
+    const { redirect_uri, state, senha } = req.body as Record<string, string>;
+    if (!redirect_uri) { res.status(400).send("redirect_uri obrigatório"); return; }
+    if (!oauthSenha) { emitirCode(redirect_uri, state, res); return; }
+    // Comparação em tempo constante (evita timing attack na senha).
+    const a = Buffer.from(senha ?? "");
+    const b = Buffer.from(oauthSenha);
+    const ok = a.length === b.length && crypto.timingSafeEqual(a, b);
+    if (!ok) { res.status(401).type("html").send(formConsentimento(redirect_uri, state, true)); return; }
+    emitirCode(redirect_uri, state, res);
   });
 
   // Token
