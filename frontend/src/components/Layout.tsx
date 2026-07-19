@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { DashboardSidebar } from "./dashboard2/Sidebar";
 import EmailVerificacaoBanner from "./EmailVerificacaoBanner";
 import NutriOnboarding from "./NutriOnboarding";
+import AceiteTermosGate from "./AceiteTermosGate";
 import api from "../lib/api";
 import { usePWAInstall } from "../hooks/usePWAInstall";
 import { usePushNotifications } from "../hooks/usePushNotifications";
@@ -47,6 +48,8 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen" style={{ background: "#09090B" }}>
+      {/* Consentimento LGPD de contas antigas — bloqueia o app inteiro, em qualquer rota */}
+      <AceiteTermosGate />
       <DashboardSidebar />
       <main className="flex-1 min-w-0 overflow-auto pt-[env(safe-area-inset-top)] pb-[calc(4rem_+_env(safe-area-inset-bottom))] lg:pt-0 lg:pb-0" style={{ background: "#09090B" }}>
         <EmailVerificacaoBanner />

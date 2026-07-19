@@ -83,6 +83,12 @@ const registerLimiter = rateLimit({
 // Versão vigente dos Termos/Privacidade aceitos no cadastro (LGPD).
 const TERMOS_VERSAO = "2026-07-12";
 
+// Contas criadas antes do aceite existir têm aceiteTermosEm=null (o consentimento
+// não foi retroagido). Comparar a versão também faz o gate servir a atualizações
+// futuras dos Termos: bumpar TERMOS_VERSAO pede o aceite de todo mundo de novo.
+const precisaAceitarTermos = (n: { aceiteTermosEm: Date | null; aceiteTermosVersao: string | null }) =>
+  !n.aceiteTermosEm || n.aceiteTermosVersao !== TERMOS_VERSAO;
+
 // Gera um token de verificação (24h) e dispara o e-mail (best-effort).
 async function criarEnviarVerificacao(nutricionistaId: string, email: string, nome: string) {
   const token = crypto.randomBytes(32).toString("hex");
@@ -229,10 +235,20 @@ router.post("/redefinir-senha", async (req: Request, res: Response) => {
 router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
   const nutri = await prisma.nutricionista.findUnique({
     where: { id: req.nutricionistaId as string },
-    select: { id: true, nome: true, email: true, crn: true, nomeConsultorio: true, logoConsultorio: true, enderecoConsultorio: true, emailVerificado: true },
+    select: { id: true, nome: true, email: true, crn: true, nomeConsultorio: true, logoConsultorio: true, enderecoConsultorio: true, emailVerificado: true, aceiteTermosEm: true, aceiteTermosVersao: true },
   });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
-  res.json(nutri);
+  res.json({ ...nutri, precisaAceitarTermos: precisaAceitarTermos(nutri) });
+});
+
+// POST /auth/aceitar-termos — registra o consentimento de quem entrou antes do
+// aceite existir (ou antes da versão vigente). Idempotente: reaceitar só recarimba.
+router.post("/aceitar-termos", authMiddleware, async (req: AuthRequest, res: Response) => {
+  await prisma.nutricionista.update({
+    where: { id: req.nutricionistaId as string },
+    data: { aceiteTermosEm: new Date(), aceiteTermosVersao: TERMOS_VERSAO },
+  });
+  res.json({ ok: true, aceiteTermosVersao: TERMOS_VERSAO });
 });
 
 router.put("/perfil", authMiddleware, async (req: AuthRequest, res: Response) => {
