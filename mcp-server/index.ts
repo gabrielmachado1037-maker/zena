@@ -461,14 +461,25 @@ function setupOAuth(app: express.Application, apiKey: string) {
     });
   });
 
-  // Senha do dono. Sem ela definida, o authorize AUTO-APROVA qualquer um — o que
-  // expõe dado de saúde de paciente (LGPD). Defina MCP_OAUTH_SENHA no Render.
+  // Senha do dono. Sem ela, o OAuth não emite code nenhum: o conector fica
+  // inutilizável, mas fechado. Falhar aberto aqui expõe dado de saúde (LGPD).
   const oauthSenha = process.env.MCP_OAUTH_SENHA;
   if (!oauthSenha) {
     console.error(
-      "[nexvel-mcp] ⚠️  MCP_OAUTH_SENHA NÃO definida — /oauth/authorize está ABERTO. " +
-      "Qualquer um com a URL obtém acesso. Defina a variável no Render para fechar."
+      "[nexvel-mcp] ⚠️  MCP_OAUTH_SENHA NÃO definida — /oauth/* respondendo 503. " +
+      "Defina a variável no Render para habilitar o conector."
     );
+  }
+
+  // Sem senha configurada, nenhuma rota de OAuth é registrada: só o 503.
+  if (!oauthSenha) {
+    app.use("/oauth", (_req: Request, res: Response) => {
+      res.status(503).json({
+        error: "server_error",
+        error_description: "Conector sem MCP_OAUTH_SENHA configurada.",
+      });
+    });
+    return;
   }
 
   const emitirCode = (redirect_uri: string, state: string | undefined, res: Response) => {
@@ -500,11 +511,10 @@ button{width:100%;margin-top:16px;padding:13px;background:#7CFF5B;color:#08130A;
 ${erro ? '<div class="err">Senha incorreta.</div>' : ""}
 <button type="submit">Autorizar</button></form></body></html>`;
 
-  // Authorize (GET) — abre o formulário de consentimento (ou auto-aprova se sem senha).
+  // Authorize (GET) — abre o formulário de consentimento.
   app.get("/oauth/authorize", (req: Request, res: Response) => {
     const { redirect_uri, state } = req.query as Record<string, string>;
     if (!redirect_uri) { res.status(400).send("redirect_uri obrigatório"); return; }
-    if (!oauthSenha) { emitirCode(redirect_uri, state, res); return; } // legado inseguro
     res.type("html").send(formConsentimento(redirect_uri, state, false));
   });
 
@@ -512,7 +522,6 @@ ${erro ? '<div class="err">Senha incorreta.</div>' : ""}
   app.post("/oauth/authorize", (req: Request, res: Response) => {
     const { redirect_uri, state, senha } = req.body as Record<string, string>;
     if (!redirect_uri) { res.status(400).send("redirect_uri obrigatório"); return; }
-    if (!oauthSenha) { emitirCode(redirect_uri, state, res); return; }
     // Comparação em tempo constante (evita timing attack na senha).
     const a = Buffer.from(senha ?? "");
     const b = Buffer.from(oauthSenha);
