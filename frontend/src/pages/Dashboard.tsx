@@ -8,7 +8,7 @@ import { useFetch } from "../hooks/useFetch";
 import Avatar from "../components/Avatar";
 import AccountSheet from "../components/AccountSheet";
 import { useAuth } from "../contexts/AuthContext";
-import { CORES_LIGA, progressoLiga } from "../lib/ligas";
+import { CORES_LIGA, progressoLiga, formatarXp } from "../lib/ligas";
 
 /* ───────── shapes reais da API ───────── */
 type Risco = "risco" | "atencao" | "ok";
@@ -37,7 +37,7 @@ interface LigasResp {
   alimentacaoBreakdown: { seguiu: number | null; adaptou: number | null; comeu_mal: number | null; pulou: number | null; amostra: number };
 }
 
-const nf = (n: number) => Math.floor(n).toLocaleString("pt-BR");
+const nf = formatarXp;
 const RISCO_RANK: Record<Risco, number> = { risco: 0, atencao: 1, ok: 2 };
 
 const HABITO = {

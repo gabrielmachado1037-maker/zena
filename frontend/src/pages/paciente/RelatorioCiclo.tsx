@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import apiPaciente from "../../lib/apiPaciente";
+import { formatarXp } from "../../lib/ligas";
 
 interface Relatorio {
   id: string;
@@ -116,7 +117,7 @@ export default function RelatorioCiclo() {
         <div className="grid grid-cols-2 gap-3">
           {[
             { icon: "🔥", label: "Maior sequência", val: `${rel.melhorSequencia} dias` },
-            { icon: "⭐", label: "Pontos ganhos",    val: `${rel.pontosTotal} pts` },
+            { icon: "⭐", label: "Pontos ganhos",    val: `${formatarXp(rel.pontosTotal)} pts` },
             { icon: "🏅", label: "Posição final",    val: rel.posicaoFinal > 0 ? `${rel.posicaoFinal}º lugar` : "—" },
             { icon: "👥", label: "Participantes",    val: `${rel.totalParticipantes}` },
           ].map(({ icon, label, val }) => (

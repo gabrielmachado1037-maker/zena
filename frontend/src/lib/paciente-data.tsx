@@ -4,7 +4,7 @@ import {
   Footprints, Medal, Camera, Crown, Award, type LucideIcon,
 } from "lucide-react";
 import apiPaciente from "./apiPaciente";
-import { progressoLiga, calcularXpAlimentacao, resolverPlanoRefeicoes, calcularXpSonoMeta, SONO_META_HORAS_PADRAO, type RefeicaoPlano } from "./ligas";
+import { progressoLiga, xpInteiro, calcularXpAlimentacao, resolverPlanoRefeicoes, calcularXpSonoMeta, SONO_META_HORAS_PADRAO, type RefeicaoPlano } from "./ligas";
 import type { Mission, Challenge, Achievement, RankUser, Measure } from "./nexvel-data";
 
 /* ─────────── shapes das respostas da API ─────────── */
@@ -166,7 +166,7 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
         league: p ? `${p.ligaAtual} ${p.ligaNivel}` : "—",
         // XP é fracionário (refeição vale 4÷N); a UI mostra sempre inteiro. O
         // progresso da liga segue calculado do valor cheio, sem perder precisão.
-        points: Math.floor(pontos),
+        points: xpInteiro(pontos),
         nextLeague: prog.proxima ? `${prog.proxima.liga} ${prog.proxima.nivel}` : "Liga máxima",
         pointsToNext: prog.faltam,
         streak: p?.streakAtual ?? 0,
@@ -259,7 +259,7 @@ export function PacienteDataProvider({ children }: { children: ReactNode }) {
 
       const ranking: RankUser[] = rankingRaw.map((r) => ({
         position: r.pos, name: r.nome, league: `${r.ligaAtual} ${r.ligaNivel}`,
-        points: Math.floor(r.pontosTotal), avatar: r.fotoPerfilUrl || "/placeholder.svg", me: r.isMe,
+        points: xpInteiro(r.pontosTotal), avatar: r.fotoPerfilUrl || "/placeholder.svg", me: r.isMe,
       }));
       const myPosition = ranking.find((r) => r.me)?.position ?? 0;
 

@@ -6,6 +6,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { usePacienteData } from "@/lib/paciente-data"
+import { formatarXpDia } from "@/lib/ligas"
 import apiPaciente from "@/lib/apiPaciente"
 import { ScreenHeader } from "../screen-header"
 import type { NavigateFn } from "../types"
@@ -401,7 +402,7 @@ function TimelineEntry({ entry, name }: { entry: Entry; name: string }) {
           <p className="text-body-lg font-semibold text-nx-on-surface">Dia registrado</p>
           <p className="text-body-sm text-nx-on-surface-variant">Missões do dia concluídas</p>
         </div>
-        {entry.pontos > 0 && <span className="text-body-sm font-bold text-nx-evo">+{entry.pontos} XP</span>}
+        {entry.pontos > 0 && <span className="text-body-sm font-bold text-nx-evo">+{formatarXpDia(entry.pontos)} XP</span>}
       </div>
     )
   }

@@ -45,7 +45,21 @@ export function proximaLiga(pontos: number): LigaTier | null {
 // 253.17000000000007". Exibimos o total por baixo (o que o paciente de fato já
 // tem) e o que falta por cima (o mínimo que ainda precisa ganhar): floor(total) +
 // ceil(falta) cai exatamente no corte da liga, sem erro de ponto flutuante à vista.
-export const formatarXp = (pontos: number) => Math.floor(pontos).toLocaleString("pt-BR");
+// O XP acumula somando 4÷3, 4÷6, 0,75... então o total deriva em binário: um
+// paciente com 31 XP guarda 30.999999999999996. Sem isto, floor() mostraria 30 e
+// comeria um ponto inteiro. O XP nunca tem mais de 2 casas por construção
+// (calcularXpAlimentacao arredonda aí), então 2 casas é o valor de verdade.
+const semDeriva = (n: number) => Math.round(n * 100) / 100;
+
+/** XP inteiro (por baixo) já sem deriva binária — para cálculo, não exibição. */
+export const xpInteiro = (pontos: number) => Math.floor(semDeriva(pontos));
+
+export const formatarXp = (pontos: number) => xpInteiro(pontos).toLocaleString("pt-BR");
+
+// XP de UM dia/refeição: até 1 casa. Aqui a fração é a mecânica ("adaptou" = 0,75),
+// e truncar faria a soma do dia não bater com o que o paciente marcou.
+export const formatarXpDia = (pontos: number) =>
+  semDeriva(pontos).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
 
 // Progresso 0-100 dentro da liga atual + pontos que faltam para a próxima
 export function progressoLiga(pontos: number): { pct: number; faltam: number; proxima: LigaTier | null } {
@@ -54,7 +68,7 @@ export function progressoLiga(pontos: number): { pct: number; faltam: number; pr
   const range = atual.ate - atual.de;
   const pct = Math.min(100, Math.round(((pontos - atual.de) / range) * 100));
   // ceil: arredondar pra baixo mostraria um alvo que não cruza o corte de verdade.
-  return { pct, faltam: Math.max(0, Math.ceil(atual.ate - pontos)), proxima: proximaLiga(pontos) };
+  return { pct, faltam: Math.max(0, Math.ceil(semDeriva(atual.ate - pontos))), proxima: proximaLiga(pontos) };
 }
 
 // Cores de identidade das ligas = matiz da arte 3D dos emblemas (LeagueEmblem).

@@ -109,7 +109,7 @@ export default function LigaPontosTab({ paciente, pontosLog, streakMarcos, conqu
               <div key={l.tipo}>
                 <div className="flex justify-between text-label-sm mb-1">
                   <span className="text-nx-on-surface-variant">{rotuloTipoPontos(l.tipo)}</span>
-                  <span className="font-bold">{l.pontos} pts</span>
+                  <span className="font-bold">{formatarXp(l.pontos)} pts</span>
                 </div>
                 <div className="w-full h-1.5 bg-nx-container-high rounded-full overflow-hidden">
                   <div className="h-full bg-nx-primary rounded-full" style={{ width: `${(l.pontos / maxP) * 100}%` }} />

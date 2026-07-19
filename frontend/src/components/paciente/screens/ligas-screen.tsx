@@ -4,14 +4,14 @@ import { ChevronLeft, ChevronsUp, ChevronsDown, ShieldCheck } from "lucide-react
 import { cn } from "@/lib/utils"
 import { usePacienteData } from "@/lib/paciente-data"
 import { LeagueEmblem, LEAGUE_FROM_NOME } from "@/components/ui-nx"
-import { CORES_LIGA } from "@/lib/ligas"
+import { CORES_LIGA, formatarXp } from "@/lib/ligas"
 import type { RankUser } from "@/lib/nexvel-data"
 
 /** Glow por liga (igual à aba Ligas do nutri) para os brasões de destaque. */
 const glow = (liga: string, blur = 14) => ({ filter: `drop-shadow(0 0 ${blur}px ${CORES_LIGA[liga] ?? "#7CFF5B"}55)` })
 
 const TIERS = ["Bronze", "Prata", "Ouro", "Diamante", "Mestre", "Lendário"] as const
-const nf = (n: number) => Math.floor(n).toLocaleString("pt-BR")
+const nf = formatarXp
 
 type Zone = "promo" | "safe" | "releg"
 

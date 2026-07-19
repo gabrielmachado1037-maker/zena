@@ -9,7 +9,7 @@ import {
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
 import { LeagueEmblem } from "../components/ui-nx";
-import { progressoLiga, diasDesde, CORES_LIGA } from "../lib/ligas";
+import { progressoLiga, diasDesde, CORES_LIGA, formatarXp } from "../lib/ligas";
 import { gerarUrlWhatsApp } from "../lib/utils";
 import { mensagemConvite } from "../lib/convitePaciente";
 
@@ -37,7 +37,7 @@ type StatusFiltro = "todos" | "ativo" | "risco" | "inativo";
 
 /* Cor de progresso por liga — acompanha o brasão (CORES_LIGA = arte do LeagueEmblem). */
 const corLiga = (l: string) => CORES_LIGA[l] ?? "#7CFF5B";
-const nf = (n: number) => n.toLocaleString("pt-BR");
+const nf = formatarXp;
 
 /* Status derivado só dos dados que já existem — mesma regra de risco dos filtros. */
 function statusDe(p: Paciente): { label: string; cor: string } {
