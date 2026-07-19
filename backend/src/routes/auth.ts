@@ -83,11 +83,13 @@ const registerLimiter = rateLimit({
 // Versão vigente dos Termos/Privacidade aceitos no cadastro (LGPD).
 const TERMOS_VERSAO = "2026-07-12";
 
-// Contas criadas antes do aceite existir têm aceiteTermosEm=null (o consentimento
-// não foi retroagido). Comparar a versão também faz o gate servir a atualizações
-// futuras dos Termos: bumpar TERMOS_VERSAO pede o aceite de todo mundo de novo.
+// Re-consentimento: quem já aceitou aceita de novo quando os Termos mudarem —
+// basta bumpar TERMOS_VERSAO. Contas anteriores ao aceite existir (aceiteTermosEm
+// nulo) ficam grandfathered de propósito: são as primeiras contas, o consentimento
+// não foi retroagido e o cadastro já exige o aceite desde 2026-07-12, então o gate
+// serve às contas novas, não a elas.
 const precisaAceitarTermos = (n: { aceiteTermosEm: Date | null; aceiteTermosVersao: string | null }) =>
-  !n.aceiteTermosEm || n.aceiteTermosVersao !== TERMOS_VERSAO;
+  !!n.aceiteTermosEm && n.aceiteTermosVersao !== TERMOS_VERSAO;
 
 // Gera um token de verificação (24h) e dispara o e-mail (best-effort).
 async function criarEnviarVerificacao(nutricionistaId: string, email: string, nome: string) {
