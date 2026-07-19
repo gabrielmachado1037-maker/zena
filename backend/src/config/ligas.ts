@@ -105,6 +105,14 @@ export const XP_TREINO: Record<string, number> = { conforme: 3, parcial: 1, nao:
 export const XP_SONO: Record<string, number> = { menos5: 0, "5a7": 1, "7a9": 2, mais9: 2 };
 
 /**
+ * Precisão canônica do XP: 2 casas. É o teto real do sistema — a menor fração
+ * possível é uma refeição (4÷6 ≈ 0,67) e `calcularXpAlimentacao` já arredonda aí.
+ * Aplicar em TODA escrita de XP impede que somas sucessivas de frações binárias
+ * derivem (um paciente com 31 XP acabava gravado como 30.999999999999996).
+ */
+export const arredondarXp = (n: number): number => Math.round(n * 100) / 100;
+
+/**
  * XP de alimentação (0–4) a partir do estado das N refeições do plano.
  * Cada refeição vale `4 / N`; "adaptou" recebe 75% desse valor. Satura em 4 —
  * então ter mais refeições NÃO dá vantagem (igualdade nas ligas).
@@ -181,7 +189,9 @@ export function calcularPontosRegistro(hoje: {
   if (hoje.incluirFechamento) {
     detalhes.registro_diario = PONTOS.registro_diario;
   }
-  const total = Object.values(detalhes).reduce((a, b) => a + b, 0);
+  // Somar frações binárias deriva (1,33 × 3 = 3.9899999999999998). Arredondar aqui
+  // e no total acumulado mantém o XP gravado com a precisão que ele realmente tem.
+  const total = arredondarXp(Object.values(detalhes).reduce((a, b) => a + b, 0));
   return { total, detalhes };
 }
 

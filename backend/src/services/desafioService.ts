@@ -1,5 +1,5 @@
 import prisma from "../lib/prisma";
-import { calcularLiga } from "../config/ligas";
+import { calcularLiga, arredondarXp } from "../config/ligas";
 import { adesaoMinimaDe, recompensaDe, diaCumpreDesafio } from "../config/desafios";
 import { enviarNotificacao } from "../routes/notificacoes";
 import { NotificationEngine } from "./notificationEngine";
@@ -178,7 +178,7 @@ async function processarProgresso(prog: ProgComDesafio, hoje: Date): Promise<voi
   if (!pac) return;
   // XP sempre pela regra (7→5, 14→10, 21→15) — nunca o valor da coluna (que pode estar obsoleto).
   const bonus = recompensaDe(d.duracaoDias);
-  const novoTotal = pac.pontosTotal + bonus;
+  const novoTotal = arredondarXp(pac.pontosTotal + bonus);
   const liga = calcularLiga(novoTotal);
   await prisma.$transaction([
     prisma.paciente.update({

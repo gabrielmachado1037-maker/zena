@@ -9,6 +9,7 @@ import { recalcularHorariosPreferidos } from "./services/horarioInteligente";
 import { enviarReativacao, enviarPositivas } from "./services/notificacoesAgendadas";
 import {
   calcularLiga,
+  arredondarXp,
   DIAS_ATE_CONGELAR,
   DIAS_ATE_PENALIZAR,
   PENALIDADE_INATIVIDADE_POR_DIA,
@@ -252,7 +253,7 @@ export function initCron() {
         if (diasInativo > DIAS_ATE_PENALIZAR) {
           const diasPenalizados = diasInativo - DIAS_ATE_PENALIZAR;
           if (diasPenalizados * PENALIDADE_INATIVIDADE_POR_DIA <= PENALIDADE_INATIVIDADE_MAXIMA) {
-            const novoTotal = Math.max(0, p.pontosTotal - PENALIDADE_INATIVIDADE_POR_DIA);
+            const novoTotal = arredondarXp(Math.max(0, p.pontosTotal - PENALIDADE_INATIVIDADE_POR_DIA));
             data.pontosTotal = novoTotal;
             const liga = calcularLiga(novoTotal);
             data.ligaAtual = liga.liga;

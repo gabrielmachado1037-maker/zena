@@ -6,6 +6,7 @@ import { validateBody } from "../middleware/validate";
 import {
   calcularPontosRegistro,
   calcularLiga,
+  arredondarXp,
   calcularXpAlimentacao,
   calcularXpTreino,
   calcularXpSono,
@@ -138,7 +139,7 @@ function calcularFechamentoPaciente(
     : false;
   const streakAtual = registrouOntem ? paciente.streakAtual + 1 : 1;
   const streakMaximo = Math.max(paciente.streakMaximo, streakAtual);
-  const pontosTotal = paciente.pontosTotal + pontosGanhos;
+  const pontosTotal = arredondarXp(paciente.pontosTotal + pontosGanhos);
   const liga = calcularLiga(pontosTotal);
   return { streakAtual, streakMaximo, pontosTotal, liga };
 }
