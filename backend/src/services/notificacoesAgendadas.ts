@@ -3,8 +3,8 @@ import { NotificationEngine } from "./notificationEngine";
 
 // Notificações agendadas de engajamento (Fase 3): reativação (paciente sumido) e
 // positivas (boa evolução, limitadas). Ambas passam pelo NotificationEngine.
-// Os tipos "reativacao"/"positiva" NÃO estão no mapa de categorias do engine →
-// não são desligáveis pelos 9 toggles (retenção), mas respeitam quiet-hours/dedup.
+// Base legal = consentimento (LGPD): o titular pode revogá-lo pela pref
+// "engajamento" (o engine para o envio); seguem respeitando quiet-hours/dedup.
 
 const DIA = 24 * 60 * 60 * 1000;
 

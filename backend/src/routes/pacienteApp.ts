@@ -463,13 +463,19 @@ router.get("/prefs-notificacao", async (req: PacienteAuthRequest, res: Response)
 // PUT /api/paciente-app/prefs-notificacao — salva toggles (merge) e/ou fuso do dispositivo.
 router.put("/prefs-notificacao", async (req: PacienteAuthRequest, res: Response) => {
   const body = req.body as { prefs?: Record<string, unknown>; timezone?: string };
-  const data: { prefsNotificacao?: Record<string, boolean>; timezone?: string } = {};
+  const data: { prefsNotificacao?: Record<string, boolean | string | null>; timezone?: string } = {};
 
   if (body.prefs && typeof body.prefs === "object") {
     const atual = await prisma.paciente.findUnique({ where: { id: req.pacienteId! }, select: { prefsNotificacao: true } });
-    const merged: Record<string, boolean> = { ...((atual?.prefsNotificacao as Record<string, boolean>) ?? {}) };
+    const merged: Record<string, boolean | string | null> = { ...((atual?.prefsNotificacao as Record<string, boolean | string | null>) ?? {}) };
     for (const cat of CATEGORIAS_NOTIF) {
       if (typeof body.prefs[cat] === "boolean") merged[cat] = body.prefs[cat] as boolean;
+    }
+    // Consentimento de comunicações de engajamento/retenção (LGPD, revogável).
+    // Carimba o momento da revogação/reativação para registro auditável.
+    if (typeof body.prefs.engajamento === "boolean") {
+      merged.engajamento = body.prefs.engajamento as boolean;
+      merged.engajamentoRevogadoEm = body.prefs.engajamento ? null : new Date().toISOString();
     }
     data.prefsNotificacao = merged;
   }

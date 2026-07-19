@@ -72,7 +72,9 @@ export default function Privacidade() {
 
           <Section titulo="7. Seus direitos">
             Você tem direito a: acessar, corrigir, portar, eliminar seus dados e revogar consentimentos.
-            Para exercer esses direitos, entre em contato pelo e-mail de privacidade.
+            Exportação e exclusão de dados podem ser feitas diretamente no aplicativo (em Conta). O
+            consentimento para comunicações de engajamento pode ser revogado a qualquer momento em
+            Conta › Comunicações de engajamento. Para os demais direitos, entre em contato pelo e-mail de privacidade.
           </Section>
 
           <Section titulo="8. Segurança">

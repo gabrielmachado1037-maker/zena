@@ -32,6 +32,11 @@ const CATEGORIA_DO_TIPO: Record<string, CategoriaNotificacao> = {
   sono: "sono",
 };
 
+// Comunicações de engajamento/retenção (base legal = consentimento, LGPD).
+// Diferente das 9 categorias de progresso, estas são revogáveis pelo próprio
+// titular (pref `engajamento`) — a revogação deve efetivamente parar o envio.
+const TIPOS_ENGAJAMENTO = new Set(["reativacao", "positiva"]);
+
 const QUIET_START = 22; // 22h — não envia à noite/madrugada
 const QUIET_END = 7;    //  7h
 const TZ_PADRAO = "America/Sao_Paulo";
@@ -84,10 +89,17 @@ export async function enviar(pacienteId: string, tipo: string, opts: EnviarOpts)
     });
     if (!pac || pac.anonimizadoEm) return; // paciente removido: nunca notifica
 
+    const prefs = (pac.prefsNotificacao ?? {}) as Record<string, unknown>;
+
     // 1) Preferência da categoria (null/undefined = ligada).
     if (categoria) {
-      const prefs = (pac.prefsNotificacao ?? {}) as Record<string, unknown>;
       if (prefs[categoria] === false) { await registrarLog(pacienteId, tipo, opts, url, "pulado", "preferencia"); return; }
+    }
+
+    // 1b) Consentimento de comunicações de engajamento (LGPD, revogável). Revogado = não envia.
+    if (TIPOS_ENGAJAMENTO.has(tipo) && prefs.engajamento === false) {
+      await registrarLog(pacienteId, tipo, opts, url, "pulado", "consentimento");
+      return;
     }
 
     // 2) Quiet hours (fuso do paciente) — nunca de madrugada.

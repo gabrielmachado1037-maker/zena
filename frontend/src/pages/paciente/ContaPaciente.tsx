@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, ChevronRight, LogOut, Bell, Lock, Trash2, Eye, EyeOff, Globe, Download } from "lucide-react";
+import { Camera, ChevronRight, LogOut, Bell, Lock, Trash2, Eye, EyeOff, Globe, Download, Megaphone } from "lucide-react";
 import api from "../../lib/api";
 import apiPaciente from "../../lib/apiPaciente";
 import { usePacienteAuth } from "../../contexts/PacienteAuthContext";
@@ -307,6 +307,7 @@ export default function ContaPaciente() {
         const stored = r.data.prefs ?? {};
         const init: Record<string, boolean> = {};
         for (const c of CATEGORIAS_NOTIF) init[c.key] = stored[c.key] !== false;
+        init.engajamento = stored.engajamento !== false; // consentimento (LGPD): null/ausente = ligado
         setPrefs(init);
       })
       .catch(() => {});
@@ -475,6 +476,22 @@ export default function ContaPaciente() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Comunicações de engajamento — consentimento revogável (LGPD) */}
+          <div className="bg-nx-surface rounded-2xl px-5 py-4 flex items-center justify-between border border-white/5">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-nx-primary/15">
+                <Megaphone size={16} className="text-nx-primary" />
+              </div>
+              <div className="pr-3">
+                <p className="text-[14px] font-semibold text-nx-on-surface">Comunicações de engajamento</p>
+                <p className="text-[11px] text-nx-on-surface-variant">
+                  Lembretes para voltar e mensagens de incentivo. Você pode revogar este consentimento quando quiser.
+                </p>
+              </div>
+            </div>
+            <Toggle on={prefs.engajamento ?? true} onClick={() => toggleCategoria("engajamento")} />
           </div>
 
           {/* Privacidade padrão */}
