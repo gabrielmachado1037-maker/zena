@@ -116,13 +116,20 @@ passa a ser coerente), ou inverter o padrão para desligado.
 | **Anthropic** | Geração do texto do relatório clínico | EUA | **Sim** |
 | **Supabase** | Armazenamento de fotos (bucket privado) | ⚠️ **não verificada** | a confirmar |
 
-> ⚠️ **A política pública hoje afirma "servidores no Brasil ou com adequação LGPD".**
-> Isso é impreciso: Sentry e Anthropic estão nos EUA. Afirmação factualmente errada
-> numa política de privacidade é pior que omissão — corrigir é prioridade.
+> ✅ **CORRIGIDO na política pública em 20/07/2026.** Ela afirmava "servidores no
+> Brasil ou com adequação LGPD" — impreciso — e omitia três operadores. Agora
+> declara Neon, Supabase, Render, Vercel, Stripe, Asaas, Resend, Sentry e Anthropic,
+> com seção própria de transferência internacional. **Supabase (fotos de corpo),
+> Asaas e Anthropic não estavam declarados.**
 >
-> ⚠️ **Anthropic não está declarada na política**, embora o relatório clínico envie
-> conteúdo derivado de dado de saúde para gerar o texto. Precisa ser declarada e
-> precisa de base legal para a transferência.
+> ⚠️ **Ainda em aberto:** a política declara o FATO da transferência internacional,
+> mas **não indica a hipótese do Art. 33** que a autoriza (cláusulas contratuais
+> padrão, adequação, consentimento específico…). Escolher a hipótese é decisão
+> jurídica, não foi preenchida.
+>
+> ⚠️ **Regiões de Render, Vercel e Supabase seguem não verificadas.** Cabeçalhos
+> `CF-RAY: …-GRU` e `x-vercel-id: gru1` mostram o **edge da CDN**, não a região de
+> origem — não servem como prova. Confirmar nos respectivos painéis.
 
 ---
 

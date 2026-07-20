@@ -13,7 +13,7 @@ export default function Privacidade() {
       </nav>
       <div className="max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-4xl font-bold text-nx-on-surface mb-2">Política de Privacidade</h1>
-        <p className="text-nx-on-surface-variant text-sm mb-10">Última atualização: junho de 2026</p>
+        <p className="text-nx-on-surface-variant text-sm mb-10">Última atualização: julho de 2026</p>
 
         <div className="bg-nx-surface rounded-2xl p-8 space-y-8 text-nx-on-surface-variant leading-relaxed">
           <Section titulo="1. Quem somos">
@@ -28,7 +28,7 @@ export default function Privacidade() {
               <li><strong>Dados do nutricionista:</strong> nome, e-mail, CRN e senha (armazenada com hash bcrypt).</li>
               <li><strong>Dados das pacientes:</strong> nome, e-mail, telefone, fotos de evolução, peso, medidas corporais, planos alimentares e histórico de saúde (anamnese). Esses dados são inseridos pelo nutricionista ou pela própria paciente pelo portal.</li>
               <li><strong>Dados de uso:</strong> logs de acesso, endereço IP e eventos de navegação para fins de segurança e melhoria do serviço.</li>
-              <li><strong>Dados de pagamento:</strong> processados integralmente pelo Stripe. Não armazenamos números de cartão.</li>
+              <li><strong>Dados de pagamento:</strong> processados integralmente pelo Stripe (cartão) ou pelo Asaas (Pix). Não armazenamos números de cartão.</li>
             </ul>
           </Section>
 
@@ -53,14 +53,26 @@ export default function Privacidade() {
           <Section titulo="5. Compartilhamento de dados">
             Não vendemos dados. Compartilhamos apenas com prestadores necessários para operar o serviço:
             <ul className="list-disc pl-5 space-y-2 mt-2">
-              <li><strong>Stripe</strong> — processamento de pagamentos.</li>
-              <li><strong>Resend</strong> — envio de e-mails transacionais.</li>
-              <li><strong>Render / Neon / Vercel</strong> — hospedagem e banco de dados (servidores no Brasil ou com adequação LGPD).</li>
-              <li><strong>Sentry</strong> — monitoramento de erros. Recebe apenas dados técnicos da falha (mensagem de erro, tela e identificador interno da conta). Não recebe seu nome, e-mail, fotos nem dados de saúde.</li>
+              <li><strong>Neon</strong> — banco de dados. É onde ficam armazenados os dados de saúde. Servidores em <strong>São Paulo, Brasil</strong>.</li>
+              <li><strong>Supabase</strong> — armazenamento das fotos de evolução. As fotos ficam em área privada, acessível apenas por links temporários assinados.</li>
+              <li><strong>Render</strong> — servidor da aplicação (processa os dados para responder às requisições).</li>
+              <li><strong>Vercel</strong> — hospedagem da interface.</li>
+              <li><strong>Stripe</strong> — processamento de pagamentos por cartão.</li>
+              <li><strong>Asaas</strong> — processamento de pagamentos por Pix. Servidores no Brasil.</li>
+              <li><strong>Resend</strong> — envio de e-mails transacionais. Servidores em São Paulo, Brasil.</li>
+              <li><strong>Sentry</strong> — monitoramento de erros. Recebe apenas dados técnicos da falha (mensagem de erro, tela e identificador interno da conta). Não recebe seu nome, e-mail, fotos nem dados de saúde. Servidores nos <strong>Estados Unidos</strong>.</li>
+              <li><strong>Anthropic</strong> — geração do texto do relatório mensal. Recebe dados de acompanhamento (adesão, registros e evolução do período) para redigir o resumo entregue ao nutricionista. Servidores nos <strong>Estados Unidos</strong>.</li>
             </ul>
           </Section>
 
-          <Section titulo="6. Retenção e exclusão">
+          <Section titulo="6. Transferência internacional de dados">
+            Parte dos prestadores acima trata dados fora do Brasil — atualmente
+            <strong> Sentry</strong> e <strong>Anthropic</strong>, ambos nos Estados Unidos, e
+            o <strong>Stripe</strong>, nos Estados Unidos e na Irlanda. O banco de dados onde
+            ficam armazenados os dados de saúde permanece no Brasil.
+          </Section>
+
+          <Section titulo="7. Retenção e exclusão">
             Mantemos os dados enquanto a conta estiver ativa. A exclusão pode ser solicitada a qualquer
             momento — pelo próprio aplicativo ou por e-mail para{" "}
             <a href="mailto:contato@nexvel.tech" className="text-nx-evo underline">contato@nexvel.tech</a>.
@@ -70,24 +82,26 @@ export default function Privacidade() {
             ciclos regulares de backup.
           </Section>
 
-          <Section titulo="7. Seus direitos">
+          <Section titulo="8. Seus direitos">
             Você tem direito a: acessar, corrigir, portar, eliminar seus dados e revogar consentimentos.
             Exportação e exclusão de dados podem ser feitas diretamente no aplicativo (em Conta). O
             consentimento para comunicações de engajamento pode ser revogado a qualquer momento em
             Conta › Comunicações de engajamento. Para os demais direitos, entre em contato pelo e-mail de privacidade.
           </Section>
 
-          <Section titulo="8. Segurança">
+          <Section titulo="9. Segurança">
             Utilizamos criptografia em trânsito (HTTPS/TLS), hash bcrypt para senhas e tokens JWT com prazo
             de expiração. Realizamos auditorias periódicas de segurança.
           </Section>
 
-          <Section titulo="9. Cookies">
-            Utilizamos apenas cookies estritamente necessários para autenticação (token JWT no localStorage).
-            Não utilizamos cookies de rastreamento ou publicidade.
+          <Section titulo="10. Cookies">
+            Não utilizamos cookies de rastreamento ou publicidade. Para manter você conectado,
+            guardamos o token de autenticação no armazenamento local do navegador
+            (localStorage) — que, tecnicamente, não é um cookie e não é enviado a
+            terceiros.
           </Section>
 
-          <Section titulo="10. Contato">
+          <Section titulo="11. Contato">
             Dúvidas, solicitações ou reclamações sobre privacidade:{" "}
             <a href="mailto:contato@nexvel.tech" className="text-nx-evo underline">contato@nexvel.tech</a>.
           </Section>
