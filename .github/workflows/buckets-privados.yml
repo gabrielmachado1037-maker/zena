@@ -1,0 +1,129 @@
+name: Fechar/abrir buckets de fotos
+
+# Faz pela API o que se faria no painel do Supabase: tornar privados os buckets
+# de fotos (dado de saúde) e PROVAR que ficou privado — testando que a URL
+# pública deixou de funcionar e que a URL assinada continua funcionando.
+#
+# `acao: abrir` desfaz tudo, caso alguma imagem quebre no app. Reverter por aqui
+# é mais rápido e menos sujeito a erro do que refazer o caminho no painel.
+
+on:
+  workflow_dispatch:
+    inputs:
+      acao:
+        description: "fechar = privado (protege as fotos) | abrir = público (reverte)"
+        required: true
+        default: fechar
+        type: choice
+        options: [fechar, abrir]
+
+jobs:
+  aplicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      # db-backups fica de fora de propósito: já é privado e não tem imagem.
+      BUCKETS: "fotos feed-fotos avatares-pacientes"
+
+    steps:
+      - name: Aplicar visibilidade
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.acao }}" = "fechar" ]; then PUBLICO=false; else PUBLICO=true; fi
+          echo "Ação: ${{ inputs.acao }} (public=$PUBLICO)"
+          echo ""
+
+          for B in $BUCKETS; do
+            code=$(curl -s -o /tmp/r.json -w "%{http_code}" -X PUT \
+              "$SUPABASE_URL/storage/v1/bucket/$B" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"public\": $PUBLICO}")
+            if [ "$code" != "200" ]; then
+              echo "::error::Falha ao atualizar '$B' (HTTP $code): $(cat /tmp/r.json)"
+              exit 1
+            fi
+            echo "  $B → public=$PUBLICO"
+          done
+
+      - name: Conferir estado real dos buckets
+        run: |
+          set -euo pipefail
+          lista=$(curl -s "$SUPABASE_URL/storage/v1/bucket" -H "Authorization: Bearer $SUPABASE_SERVICE_KEY")
+          echo "Estado atual:"
+          echo "$lista" | jq -r '.[] | "  \(.name): public=\(.public)"'
+
+          # Confia no que o servidor devolve, não no que o PUT respondeu.
+          for B in $BUCKETS; do
+            real=$(echo "$lista" | jq -r --arg b "$B" '.[] | select(.name==$b) | .public')
+            esperado=$([ "${{ inputs.acao }}" = "fechar" ] && echo "false" || echo "true")
+            if [ "$real" != "$esperado" ]; then
+              echo "::error::Bucket '$B' está public=$real, esperado $esperado."
+              exit 1
+            fi
+          done
+
+      - name: Provar na prática (URL pública x URL assinada)
+        if: ${{ inputs.acao == 'fechar' }}
+        run: |
+          set -euo pipefail
+
+          # Pega um objeto real para testar; sem objeto, não há o que provar.
+          ARQ=""
+          for B in $BUCKETS; do
+            nome=$(curl -s -X POST "$SUPABASE_URL/storage/v1/object/list/$B" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              -H "Content-Type: application/json" \
+              -d '{"prefix":"","limit":100}' | jq -r '[.[]? | select(.id != null)] | .[0].name // empty')
+            if [ -n "$nome" ]; then ARQ="$nome"; BUCKET_TESTE="$B"; break; fi
+          done
+
+          if [ -z "$ARQ" ]; then
+            echo "Nenhum objeto encontrado nos buckets — nada para testar."
+            echo "Os buckets estão privados (confirmado no passo anterior), mas sem arquivo não dá para provar na prática."
+            exit 0
+          fi
+          echo "Testando com: $BUCKET_TESTE/$ARQ"
+
+          # 1) URL pública tem que PARAR de funcionar.
+          pub=$(curl -s -o /dev/null -w "%{http_code}" "$SUPABASE_URL/storage/v1/object/public/$BUCKET_TESTE/$ARQ")
+          echo "  URL pública (sem login) → HTTP $pub"
+          if [ "$pub" = "200" ]; then
+            echo "::error::A URL pública ainda responde 200 — o bucket NÃO está protegido."
+            exit 1
+          fi
+
+          # 2) URL assinada tem que CONTINUAR funcionando (é como o app serve as fotos).
+          sig=$(curl -s -X POST "$SUPABASE_URL/storage/v1/object/sign/$BUCKET_TESTE" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"expiresIn\":60,\"paths\":[\"$ARQ\"]}" | jq -r '.[0].signedURL // empty')
+          if [ -z "$sig" ]; then echo "::error::Não consegui gerar URL assinada."; exit 1; fi
+
+          ass=$(curl -s -o /dev/null -w "%{http_code}" "$SUPABASE_URL/storage/v1$sig")
+          echo "  URL assinada → HTTP $ass"
+          if [ "$ass" != "200" ]; then
+            echo "::error::A URL assinada não funciona (HTTP $ass) — as fotos sumiriam do app. Rode este workflow com acao=abrir."
+            exit 1
+          fi
+
+          echo ""
+          echo "✅ Fotos protegidas: acesso direto bloqueado, acesso pelo app funcionando."
+
+      - name: Resumo
+        if: always()
+        run: |
+          echo "### Buckets de fotos — ação: ${{ inputs.acao }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" = "success" ]; then
+            if [ "${{ inputs.acao }}" = "fechar" ]; then
+              echo "Buckets privados. Confira as imagens no app (Ctrl+Shift+R)." >> $GITHUB_STEP_SUMMARY
+              echo "Se alguma sumir, rode de novo com **acao: abrir** para reverter." >> $GITHUB_STEP_SUMMARY
+            else
+              echo "Buckets voltaram a ser públicos." >> $GITHUB_STEP_SUMMARY
+            fi
+          else
+            echo "Falhou — veja o log. Nada foi alterado, ou reverta com **acao: abrir**." >> $GITHUB_STEP_SUMMARY
+          fi
