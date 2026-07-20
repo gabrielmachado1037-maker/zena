@@ -38,6 +38,21 @@ const refreshSchema = z.object({
   refreshToken: z.string({ error: "Sessão inválida." }).min(1, "Sessão inválida."),
 });
 
+const esqueciSenhaSchema = z.object({
+  email: z.string({ error: "Informe o e-mail." }).trim().min(1, "Informe o e-mail."),
+});
+
+// O cadastro e a troca pelo perfil exigem 6 caracteres; só esta rota não exigia
+// nada, então o fluxo de recuperação aceitava terminar com a senha "1".
+// A mensagem de `token` ausente segue "Dados inválidos" para não mudar o texto
+// que o frontend já mostra.
+const redefinirSenhaSchema = z.object({
+  token: z.string({ error: "Dados inválidos" }).min(1, "Dados inválidos"),
+  novaSenha: z
+    .string({ error: "Dados inválidos" })
+    .min(6, "A senha deve ter ao menos 6 caracteres."),
+});
+
 // ── Tokens: access curto (30min) + refresh longo (30d) revogável, rotacionado ──
 const ACCESS_TTL = "30m";
 const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -96,6 +111,18 @@ const emailLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 3,
   message: { error: "Muitas solicitações. Tente novamente em 1 hora." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rotas que consomem um token de uso único vindo do e-mail (redefinir senha,
+// verificar e-mail). Os tokens são randomBytes(32) = 256 bits, então adivinhar
+// é inviável e este limite não é o que protege o segredo — ele existe para que
+// um script não possa martelar a rota (uma consulta ao banco por tentativa).
+const tokenLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: "Muitas tentativas. Tente novamente em 15 minutos." },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -214,7 +241,7 @@ router.post("/logout", async (req: Request, res: Response) => {
 });
 
 // POST /verificar-email — consome o token e marca o e-mail como verificado.
-router.post("/verificar-email", validateBody(verificarEmailSchema), async (req: Request, res: Response) => {
+router.post("/verificar-email", tokenLimiter, validateBody(verificarEmailSchema),async (req: Request, res: Response) => {
   const { token } = req.body;
   const registro = await prisma.tokenVerificacaoEmail.findUnique({ where: { token } });
   if (!registro || registro.usado || registro.expiresAt < new Date()) {
@@ -236,7 +263,7 @@ router.post("/reenviar-verificacao", emailLimiter, authMiddleware, async (req: A
   res.json({ ok: true });
 });
 
-router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) => {
+router.post("/esqueci-senha", emailLimiter, validateBody(esqueciSenhaSchema), async (req: Request, res: Response) => {
   const { email } = req.body;
   const nutri = await buscarNutricionistaPorEmail(email);
 
@@ -254,14 +281,8 @@ router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) 
   res.json({ ok: true });
 });
 
-router.post("/redefinir-senha", async (req: Request, res: Response) => {
+router.post("/redefinir-senha", tokenLimiter, validateBody(redefinirSenhaSchema), async (req: Request, res: Response) => {
   const { token, novaSenha } = req.body;
-  if (!token || !novaSenha) return res.status(400).json({ error: "Dados inválidos" });
-  // O cadastro e a troca pelo perfil exigem 6; só esta rota não exigia nada,
-  // então o fluxo de recuperação aceitava terminar com a senha "1".
-  if (String(novaSenha).length < 6) {
-    return res.status(400).json({ error: "A senha deve ter ao menos 6 caracteres." });
-  }
 
   const registro = await prisma.tokenRedefinicao.findUnique({ where: { token } });
   if (!registro || registro.usado || registro.expiresAt < new Date()) {

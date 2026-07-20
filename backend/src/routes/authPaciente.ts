@@ -41,6 +41,19 @@ const verificarEmailSchema = z.object({
   token: z.string({ error: "Token inválido." }).min(1, "Token inválido."),
 });
 
+const esqueciSenhaSchema = z.object({
+  email: z.string({ error: "Informe o e-mail." }).trim().min(1, "Informe o e-mail."),
+});
+
+// Mensagens idênticas às que a rota já devolvia, para não mudar o texto que o
+// app do paciente mostra hoje.
+const redefinirSenhaSchema = z.object({
+  token: z.string({ error: "Dados inválidos." }).min(1, "Dados inválidos."),
+  novaSenha: z
+    .string({ error: "Dados inválidos." })
+    .min(6, "A senha deve ter ao menos 6 caracteres."),
+});
+
 const hashVerif = () => crypto.randomBytes(32).toString("hex");
 
 // Gera token de verificação de e-mail do paciente (24h) e dispara o e-mail (best-effort).
@@ -101,6 +114,16 @@ const registerLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { error: "Muitas tentativas de cadastro. Tente novamente em 15 minutos." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rotas que consomem token de uso único vindo do e-mail. Ver auth.ts: o token
+// é randomBytes(32), então o limite não protege o segredo — evita martelar.
+const tokenLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: "Muitas tentativas. Tente novamente em 15 minutos." },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -228,9 +251,8 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
 });
 
 // POST /api/auth/paciente/esqueci-senha — envia link de redefinição (sempre 200, não revela se o e-mail existe).
-router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) => {
+router.post("/esqueci-senha", emailLimiter, validateBody(esqueciSenhaSchema), async (req: Request, res: Response) => {
   const email = String(req.body?.email ?? "").trim().toLowerCase();
-  if (!email) return res.status(400).json({ error: "Informe o e-mail." });
 
   const pacienteUser = await buscarPacienteUserParaRecuperacao(email);
   // Sempre 200 — não vaza se o e-mail tem conta.
@@ -246,11 +268,9 @@ router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) 
 });
 
 // POST /api/auth/paciente/redefinir-senha — troca a senha via token do e-mail.
-router.post("/redefinir-senha", async (req: Request, res: Response) => {
+router.post("/redefinir-senha", tokenLimiter, validateBody(redefinirSenhaSchema), async (req: Request, res: Response) => {
   const token = String(req.body?.token ?? "");
   const novaSenha = String(req.body?.novaSenha ?? "");
-  if (!token || !novaSenha) return res.status(400).json({ error: "Dados inválidos." });
-  if (novaSenha.length < 6) return res.status(400).json({ error: "A senha deve ter ao menos 6 caracteres." });
 
   const registro = await prisma.tokenRedefinicaoPaciente.findUnique({ where: { token } });
   if (!registro || registro.usado || registro.expiresAt < new Date()) {
@@ -344,7 +364,7 @@ router.post("/logout", async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/paciente/verificar-email — consome o token e marca o e-mail como verificado.
-router.post("/verificar-email", validateBody(verificarEmailSchema), async (req: Request, res: Response) => {
+router.post("/verificar-email", tokenLimiter, validateBody(verificarEmailSchema), async (req: Request, res: Response) => {
   const { token } = req.body;
   const registro = await prisma.tokenVerificacaoEmailPaciente.findUnique({ where: { token } });
   if (!registro || registro.usado || registro.expiresAt < new Date()) {
