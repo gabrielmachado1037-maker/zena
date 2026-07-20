@@ -104,6 +104,31 @@ checar(
 );
 
 checar(
+  "assinatura de mídia montada",
+  "Os buckets de fotos são PRIVADOS. Sem este middleware, o app devolve URL pública e TODAS as imagens somem — foto de perfil, feed, evolução.",
+  () => {
+    const src = ler("src/index.ts") ?? "";
+    if (!/app\.use\(\s*assinarMidia\s*\)/.test(src)) return "app.use(assinarMidia) sumiu do index.ts";
+    // Precisa vir antes das rotas: montado depois, res.json já foi chamado.
+    const posMiddleware = src.indexOf("app.use(assinarMidia)");
+    const posPrimeiraRota = src.indexOf('app.use("/api/');
+    if (posPrimeiraRota !== -1 && posMiddleware > posPrimeiraRota)
+      return "assinarMidia está montado DEPOIS das rotas — não intercepta nada";
+    return null;
+  },
+);
+
+checar(
+  "verificação de segurança roda no boot",
+  "É o que denuncia trust proxy desligado, ASAAS_ENV em sandbox e JWT_SECRET fraco. Sem a chamada, o arquivo existe e nunca executa.",
+  () => {
+    const src = ler("src/index.ts") ?? "";
+    if (!/verificarSeguranca\s*\(\s*app\s*\)/.test(src)) return "verificarSeguranca(app) não é mais chamado no boot";
+    return null;
+  },
+);
+
+checar(
   ".dockerignore protege o .env",
   "COPY . . sem .dockerignore embute o .env com segredos reais numa camada da imagem, legível por docker history.",
   () => {
