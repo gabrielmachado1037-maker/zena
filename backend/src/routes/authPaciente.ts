@@ -253,6 +253,12 @@ router.post("/redefinir-senha", async (req: Request, res: Response) => {
   await prisma.$transaction([
     prisma.pacienteUser.update({ where: { id: registro.pacienteUserId }, data: { senha: hash } }),
     prisma.tokenRedefinicaoPaciente.update({ where: { token }, data: { usado: true } }),
+    // Expulsa sessões antigas: sem isso, quem tivesse invadido continuava com
+    // acesso ao prontuário por até 30 dias mesmo depois da troca de senha.
+    prisma.refreshTokenPaciente.updateMany({
+      where: { pacienteUserId: registro.pacienteUserId, revogado: false },
+      data: { revogado: true },
+    }),
   ]);
   res.json({ ok: true });
 });

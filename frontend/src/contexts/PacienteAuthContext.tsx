@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import * as Sentry from "@sentry/react";
 import api from "../lib/api";
+import apiPaciente from "../lib/apiPaciente";
+import { encerrarSubscription } from "../lib/pushConflito";
 
 export interface PacienteUser {
   id: string;
@@ -67,6 +69,9 @@ export function PacienteAuthProvider({ children }: { children: ReactNode }) {
     // Revoga o refresh no servidor (best-effort).
     const rt = localStorage.getItem("zena_refresh_paciente");
     if (rt) api.post("/auth/paciente/logout", { refreshToken: rt }).catch(() => {});
+    // Encerra o push antes de derrubar o token — aqui o payload carrega dado
+    // de saúde, então um aparelho compartilhado não pode seguir recebendo.
+    encerrarSubscription((endpoint) => apiPaciente.delete("/paciente-app/push/subscribe", { data: { endpoint } }));
     Sentry.setUser(null);
     setToken(null);
     setPaciente(null);

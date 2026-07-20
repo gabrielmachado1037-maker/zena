@@ -13,7 +13,10 @@ router.use(planoMiddleware);
 const M = "Campos obrigatórios: data, tipo, imagem";
 const fotoSchema = z.object({
   data: z.string({ error: M }).min(1, M),
-  tipo: z.string({ error: M }).min(1, M),
+  // `tipo` vai interpolado no caminho do objeto no storage, com x-upsert
+  // ligado. Solto, um valor como "../../outro" era normalizado pela URL e
+  // gravava fora da pasta do paciente, sobrescrevendo arquivo alheio.
+  tipo: z.string({ error: M }).min(1, M).regex(/^[a-zA-Z0-9_-]+$/, "Tipo de foto inválido."),
   imagem: z.string({ error: M }).min(1, M),
 });
 

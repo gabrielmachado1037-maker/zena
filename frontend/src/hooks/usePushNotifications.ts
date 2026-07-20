@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import api from "../lib/api";
+import { registrarSubscription } from "../lib/pushConflito";
 
 function urlBase64ToUint8Array(base64: string): ArrayBuffer {
   const pad = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -23,25 +24,21 @@ export function usePushNotifications() {
 
       const reg = await navigator.serviceWorker.ready;
 
-      // Verifica se já existe subscription ativa
+      // Pede permissão apenas se ainda não foi concedida (e só se não houver
+      // subscription — com uma ativa, a permissão já foi dada antes).
       const existing = await reg.pushManager.getSubscription();
-      if (existing) {
-        // Re-envia para garantir que está salva no banco
-        await api.post("/notificacoes/subscribe", existing.toJSON()).catch(() => null);
-        return;
-      }
-
-      // Pede permissão apenas se ainda não foi concedida
-      if (Notification.permission !== "granted") {
+      if (!existing && Notification.permission !== "granted") {
         const perm = await Notification.requestPermission();
         if (perm !== "granted") return;
       }
 
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(data.key),
-      });
-      await api.post("/notificacoes/subscribe", sub.toJSON()).catch(() => null);
+      // registrarSubscription reaproveita a subscription existente, e troca o
+      // endpoint se o backend acusar que ele pertence a outra conta (409).
+      await registrarSubscription(
+        reg,
+        urlBase64ToUint8Array(data.key),
+        (sub) => api.post("/notificacoes/subscribe", sub.toJSON()),
+      );
     }
 
     // Aguarda 3s para não bloquear o carregamento inicial

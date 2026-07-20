@@ -218,6 +218,11 @@ router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) 
 router.post("/redefinir-senha", async (req: Request, res: Response) => {
   const { token, novaSenha } = req.body;
   if (!token || !novaSenha) return res.status(400).json({ error: "Dados inválidos" });
+  // O cadastro e a troca pelo perfil exigem 6; só esta rota não exigia nada,
+  // então o fluxo de recuperação aceitava terminar com a senha "1".
+  if (String(novaSenha).length < 6) {
+    return res.status(400).json({ error: "A senha deve ter ao menos 6 caracteres." });
+  }
 
   const registro = await prisma.tokenRedefinicao.findUnique({ where: { token } });
   if (!registro || registro.usado || registro.expiresAt < new Date()) {
@@ -230,6 +235,13 @@ router.post("/redefinir-senha", async (req: Request, res: Response) => {
     data: { senha: hash },
   });
   await prisma.tokenRedefinicao.update({ where: { token }, data: { usado: true } });
+  // Trocar a senha é a ação que a pessoa toma para EXPULSAR quem invadiu. Sem
+  // revogar os refresh tokens, o invasor seguia dentro por até 30 dias,
+  // renovando o acesso pela rotação — a contenção não continha nada.
+  await prisma.refreshToken.updateMany({
+    where: { nutricionistaId: registro.nutricionistaId, revogado: false },
+    data: { revogado: true },
+  });
 
   res.json({ ok: true });
 });
@@ -281,6 +293,15 @@ router.put("/perfil", authMiddleware, async (req: AuthRequest, res: Response) =>
     data: updateData,
     select: { id: true, nome: true, email: true, crn: true, nomeConsultorio: true, logoConsultorio: true, enderecoConsultorio: true },
   });
+
+  // Mesma razão do /redefinir-senha: trocar a senha tem que derrubar as
+  // sessões antigas, senão não expulsa ninguém.
+  if (updateData.senha) {
+    await prisma.refreshToken.updateMany({
+      where: { nutricionistaId: nutri.id, revogado: false },
+      data: { revogado: true },
+    });
+  }
 
   res.json(atualizado);
 });

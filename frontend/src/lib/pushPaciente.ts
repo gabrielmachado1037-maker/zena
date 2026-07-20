@@ -1,4 +1,5 @@
 import apiPaciente from "./apiPaciente";
+import { registrarSubscription } from "./pushConflito";
 
 // Helpers de Web Push (paciente). Centraliza o subscribe + fuso + rastreio de abertura,
 // evitando duplicar a conversão de chave espalhada pelo app.
@@ -32,15 +33,17 @@ export async function ativarPushPaciente(): Promise<ResultadoPush> {
     const { data } = await apiPaciente.get<{ key: string | null }>("/notificacoes/vapid-public-key");
     if (!data.key) return "indisponivel";
     const reg = await navigator.serviceWorker.ready;
-    const existing = await reg.pushManager.getSubscription();
-    const sub = existing ?? await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(data.key),
-    });
-    await apiPaciente.post("/paciente-app/push/subscribe", {
-      endpoint: sub.endpoint,
-      keys: { p256dh: arrayBufferToBase64(sub.getKey("p256dh")!), auth: arrayBufferToBase64(sub.getKey("auth")!) },
-    });
+    // Troca o endpoint se o backend acusar que ele é de outra conta (409) —
+    // acontece quando o aparelho já foi usado por outro paciente.
+    const sub = await registrarSubscription(
+      reg,
+      urlBase64ToUint8Array(data.key),
+      (s) => apiPaciente.post("/paciente-app/push/subscribe", {
+        endpoint: s.endpoint,
+        keys: { p256dh: arrayBufferToBase64(s.getKey("p256dh")!), auth: arrayBufferToBase64(s.getKey("auth")!) },
+      }),
+    );
+    if (!sub) return "indisponivel";
     // Salva o fuso do dispositivo (quiet hours respeitam o horário do paciente).
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (tz) await apiPaciente.put("/paciente-app/prefs-notificacao", { timezone: tz }).catch(() => {});

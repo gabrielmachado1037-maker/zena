@@ -36,6 +36,22 @@ router.post("/subscribe", authMiddleware, validateBody(subscribeSchema), async (
     endpoint: string;
     keys: { p256dh: string; auth: string };
   };
+  // O endpoint É a credencial do aparelho: quem o possui recebe os pushes dele.
+  // O upsert por `endpoint` cru deixava qualquer conta autenticada reescrever o
+  // dono de um endpoint alheio (basta conhecê-lo — ele fica no banco em texto
+  // puro) e passar a receber notificações que carregam nome de paciente e
+  // prévia de mensagem. Recusamos a tomada de posse; o cliente resolve gerando
+  // uma subscription nova (endpoint novo) — ver tratamento do 409 no front.
+  const dono = await prisma.pushSubscription.findUnique({
+    where: { endpoint },
+    select: { nutricionistaId: true },
+  });
+  if (dono && dono.nutricionistaId !== req.nutricionistaId) {
+    return res.status(409).json({
+      error: "Este dispositivo está registrado em outra conta.",
+      code: "endpoint_de_outra_conta",
+    });
+  }
   await prisma.pushSubscription.upsert({
     where:  { endpoint },
     create: { nutricionistaId: req.nutricionistaId!, endpoint, p256dh: keys.p256dh, auth: keys.auth },

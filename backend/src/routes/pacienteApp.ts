@@ -290,6 +290,11 @@ router.put("/perfil", validateBody(perfilSchema), async (req: PacienteAuthReques
     if (!ok) return res.status(400).json({ error: "Senha atual incorreta" });
     const hash = await bcrypt.hash(novaSenha, 10);
     await prisma.pacienteUser.update({ where: { id: user.id }, data: { senha: hash } });
+    // Derruba sessões antigas — trocar a senha precisa expulsar quem já estava.
+    await prisma.refreshTokenPaciente.updateMany({
+      where: { pacienteUserId: user.id, revogado: false },
+      data: { revogado: true },
+    });
   }
   if (nome?.trim()) {
     await prisma.paciente.update({ where: { id: req.pacienteId! }, data: { nome: nome.trim() } });
@@ -431,6 +436,19 @@ router.post("/push/subscribe", validateBody(pushSubscribeSchema), async (req: Pa
   const { endpoint, keys } = req.body as { endpoint: string; keys: { p256dh: string; auth: string } };
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     return res.status(400).json({ error: "Subscription inválida" });
+  }
+  // Mesma proteção do lado nutri: sem isso, conhecer o endpoint de outro
+  // paciente bastava para redirecionar os pushes dele — que aqui carregam
+  // dado de saúde. Ver comentário em routes/notificacoes.ts.
+  const dono = await prisma.pushSubscriptionPaciente.findUnique({
+    where: { endpoint },
+    select: { pacienteId: true },
+  });
+  if (dono && dono.pacienteId !== req.pacienteId) {
+    return res.status(409).json({
+      error: "Este dispositivo está registrado em outra conta.",
+      code: "endpoint_de_outra_conta",
+    });
   }
   await prisma.pushSubscriptionPaciente.upsert({
     where:  { endpoint },

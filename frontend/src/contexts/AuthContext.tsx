@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import * as Sentry from "@sentry/react";
 import api from "../lib/api";
+import { encerrarSubscription } from "../lib/pushConflito";
 
 interface Nutricionista {
   id: string;
@@ -71,6 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Revoga o refresh no servidor (best-effort; não bloqueia a saída).
     const rt = localStorage.getItem("zena_refresh");
     if (rt) api.post("/auth/logout", { refreshToken: rt }).catch(() => {});
+    // Encerra o push ANTES de derrubar o token: sem isso o aparelho seguia
+    // registrado nesta conta e continuava recebendo notificações com nome de
+    // paciente depois da saída — inclusive se outra pessoa assumisse o device.
+    encerrarSubscription((endpoint) => api.delete("/notificacoes/subscribe", { data: { endpoint } }));
     Sentry.setUser(null);
     setToken(null);
     setNutricionista(null);

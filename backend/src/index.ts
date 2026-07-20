@@ -85,6 +85,15 @@ const app = express();
 const PORT = parseInt(process.env.PORT || "3001", 10);
 const isProd = process.env.NODE_ENV === "production";
 
+// Atrás do proxy da Render, req.ip devolvia o IP do load balancer — o MESMO
+// para todo mundo. Como express-rate-limit chaveia por req.ip, os limiters de
+// login/cadastro/email viravam um balde único global: 5 tentativas erradas de
+// qualquer pessoa (ou de um script) travavam o login de TODAS as clínicas por
+// 15 minutos, e a proteção anti-brute-force por IP não existia de fato.
+// "1" = confia em exatamente um hop (o proxy da Render). Com `true`, o cliente
+// poderia forjar X-Forwarded-For e escolher a própria chave, virando opt-out.
+app.set("trust proxy", 1);
+
 // Headers de segurança (API JSON). crossOriginResourcePolicy: cross-origin
 // porque o front consome via fetch/CORS de outra origem.
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));

@@ -3,7 +3,8 @@ import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
-import { uploadFoto, deleteFoto } from "../lib/supabase";
+import crypto from "crypto";
+import { uploadFoto, deleteFotoPorUrl } from "../lib/supabase";
 
 const router = Router();
 router.use(authMiddleware);
@@ -51,7 +52,12 @@ router.post("/:pacienteId", validateBody(registroFotoSchema), async (req: AuthRe
     where: { pacienteId_mes_ano: { pacienteId, mes: Number(mes), ano: Number(ano) } },
   });
 
-  const base = `${pacienteId}/${ano}/${mes}`;
+  // O caminho era previsível: <pacienteId>/<ano>/<mes>/frente.jpg. Como o
+  // bucket é público e o id do paciente circula em payloads do app (ranking,
+  // feed), qualquer paciente logado podia montar a URL das fotos de corpo dos
+  // colegas e baixá-las sem autenticação nenhuma. O sufixo aleatório tira a
+  // adivinhação; a correção completa é bucket privado com URL assinada.
+  const base = `${pacienteId}/${ano}/${mes}/${crypto.randomBytes(8).toString("hex")}`;
   const urls: { frenteUrl?: string; perfilUrl?: string; costasUrl?: string } = {};
 
   if (frente) urls.frenteUrl = await uploadFoto(`${base}/frente.jpg`, frente);
@@ -64,6 +70,17 @@ router.post("/:pacienteId", validateBody(registroFotoSchema), async (req: AuthRe
       where: { id: existing.id },
       data: { ...urls, observacoes: observacoes ?? existing.observacoes },
     });
+    // Com caminho aleatório o upload não sobrescreve mais o anterior (antes o
+    // nome era fixo e o x-upsert cuidava disso). Sem apagar, cada reenvio
+    // deixaria a foto antiga viva no bucket público, fora do alcance do
+    // DELETE — que só conhece as URLs atuais do registro.
+    await Promise.all(
+      ([
+        urls.frenteUrl && existing.frenteUrl,
+        urls.perfilUrl && existing.perfilUrl,
+        urls.costasUrl && existing.costasUrl,
+      ].filter((u): u is string => !!u)).map((u) => deleteFotoPorUrl(u)),
+    );
   } else {
     registro = await prisma.registroFotos.create({
       data: { pacienteId, mes: Number(mes), ano: Number(ano), ...urls, observacoes },
@@ -81,12 +98,15 @@ router.delete("/:registroId", async (req: AuthRequest, res: Response) => {
   });
   if (!registro) return res.status(404).json({ error: "Registro não encontrado" });
 
-  const base = `${registro.pacienteId}/${registro.ano}/${registro.mes}`;
-  await Promise.all([
-    registro.frenteUrl && deleteFoto(`${base}/frente.jpg`),
-    registro.perfilUrl && deleteFoto(`${base}/perfil.jpg`),
-    registro.costasUrl && deleteFoto(`${base}/costas.jpg`),
-  ].filter(Boolean));
+  // Apaga pela URL gravada, não por caminho reconstruído: o caminho agora tem
+  // um segmento aleatório (anti-adivinhação), então remontá-lo apagaria um
+  // objeto inexistente e deixaria a foto órfã no bucket público para sempre.
+  // Também cobre os registros antigos, de caminho previsível.
+  await Promise.all(
+    [registro.frenteUrl, registro.perfilUrl, registro.costasUrl]
+      .filter((u): u is string => !!u)
+      .map((u) => deleteFotoPorUrl(u)),
+  );
 
   await prisma.registroFotos.delete({ where: { id: registroId } });
   res.json({ ok: true });
