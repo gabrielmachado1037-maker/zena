@@ -151,6 +151,25 @@ checar(
   },
 );
 
+checar(
+  "login tem trava por conta, não só por IP",
+  "Limiter só por IP não vê ataque distribuído: um IP por tentativa gasta 1 das 5 e o número de chutes contra uma conta específica fica ilimitado.",
+  () => {
+    const lib = ler("src/lib/limitePorConta.ts");
+    if (!lib) return "src/lib/limitePorConta.ts sumiu";
+    if (!/skipSuccessfulRequests:\s*true/.test(lib))
+      return "skipSuccessfulRequests saiu: acerto de senha voltaria a contar e o uso normal chegaria ao teto";
+    if (!/keyGenerator/.test(lib) || !/normalizarEmail/.test(lib))
+      return "a chave deixou de ser o e-mail normalizado — variação de caixa driblaria a trava";
+    for (const arq of ["src/routes/auth.ts", "src/routes/authPaciente.ts"]) {
+      const src = ler(arq) ?? "";
+      if (!/router\.post\(\s*["']\/login["'][^\n]*loginPorConta/.test(src))
+        return `${arq}: POST /login não passa mais por loginPorConta`;
+    }
+    return null;
+  },
+);
+
 let falhou = 0;
 console.log("Checagem de segurança — cada item já foi um incidente real.\n");
 for (const { nome, incidente, fn } of checagens) {

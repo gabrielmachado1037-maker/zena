@@ -11,6 +11,7 @@ import { uploadFoto } from "../lib/supabase";
 import { validateBody } from "../middleware/validate";
 import { excluirNutricionista } from "../lib/excluirNutricionista";
 import { buscarNutricionistaPorEmail, normalizarEmail } from "../lib/email-lookup";
+import { limitePorConta } from "../lib/limitePorConta";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -87,6 +88,10 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Complementa o limiter acima: aquele é por IP e não vê o ataque distribuído
+// (mesma conta, um IP por tentativa). Ver src/lib/limitePorConta.ts.
+const loginPorConta = limitePorConta("Muitas tentativas nesta conta. Tente novamente em 15 minutos.");
+
 const emailLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 3,
@@ -158,7 +163,7 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
   res.json({ token: accessToken, refreshToken, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: null, subscriptionStatus: "trial", modulosAtivos: [], emailVerificado: false } });
 });
 
-router.post("/login", loginLimiter, validateBody(loginSchema), async (req: Request, res: Response) => {
+router.post("/login", loginLimiter, validateBody(loginSchema), loginPorConta, async (req: Request, res: Response) => {
   const { email, senha } = req.body;
 
   const nutri = await buscarNutricionistaPorEmail(email);

@@ -10,6 +10,7 @@ import { validateBody } from "../middleware/validate";
 import { emailVerificacaoPaciente, emailRecuperacaoSenhaPaciente } from "../lib/email";
 import { normalizarCodigo, ultimos4Telefone } from "../lib/convite";
 import { buscarPacienteUserPorEmail, buscarPacienteUserParaLogin, buscarPacienteUserParaRecuperacao, normalizarEmail } from "../lib/email-lookup";
+import { limitePorConta } from "../lib/limitePorConta";
 
 const registerSchema = z.object({
   email: z.email({ error: "E-mail inválido." }),
@@ -90,6 +91,10 @@ const loginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Complementa o limiter acima: aquele é por IP e não vê o ataque distribuído
+// (mesma conta, um IP por tentativa). Ver src/lib/limitePorConta.ts.
+const loginPorConta = limitePorConta("Muitas tentativas nesta conta. Tente novamente em 15 minutos.");
 
 // Cadastro depende do código de vínculo (6 dígitos) — limita a adivinhação.
 const registerLimiter = rateLimit({
@@ -267,7 +272,7 @@ router.post("/redefinir-senha", async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/paciente/login
-router.post("/login", loginLimiter, validateBody(loginSchema), async (req: Request, res: Response) => {
+router.post("/login", loginLimiter, validateBody(loginSchema), loginPorConta, async (req: Request, res: Response) => {
   const { email, senha } = req.body;
   if (!email || !senha) {
     return res.status(400).json({ error: "Email e senha são obrigatórios." });
