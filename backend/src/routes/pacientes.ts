@@ -5,7 +5,6 @@ import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
 import { planoMiddleware } from "../middleware/plano";
 import { checkModulo } from "../middleware/checkModulo";
-import { gerarFeedAutomatico } from "../lib/feedAutomatico";
 import { PLANOS_REFEICOES, resolverPlanoRefeicoes, MIN_REFEICOES, MAX_REFEICOES } from "../config/ligas";
 import { gerarRelatorioMensal, gerarInsightsIA } from "../services/relatorioService";
 import { gerarCodigoConvite, conviteExpiraEm } from "../lib/convite";
@@ -60,18 +59,6 @@ const planoMissoesSchema = z.object({
   aguaMetaMl: z.number().optional(),
   sonoMetaHoras: z.number().optional(),
   treinoDias: z.array(z.number()).optional(),
-});
-const medicaoNutriSchema = z.object({
-  data: z.string({ error: "Data é obrigatória." }).min(1, "Data é obrigatória."),
-  peso: z.union([z.string(), z.number()], { error: "Peso é obrigatório." }),
-  gordura: num().optional().nullable(),
-  musculo: num().optional().nullable(),
-  cintura: num().optional().nullable(),
-  quadril: num().optional().nullable(),
-  braco: num().optional().nullable(),
-  coxa: num().optional().nullable(),
-  laudo: z.string().optional().nullable(),
-  observacoes: z.string().optional().nullable(),
 });
 const consultaSchema = z.object({
   data: z.string({ error: "Data é obrigatória." }).min(1, "Data é obrigatória."),
@@ -373,32 +360,6 @@ router.get("/:id/relatorio-mensal", async (req: AuthRequest, res: Response) => {
   }
 
   return res.json(relatorio);
-});
-
-router.post("/:id/medicoes", validateBody(medicaoNutriSchema), async (req: AuthRequest, res: Response) => {
-  const pacienteId      = req.params["id"] as string;
-  const nutricionistaId = req.nutricionistaId as string;
-  const { data, peso, gordura, musculo, cintura, quadril, braco, coxa, laudo, observacoes } = req.body;
-  const medicao = await prisma.medicao.create({
-    data: {
-      pacienteId,
-      data: new Date(data),
-      peso: parseFloat(peso),
-      gordura: gordura ? parseFloat(gordura) : null,
-      musculo: musculo ? parseFloat(musculo) : null,
-      cintura: cintura ? parseFloat(cintura) : null,
-      quadril: quadril ? parseFloat(quadril) : null,
-      braco: braco ? parseFloat(braco) : null,
-      coxa: coxa ? parseFloat(coxa) : null,
-      laudo,
-      observacoes,
-    },
-  });
-  res.json(medicao);
-
-  // fire-and-forget — não atrasa a resposta
-  gerarFeedAutomatico(pacienteId, nutricionistaId, parseFloat(peso))
-    .catch(err => console.error("[feedAutomatico]", err));
 });
 
 router.post("/:id/consultas", validateBody(consultaSchema), async (req: AuthRequest, res: Response) => {
