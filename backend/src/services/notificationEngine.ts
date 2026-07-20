@@ -126,11 +126,20 @@ export async function enviar(pacienteId: string, tipo: string, opts: EnviarOpts)
     }
 
     // 5) Envia e registra (com deep-link ?n=<logId> para rastrear abertura).
+    // O log nasce antes do envio porque o deep-link precisa do id (?n=<logId>).
+    // Se nada for entregue, corrige para "falha": sem isso o histórico mostrava
+    // 100% de sucesso mesmo com o push totalmente morto (ex.: VAPID ausente).
     const log = await registrarLog(pacienteId, tipo, opts, url, "enviado");
     const sep = url.includes("?") ? "&" : "?";
-    await enviarNotificacaoPaciente(
+    const resultado = await enviarNotificacaoPaciente(
       pacienteId, opts.titulo, opts.corpo, `${url}${sep}n=${log.id}`, opts.destination, opts.id ?? undefined,
     );
+    if (resultado.entregues === 0) {
+      await prisma.notificacaoLog.update({
+        where: { id: log.id },
+        data: { status: "falha", motivo: resultado.motivo },
+      });
+    }
   } catch (e) {
     console.error("[NotificationEngine]", tipo, (e as Error)?.message ?? e);
   }

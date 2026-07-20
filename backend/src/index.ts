@@ -58,13 +58,27 @@ const ENV_DEGRADA: Array<{ key: string; impacto: string }> = [
   { key: "STRIPE_SECRET_KEY", impacto: "checkout de cartão indisponível" },
   { key: "STRIPE_WEBHOOK_SECRET", impacto: "webhooks Stripe rejeitados → assinatura paga não libera acesso" },
   { key: "RESEND_API_KEY", impacto: "nenhum email sai (recuperação de senha, convites)" },
+  { key: "SUPABASE_URL", impacto: "storage inacessível: upload falha e DELETE de foto (LGPD) não apaga nada" },
   { key: "SUPABASE_SERVICE_KEY", impacto: "upload de fotos de paciente falha" },
   { key: "VAPID_PUBLIC_KEY", impacto: "push desativado silenciosamente" },
+  { key: "VAPID_PRIVATE_KEY", impacto: "push vira no-op mesmo com a chave pública setada — o app diz 'ativado' e nada sai" },
+  { key: "FRONTEND_URL", impacto: "links de recuperação de senha apontam para localhost → lockout" },
+  { key: "SENTRY_DSN", impacto: "nenhum erro reportado — as falhas acima ficam invisíveis" },
 ];
 const degradadas = ENV_DEGRADA.filter((e) => !process.env[e.key]);
 if (degradadas.length > 0) {
   console.error(`[STARTUP] ⚠️  ${degradadas.length} variável(is) faltando — funcionalidade degradada, mas o servidor vai subir:`);
   for (const { key, impacto } of degradadas) console.error(`[STARTUP]    · ${key} → ${impacto}`);
+}
+
+// ASAAS_ENV é o caso invertido: a ausência não desliga nada, ela aponta o
+// sistema inteiro para o sandbox. Em produção isso é pior que uma falha —
+// o checkout responde 200 com um QR Code que não cobra dinheiro nenhum.
+if (process.env.NODE_ENV === "production" && process.env.ASAAS_ENV !== "production") {
+  console.error(
+    `[STARTUP] 🚨 NODE_ENV=production mas ASAAS_ENV="${process.env.ASAAS_ENV ?? "(vazio)"}" — todo o Pix está indo para o SANDBOX. ` +
+    "Cobranças não são reais. Defina ASAAS_ENV=production."
+  );
 }
 
 const app = express();

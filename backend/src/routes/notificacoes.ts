@@ -53,6 +53,16 @@ router.delete("/subscribe", authMiddleware, validateBody(unsubscribeSchema), asy
   return res.json({ ok: true });
 });
 
+/**
+ * Resultado do envio. Existe porque o log de notificação gravava "enviado"
+ * sem saber se algo saiu: sem VAPID ou sem dispositivo registrado, o push é
+ * um no-op silencioso e o histórico mostrava 100% de sucesso.
+ */
+export type ResultadoPush = {
+  entregues: number;
+  motivo?: "sem-vapid" | "sem-dispositivo" | "falha-envio";
+};
+
 // ─── Função interna: envia push para todos os dispositivos do nutricionista ───
 
 export async function enviarNotificacao(
@@ -98,21 +108,25 @@ export async function enviarNotificacaoPaciente(
   url = "/paciente/feed",
   destination?: string,
   id?: string | null
-): Promise<void> {
-  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return;
+): Promise<ResultadoPush> {
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    return { entregues: 0, motivo: "sem-vapid" };
+  }
 
   const subs = await prisma.pushSubscriptionPaciente.findMany({
     where: { pacienteId },
     select: { id: true, endpoint: true, p256dh: true, auth: true },
   });
-  if (subs.length === 0) return;
+  if (subs.length === 0) return { entregues: 0, motivo: "sem-dispositivo" };
 
   const payload = JSON.stringify({ title: titulo, body: corpo, url, destination, id });
 
+  let entregues = 0;
   await Promise.allSettled(
     subs.map(sub =>
       webpush
         .sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload)
+        .then(() => { entregues++; })
         .catch(async (err: any) => {
           if (err?.statusCode === 410) {
             await prisma.pushSubscriptionPaciente.deleteMany({ where: { id: sub.id } });
@@ -122,6 +136,7 @@ export async function enviarNotificacaoPaciente(
         })
     )
   );
+  return { entregues, motivo: entregues > 0 ? undefined : "falha-envio" };
 }
 
 export default router;

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import prisma from "../lib/prisma";
 import { resolverAguaMetaMl, resolverSonoMetaHoras, calcularLiga, LIGAS } from "../config/ligas";
 
@@ -638,6 +639,17 @@ export async function gerarInsightsIA(r: RelatorioMensal): Promise<{ resumo: str
         messages: [{ role: "user", content: prompt }],
       }),
     });
+    // Sem checar resp.ok, chave revogada (401), crédito esgotado ou 429 caíam
+    // no catch genérico e viravam "IA indisponível" — indistinguível de um
+    // JSON malformado. A nutri seguia vendo o relatório montado por regras,
+    // sem saber que a IA está fora há semanas.
+    if (!resp.ok) {
+      const detalhe = await resp.text().catch(() => "");
+      const msg = `[relatorio] IA retornou ${resp.status} — caindo para regras. ${detalhe.slice(0, 200)}`;
+      console.error(msg);
+      Sentry.captureMessage(msg, "warning");
+      return null;
+    }
     const data = (await resp.json()) as { content?: Array<{ text?: string }> };
     let text = data?.content?.[0]?.text ?? "";
     const bloco = text.match(/\{[\s\S]*\}/); // tolera cercas de código / texto ao redor

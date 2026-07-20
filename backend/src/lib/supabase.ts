@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/node";
+
 export const BUCKET = "fotos";
 export const BUCKET_FEED = "feed-fotos";
 export const BUCKET_AVATAR_PACIENTE = "avatares-pacientes";
@@ -80,7 +82,7 @@ export async function uploadImagemChat(path: string, base64: string): Promise<st
 
 export async function deleteFoto(path: string) {
   const url = `${process.env.SUPABASE_URL}/storage/v1/object/${BUCKET}`;
-  await fetch(url, {
+  const res = await fetch(url, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
@@ -88,6 +90,22 @@ export async function deleteFoto(path: string) {
     },
     body: JSON.stringify({ prefixes: [path] }),
   });
+  await conferirDelete(res, path);
+}
+
+/**
+ * O DELETE do storage falhando em silêncio é pior que falhar alto: a linha do
+ * banco já foi apagada, o bucket é PÚBLICO, e a foto (dado de saúde) segue
+ * baixável por URL eterna — sem nada no banco apontando para ela. Não dá para
+ * lançar (a exclusão é best-effort e a transação já commitou), mas tem que
+ * deixar rastro para ser possível limpar depois.
+ */
+async function conferirDelete(res: Response, path: string) {
+  if (res.ok) return;
+  const corpo = await res.text().catch(() => "");
+  const msg = `[storage] DELETE falhou (${res.status}) — arquivo PERMANECE no bucket público: ${path}. ${corpo.slice(0, 200)}`;
+  console.error(msg);
+  Sentry.captureMessage(msg, "error");
 }
 
 /**
@@ -99,7 +117,7 @@ export async function deleteFotoPorUrl(publicUrl: string): Promise<void> {
   if (!m) return;
   const [, bucket, path] = m;
   const url = `${process.env.SUPABASE_URL}/storage/v1/object/${bucket}`;
-  await fetch(url, {
+  const res = await fetch(url, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
@@ -107,4 +125,5 @@ export async function deleteFotoPorUrl(publicUrl: string): Promise<void> {
     },
     body: JSON.stringify({ prefixes: [path] }),
   });
+  await conferirDelete(res, `${bucket}/${path}`);
 }

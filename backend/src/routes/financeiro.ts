@@ -1,4 +1,5 @@
 import { Router, Request, Response } from "express";
+import * as Sentry from "@sentry/node";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
@@ -26,10 +27,20 @@ router.post("/asaas-webhook", async (req: Request, res: Response) => {
   }
   const { event, payment } = req.body;
   if (event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") {
-    await prisma.cobranca.updateMany({
+    const { count } = await prisma.cobranca.updateMany({
       where: { asaasChargeId: payment.id },
       data: { status: "pago", pagoEm: new Date() },
     });
+    // count === 0: o pagamento existe no Asaas mas não achamos a cobrança aqui
+    // (charge recriada — o cancelamento zera asaasChargeId —, cobrança feita
+    // direto no painel, ou evento de assinatura batendo na rota errada). Se
+    // respondermos 200 calados, o Asaas marca como entregue e NUNCA reenvia:
+    // paciente pagou, dinheiro caiu, e o app mostra "pendente" para sempre.
+    if (count === 0) {
+      const msg = `[asaas-webhook] ${event} sem cobrança correspondente (asaasChargeId=${payment?.id}) — pagamento recebido e NÃO baixado`;
+      console.error(msg);
+      Sentry.captureMessage(msg, "warning");
+    }
   }
   res.json({ ok: true });
 });
