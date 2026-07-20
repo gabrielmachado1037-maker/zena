@@ -47,6 +47,26 @@ if (!process.env.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY.length < 64) {
   process.exit(1);
 }
 
+// Envs que NÃO impedem o boot, mas cuja ausência quebra um fluxo inteiro em
+// silêncio — o backend responde normalmente e o dono só descobre pelo email de
+// erro do provedor, semanas depois (foi o que aconteceu com ASAAS_WEBHOOK_TOKEN:
+// 100% dos webhooks Pix rejeitados com 401 sem ninguém notar). Aqui o custo do
+// alerta é uma linha de log; o custo do silêncio é pagamento que não vira acesso.
+const ENV_DEGRADA: Array<{ key: string; impacto: string }> = [
+  { key: "ASAAS_WEBHOOK_TOKEN", impacto: "webhooks Asaas rejeitados (401) → pagamento Pix não libera plano nem baixa cobrança" },
+  { key: "NEXVEL_ASAAS_API_KEY", impacto: "checkout Pix responde 503 → ninguém consegue assinar por Pix" },
+  { key: "STRIPE_SECRET_KEY", impacto: "checkout de cartão indisponível" },
+  { key: "STRIPE_WEBHOOK_SECRET", impacto: "webhooks Stripe rejeitados → assinatura paga não libera acesso" },
+  { key: "RESEND_API_KEY", impacto: "nenhum email sai (recuperação de senha, convites)" },
+  { key: "SUPABASE_SERVICE_KEY", impacto: "upload de fotos de paciente falha" },
+  { key: "VAPID_PUBLIC_KEY", impacto: "push desativado silenciosamente" },
+];
+const degradadas = ENV_DEGRADA.filter((e) => !process.env[e.key]);
+if (degradadas.length > 0) {
+  console.error(`[STARTUP] ⚠️  ${degradadas.length} variável(is) faltando — funcionalidade degradada, mas o servidor vai subir:`);
+  for (const { key, impacto } of degradadas) console.error(`[STARTUP]    · ${key} → ${impacto}`);
+}
+
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001", 10);
 const isProd = process.env.NODE_ENV === "production";
