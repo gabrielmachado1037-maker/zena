@@ -13,3 +13,10 @@ dist/
 
 .vercel
 .env*
+
+# Scripts locais de diagnóstico (Stripe/Resend) — rodam contra chaves de
+# produção lidas do ambiente e não fazem parte do build. Mantidos fora do
+# versionamento de propósito; já foram varridos por `git add -A` duas vezes.
+backend/scripts/criar-precos-stripe.mjs
+backend/scripts/diagnostico-stripe.mjs
+backend/scripts/test-resend.mjs

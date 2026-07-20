@@ -11,6 +11,7 @@ import { emailVerificacaoPaciente, emailRecuperacaoSenhaPaciente } from "../lib/
 import { normalizarCodigo, ultimos4Telefone } from "../lib/convite";
 import { buscarPacienteUserPorEmail, buscarPacienteUserParaLogin, buscarPacienteUserParaRecuperacao, normalizarEmail } from "../lib/email-lookup";
 import { limitePorConta } from "../lib/limitePorConta";
+import { hashSenha, gastarTempoDeSenha, precisaRehash } from "../lib/senha";
 
 const registerSchema = z.object({
   email: z.email({ error: "E-mail inválido." }),
@@ -94,9 +95,6 @@ async function emitirParTokens(
 }
 
 // Anti brute-force no app do paciente (mesmo padrão do login da nutri).
-/** Ver auth.ts: hash de senha descartada, só para igualar o tempo de resposta. */
-const HASH_DESCARTAVEL = "$2b$10$mDZ47pSDs0kwty83cKNRaOlUTibxrTvgrWPfrjH8plnXdc9kD7Rp6";
-
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -203,7 +201,7 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
   }
 
   // 5. Cria a conta e QUEIMA o convite na mesma transação (nunca reutilizável).
-  const hash = await bcrypt.hash(senha, 10);
+  const hash = await hashSenha(senha);
   let pacienteUser;
   try {
     pacienteUser = await prisma.$transaction(async (tx) => {
@@ -277,7 +275,7 @@ router.post("/redefinir-senha", tokenLimiter, validateBody(redefinirSenhaSchema)
     return res.status(400).json({ error: "Link inválido ou expirado. Solicite um novo." });
   }
 
-  const hash = await bcrypt.hash(novaSenha, 10);
+  const hash = await hashSenha(novaSenha);
   await prisma.$transaction([
     prisma.pacienteUser.update({ where: { id: registro.pacienteUserId }, data: { senha: hash } }),
     prisma.tokenRedefinicaoPaciente.update({ where: { token }, data: { usado: true } }),
@@ -303,12 +301,20 @@ router.post("/login", loginLimiter, validateBody(loginSchema), loginPorConta, as
   // descobrir quem é paciente da plataforma medindo a latência (ver comentário
   // em auth.ts). Aqui a inferência é ainda mais sensível: revela tratamento.
   if (!pacienteUser) {
-    await bcrypt.compare(senha ?? "", HASH_DESCARTAVEL);
+    await gastarTempoDeSenha(senha);
     return res.status(401).json({ error: "Credenciais inválidas." });
   }
 
   const ok = await bcrypt.compare(senha, pacienteUser.senha);
   if (!ok) return res.status(401).json({ error: "Credenciais inválidas." });
+
+  // Ver auth.ts: regrava o hash antigo no custo atual, aproveitando que a senha
+  // em claro só existe aqui. Best-effort — não pode impedir o login.
+  if (precisaRehash(pacienteUser.senha)) {
+    hashSenha(senha)
+      .then((novo) => prisma.pacienteUser.update({ where: { id: pacienteUser.id }, data: { senha: novo } }))
+      .catch((e) => console.error("[rehash paciente]", e));
+  }
 
   const { paciente } = pacienteUser;
   const { accessToken, refreshToken } = await emitirParTokens(pacienteUser.id, paciente.id, paciente.nutricionistaId);

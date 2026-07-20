@@ -1,8 +1,9 @@
 import prisma from "./lib/prisma";
 import bcrypt from "bcryptjs";
+import { hashSenha } from "./lib/senha";
 
 async function main() {
-  const senha = await bcrypt.hash("zena123", 10);
+  const senha = await hashSenha("zena123");
 
   const nutri = await prisma.nutricionista.upsert({
     where: { email: "ana@zena.app" },

@@ -12,6 +12,7 @@ import { validateBody } from "../middleware/validate";
 import { excluirNutricionista } from "../lib/excluirNutricionista";
 import { buscarNutricionistaPorEmail, normalizarEmail } from "../lib/email-lookup";
 import { limitePorConta } from "../lib/limitePorConta";
+import { hashSenha, gastarTempoDeSenha, precisaRehash } from "../lib/senha";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -70,14 +71,6 @@ async function emitirParTokens(nutricionistaId: string, familyId?: string) {
   });
   return { accessToken, refreshToken };
 }
-
-/**
- * Hash bcrypt de uma senha aleatória descartada. Serve só para gastar o mesmo
- * tempo de CPU quando o e-mail não existe, igualando a latência das duas
- * respostas de login. Não é segredo e não abre nada: ninguém conhece a senha
- * que o gerou, e ela não é senha de conta nenhuma.
- */
-const HASH_DESCARTAVEL = "$2b$10$mDZ47pSDs0kwty83cKNRaOlUTibxrTvgrWPfrjH8plnXdc9kD7Rp6";
 
 /**
  * A exportação LGPD varre ~16 tabelas do tenant sem `take` e serializa tudo em
@@ -172,7 +165,7 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
   const existe = await buscarNutricionistaPorEmail(email);
   if (existe) return res.status(409).json({ error: "E-mail já cadastrado" });
 
-  const hash = await bcrypt.hash(senha, 10);
+  const hash = await hashSenha(senha);
   const trialEnd = new Date();
   trialEnd.setDate(trialEnd.getDate() + 14);
 
@@ -200,12 +193,22 @@ router.post("/login", loginLimiter, validateBody(loginSchema), loginPorConta, as
   // /esqueci-senha foi escrito com esse cuidado; o login desfazia a proteção.
   // Comparar contra um hash descartável iguala o tempo das duas respostas.
   if (!nutri) {
-    await bcrypt.compare(senha ?? "", HASH_DESCARTAVEL);
+    await gastarTempoDeSenha(senha);
     return res.status(401).json({ error: "Credenciais inválidas" });
   }
 
   const ok = await bcrypt.compare(senha, nutri.senha);
   if (!ok) return res.status(401).json({ error: "Credenciais inválidas" });
+
+  // Subir o custo do bcrypt só vale para senha nova; quem já tem conta ficaria
+  // no hash antigo para sempre. O login é o único momento em que a senha em
+  // claro existe, então é aqui que dá para regravar mais forte — sem pedir nada
+  // ao usuário. Best-effort: falhar aqui não pode impedir o login.
+  if (precisaRehash(nutri.senha)) {
+    hashSenha(senha)
+      .then((novo) => prisma.nutricionista.update({ where: { id: nutri.id }, data: { senha: novo } }))
+      .catch((e) => console.error("[rehash nutri]", e));
+  }
 
   const { accessToken, refreshToken } = await emitirParTokens(nutri.id);
   res.json({ token: accessToken, refreshToken, nutricionista: { id: nutri.id, nome: nutri.nome, email: nutri.email, crn: nutri.crn, foto: nutri.foto ?? null, nomeConsultorio: nutri.nomeConsultorio, logoConsultorio: nutri.logoConsultorio, enderecoConsultorio: nutri.enderecoConsultorio, planoSlug: nutri.planoSlug ?? null, subscriptionStatus: nutri.subscriptionStatus ?? "trial", modulosAtivos: nutri.modulosAtivos ?? [], emailVerificado: nutri.emailVerificado } });
@@ -289,7 +292,7 @@ router.post("/redefinir-senha", tokenLimiter, validateBody(redefinirSenhaSchema)
     return res.status(400).json({ error: "Link inválido ou expirado" });
   }
 
-  const hash = await bcrypt.hash(novaSenha, 10);
+  const hash = await hashSenha(novaSenha);
   await prisma.nutricionista.update({
     where: { id: registro.nutricionistaId },
     data: { senha: hash },
@@ -349,7 +352,7 @@ router.put("/perfil", authMiddleware, async (req: AuthRequest, res: Response) =>
     const ok = await bcrypt.compare(senhaAtual, nutri.senha);
     if (!ok) return res.status(400).json({ error: "Senha atual incorreta" });
     if (novaSenha.length < 6) return res.status(400).json({ error: "Nova senha deve ter pelo menos 6 caracteres" });
-    updateData.senha = await bcrypt.hash(novaSenha, 10);
+    updateData.senha = await hashSenha(novaSenha);
   }
 
   const atualizado = await prisma.nutricionista.update({

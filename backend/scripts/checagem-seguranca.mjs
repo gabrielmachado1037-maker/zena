@@ -177,6 +177,26 @@ checar(
   () => verificarSincronia(),
 );
 
+checar(
+  "hash descartável acompanha o custo do bcrypt",
+  "O hash que iguala o tempo do e-mail inexistente estava fixo em custo 10. Subir BCRYPT_COST sem regerá-lo faz a comparação FALSA ficar mais rápida que a verdadeira — a enumeração por timing volta, invertida e igualmente explorável.",
+  () => {
+    const src = ler("src/lib/senha.ts") ?? "";
+    const custo = src.match(/BCRYPT_COST\s*=\s*(\d+)/)?.[1];
+    if (!custo) return "BCRYPT_COST sumiu de src/lib/senha.ts";
+    const dummy = src.match(/HASH_DESCARTAVEL\s*=\s*"\$2[aby]?\$(\d+)\$/)?.[1];
+    if (!dummy) return "HASH_DESCARTAVEL sumiu ou não é um hash bcrypt válido";
+    if (Number(dummy) !== Number(custo))
+      return `HASH_DESCARTAVEL é custo ${dummy} mas BCRYPT_COST é ${custo} — regere o hash descartável no custo novo`;
+    // Ninguém pode voltar a hashear com custo cravado no lugar do helper.
+    for (const arq of ["src/routes/auth.ts", "src/routes/authPaciente.ts", "src/routes/pacienteApp.ts"]) {
+      if (/bcrypt\.hash\([^)]*,\s*\d+\s*\)/.test(ler(arq) ?? ""))
+        return `${arq}: voltou a chamar bcrypt.hash com custo cravado em vez de hashSenha()`;
+    }
+    return null;
+  },
+);
+
 let falhou = 0;
 console.log("Checagem de segurança — cada item já foi um incidente real.\n");
 for (const { nome, incidente, fn } of checagens) {

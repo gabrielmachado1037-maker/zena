@@ -8,6 +8,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { validateBody } from "../middleware/validate";
 import { parseMsgPaginacao, buscarPaginaMensagens } from "../lib/mensagensPaginacao";
+import { hashSenha } from "../lib/senha";
 
 const router = Router();
 router.use(authPacienteMiddleware);
@@ -288,7 +289,7 @@ router.put("/perfil", validateBody(perfilSchema), async (req: PacienteAuthReques
     if (!user) return res.status(404).json({ error: "Usuário não encontrado" });
     const ok = await bcrypt.compare(senhaAtual, user.senha);
     if (!ok) return res.status(400).json({ error: "Senha atual incorreta" });
-    const hash = await bcrypt.hash(novaSenha, 10);
+    const hash = await hashSenha(novaSenha);
     await prisma.pacienteUser.update({ where: { id: user.id }, data: { senha: hash } });
     // Derruba sessões antigas — trocar a senha precisa expulsar quem já estava.
     await prisma.refreshTokenPaciente.updateMany({
