@@ -33,6 +33,8 @@ import desafiosRouter from "./routes/desafios";
 import onboardingRouter from "./routes/onboarding";
 import { initCron } from "./cron";
 import { verificarSeguranca } from "./lib/verificacaoSeguranca";
+import { assinarMidia, testarAssinatura } from "./lib/midia";
+import prisma from "./lib/prisma";
 
 dotenv.config();
 
@@ -126,6 +128,11 @@ app.post("/api/billing/webhook", express.raw({ type: "application/json" }), (req
 
 app.use(express.json({ limit: "10mb" }));
 
+// Antes das rotas: troca URL pública do Supabase por URL assinada e temporária
+// em QUALQUER resposta JSON. Central de propósito — assinar rota a rota deixaria
+// buracos silenciosos assim que uma rota nova esquecesse de fazê-lo.
+app.use(assinarMidia);
+
 app.use("/api/auth", authRouter);
 app.use("/api/auth/paciente", authPacienteRouter);
 app.use("/api/paciente-app", pacienteAppRouter);
@@ -155,6 +162,27 @@ app.use("/api/relatorios", relatoriosRouter);
 app.use("/api/desafios", desafiosRouter);
 
 app.get("/api/health", (_, res) => res.json({ ok: true }));
+
+// Prova que a assinatura de mídia funciona ANTES de fechar o bucket no
+// Supabase — fechar sem isso significa descobrir pelo app quebrado. Não expõe
+// dado: assina um caminho fixo e informa só se conseguiu.
+app.get("/api/health/midia", async (_req, res: Response) => {
+  try {
+    // Precisa de um objeto que EXISTE: a API de assinatura do Supabase recusa
+    // caminho inexistente, então um caminho fictício daria falso negativo.
+    const amostra =
+      (await prisma.pacienteUser.findFirst({ where: { fotoUrl: { not: null } }, select: { fotoUrl: true } }))?.fotoUrl ??
+      (await prisma.registroFotos.findFirst({ where: { frenteUrl: { not: null } }, select: { frenteUrl: true } }))?.frenteUrl ??
+      (await prisma.paciente.findFirst({ where: { fotoPerfilUrl: { not: null } }, select: { fotoPerfilUrl: true } }))?.fotoPerfilUrl;
+
+    if (!amostra) return res.json({ assinaturaFunciona: null, motivo: "nenhuma mídia cadastrada para testar" });
+
+    const ok = await testarAssinatura(amostra);
+    res.json({ assinaturaFunciona: ok });
+  } catch (e) {
+    res.status(500).json({ assinaturaFunciona: false, erro: (e as Error).message.slice(0, 120) });
+  }
+});
 
 initCron();
 
