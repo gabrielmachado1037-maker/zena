@@ -9,6 +9,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response } from "express";
 import crypto from "crypto";
+import { ENDPOINTS_API } from "./endpoints.generated.js";
 
 // ─── Configuração ──────────────────────────────────────────────────────────────
 
@@ -136,69 +137,13 @@ TokenRedefinicao      → tokens de redefinição de senha
 DailyQuote            → frase do dia (cache)
 `;
 
-// ─── Endpoints da API (estático) ─────────────────────────────────────────────
-
-const ENDPOINTS_API = [
-  // Auth
-  { metodo: "POST", rota: "/api/auth/login",                auth: false, desc: "Login — retorna JWT" },
-  { metodo: "POST", rota: "/api/auth/registro",             auth: false, desc: "Cria conta de nutricionista" },
-  { metodo: "POST", rota: "/api/auth/forgot-password",      auth: false, desc: "Envia email de redefinição" },
-  { metodo: "POST", rota: "/api/auth/reset-password",       auth: false, desc: "Redefine senha via token" },
-  // Pacientes
-  { metodo: "GET",  rota: "/api/pacientes",                 auth: true,  desc: "Lista pacientes com paginação (busca, status, limit, page)" },
-  { metodo: "POST", rota: "/api/pacientes",                 auth: true,  desc: "Cria paciente" },
-  { metodo: "GET",  rota: "/api/pacientes/:id",             auth: true,  desc: "Dados completos do paciente" },
-  { metodo: "PUT",  rota: "/api/pacientes/:id",             auth: true,  desc: "Atualiza paciente" },
-  { metodo: "DELETE",rota:"/api/pacientes/:id",             auth: true,  desc: "Remove paciente" },
-  // Medições
-  { metodo: "GET",  rota: "/api/pacientes/:id/medicoes",    auth: true,  desc: "Histórico de medições" },
-  { metodo: "POST", rota: "/api/pacientes/:id/medicoes",    auth: true,  desc: "Registra medição" },
-  // Planos alimentares
-  { metodo: "GET",  rota: "/api/pacientes/:id/planos",      auth: true,  desc: "Lista planos alimentares" },
-  { metodo: "POST", rota: "/api/pacientes/:id/planos",      auth: true,  desc: "Cria plano alimentar" },
-  // Consultas
-  { metodo: "GET",  rota: "/api/consultas",                 auth: true,  desc: "Lista consultas (inicio, fim, pacienteId)" },
-  { metodo: "POST", rota: "/api/consultas",                 auth: true,  desc: "Agenda consulta" },
-  { metodo: "PUT",  rota: "/api/consultas/:id",             auth: true,  desc: "Atualiza status/notas" },
-  { metodo: "DELETE",rota:"/api/consultas/:id",             auth: true,  desc: "Cancela consulta" },
-  // Cobranças
-  { metodo: "GET",  rota: "/api/cobrancas",                 auth: true,  desc: "Lista cobranças (status, pacienteId)" },
-  { metodo: "POST", rota: "/api/cobrancas",                 auth: true,  desc: "Cria cobrança" },
-  { metodo: "PUT",  rota: "/api/cobrancas/:id",             auth: true,  desc: "Marca como paga etc." },
-  // Financeiro
-  { metodo: "GET",  rota: "/api/financeiro/dashboard",      auth: true,  desc: "Dashboard: faturamento mês, pendentes, vencidos" },
-  // Horários
-  { metodo: "GET",  rota: "/api/horarios",                  auth: true,  desc: "Horários disponíveis configurados" },
-  { metodo: "POST", rota: "/api/horarios",                  auth: true,  desc: "Cria horário disponível" },
-  { metodo: "DELETE",rota:"/api/horarios/:id",              auth: true,  desc: "Remove horário" },
-  // Ranking
-  { metodo: "GET",  rota: "/api/ranking",                   auth: true,  desc: "Ranking (periodo, semana, mes, ano)" },
-  { metodo: "POST", rota: "/api/ranking/recalcular",        auth: true,  desc: "Força recálculo do ranking" },
-  { metodo: "GET",  rota: "/api/ranking/config",            auth: true,  desc: "Configuração dos pesos" },
-  { metodo: "PUT",  rota: "/api/ranking/config",            auth: true,  desc: "Atualiza pesos do ranking" },
-  // Feed
-  { metodo: "GET",  rota: "/api/feed",                      auth: true,  desc: "Posts do feed social" },
-  { metodo: "POST", rota: "/api/feed/:id/curtir",           auth: true,  desc: "Curte/descurte post" },
-  // Check-ins
-  { metodo: "GET",  rota: "/api/checkins/paciente/:id",     auth: true,  desc: "Check-ins de um paciente" },
-  { metodo: "POST", rota: "/api/checkins",                  auth: false, desc: "Registra check-in (portal do paciente)" },
-  // Anamnese
-  { metodo: "GET",  rota: "/api/anamnese/:pacienteId",      auth: true,  desc: "Anamnese do paciente" },
-  { metodo: "POST", rota: "/api/anamnese",                  auth: true,  desc: "Cria/atualiza anamnese" },
-  // Notificações (Web Push)
-  { metodo: "POST", rota: "/api/notificacoes/subscribe",    auth: true,  desc: "Registra subscription push" },
-  { metodo: "DELETE",rota:"/api/notificacoes/unsubscribe",  auth: true,  desc: "Remove subscription" },
-  // Dashboard
-  { metodo: "GET",  rota: "/api/dashboard",                 auth: true,  desc: "Métricas resumo do dashboard" },
-  // Perfil
-  { metodo: "GET",  rota: "/api/perfil",                    auth: true,  desc: "Dados da nutricionista logada" },
-  { metodo: "PUT",  rota: "/api/perfil",                    auth: true,  desc: "Atualiza perfil" },
-  // Portal público (paciente)
-  { metodo: "GET",  rota: "/api/publica/:linkUnico",        auth: false, desc: "Dados do paciente via link único" },
-  // Billing (Stripe/Asaas)
-  { metodo: "POST", rota: "/api/billing/checkout",          auth: true,  desc: "Cria sessão de checkout" },
-  { metodo: "POST", rota: "/api/billing/webhook",           auth: false, desc: "Webhook Stripe/Asaas" },
-];
+// ─── Endpoints da API ────────────────────────────────────────────────────────
+// A lista vem GERADA das rotas reais do backend (endpoints.generated.ts).
+// Era um array mantido à mão e envelheceu em silêncio: documentava um portal
+// público `/api/publica/:linkUnico` que nunca existiu, um `POST /api/checkins`
+// inexistente, e errava o nome de metade das rotas de auth. Uma IA lendo isto
+// por esta ferramenta gerou uma auditoria inteira para rotas fantasmas.
+// Para regenerar: `npm run endpoints` no backend.
 
 // ─── Ferramentas ──────────────────────────────────────────────────────────────
 

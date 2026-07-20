@@ -12,6 +12,7 @@
  * reprovar é uma checagem que não existe.
  */
 import { readFileSync, existsSync } from "node:fs";
+import { verificarSincronia } from "./gerar-endpoints.mjs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -168,6 +169,12 @@ checar(
     }
     return null;
   },
+);
+
+checar(
+  "MCP documenta as rotas REAIS",
+  "A lista de endpoints do MCP era mantida à mão e envelheceu: documentava um portal público /api/publica/:linkUnico (auth:false) que nunca existiu e um POST /api/checkins inexistente. Uma IA leu isso pela ferramenta ver_endpoints_api e produziu uma auditoria de segurança inteira para rotas fantasmas.",
+  () => verificarSincronia(),
 );
 
 let falhou = 0;
