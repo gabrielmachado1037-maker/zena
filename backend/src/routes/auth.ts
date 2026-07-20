@@ -283,7 +283,11 @@ router.post("/redefinir-senha", async (req: Request, res: Response) => {
 router.get("/me", authMiddleware, async (req: AuthRequest, res: Response) => {
   const nutri = await prisma.nutricionista.findUnique({
     where: { id: req.nutricionistaId as string },
-    select: { id: true, nome: true, email: true, crn: true, nomeConsultorio: true, logoConsultorio: true, enderecoConsultorio: true, emailVerificado: true, aceiteTermosEm: true, aceiteTermosVersao: true },
+    // foto/plano/módulos entram aqui porque o front revalida a sessão por esta
+    // rota no load. Sem eles, a revalidação apagaria do localStorage o que
+    // controla paywall e acesso a módulo — e a foto (URL assinada, que expira)
+    // nunca seria renovada, que é justamente o motivo de revalidar.
+    select: { id: true, nome: true, email: true, crn: true, nomeConsultorio: true, logoConsultorio: true, enderecoConsultorio: true, emailVerificado: true, aceiteTermosEm: true, aceiteTermosVersao: true, foto: true, planoSlug: true, subscriptionStatus: true, modulosAtivos: true },
   });
   if (!nutri) return res.status(404).json({ error: "Não encontrado" });
   res.json({ ...nutri, precisaAceitarTermos: precisaAceitarTermos(nutri) });

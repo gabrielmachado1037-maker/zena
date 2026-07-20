@@ -47,7 +47,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // quem é, cruze o id no banco.
       Sentry.setUser({ id: n.id });
       api.defaults.headers.Authorization = `Bearer ${saved}`;
-      api.get("/health").catch(() => {}); // Acorda backend/Neon DB antes do usuário clicar em algo
+      // Revalida o usuário guardado. Precisa acontecer porque as URLs de foto
+      // agora são assinadas e expiram: a cópia do localStorage envelhece e o
+      // avatar quebraria sem nada para renová-lo. De brinde, plano e módulos
+      // deixam de ficar velhos até o próximo login. Também acorda o backend
+      // (Render/Neon hibernam), papel que era do /health.
+      api.get("/auth/me")
+        .then(({ data }) => {
+          if (!data?.id) return;
+          // Merge, não substituição: se o /me deixar de devolver algum campo,
+          // o valor antigo permanece em vez de sumir da sessão.
+          const atualizado = { ...n, ...data };
+          setNutricionista(atualizado);
+          localStorage.setItem("zena_user", JSON.stringify(atualizado));
+        })
+        .catch(() => {}); // Offline ou token vencido: segue com a cópia local.
     }
     setLoading(false);
   }, []);

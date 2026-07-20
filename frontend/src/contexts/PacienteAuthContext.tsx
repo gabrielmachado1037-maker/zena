@@ -42,6 +42,20 @@ export function PacienteAuthProvider({ children }: { children: ReactNode }) {
       // Só o id: e-mail é dado pessoal e não deve sair do app (LGPD). Para saber
       // quem é, cruze o id no banco.
       Sentry.setUser({ id: p.id });
+      // A URL da foto é assinada e expira; a cópia do localStorage envelhece e
+      // o avatar quebraria sem nada para renová-la. Puxo só esse campo — o
+      // /me do paciente devolve um objeto de formato diferente (paciente +
+      // medições), então mesclar tudo corromperia a sessão guardada.
+      apiPaciente
+        .get("/paciente-app/me", { headers: { Authorization: `Bearer ${saved}` } })
+        .then(({ data }) => {
+          const fotoUrl = data?.pacienteUser?.fotoUrl ?? data?.fotoUrl ?? null;
+          if (!fotoUrl || fotoUrl === p.fotoUrl) return;
+          const atualizado = { ...p, fotoUrl };
+          setPaciente(atualizado);
+          localStorage.setItem("zena_user_paciente", JSON.stringify(atualizado));
+        })
+        .catch(() => {}); // Offline ou token vencido: segue com a cópia local.
     }
     setLoading(false);
   }, []);
