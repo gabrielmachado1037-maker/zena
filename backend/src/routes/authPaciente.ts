@@ -9,6 +9,7 @@ import { authMiddleware, AuthRequest, authPacienteMiddleware, PacienteAuthReques
 import { validateBody } from "../middleware/validate";
 import { emailVerificacaoPaciente, emailRecuperacaoSenhaPaciente } from "../lib/email";
 import { normalizarCodigo, ultimos4Telefone } from "../lib/convite";
+import { buscarPacienteUserPorEmail, buscarPacienteUserParaLogin, buscarPacienteUserParaRecuperacao, normalizarEmail } from "../lib/email-lookup";
 
 const registerSchema = z.object({
   email: z.email({ error: "E-mail inválido." }),
@@ -79,6 +80,9 @@ async function emitirParTokens(
 }
 
 // Anti brute-force no app do paciente (mesmo padrão do login da nutri).
+/** Ver auth.ts: hash de senha descartada, só para igualar o tempo de resposta. */
+const HASH_DESCARTAVEL = "$2b$10$mDZ47pSDs0kwty83cKNRaOlUTibxrTvgrWPfrjH8plnXdc9kD7Rp6";
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -164,7 +168,8 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
   if (jaTemConta) {
     return res.status(409).json({ error: MSG_CONVITE_INDIVIDUAL });
   }
-  const jaExiste = await prisma.pacienteUser.findUnique({ where: { email } });
+  // Insensível a caixa — senão o mesmo e-mail em caixa diferente vira 2ª conta.
+  const jaExiste = await buscarPacienteUserPorEmail(email);
   if (jaExiste) {
     return res.status(409).json({ error: "Este e-mail já possui conta. Faça login." });
   }
@@ -176,7 +181,8 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
     pacienteUser = await prisma.$transaction(async (tx) => {
       const pu = await tx.pacienteUser.create({
         data: {
-          email,
+          // Sempre minúsculo: a unicidade do banco é sensível a caixa.
+          email: normalizarEmail(email),
           senha: hash,
           pacienteId: paciente.id,
           aceiteTermos: true,
@@ -221,10 +227,7 @@ router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) 
   const email = String(req.body?.email ?? "").trim().toLowerCase();
   if (!email) return res.status(400).json({ error: "Informe o e-mail." });
 
-  const pacienteUser = await prisma.pacienteUser.findUnique({
-    where: { email },
-    include: { paciente: { select: { nome: true } } },
-  });
+  const pacienteUser = await buscarPacienteUserParaRecuperacao(email);
   // Sempre 200 — não vaza se o e-mail tem conta.
   if (!pacienteUser) return res.json({ ok: true });
 
@@ -270,11 +273,14 @@ router.post("/login", loginLimiter, validateBody(loginSchema), async (req: Reque
     return res.status(400).json({ error: "Email e senha são obrigatórios." });
   }
 
-  const pacienteUser = await prisma.pacienteUser.findUnique({
-    where: { email },
-    include: { paciente: { include: { nutricionista: true } } },
-  });
-  if (!pacienteUser) return res.status(401).json({ error: "Credenciais inválidas." });
+  const pacienteUser = await buscarPacienteUserParaLogin(email);
+  // Iguala o tempo de resposta do e-mail inexistente — sem isso dá para
+  // descobrir quem é paciente da plataforma medindo a latência (ver comentário
+  // em auth.ts). Aqui a inferência é ainda mais sensível: revela tratamento.
+  if (!pacienteUser) {
+    await bcrypt.compare(senha ?? "", HASH_DESCARTAVEL);
+    return res.status(401).json({ error: "Credenciais inválidas." });
+  }
 
   const ok = await bcrypt.compare(senha, pacienteUser.senha);
   if (!ok) return res.status(401).json({ error: "Credenciais inválidas." });

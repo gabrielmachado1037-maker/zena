@@ -32,6 +32,7 @@ import relatoriosRouter from "./routes/relatorios";
 import desafiosRouter from "./routes/desafios";
 import onboardingRouter from "./routes/onboarding";
 import { initCron } from "./cron";
+import { verificarSeguranca } from "./lib/verificacaoSeguranca";
 
 dotenv.config();
 
@@ -172,5 +173,8 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error("[ERROR]", err.message, err.stack);
   res.status(500).json({ error: "Erro interno do servidor." });
 });
+
+// Roda no fim, com o app já montado — precisa enxergar a config final.
+verificarSeguranca(app);
 
 app.listen(PORT, () => console.log(`Zena backend rodando na porta ${PORT}`));

@@ -14,4 +14,10 @@ RUN npm run build
 
 EXPOSE 3001
 
+# Sem isto o processo roda como root: qualquer execução de código arbitrária
+# dentro do container começa com privilégio total. `node` já existe na imagem
+# oficial. O chown cobre o dist/ e o client do Prisma gerados no build acima.
+RUN chown -R node:node /app
+USER node
+
 CMD ["node", "start.js"]

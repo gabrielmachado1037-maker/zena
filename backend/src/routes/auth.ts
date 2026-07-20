@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { emailBoasVindas, emailRecuperacaoSenha, emailVerificacao } from "../lib/email";
@@ -10,6 +10,7 @@ import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { uploadFoto } from "../lib/supabase";
 import { validateBody } from "../middleware/validate";
 import { excluirNutricionista } from "../lib/excluirNutricionista";
+import { buscarNutricionistaPorEmail, normalizarEmail } from "../lib/email-lookup";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -53,6 +54,30 @@ async function emitirParTokens(nutricionistaId: string, familyId?: string) {
   });
   return { accessToken, refreshToken };
 }
+
+/**
+ * Hash bcrypt de uma senha aleatória descartada. Serve só para gastar o mesmo
+ * tempo de CPU quando o e-mail não existe, igualando a latência das duas
+ * respostas de login. Não é segredo e não abre nada: ninguém conhece a senha
+ * que o gerou, e ela não é senha de conta nenhuma.
+ */
+const HASH_DESCARTAVEL = "$2b$10$mDZ47pSDs0kwty83cKNRaOlUTibxrTvgrWPfrjH8plnXdc9kD7Rp6";
+
+/**
+ * A exportação LGPD varre ~16 tabelas do tenant sem `take` e serializa tudo em
+ * memória. É a rota mais cara do app e era a única sem teto — com cadastro
+ * livre de 14 dias de trial, algumas chamadas paralelas derrubavam a
+ * instância. Chaveado por conta (não por IP): é o recurso que queremos
+ * proteger, e o limite por IP puniria uma clínica inteira atrás do mesmo NAT.
+ */
+const exportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  keyGenerator: (req) => (req as AuthRequest).nutricionistaId ?? ipKeyGenerator(req.ip ?? ""),
+  message: { error: "Muitas exportações. Tente novamente em 1 hora." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -111,7 +136,8 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
     return res.status(400).json({ error: "A senha deve ter ao menos 6 caracteres." });
   }
 
-  const existe = await prisma.nutricionista.findUnique({ where: { email } });
+  // Insensível a caixa: sem isso, Ana@x.com e ana@x.com viravam duas contas.
+  const existe = await buscarNutricionistaPorEmail(email);
   if (existe) return res.status(409).json({ error: "E-mail já cadastrado" });
 
   const hash = await bcrypt.hash(senha, 10);
@@ -120,7 +146,7 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
 
   const nutri = await prisma.nutricionista.create({
     data: {
-      nome, email, senha: hash, crn, trialEnd, nomeConsultorio: nomeConsultorio || null,
+      nome, email: normalizarEmail(email), senha: hash, crn, trialEnd, nomeConsultorio: nomeConsultorio || null,
       aceiteTermosEm: new Date(), aceiteTermosVersao: TERMOS_VERSAO,
     },
   });
@@ -135,8 +161,16 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
 router.post("/login", loginLimiter, validateBody(loginSchema), async (req: Request, res: Response) => {
   const { email, senha } = req.body;
 
-  const nutri = await prisma.nutricionista.findUnique({ where: { email } });
-  if (!nutri) return res.status(401).json({ error: "Credenciais inválidas" });
+  const nutri = await buscarNutricionistaPorEmail(email);
+  // E-mail inexistente respondia SEM rodar o bcrypt — dezenas de ms a menos,
+  // mensuráveis de fora. Isso permitia descobrir quem tem conta, e num SaaS de
+  // nutrição saber que alguém é paciente/cliente já é inferência sensível. O
+  // /esqueci-senha foi escrito com esse cuidado; o login desfazia a proteção.
+  // Comparar contra um hash descartável iguala o tempo das duas respostas.
+  if (!nutri) {
+    await bcrypt.compare(senha ?? "", HASH_DESCARTAVEL);
+    return res.status(401).json({ error: "Credenciais inválidas" });
+  }
 
   const ok = await bcrypt.compare(senha, nutri.senha);
   if (!ok) return res.status(401).json({ error: "Credenciais inválidas" });
@@ -199,7 +233,7 @@ router.post("/reenviar-verificacao", emailLimiter, authMiddleware, async (req: A
 
 router.post("/esqueci-senha", emailLimiter, async (req: Request, res: Response) => {
   const { email } = req.body;
-  const nutri = await prisma.nutricionista.findUnique({ where: { email } });
+  const nutri = await buscarNutricionistaPorEmail(email);
 
   // Always return 200 to not reveal if email exists
   if (!nutri) return res.json({ ok: true });
@@ -333,7 +367,7 @@ router.put("/consultorio", authMiddleware, async (req: AuthRequest, res: Respons
 
 // GET /api/auth/exportar — portabilidade (LGPD, Art. 18): baixa os dados do nutri
 // (a clínica) + os dados das pacientes vinculadas, em JSON.
-router.get("/exportar", authMiddleware, async (req: AuthRequest, res: Response) => {
+router.get("/exportar", authMiddleware, exportLimiter, async (req: AuthRequest, res: Response) => {
   const nid = req.nutricionistaId as string;
 
   const [nutri, pacientes] = await Promise.all([
