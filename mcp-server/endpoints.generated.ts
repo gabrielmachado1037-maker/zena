@@ -54,7 +54,6 @@ export const ENDPOINTS_API = [
   {"metodo":"POST","rota":"/api/consultas","auth":true,"desc":"Cria consulta"},
   {"metodo":"PATCH","rota":"/api/consultas/:id","auth":true,"desc":""},
   {"metodo":"GET","rota":"/api/dashboard","auth":true,"desc":"Métricas resumo do dashboard"},
-  {"metodo":"GET","rota":"/api/dashboard/alertas","auth":true,"desc":""},
   {"metodo":"GET","rota":"/api/dashboard/ligas","auth":true,"desc":""},
   {"metodo":"GET","rota":"/api/desafios","auth":true,"desc":""},
   {"metodo":"POST","rota":"/api/desafios","auth":true,"desc":""},
