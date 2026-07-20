@@ -41,6 +41,11 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Captura TUDO deste passo num arquivo (e mantém na tela). O log da
+          # execução exige login para ser lido, então sem isto o diagnóstico
+          # depende de alguém abrir o Actions e transcrever o erro.
+          exec > >(tee -a /tmp/erro-backup.log) 2>&1
+
           # Diagnóstico primeiro: este passo falhou 7 vezes seguidas sem que
           # ninguém soubesse por quê. Cada checagem abaixo dá uma mensagem
           # específica, em vez de um exit code solto no log.
@@ -161,7 +166,14 @@ jobs:
             try {
               const fs = require("fs");
               if (fs.existsSync("/tmp/erro-backup.log")) {
-                const txt = fs.readFileSync("/tmp/erro-backup.log", "utf8").trim();
+                let txt = fs.readFileSync("/tmp/erro-backup.log", "utf8").trim();
+                // ESTE REPOSITÓRIO É PÚBLICO: a issue é legível por qualquer
+                // pessoa. Remove credencial de qualquer URL antes de publicar —
+                // um diagnóstico não pode virar vazamento.
+                txt = txt
+                  .replace(/(\w+:\/\/)[^:@\s/]+:[^@\s/]+@/g, "$1***:***@")
+                  .replace(/(password|pgpassword)=[^\s&"']+/gi, "$1=***")
+                  .replace(/eyJ[A-Za-z0-9_-]{20,}/g, "***jwt***");
                 if (txt) detalhe = ["", "```", txt.slice(-1500), "```"].join("\n");
               }
             } catch {}
