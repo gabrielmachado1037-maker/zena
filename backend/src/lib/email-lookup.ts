@@ -22,10 +22,32 @@ import prisma from "./prisma";
 
 export const normalizarEmail = (v: unknown): string => String(v ?? "").trim().toLowerCase();
 
+/**
+ * IMPORTANTE — por que exato PRIMEIRO, e só depois insensível:
+ *
+ * O banco de produção tem (confirmado em 20/07) duas contas de paciente com o
+ * mesmo e-mail em caixas diferentes. Buscar direto de forma insensível devolve
+ * UMA das duas arbitrariamente, o que derrubaria o login da outra pessoa —
+ * antes, com busca exata, as duas entravam normalmente.
+ *
+ * Então: quem digita a própria caixa continua caindo na própria conta; a busca
+ * insensível só age quando o exato não acha, que é justamente o caso de quem
+ * estava sem conseguir recuperar a senha. Corrige um sem quebrar o outro.
+ *
+ * Isto deixa de ser necessário quando as colisões forem resolvidas à mão e os
+ * e-mails normalizados (scripts/normalizar-emails.ts).
+ */
+const email_exato = (email: string) => String(email ?? "").trim();
+
 export function buscarNutricionistaPorEmail(email: string) {
-  return prisma.nutricionista.findFirst({
-    where: { email: { equals: normalizarEmail(email), mode: "insensitive" } },
-  });
+  return prisma.nutricionista
+    .findFirst({ where: { email: email_exato(email) } })
+    .then((achado) =>
+      achado ??
+      prisma.nutricionista.findFirst({
+        where: { email: { equals: normalizarEmail(email), mode: "insensitive" } },
+      }),
+    );
 }
 
 
@@ -34,21 +56,23 @@ const porEmail = (email: string) => ({
 });
 
 export function buscarPacienteUserPorEmail(email: string) {
-  return prisma.pacienteUser.findFirst({ where: porEmail(email) });
+  return prisma.pacienteUser
+    .findFirst({ where: { email: email_exato(email) } })
+    .then((achado) => achado ?? prisma.pacienteUser.findFirst({ where: porEmail(email) }));
 }
 
 /** Variante do login: precisa do paciente e da nutricionista no mesmo round-trip. */
 export function buscarPacienteUserParaLogin(email: string) {
-  return prisma.pacienteUser.findFirst({
-    where: porEmail(email),
-    include: { paciente: { include: { nutricionista: true } } },
-  });
+  const include = { paciente: { include: { nutricionista: true } } };
+  return prisma.pacienteUser
+    .findFirst({ where: { email: email_exato(email) }, include })
+    .then((achado) => achado ?? prisma.pacienteUser.findFirst({ where: porEmail(email), include }));
 }
 
 /** Variante da recuperação de senha: só precisa do nome para o e-mail. */
 export function buscarPacienteUserParaRecuperacao(email: string) {
-  return prisma.pacienteUser.findFirst({
-    where: porEmail(email),
-    include: { paciente: { select: { nome: true } } },
-  });
+  const include = { paciente: { select: { nome: true } } };
+  return prisma.pacienteUser
+    .findFirst({ where: { email: email_exato(email) }, include })
+    .then((achado) => achado ?? prisma.pacienteUser.findFirst({ where: porEmail(email), include }));
 }
