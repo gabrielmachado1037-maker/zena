@@ -61,10 +61,24 @@ jobs:
           fi
           echo "Usando: $PGDUMP ($("$PGDUMP" --version))"
 
+          # A URL do Render aponta para o POOLER do Neon (PgBouncer). pg_dump não
+          # funciona através dele — precisa do endpoint direto, que é o mesmo
+          # host sem o sufixo "-pooler". Converter aqui em vez de exigir um
+          # valor diferente no secret evita que alguém copie a URL "óbvia" do
+          # Render e caia nesta armadilha de novo.
+          URL_DUMP="${NEON_DATABASE_URL/-pooler./.}"
+          if [ "$URL_DUMP" != "$NEON_DATABASE_URL" ]; then
+            echo "URL do pooler detectada → usando o endpoint direto para o dump."
+          fi
+
           STAMP=$(date -u +%Y-%m-%d_%H%M)
           FILE="nexvel-${STAMP}.sql.gz"
-          if ! "$PGDUMP" "$NEON_DATABASE_URL" --no-owner --no-privileges --format=plain | gzip -9 > "$FILE"; then
+          # stderr vai para arquivo: a mensagem real do pg_dump é o que diz a
+          # causa, e ela precisa chegar até a issue de falha (ninguém abre log).
+          if ! "$PGDUMP" "$URL_DUMP" --no-owner --no-privileges --format=plain 2>/tmp/erro-backup.log | gzip -9 > "$FILE"; then
             echo "::error::pg_dump falhou. Causas comuns: cliente mais antigo que o servidor (Neon roda PG 18), URL inválida, ou banco suspenso."
+            echo "--- saída do pg_dump ---"
+            tail -20 /tmp/erro-backup.log || true
             exit 1
           fi
 
@@ -140,10 +154,23 @@ jobs:
               owner: context.repo.owner, repo: context.repo.repo,
               state: "open", labels: "backup-falhou",
             });
+            // Inclui a mensagem real do pg_dump: sem ela, a issue diz "falhou"
+            // e alguém ainda precisa abrir o log para saber o porquê — que é
+            // justamente o passo que ninguém dá.
+            let detalhe = "";
+            try {
+              const fs = require("fs");
+              if (fs.existsSync("/tmp/erro-backup.log")) {
+                const txt = fs.readFileSync("/tmp/erro-backup.log", "utf8").trim();
+                if (txt) detalhe = ["", "```", txt.slice(-1500), "```"].join("\n");
+              }
+            } catch {}
+
             const corpo = [
               `O backup diário falhou na execução de ${new Date().toISOString().slice(0, 16)}.`,
               ``,
               `**Sem backup, uma perda de dados é irreversível — e o banco tem prontuário de paciente.**`,
+              detalhe,
               ``,
               `Log: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             ].join("\n");
