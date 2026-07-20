@@ -94,11 +94,18 @@ jobs:
             echo "::error::Dump suspeito: apenas ${BYTES} bytes. Provavelmente vazio ou truncado."
             exit 1
           fi
-          if ! gzip -dc "$FILE" | grep -qE "^(CREATE TABLE|COPY )"; then
+          # ATENÇÃO ao `grep -q` aqui: ele sai assim que acha o primeiro
+          # resultado e fecha o cano, o gzip do outro lado leva SIGPIPE e, com
+          # `pipefail`, o pipeline inteiro conta como falha. Ou seja: quanto
+          # mais correto o dump, mais garantido o falso negativo. Foi
+          # exatamente isso que reprovou um backup bom. `grep -c` lê tudo até o
+          # fim, então não dispara SIGPIPE.
+          TABELAS=$(gzip -dc "$FILE" | grep -c "^CREATE TABLE" || true)
+          LINHAS_DADOS=$(gzip -dc "$FILE" | grep -c "^COPY " || true)
+          if [ "$TABELAS" -eq 0 ] && [ "$LINHAS_DADOS" -eq 0 ]; then
             echo "::error::Dump não contém CREATE TABLE nem COPY — não é um backup utilizável."
             exit 1
           fi
-          TABELAS=$(gzip -dc "$FILE" | grep -c "^CREATE TABLE" || true)
           echo "Backup gerado: $FILE ($(du -h "$FILE" | cut -f1), ${TABELAS} tabelas)"
           echo "FILE=$FILE" >> "$GITHUB_ENV"
 
