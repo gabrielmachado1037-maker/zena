@@ -1,0 +1,213 @@
+# Registro de Operações de Tratamento — Nexvel
+
+> **Art. 37 da LGPD** — o controlador e o operador devem manter registro das operações
+> de tratamento que realizarem, especialmente quando baseado no legítimo interesse.
+>
+> **Status deste documento:** os fatos técnicos (que dado existe, onde fica, quem
+> recebe, como é protegido) foram levantados do código e da infraestrutura reais em
+> **20/07/2026** e estão marcados ✅ verificado. As definições **jurídicas** estão
+> marcadas ⚠️ e **dependem de decisão do responsável e de revisão por advogado** —
+> não foram preenchidas por suposição. Documento interno; não é peça pública.
+
+---
+
+## 1. Agentes de tratamento
+
+| Campo | Valor |
+|---|---|
+| Controlador (dados do nutricionista) | ⚠️ **A DEFINIR** — razão social/CNPJ da empresa que opera a Nexvel |
+| Papel quanto aos dados das **pacientes** | ⚠️ **DECISÃO CRÍTICA** — ver §7 |
+| Encarregado (DPO) | ⚠️ **A DEFINIR** — ver §8 |
+| Canal do titular | `contato@nexvel.tech` ✅ (caixa ativa, via ImprovMX) |
+
+---
+
+## 2. Categorias de titulares
+
+1. **Nutricionistas** — clientes contratantes (14 contas em 20/07/2026).
+2. **Pacientes** — pessoas atendidas pelos nutricionistas, com conta própria no app
+   (11 contas de acesso) ou apenas cadastradas pelo nutricionista.
+
+---
+
+## 3. Categorias de dados tratados ✅ verificado no schema
+
+### 3.1 Dados pessoais comuns
+| Dado | Onde | Titular |
+|---|---|---|
+| Nome, e-mail, telefone | `Nutricionista`, `Paciente`, `PacienteUser` | ambos |
+| CRN (registro profissional) | `Nutricionista` | nutricionista |
+| Senha (hash bcrypt, custo 12) | `Nutricionista`, `PacienteUser` | ambos |
+| Data de nascimento, sexo | `Paciente` | paciente |
+| Endereço do consultório | `Nutricionista` | nutricionista |
+| IP e logs de acesso | rate limiters, Sentry | ambos |
+
+### 3.2 🔴 Dados pessoais SENSÍVEIS — saúde (Art. 5º, II)
+> Esta é a categoria de maior risco do produto e a que determina o regime jurídico
+> aplicável. **Dado de saúde não é regido pelo Art. 7º, e sim pelo Art. 11.**
+
+| Dado | Modelo |
+|---|---|
+| Anamnese / histórico de saúde | `Anamnese` |
+| Peso, medidas corporais, % gordura, massa muscular | `Medicao` |
+| Fotos de evolução corporal | `FotoEvolucao`, `RegistroFotos` |
+| Planos alimentares prescritos | `PlanoAlimentar` |
+| Registros diários de alimentação, sono, água, treino | `Registro`, `ChecklistDiario`, `CheckIn` |
+| Humor auto-relatado | `Registro` |
+| Consultas e evolução clínica | `Consulta` |
+
+### 3.3 Dados financeiros
+`Cobranca`, `PlanoCobranca`, `PlanoSaas` — identificadores de assinatura
+(Stripe/Asaas). **Não há número de cartão armazenado** ✅ verificado.
+
+### 3.4 Dados de engajamento / comportamento
+`PontosLog`, `RankingPontuacao`, `Conquista`, `Desafio`, `StreakMarco`,
+`RegistroEvento`, `NotificacaoLog`, `FeedPost`, `MensagemChat`.
+
+---
+
+## 4. Finalidades
+
+1. Prestação do serviço de acompanhamento nutricional (núcleo contratado).
+2. Autenticação e segurança das contas.
+3. Geração de relatórios clínicos para o nutricionista.
+4. Gamificação e engajamento do paciente (ligas, ranking, desafios, lembretes).
+5. Cobrança e gestão de assinatura.
+6. Monitoramento de erros e disponibilidade.
+
+---
+
+## 5. Bases legais
+
+⚠️ **PENDENTE DE REVISÃO JURÍDICA.** A política pública hoje cita apenas o
+**Art. 7º** (execução de contrato, consentimento, legítimo interesse). Isso é
+insuficiente e, num ponto, incorreto:
+
+- **Legítimo interesse não existe no Art. 11** e portanto **não é base válida para
+  dado de saúde**. Se hoje algum tratamento de dado sensível se apoia nele, está sem
+  base legal.
+- Para dado de saúde as hipóteses típicas são **Art. 11, I** (consentimento
+  específico e destacado, para finalidades específicas) e **Art. 11, II, "f"**
+  (tutela da saúde, em procedimento realizado por profissionais de saúde).
+- A escolha entre elas **muda o produto**: se for consentimento, ele precisa ser
+  específico, destacado e revogável; se for tutela da saúde, precisa estar claro que
+  o tratamento ocorre sob responsabilidade do profissional.
+
+**Contradição interna já identificada:** a política classifica as comunicações de
+engajamento como *consentimento*, mas a implementação as entrega por padrão
+(`ContaPaciente.tsx:310` — ausência de preferência = ligado). Consentimento sob a
+LGPD exige manifestação **afirmativa** (Art. 5º, XII); opt-out não satisfaz. É
+preciso escolher: ou reclassificar como execução de contrato (e o padrão ligado
+passa a ser coerente), ou inverter o padrão para desligado.
+
+---
+
+## 6. Compartilhamento e transferência internacional ✅ verificado
+
+| Operador | Finalidade | Local | Transferência internacional |
+|---|---|---|---|
+| **Neon** (banco) | Armazenamento de todos os dados, inclusive saúde | `sa-east-1` = **São Paulo, Brasil** ✅ | **Não** |
+| **Sentry** | Monitoramento de erros | `ingest.**us**.sentry.io` = **EUA** ✅ | **Sim** — Art. 33 |
+| **Render** | Backend | ⚠️ região definida no painel, **não verificada** | a confirmar |
+| **Vercel** | Frontend | ⚠️ **não verificada** | a confirmar |
+| **Stripe** | Pagamento | EUA/Irlanda | Sim |
+| **Asaas** | Pagamento Pix | Brasil | Não |
+| **Resend** | E-mail transacional | `sa-east-1` ✅ | Não |
+| **Anthropic** | Geração do texto do relatório clínico | EUA | **Sim** |
+| **Supabase** | Armazenamento de fotos (bucket privado) | ⚠️ **não verificada** | a confirmar |
+
+> ⚠️ **A política pública hoje afirma "servidores no Brasil ou com adequação LGPD".**
+> Isso é impreciso: Sentry e Anthropic estão nos EUA. Afirmação factualmente errada
+> numa política de privacidade é pior que omissão — corrigir é prioridade.
+>
+> ⚠️ **Anthropic não está declarada na política**, embora o relatório clínico envie
+> conteúdo derivado de dado de saúde para gerar o texto. Precisa ser declarada e
+> precisa de base legal para a transferência.
+
+---
+
+## 7. ⚠️ DECISÃO CRÍTICA: controlador ou operador?
+
+Para os dados das **pacientes**, quem decide as finalidades do tratamento?
+
+- Se o **nutricionista** decide (ele coleta, ele trata, ele é o profissional de
+  saúde): o nutricionista é **controlador** e a Nexvel é **operadora**. Nesse caso é
+  necessário um **contrato de operador** (cláusulas de tratamento) com cada
+  nutricionista, e a política deve dizer isso com clareza.
+- Se a **Nexvel** decide (gamificação, ranking, notificações e relatórios com IA são
+  finalidades definidas pela plataforma, não pelo nutricionista): a Nexvel é
+  **controladora** ou **co-controladora**, e responde diretamente perante o titular.
+
+Hoje a política trata tudo como se a Nexvel fosse a única controladora, e **não há
+contrato de operador com os nutricionistas**. Isso define quem responde por um
+incidente com prontuário. **É a decisão jurídica mais relevante deste documento.**
+
+---
+
+## 8. ⚠️ Encarregado (DPO) — Art. 41
+
+A LGPD exige que o controlador indique um Encarregado e **divulgue publicamente sua
+identidade e informação de contato** (Art. 41, §1º).
+
+**Nuance que precisa de confirmação do advogado:** a Resolução CD/ANPD nº 2/2022
+dispensa **agentes de tratamento de pequeno porte** de *indicar* Encarregado,
+mantendo a obrigação de oferecer um canal de comunicação. **Porém**, o tratamento de
+dados sensíveis em larga escala tende a caracterizar tratamento de **alto risco**, o
+que pode afastar esse enquadramento. Esta é a pergunta exata a levar ao advogado:
+
+> *"A Nexvel se enquadra como agente de tratamento de pequeno porte na Res.
+> CD/ANPD nº 2/2022, considerando que trata dados de saúde de pacientes? Se sim, a
+> dispensa de indicação de Encarregado se aplica, ou o tratamento de dado sensível
+> caracteriza alto risco e afasta a dispensa?"*
+
+Enquanto isso não for respondido, o canal `contato@nexvel.tech` **existe e
+funciona** ✅, mas não está identificado na política como canal do Encarregado.
+
+---
+
+## 9. Retenção e eliminação ✅ verificado
+
+- Dados mantidos enquanto a conta estiver ativa.
+- **Exclusão pelo próprio app**, para os dois perfis: `DELETE /api/auth/conta`
+  (nutricionista) e `DELETE /api/paciente-app/conta` (paciente).
+- A exclusão do paciente **elimina de fato o dado de saúde** (não é só desativação) e
+  anonimiza PII, via `lib/anonimizarPaciente.ts`, em transação atômica.
+- Backup: dump diário para bucket privado, com verificação semanal de restauração.
+  ⚠️ **O backup retém dado já excluído até ser sobrescrito pela rotação** — a
+  política menciona isso genericamente; o prazo concreto de rotação deveria constar.
+
+---
+
+## 10. Medidas de segurança ✅ verificado
+
+- Senhas com bcrypt custo 12, com re-hash transparente de hashes antigos no login.
+- Resposta de login com tempo constante (impede enumeração de contas por latência).
+- Rate limit por IP **e por conta** no login; limites em cadastro, recuperação de
+  senha e rotas de token.
+- JWT de acesso curto (30 min) + refresh revogável com rotação e detecção de reuso.
+- Troca de senha revoga todas as sessões ativas.
+- Fotos em bucket **privado**, servidas por URL assinada de 6h, com caminho não
+  adivinhável.
+- Chaves de terceiros criptografadas em repouso.
+- `trust proxy` configurado (sem ele os limites viravam balde global).
+- Isolamento por tenant verificado nos 33 routers autenticados.
+- CI roda checagem de segurança com 14 travas de regressão a cada push.
+- Monitoramento de erros com Sentry, sem envio de PII (`sendDefaultPii: false`).
+
+---
+
+## 11. Incidentes
+
+⚠️ **Não existe procedimento formal documentado** de resposta a incidente de
+segurança com dado pessoal (Art. 48 — comunicação à ANPD e ao titular em prazo
+razoável). Existe detecção técnica (Sentry, alertas de backup), mas não há: quem
+decide se comunica, em quanto tempo, por qual canal, nem modelo de comunicação.
+**É uma lacuna real e de baixo custo para fechar.**
+
+---
+
+## Histórico
+
+| Data | Alteração |
+|---|---|
+| 20/07/2026 | Criação. Fatos técnicos levantados do código; itens jurídicos deixados explicitamente em aberto. |
