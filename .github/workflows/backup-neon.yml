@@ -17,6 +17,12 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Necessário para o passo que abre issue em caso de falha. Por padrão o
+    # GITHUB_TOKEN pode ser somente leitura — e aí o aviso falharia calado,
+    # exatamente no momento em que ele importa.
+    permissions:
+      contents: read
+      issues: write
     env:
       RETENTION_DAYS: "30"
       BUCKET: db-backups
@@ -34,13 +40,47 @@ jobs:
           NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
         run: |
           set -euo pipefail
-          if [ -z "${NEON_DATABASE_URL:-}" ]; then echo "Secret NEON_DATABASE_URL ausente."; exit 1; fi
+
+          # Diagnóstico primeiro: este passo falhou 7 vezes seguidas sem que
+          # ninguém soubesse por quê. Cada checagem abaixo dá uma mensagem
+          # específica, em vez de um exit code solto no log.
+          if [ -z "${NEON_DATABASE_URL:-}" ]; then
+            echo "::error::Secret NEON_DATABASE_URL não está configurado no repositório."
+            echo "Settings → Secrets and variables → Actions → New repository secret"
+            exit 1
+          fi
+
+          # O caminho do binário era fixo em /usr/lib/postgresql/18/bin. Se o apt
+          # instalar outra versão, isso quebra com 'command not found' — que é
+          # justamente o tipo de erro mudo que nos trouxe até aqui.
+          PGDUMP=$(ls -d /usr/lib/postgresql/*/bin/pg_dump 2>/dev/null | sort -V | tail -1 || true)
+          if [ -z "$PGDUMP" ]; then PGDUMP=$(command -v pg_dump || true); fi
+          if [ -z "$PGDUMP" ]; then
+            echo "::error::pg_dump não encontrado. Instalado: $(ls /usr/lib/postgresql 2>/dev/null || echo nenhum)"
+            exit 1
+          fi
+          echo "Usando: $PGDUMP ($("$PGDUMP" --version))"
+
           STAMP=$(date -u +%Y-%m-%d_%H%M)
           FILE="nexvel-${STAMP}.sql.gz"
-          # Usa o binário 18 explicitamente (cliente >= servidor, requisito do pg_dump).
-          /usr/lib/postgresql/18/bin/pg_dump "$NEON_DATABASE_URL" --no-owner --no-privileges --format=plain | gzip -9 > "$FILE"
-          SIZE=$(du -h "$FILE" | cut -f1)
-          echo "Backup gerado: $FILE ($SIZE)"
+          if ! "$PGDUMP" "$NEON_DATABASE_URL" --no-owner --no-privileges --format=plain | gzip -9 > "$FILE"; then
+            echo "::error::pg_dump falhou. Causas comuns: cliente mais antigo que o servidor (Neon roda PG 18), URL inválida, ou banco suspenso."
+            exit 1
+          fi
+
+          # Um dump vazio que "passa" é pior que uma falha: dá sensação de
+          # backup sem ter backup. Confere tamanho e conteúdo antes de subir.
+          BYTES=$(stat -c%s "$FILE")
+          if [ "$BYTES" -lt 10240 ]; then
+            echo "::error::Dump suspeito: apenas ${BYTES} bytes. Provavelmente vazio ou truncado."
+            exit 1
+          fi
+          if ! gzip -dc "$FILE" | grep -qE "^(CREATE TABLE|COPY )"; then
+            echo "::error::Dump não contém CREATE TABLE nem COPY — não é um backup utilizável."
+            exit 1
+          fi
+          TABELAS=$(gzip -dc "$FILE" | grep -c "^CREATE TABLE" || true)
+          echo "Backup gerado: $FILE ($(du -h "$FILE" | cut -f1), ${TABELAS} tabelas)"
           echo "FILE=$FILE" >> "$GITHUB_ENV"
 
       - name: Enviar para o Supabase Storage (bucket privado)
@@ -85,3 +125,39 @@ jobs:
             fi
           done
           echo "Rotação concluída."
+
+      # Sem isto o backup falhou 7 dias seguidos e ninguém soube: workflow
+      # agendado que quebra não manda e-mail para quem não é o autor do último
+      # commit, e o log fica esperando alguém abrir. Uma issue aparece na cara.
+      # Usa o GITHUB_TOKEN embutido — não precisa configurar nada.
+      - name: Abrir issue se o backup falhar
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const titulo = "🚨 Backup do banco falhou";
+            const { data: abertas } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: "open", labels: "backup-falhou",
+            });
+            const corpo = [
+              `O backup diário falhou na execução de ${new Date().toISOString().slice(0, 16)}.`,
+              ``,
+              `**Sem backup, uma perda de dados é irreversível — e o banco tem prontuário de paciente.**`,
+              ``,
+              `Log: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            ].join("\n");
+
+            if (abertas.length > 0) {
+              // Já existe issue aberta: comenta nela em vez de criar uma nova a
+              // cada dia (uma pilha de issues idênticas vira ruído ignorável).
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: abertas[0].number, body: corpo,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: titulo, body: corpo, labels: ["backup-falhou"],
+              });
+            }
