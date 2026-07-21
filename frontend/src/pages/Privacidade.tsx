@@ -17,10 +17,42 @@ export default function Privacidade() {
 
         <div className="bg-nx-surface rounded-2xl p-8 space-y-8 text-nx-on-surface-variant leading-relaxed">
           <Section titulo="1. Quem somos">
-            A Nexvel é uma plataforma SaaS destinada a nutricionistas autônomos. Operamos em conformidade com a
-            Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018) e demais normas aplicáveis.
-            Para dúvidas sobre privacidade, entre em contato pelo e-mail{" "}
-            <a href="mailto:contato@nexvel.tech" className="text-nx-evo underline">contato@nexvel.tech</a>.
+            A Nexvel é uma plataforma SaaS destinada a nutricionistas autônomos, operada por{" "}
+            <strong>FTA Marketing LTDA</strong>. Operamos em conformidade com a Lei Geral de Proteção de Dados
+            (LGPD — Lei nº 13.709/2018) e demais normas aplicáveis.
+            <p className="mt-3">
+              <strong>Encarregado pelo Tratamento de Dados Pessoais (DPO)</strong>, nos termos do art. 41 da LGPD:{" "}
+              Gabriel Machado — <a href="mailto:contato@nexvel.tech" className="text-nx-evo underline">contato@nexvel.tech</a>.
+              É por esse canal que você exerce os direitos descritos na seção 8.
+            </p>
+          </Section>
+
+          <Section titulo="1.1 Quem responde por quais dados">
+            A Nexvel não ocupa o mesmo papel em todos os dados que passam pela plataforma. A divisão abaixo é o que
+            determina a quem você deve pedir acesso, correção ou exclusão.
+            <ul className="list-disc pl-5 space-y-2 mt-3">
+              <li>
+                <strong>Dados das pacientes (prontuário, anamnese, planos, fotos, medidas):</strong> quem decide o
+                tratamento é o <strong>nutricionista</strong>, que é o <strong>controlador</strong>. A Nexvel atua como{" "}
+                <strong>operadora</strong> (art. 39 da LGPD): armazena e processa esses dados seguindo as instruções
+                dele, e não os utiliza para finalidade própria. É o nutricionista quem responde pelo conteúdo clínico
+                e pelo consentimento da paciente, conforme a seção 7 dos{" "}
+                <Link to="/termos" className="text-nx-evo underline">Termos de Uso</Link>. Pedidos de paciente sobre
+                seus dados clínicos devem ser dirigidos primeiro ao seu nutricionista; se preferir, encaminhamos.
+              </li>
+              <li>
+                <strong>Dados da conta do nutricionista</strong> (cadastro, CRN, cobrança, logs de acesso):
+                a Nexvel é <strong>controladora</strong>, porque é ela quem decide coletá-los para prestar e cobrar
+                o serviço.
+              </li>
+              <li>
+                <strong>Funcionalidades criadas pela Nexvel</strong> — gamificação (pontos, ligas, ranking),
+                notificações de engajamento e a redação automática de relatórios por IA: nessas a{" "}
+                <strong>finalidade é decidida pela Nexvel</strong>, e não pelo nutricionista, de modo que aqui ela
+                também age como controladora. As comunicações de engajamento podem ser desligadas pela paciente no
+                próprio aplicativo (seção 7).
+              </li>
+            </ul>
           </Section>
 
           <Section titulo="2. Dados que coletamos">
@@ -102,8 +134,11 @@ export default function Privacidade() {
           </Section>
 
           <Section titulo="11. Contato">
-            Dúvidas, solicitações ou reclamações sobre privacidade:{" "}
+            Dúvidas, solicitações ou reclamações sobre privacidade devem ser dirigidas ao Encarregado (DPO),
+            Gabriel Machado, pelo e-mail{" "}
             <a href="mailto:contato@nexvel.tech" className="text-nx-evo underline">contato@nexvel.tech</a>.
+            Controladora: FTA Marketing LTDA. Se a solicitação for sobre dados clínicos de uma paciente, veja
+            antes a seção 1.1 — nesse caso o controlador é o nutricionista responsável.
           </Section>
         </div>
       </div>

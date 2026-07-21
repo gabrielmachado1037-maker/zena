@@ -15,9 +15,10 @@
 
 | Campo | Valor |
 |---|---|
-| Controlador (dados do nutricionista) | ⚠️ **A DEFINIR** — razão social/CNPJ da empresa que opera a Nexvel |
-| Papel quanto aos dados das **pacientes** | ⚠️ **DECISÃO CRÍTICA** — ver §7 |
-| Encarregado (DPO) | ⚠️ **A DEFINIR** — ver §8 |
+| Controlador (dados do nutricionista) | **FTA Marketing LTDA** ✅ (definido 2026-07-21) — ⚠️ falta o **CNPJ** na política |
+| Papel quanto aos dados das **pacientes** | **Operadora** — o nutricionista é o controlador ✅ (decidido pelo titular do negócio em 2026-07-21; já era o que os Termos §7 diziam) — ver §7 |
+| Papel nas funcionalidades próprias | **Controladora** (gamificação, notificações de engajamento, relatório por IA) — a finalidade é da plataforma, não do nutricionista |
+| Encarregado (DPO) | **Gabriel Machado** ✅ (indicado 2026-07-21) — divulgado na Política §1 e §11 |
 | Canal do titular | `contato@nexvel.tech` ✅ (caixa ativa, via ImprovMX) |
 
 ---
@@ -145,9 +146,32 @@ Para os dados das **pacientes**, quem decide as finalidades do tratamento?
   finalidades definidas pela plataforma, não pelo nutricionista): a Nexvel é
   **controladora** ou **co-controladora**, e responde diretamente perante o titular.
 
-Hoje a política trata tudo como se a Nexvel fosse a única controladora, e **não há
-contrato de operador com os nutricionistas**. Isso define quem responde por um
-incidente com prontuário. **É a decisão jurídica mais relevante deste documento.**
+### ✅ DECIDIDO em 2026-07-21 (titular do negócio) — modelo MISTO
+
+O nutricionista é **controlador** dos dados das pacientes; a Nexvel é **operadora**
+desses dados. Nas funcionalidades que a própria plataforma criou (gamificação,
+notificações de engajamento, relatório redigido por IA) a finalidade é definida pela
+Nexvel, então **nela a Nexvel é controladora** — declarar-se "apenas operadora"
+seria impreciso.
+
+**O que já estava certo:** os **Termos de Uso §7** já diziam exatamente isso
+("A Nexvel atua como operadora dos dados (art. 39), sendo o nutricionista o
+controlador") — e são aceitos no cadastro, obrigatoriamente, desde 2026-07-12. Ou
+seja, **a cláusula contratual de operador já existe e já é aceita**; o problema real
+era a **Política de Privacidade contradizer os Termos**, tratando a Nexvel como
+controladora única. Dois documentos públicos em contradição são piores que qualquer
+um deles isolado.
+
+**Corrigido em 2026-07-21:** Política ganhou a seção **1.1 "Quem responde por quais
+dados"** com a divisão acima, e o §11 passou a dirigir o titular ao Encarregado,
+avisando que pedido sobre dado clínico vai primeiro ao nutricionista.
+
+**⚠️ AINDA PARA O ADVOGADO:** (a) se as cláusulas do §7 dos Termos bastam como
+"contrato de operador" do art. 39 ou se é preciso instrumento próprio com cláusulas
+de segurança/subcontratação/incidente; (b) se o modelo misto se sustenta ou se a
+gamificação sobre dado de saúde puxa a Nexvel para **co-controladora** do prontuário
+inteiro; (c) art. 42 — o operador responde solidariamente em certas hipóteses, então
+declarar-se operador **não é blindagem automática**.
 
 ---
 
@@ -167,8 +191,17 @@ que pode afastar esse enquadramento. Esta é a pergunta exata a levar ao advogad
 > dispensa de indicação de Encarregado se aplica, ou o tratamento de dado sensível
 > caracteriza alto risco e afasta a dispensa?"*
 
-Enquanto isso não for respondido, o canal `contato@nexvel.tech` **existe e
-funciona** ✅, mas não está identificado na política como canal do Encarregado.
+### ✅ RESOLVIDO em 2026-07-21 — Encarregado indicado
+
+**Gabriel Machado** foi indicado como Encarregado pelo titular do negócio, e a
+identidade + contato (`contato@nexvel.tech`) estão **divulgados publicamente** na
+Política de Privacidade §1 e §11, como exige o art. 41 §1º.
+
+Indicar o Encarregado **satisfaz a exigência independentemente** da resposta sobre
+pequeno porte: a Resolução dispensa a indicação, não a proíbe. A pergunta ao
+advogado acima continua valendo para dimensionar as **demais** obrigações de agente
+de alto risco (relatório de impacto, por exemplo), não mais para decidir se há ou
+não Encarregado.
 
 ---
 
