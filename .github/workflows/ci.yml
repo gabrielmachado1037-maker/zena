@@ -57,6 +57,13 @@ jobs:
         run: npx tsc --noEmit
         working-directory: frontend
 
+      # Vem ANTES do build de proposito: a Vercel valida a config antes de
+      # buildar, entao um vercel.json invalido derruba o deploy com o build
+      # passando. Foi assim que a producao ficou 17h congelada com o CI verde.
+      - name: Validar vercel.json
+        run: node scripts/checar-vercel-json.mjs
+        working-directory: frontend
+
       - name: Build
         run: npm run build
         working-directory: frontend
