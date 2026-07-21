@@ -123,7 +123,7 @@ export interface RelatorioMensal {
   peso: { inicial: number; final: number; delta: number } | null;
   conquistas: Array<{ titulo: string; icone: string | null; data: string }>;
   motivosRefeicoes: Array<{ refeicao: string; texto: string }>;
-  scoreGeral: { valor: number; status: string };
+  scoreGeral: { valor: number; status: string; base: { dimensoes: number; total: number } };
   dificuldades: Array<{ texto: string; vezes: number }>;
   evolucaoFisica: {
     peso: { inicial: number; final: number; delta: number } | null;
@@ -355,6 +355,10 @@ export async function gerarRelatorioMensal(
   if (treinoDen > 0) dims.push(pct(tConforme + tParcial, treinoDen));
   const scoreValor = Math.round(dims.reduce((s, n) => s + n, 0) / dims.length);
   const scoreStatus = scoreValor >= 85 ? "Excelente" : scoreValor >= 70 ? "Bom" : scoreValor >= 55 ? "Regular" : "Abaixo do esperado";
+  // Quantas das 5 dimensões possíveis entraram na média. Sem isto o relatório
+  // mostra "70/100 · Bom" sem revelar que a nota veio de 2 dimensões — o que
+  // faz um paciente que só marcou treino parecer um paciente bem avaliado.
+  const scoreBase = { dimensoes: dims.length, total: 5 };
 
   // ─── Principais dificuldades (automático, ordenado maior→menor, sem zerados) ──
   const plural = (n: number) => (n === 1 ? "dia" : "dias");
@@ -520,7 +524,7 @@ export async function gerarRelatorioMensal(
     peso,
     conquistas: conquistas.map((c) => ({ titulo: c.titulo, icone: c.icone, data: c.createdAt.toISOString().slice(0, 10) })),
     motivosRefeicoes,
-    scoreGeral: { valor: scoreValor, status: scoreStatus },
+    scoreGeral: { valor: scoreValor, status: scoreStatus, base: scoreBase },
     dificuldades,
     evolucaoFisica: { peso, medidas, laudo, observacoes: observacoesMed, fotos: fotosEvolucao },
     insightsRegras: [],

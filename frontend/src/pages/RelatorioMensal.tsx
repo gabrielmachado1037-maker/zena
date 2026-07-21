@@ -36,7 +36,7 @@ interface Relatorio {
   peso: { inicial: number; final: number; delta: number } | null;
   conquistas: Array<{ titulo: string; icone: string | null; data: string }>;
   motivosRefeicoes: Array<{ refeicao: string; texto: string }>;
-  scoreGeral: { valor: number; status: string };
+  scoreGeral: { valor: number; status: string; base?: { dimensoes: number; total: number } };
   dificuldades: Array<{ texto: string; vezes: number }>;
   evolucaoFisica: {
     peso: Medida | null;
@@ -81,7 +81,12 @@ function fmtSono(h: number) { const hh = Math.floor(h); const mm = Math.round((h
 function classeIndicador(p: number) { return p >= 85 ? "Excelente" : p >= 70 ? "Muito boa" : p >= 55 ? "Regular" : "Baixa"; }
 function sinal(n: number) { return n > 0 ? "+" : n < 0 ? "−" : ""; }
 
-/* status do dia (P2): calculado a partir dos hábitos registrados */
+/* status do dia (P2): calculado a partir dos hábitos registrados.
+   Só conta como problema o hábito que TEM dado — então é preciso olhar também
+   a cobertura, senão um dia em que a pessoa marcou apenas "treino" e deixou
+   alimentação, água e sono em branco sai como "Excelente · nenhum problema no
+   dia". Isso transforma ausência de informação em atestado de bom
+   comportamento, que é justamente o que a nutricionista não pode ler errado. */
 function statusDia(d: DiaRel, metaAgua: number, metaSono: number): { label: string; tone: "green" | "blue" | "amber" | "muted" } {
   if (!d.checkin) return { label: "Sem registro", tone: "muted" };
   let problemas = 0;
@@ -89,6 +94,14 @@ function statusDia(d: DiaRel, metaAgua: number, metaSono: number): { label: stri
   if (d.aguaMl != null && d.aguaMl < metaAgua) problemas++;
   if (d.sonoHoras != null && d.sonoHoras < metaSono) problemas++;
   if (d.treino === "nao") problemas++;
+
+  // das 4 dimensões avaliáveis, quantas realmente têm dado neste dia
+  const comDado = [d.alimentacao != null, d.aguaMl != null, d.sonoHoras != null, d.treino != null]
+    .filter(Boolean).length;
+  // sem problema aparente, mas com menos da metade das dimensões preenchidas,
+  // o dia é incompleto — não é um dia bom comprovado.
+  if (problemas === 0 && comDado < 2) return { label: "Parcial", tone: "muted" };
+
   if (problemas === 0) return { label: "Excelente", tone: "green" };
   if (problemas === 1) return { label: "Bom", tone: "blue" };
   return { label: "Atenção", tone: "amber" };
@@ -273,12 +286,17 @@ const PAGED_CSS = `
 ${BASE_CSS}
 @page{
   size:A4; margin:14mm 12mm 16mm;
-  @bottom-left{ content:element(runfoot); }
+  @bottom-left{ content:"%RODAPE%";
+    font-family:Inter,ui-sans-serif,sans-serif; font-size:8pt; color:${C.muted}; }
   @bottom-right{ content:"Página " counter(page) " de " counter(pages);
     font-family:Inter,ui-sans-serif,sans-serif; font-size:8pt; color:${C.muted}; }
 }
 .rp-page{ box-shadow:none !important; border-radius:0 !important; margin:0 auto !important; padding:0 !important; width:100% !important; }
-.rp-runfoot{ display:flex !important; position:running(runfoot); }
+/* O rodapé é escrito direto na margem (string), não por running element.
+   Com position:running() o Paged.js copiava o .rp-runfoot para a margem mas
+   mantinha o original no fluxo, então a página 1 saía com o cabeçalho impresso
+   duas vezes — o de marca e o do rodapé, colados. */
+.rp-runfoot{ display:none !important; }
 `;
 
 /* ───────── página ───────── */
@@ -336,15 +354,23 @@ export default function RelatorioMensal() {
       .map((k) => ({ k, m: ev.medidas[k] }))
       .filter((x): x is { k: string; m: Medida } => !!x.m);
     const humorTot = Object.values(rel.humor).reduce((s, n) => s + n, 0);
-    const temAlgo = !!ev.peso || medidas.length > 0 || ev.fotos.length > 0 || !!(ev.laudo || ev.observacoes) || humorTot > 0;
-    return { ev, medidas, humorTot, temAlgo };
+    // Humor NÃO é evolução física. Quando é a única coisa que existe, abrir uma
+    // página "Evolução física" só para ele gasta uma folha inteira com um card
+    // e dá ao bloco um título que não descreve o conteúdo — então o humor cai
+    // no fim da linha do tempo, onde é contexto do mês.
+    const temFisico = !!ev.peso || medidas.length > 0 || ev.fotos.length > 0 || !!(ev.laudo || ev.observacoes);
+    const temAlgo = temFisico || humorTot > 0;
+    return { ev, medidas, humorTot, temFisico, temAlgo };
   }, [rel]);
 
-  /* linha do tempo — contagem de status do dia (resumo lateral da tabela) */
+  /* linha do tempo — contagem de status do dia (resumo lateral da tabela).
+     Conta por RÓTULO, não por tom: "Parcial" e "Sem registro" dividem o mesmo
+     tom neutro, e somá-los esconderia justamente a diferença entre "registrou
+     pouco" e "não registrou". */
   const stCounts = useMemo(() => {
     if (!rel) return null;
-    const c = { green: 0, blue: 0, amber: 0, muted: 0 };
-    for (const d of rel.dias) c[statusDia(d, rel.agua.meta, rel.sono.meta).tone] += 1;
+    const c = { Excelente: 0, Bom: 0, Atenção: 0, Parcial: 0, "Sem registro": 0 } as Record<string, number>;
+    for (const d of rel.dias) c[statusDia(d, rel.agua.meta, rel.sono.meta).label] += 1;
     return c;
   }, [rel]);
 
@@ -381,7 +407,9 @@ export default function RelatorioMensal() {
       root = document.createElement("div");
       root.className = "rp-print-root";
       document.body.appendChild(root);
-      cssUrl = URL.createObjectURL(new Blob([PAGED_CSS], { type: "text/css" }));
+      // aspas viram escape para não quebrar a string CSS do content:
+      const rodape = `NEXVEL · Relatório Mensal · Gerado em ${geradoEm}`.replace(/"/g, '\\"');
+      cssUrl = URL.createObjectURL(new Blob([PAGED_CSS.replace("%RODAPE%", rodape)], { type: "text/css" }));
       await new Previewer().preview(src.cloneNode(true), [cssUrl], root);
 
       const limpar = () => {
@@ -452,12 +480,10 @@ export default function RelatorioMensal() {
         ) : !rel || !view || !fis ? null : (
           /* ═══════════ FICHA CLÍNICA (3 páginas) ═══════════ */
           <div className="rp-report" ref={reportRef}>
-            {/* rodapé repetido em toda página (Paged.js) */}
-            <div className="rp-runfoot">
-              <span className="m"><Sparkles size={9} style={{ color: "#7CFF5B" }} /></span>
-              <b>NEXVEL</b>· Relatório Mensal · Gerado em {geradoEm}
-            </div>
-
+            {/* O rodapé de cada página é escrito pelo @bottom-left do PAGED_CSS.
+                Não existe elemento aqui de propósito: enquanto havia um, o
+                Paged.js o mantinha no fluxo da primeira página (cabeçalho
+                impresso duas vezes) e, ao escondê-lo, duplicava a página. */}
             {/* ───────── PÁGINA 1 — RESUMO EXECUTIVO ───────── */}
             <section className="rp-page">
               <header className="rp-top" style={{ marginTop: 0 }}>
@@ -488,6 +514,14 @@ export default function RelatorioMensal() {
                 <div className="rp-score-meta">
                   <span className="status" style={{ color: statusScoreCor(rel.scoreGeral.status), background: `${statusScoreCor(rel.scoreGeral.status)}18` }}>{rel.scoreGeral.status}</span>
                   <div className="sub">Check-ins realizados: <b style={{ color: C.sub }}>{rel.resumo.diasRegistrados} de {rel.periodo.dias} dias</b> · {rel.resumo.aderenciaPct}% de adesão no período</div>
+                  {/* A nota é a média das dimensões COM dado. Quando faltam dimensões,
+                      dizer sobre quantas ela foi calculada — senão "70/100 · Bom"
+                      parece um julgamento completo do paciente, e não é. */}
+                  {rel.scoreGeral.base && rel.scoreGeral.base.dimensoes < rel.scoreGeral.base.total && (
+                    <div className="sub" style={{ color: C.muted }}>
+                      Calculado sobre {rel.scoreGeral.base.dimensoes} de {rel.scoreGeral.base.total} dimensões — as demais não tiveram registro no período.
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -594,10 +628,13 @@ export default function RelatorioMensal() {
               <p className="rp-page-tag">Linha do tempo do mês</p>
               {stCounts && (
                 <div className="rp-sumline">
-                  <span className="rp-sumcell"><span className="dot" style={{ background: C.green }} />Dias excelentes <b>{stCounts.green}</b></span>
-                  <span className="rp-sumcell"><span className="dot" style={{ background: C.water }} />Dias bons <b>{stCounts.blue}</b></span>
-                  <span className="rp-sumcell"><span className="dot" style={{ background: C.amber }} />Atenção <b>{stCounts.amber}</b></span>
-                  <span className="rp-sumcell"><span className="dot" style={{ background: C.muted }} />Sem registro <b>{stCounts.muted}</b></span>
+                  <span className="rp-sumcell"><span className="dot" style={{ background: C.green }} />Dias excelentes <b>{stCounts.Excelente}</b></span>
+                  <span className="rp-sumcell"><span className="dot" style={{ background: C.water }} />Dias bons <b>{stCounts.Bom}</b></span>
+                  <span className="rp-sumcell"><span className="dot" style={{ background: C.amber }} />Atenção <b>{stCounts["Atenção"]}</b></span>
+                  {stCounts.Parcial > 0 && (
+                    <span className="rp-sumcell"><span className="dot" style={{ background: C.muted }} />Registro parcial <b>{stCounts.Parcial}</b></span>
+                  )}
+                  <span className="rp-sumcell"><span className="dot" style={{ background: C.muted }} />Sem registro <b>{stCounts["Sem registro"]}</b></span>
                   <span className="rp-sumcell">Maior sequência <b>{rel.maiorSequenciaPeriodo} {rel.maiorSequenciaPeriodo === 1 ? "dia" : "dias"}</b></span>
                 </div>
               )}
@@ -635,17 +672,33 @@ export default function RelatorioMensal() {
                         <span><span className="rp-st" style={{ color: C.green, background: C.greenSoft }}>Excelente</span> nenhum problema no dia</span>
                         <span><span className="rp-st" style={{ color: C.water, background: C.waterSoft }}>Bom</span> 1 ponto de atenção</span>
                         <span><span className="rp-st" style={{ color: C.amber, background: C.amberSoft }}>Atenção</span> 2+ pontos</span>
+                        <span><span className="rp-st" style={{ color: C.muted, background: C.soft }}>Parcial</span> registrou poucos hábitos — sem base para avaliar</span>
                         <span><span className="rp-st" style={{ color: C.muted, background: C.soft }}>Sem registro</span> dia sem check-in</span>
                       </div>
                     </td>
                   </tr>
                 </tbody>
               </table>
+
+              {/* Humor entra aqui quando não há evolução física — evita abrir uma
+                  página inteira só para este card. */}
+              {!fis.temFisico && fis.humorTot > 0 && (
+                <section className="rp-block plain">
+                  <h3><Smile size={14} style={{ color: "#A16207" }} /> Humor no período</h3>
+                  <div className="rp-humor">
+                    {Object.entries(rel.humor).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
+                      <span className="rp-humorchip" key={k}>{HUMOR_LABEL[k] ?? k}: <b>{n} {n === 1 ? "dia" : "dias"}</b></span>
+                    ))}
+                  </div>
+                </section>
+              )}
             </section>
             )}
 
-            {/* ───────── PÁGINA 3 — EVOLUÇÃO FÍSICA ───────── */}
-            {fis.temAlgo && (
+            {/* ───────── PÁGINA 3 — EVOLUÇÃO FÍSICA ─────────
+                Só abre página nova quando há dado FÍSICO. Se o período só tem
+                humor, ele já foi impresso ao fim da linha do tempo. */}
+            {fis.temFisico && (
               <section className="rp-page">
                 <p className="rp-page-tag">Evolução física</p>
 
