@@ -12,6 +12,7 @@ import { normalizarCodigo, ultimos4Telefone } from "../lib/convite";
 import { buscarPacienteUserPorEmail, buscarPacienteUserParaLogin, buscarPacienteUserParaRecuperacao, normalizarEmail } from "../lib/email-lookup";
 import { limitePorConta } from "../lib/limitePorConta";
 import { hashSenha, gastarTempoDeSenha, precisaRehash } from "../lib/senha";
+import { getPlataformaNutriId } from "../lib/plataforma";
 
 const registerSchema = z.object({
   email: z.email({ error: "E-mail inválido." }),
@@ -21,6 +22,17 @@ const registerSchema = z.object({
   // 2ª validação de identidade: últimos 4 dígitos do telefone cadastrado pela nutri.
   telefone4: z.string().trim().optional(),
   // Consentimento LGPD: aceite explícito dos Termos + Política de Privacidade (obrigatório).
+  aceiteTermos: z.boolean({ error: "É necessário aceitar os Termos de Uso e a Política de Privacidade." })
+    .refine((v) => v === true, { error: "É necessário aceitar os Termos de Uso e a Política de Privacidade." }),
+});
+
+// Cadastro AVULSO (B2C do marketplace): paciente se cadastra sozinho, SEM código
+// de convite — fica pendurado na nutri-plataforma e depois contrata um parceiro.
+const signupSchema = z.object({
+  nome: z.string({ error: "Informe seu nome." }).trim().min(1, "Informe seu nome."),
+  email: z.email({ error: "E-mail inválido." }),
+  senha: z.string({ error: "A senha deve ter ao menos 6 caracteres." }).min(6, "A senha deve ter ao menos 6 caracteres."),
+  telefone: z.string().trim().optional(),
   aceiteTermos: z.boolean({ error: "É necessário aceitar os Termos de Uso e a Política de Privacidade." })
     .refine((v) => v === true, { error: "É necessário aceitar os Termos de Uso e a Política de Privacidade." }),
 });
@@ -248,6 +260,79 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
   });
 });
 
+// POST /api/auth/paciente/signup — cadastro AVULSO (B2C), sem código de convite.
+// Cria o paciente sob a nutri-plataforma (avulso=true). O app depois o leva a
+// contratar um parceiro. NÃO mexe no fluxo B2B (que continua via /register + código).
+router.post("/signup", registerLimiter, validateBody(signupSchema), async (req: Request, res: Response) => {
+  const { nome, email, senha, telefone, aceiteTermos } = req.body;
+  if (aceiteTermos !== true) {
+    return res.status(400).json({ error: "É necessário aceitar os Termos de Uso e a Política de Privacidade." });
+  }
+
+  // E-mail de login precisa ser livre (insensível a caixa).
+  const jaExiste = await buscarPacienteUserPorEmail(email);
+  if (jaExiste) {
+    return res.status(409).json({ error: "Este e-mail já possui conta. Faça login." });
+  }
+
+  const plataformaId = await getPlataformaNutriId();
+  const hash = await hashSenha(senha);
+
+  let paciente: { id: string; nome: string };
+  let pacienteUser: { id: string; email: string };
+  try {
+    const r = await prisma.$transaction(async (tx) => {
+      const pac = await tx.paciente.create({
+        data: {
+          nome: String(nome).trim(),
+          email: normalizarEmail(email),
+          telefone: telefone ? String(telefone).trim() : null,
+          objetivo: "Acompanhamento nutricional",
+          dataInicio: new Date(),
+          nutricionistaId: plataformaId,
+          avulso: true,
+        },
+      });
+      const pu = await tx.pacienteUser.create({
+        data: {
+          email: normalizarEmail(email),
+          senha: hash,
+          pacienteId: pac.id,
+          aceiteTermos: true,
+          aceiteTermosEm: new Date(),
+          aceiteTermosVersao: TERMOS_VERSAO,
+        },
+      });
+      return { pac, pu };
+    });
+    paciente = r.pac;
+    pacienteUser = r.pu;
+  } catch (e: unknown) {
+    if ((e as { code?: string })?.code === "P2002") {
+      return res.status(409).json({ error: "Este e-mail já possui conta. Faça login." });
+    }
+    throw e;
+  }
+
+  await criarEnviarVerificacaoPaciente(pacienteUser.id, pacienteUser.email, paciente.nome);
+  const { accessToken, refreshToken } = await emitirParTokens(pacienteUser.id, paciente.id, plataformaId);
+
+  res.status(201).json({
+    token: accessToken,
+    refreshToken,
+    paciente: {
+      id: paciente.id,
+      nome: paciente.nome,
+      email: pacienteUser.email,
+      nutricionistaNome: null,
+      nomeConsultorio: null,
+      fotoUrl: null,
+      emailVerificado: false,
+      avulso: true,
+    },
+  });
+});
+
 // POST /api/auth/paciente/esqueci-senha — envia link de redefinição (sempre 200, não revela se o e-mail existe).
 router.post("/esqueci-senha", emailLimiter, validateBody(esqueciSenhaSchema), async (req: Request, res: Response) => {
   const email = String(req.body?.email ?? "").trim().toLowerCase();
@@ -326,10 +411,11 @@ router.post("/login", loginLimiter, validateBody(loginSchema), loginPorConta, as
       id: paciente.id,
       nome: paciente.nome,
       email: pacienteUser.email,
-      nutricionistaNome: paciente.nutricionista.nome,
-      nomeConsultorio: paciente.nutricionista.nomeConsultorio,
+      nutricionistaNome: paciente.avulso ? null : paciente.nutricionista.nome,
+      nomeConsultorio: paciente.avulso ? null : paciente.nutricionista.nomeConsultorio,
       fotoUrl: pacienteUser.fotoUrl ?? null,
       emailVerificado: pacienteUser.emailVerificado,
+      avulso: paciente.avulso,
     },
   });
 });

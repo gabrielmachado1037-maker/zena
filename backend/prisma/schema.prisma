@@ -110,6 +110,9 @@ model Paciente {
   dataInicio                DateTime
   linkUnico                 String                     @unique @default(cuid())
   ativo                     Boolean                    @default(true)
+  // Paciente B2C do marketplace: cadastrou-se sozinho, sem clínica/nutri cliente.
+  // Fica pendurado na "nutri-plataforma" e o app o direciona a contratar/vincular.
+  avulso                    Boolean                    @default(false)
   pesoMeta                  Float?
   dataNascimento            DateTime?
   sexo                      String?

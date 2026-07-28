@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Home, SquarePen, Trophy, BarChart3, Stethoscope, User } from "lucide-react";
 import { usePacienteAuth } from "../contexts/PacienteAuthContext";
+import { statusParceria } from "../lib/parceria";
 import { PacienteDataProvider } from "../lib/paciente-data";
 import EmailVerificacaoBannerPaciente from "./EmailVerificacaoBannerPaciente";
 import api from "../lib/api";
@@ -95,8 +96,24 @@ function arrayBufferToBase64(buf: ArrayBuffer) {
 }
 
 export default function PacienteLayout() {
-  const { token, loading } = usePacienteAuth();
+  const { token, loading, paciente } = usePacienteAuth();
   const location = useLocation();
+
+  // Gate do paciente AVULSO (B2C): sem acesso de marketplace ativo, o app fica
+  // focado na escolha/contratação (Opção A). null = ainda verificando.
+  // Re-checa ao navegar enquanto ainda não confirmou acesso — assim, logo após
+  // pagar, o paciente é liberado sem precisar recarregar. Depois de ativo, para.
+  const [acessoAtivo, setAcessoAtivo] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!token || !paciente?.avulso || acessoAtivo === true) return;
+    if (location.pathname.startsWith("/paciente/parceria")) return; // na área do marketplace não precisa checar
+    let vivo = true;
+    setAcessoAtivo(null);
+    statusParceria().then((s) => vivo && setAcessoAtivo(s.ativo)).catch(() => vivo && setAcessoAtivo(false));
+    return () => { vivo = false; };
+    // acessoAtivo fora das deps de propósito (evita loop de re-fetch); relê o valor atual a cada navegação.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, paciente?.avulso, location.pathname]);
 
   useEffect(() => {
     if (!token) return;
@@ -129,6 +146,21 @@ export default function PacienteLayout() {
   }
 
   if (!token) return <Navigate to="/login-paciente" replace />;
+
+  // Paciente avulso sem acesso ativo → só pode ficar na área do marketplace.
+  if (paciente?.avulso) {
+    const naParceria = location.pathname.startsWith("/paciente/parceria");
+    if (!naParceria) {
+      if (acessoAtivo === null) {
+        return (
+          <div className="min-h-screen flex items-center justify-center" style={{ background: BG }}>
+            <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "#7CFF5B", borderTopColor: "transparent" }} />
+          </div>
+        );
+      }
+      if (!acessoAtivo) return <Navigate to="/paciente/parceria" replace />;
+    }
+  }
 
   return (
     <PacienteDataProvider>
