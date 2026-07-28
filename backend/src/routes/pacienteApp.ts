@@ -1,7 +1,7 @@
 import { Router, Response } from "express";
 import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
-import { uploadFeedFoto, uploadAvatarPaciente } from "../lib/supabase";
+import { uploadFeedFoto, uploadAvatarPaciente, uploadAnexoChat, UploadError } from "../lib/supabase";
 import { anonimizarPaciente } from "../lib/anonimizarPaciente";
 import { enviarNotificacao } from "./notificacoes";
 import { z } from "zod";
@@ -39,7 +39,8 @@ const pushSubscribeSchema = z.object({
   }, { error: "Subscription inválida" }),
 });
 const mensagemSchema = z.object({
-  conteudo: z.string({ error: "Mensagem vazia" }).trim().min(1, "Mensagem vazia").max(2000, "Mensagem muito longa"),
+  conteudo: z.string().trim().max(2000, "Mensagem muito longa").optional().nullable(),
+  anexoBase64: z.string().optional().nullable(),
 });
 
 // ─── Feed ──────────────────────────────────────────────────────────────────────
@@ -550,7 +551,7 @@ router.get("/mensagens", async (req: PacienteAuthRequest, res: Response) => {
     { nutricionistaId, pacienteId }, limit, before,
   );
   const mensagens = pagina.map((m) => ({
-    id: m.id, autor: m.autor, conteudo: m.conteudo, anexoUrl: m.anexoUrl, criadoEm: m.criadoEm,
+    id: m.id, autor: m.autor, conteudo: m.conteudo, anexoUrl: m.anexoUrl, anexoTipo: m.anexoTipo, criadoEm: m.criadoEm,
   }));
 
   // Página anterior (scroll pra cima): só o histórico, sem dados da nutri/marcar lida.
@@ -583,13 +584,27 @@ router.post("/mensagens", validateBody(mensagemSchema), async (req: PacienteAuth
   const pacienteId = req.pacienteId!;
   const nutricionistaId = req.nutricionistaId!;
   const conteudo = String(req.body?.conteudo ?? "").trim();
+  const anexoBase64 = typeof req.body?.anexoBase64 === "string" ? req.body.anexoBase64 : "";
 
-  if (!conteudo) return res.status(400).json({ error: "Mensagem vazia" });
+  if (!conteudo && !anexoBase64) return res.status(400).json({ error: "Mensagem vazia" });
   if (conteudo.length > 2000) return res.status(400).json({ error: "Mensagem muito longa" });
+
+  let anexoUrl: string | null = null;
+  let anexoTipo: "imagem" | "audio" | null = null;
+  if (anexoBase64) {
+    try {
+      const r = await uploadAnexoChat(nutricionistaId, pacienteId, anexoBase64);
+      anexoUrl = r.url;
+      anexoTipo = r.tipo;
+    } catch (e) {
+      if (e instanceof UploadError) return res.status(400).json({ error: e.message });
+      return res.status(502).json({ error: "Falha ao enviar o anexo. Tente novamente." });
+    }
+  }
 
   // lida:false → aparece como não-lida no inbox da nutri (naoLidoCount).
   const msg = await prisma.mensagemChat.create({
-    data: { nutricionistaId, pacienteId, autor: "paciente", conteudo, lida: false },
+    data: { nutricionistaId, pacienteId, autor: "paciente", conteudo, anexoUrl, anexoTipo, lida: false },
   });
 
   // Push best-effort pra nutri (ignora silenciosamente se não houver VAPID/subscription).
@@ -599,13 +614,14 @@ router.post("/mensagens", validateBody(mensagemSchema), async (req: PacienteAuth
       select: { nome: true },
     });
     const nome = paciente?.nome?.split(" ")[0] ?? "Um paciente";
-    const previa = conteudo.length > 80 ? conteudo.slice(0, 77) + "..." : conteudo;
+    const base = conteudo || (anexoTipo === "audio" ? "🎤 Enviou um áudio" : "📷 Enviou uma imagem");
+    const previa = base.length > 80 ? base.slice(0, 77) + "..." : base;
     await enviarNotificacao(nutricionistaId, `Nova mensagem de ${nome}`, previa, `/app/mensagens/${pacienteId}`, "conversation_nutri", pacienteId);
   } catch {
     /* silencioso */
   }
 
-  res.json({ id: msg.id, autor: msg.autor, conteudo: msg.conteudo, anexoUrl: msg.anexoUrl, criadoEm: msg.criadoEm });
+  res.json({ id: msg.id, autor: msg.autor, conteudo: msg.conteudo, anexoUrl: msg.anexoUrl, anexoTipo: msg.anexoTipo, criadoEm: msg.criadoEm });
 });
 
 export default router;

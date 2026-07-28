@@ -913,6 +913,7 @@ model MensagemChat {
   autor           String // "paciente" | "nutri"
   conteudo        String
   anexoUrl        String?
+  anexoTipo       String? // "imagem" | "audio" (null = texto puro)
   lida            Boolean       @default(false)
   criadoEm        DateTime      @default(now())
 

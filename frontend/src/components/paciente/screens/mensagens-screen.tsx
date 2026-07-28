@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { ChevronLeft, ChevronUp, RotateCw, Send, Stethoscope } from "lucide-react"
+import { ChevronLeft, ChevronUp, RotateCw, Send, Stethoscope, Mic, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   getMensagensNutri, getMensagensNutriAnteriores, enviarMensagemNutri, formatHora, rotuloDia,
   type MensagemNutri,
 } from "@/lib/mensagens-paciente"
+import { useGravadorAudio, formatarDuracao } from "@/lib/useGravadorAudio"
 import type { NavigateFn } from "../types"
 
 /* Avatar da nutri — foto ou ícone de estetoscópio. */
@@ -108,6 +109,34 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
     }
     return out
   }, [msgs])
+
+  const grav = useGravadorAudio()
+
+  async function iniciarGravacao() {
+    const ok = await grav.iniciar()
+    if (!ok) alert("Não foi possível acessar o microfone. Verifique a permissão.")
+  }
+
+  async function enviarAudio() {
+    const audio = await grav.parar()
+    if (!audio || enviando) return
+    const otimista: MensagemNutri = {
+      id: `tmp-${Date.now()}`, autor: "paciente", texto: "",
+      hora: formatHora(new Date()), criadoEm: new Date().toISOString(),
+      anexoUrl: audio, anexoTipo: "audio",
+    }
+    setMsgs((prev) => [...prev, otimista])
+    setEnviando(true)
+    try {
+      const salva = await enviarMensagemNutri("", audio)
+      setMsgs((prev) => prev.map((m) => (m.id === otimista.id ? salva : m)))
+      setErro(false)
+    } catch {
+      setMsgs((prev) => prev.filter((m) => m.id !== otimista.id))
+    } finally {
+      setEnviando(false)
+    }
+  }
 
   async function enviar() {
     const t = texto.trim()
@@ -234,13 +263,15 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
                             : "rounded-bl-sm border border-nx-border bg-nx-surface text-nx-on-surface",
                         )}
                       >
-                        {m.anexoUrl && (
+                        {m.anexoUrl && (m.anexoTipo === "audio" ? (
+                          <audio controls src={m.anexoUrl} className="mb-2 w-[240px] max-w-full" />
+                        ) : (
                           <img
                             src={m.anexoUrl}
                             alt=""
                             className="mb-2 max-h-56 w-full rounded-nx-md object-cover"
                           />
-                        )}
+                        ))}
                         {m.texto && (
                           <p className="whitespace-pre-wrap break-words text-body-md leading-snug">{m.texto}</p>
                         )}
@@ -265,6 +296,26 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
 
       {/* Compositor */}
       <div className="border-t border-nx-border bg-nx-surface px-3 py-2.5">
+        {grav.estado === "gravando" ? (
+          <div className="flex items-center gap-3">
+            <button
+              type="button" onClick={grav.cancelar} aria-label="Cancelar gravação"
+              className="grid size-[42px] shrink-0 place-items-center rounded-nx-lg border border-nx-border text-nx-danger"
+            >
+              <Trash2 className="size-5" />
+            </button>
+            <div className="flex flex-1 items-center gap-2">
+              <span className="size-2.5 rounded-full bg-nx-danger animate-pulse" />
+              <span className="text-body-md tabular-nums text-nx-on-surface">Gravando {formatarDuracao(grav.segundos)}</span>
+            </div>
+            <button
+              type="button" onClick={enviarAudio} aria-label="Enviar áudio"
+              className="grid size-[42px] shrink-0 place-items-center rounded-nx-lg bg-nx-evo text-nx-on-evo"
+            >
+              <Send className="size-5" />
+            </button>
+          </div>
+        ) : (
         <div className="flex items-end gap-2">
           <textarea
             ref={inputRef}
@@ -276,16 +327,29 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
             disabled={loading}
             className="max-h-[120px] min-h-[42px] flex-1 resize-none rounded-nx-lg border border-nx-border bg-nx-container px-3.5 py-2.5 text-body-md text-nx-on-surface placeholder:text-nx-on-surface-variant focus:border-nx-evo focus:outline-none disabled:opacity-50"
           />
-          <button
-            type="button"
-            onClick={enviar}
-            disabled={!texto.trim() || enviando}
-            aria-label="Enviar"
-            className="grid size-[42px] shrink-0 place-items-center rounded-nx-lg bg-nx-evo text-nx-on-evo transition-opacity disabled:opacity-40"
-          >
-            <Send className="size-5" />
-          </button>
+          {texto.trim() ? (
+            <button
+              type="button"
+              onClick={enviar}
+              disabled={enviando}
+              aria-label="Enviar"
+              className="grid size-[42px] shrink-0 place-items-center rounded-nx-lg bg-nx-evo text-nx-on-evo transition-opacity disabled:opacity-40"
+            >
+              <Send className="size-5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={iniciarGravacao}
+              disabled={loading}
+              aria-label="Gravar áudio"
+              className="grid size-[42px] shrink-0 place-items-center rounded-nx-lg bg-nx-evo text-nx-on-evo transition-opacity disabled:opacity-40"
+            >
+              <Mic className="size-5" />
+            </button>
+          )}
         </div>
+        )}
       </div>
     </div>
   )
