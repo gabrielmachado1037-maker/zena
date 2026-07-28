@@ -6,7 +6,7 @@ import { calcularProgressoCiclo, encerrarCiclo, notificarAquecimento, notificarU
 import { finalizarDesafiosVencidos } from "./services/desafioService";
 import { enviarLembretesInteligentes } from "./services/lembretesHabito";
 import { recalcularHorariosPreferidos } from "./services/horarioInteligente";
-import { enviarReativacao, enviarPositivas, avisarParceriaExpirando } from "./services/notificacoesAgendadas";
+import { enviarReativacao, enviarPositivas, avisarParceriaExpirando, avisarAcessoB2bExpirando } from "./services/notificacoesAgendadas";
 import { expirarVencidas } from "./lib/parceria";
 import {
   calcularLiga,
@@ -332,6 +332,7 @@ export function initCron() {
       const fechadas = await expirarVencidas();
       if (fechadas > 0) console.log(`[cron parceria] ${fechadas} acesso(s) expirado(s).`);
       await avisarParceriaExpirando();
+      await avisarAcessoB2bExpirando();
     } catch (e) {
       console.error("Cron parceria error:", e);
     }

@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
+import { bloquearAcessoExpirado } from "../middleware/acessoPaciente";
 import { validateBody } from "../middleware/validate";
 import {
   calcularPontosRegistro,
@@ -31,6 +32,7 @@ const SONO_VALIDOS = ["menos5", "5a7", "7a9", "mais9"];
 
 const router = Router();
 router.use(authPacienteMiddleware);
+router.use(bloquearAcessoExpirado); // check-ins param quando o acesso B2B vence
 
 /* ── Schemas (lenientes: validam tipos; a normalização de negócio segue em cada rota) ── */
 const diaSchema = z.object({

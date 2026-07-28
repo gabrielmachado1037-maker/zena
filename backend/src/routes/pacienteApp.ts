@@ -247,8 +247,21 @@ router.get("/me", async (req: PacienteAuthRequest, res: Response) => {
     ...rest,
     fotoUrl: pacienteUser?.fotoUrl ?? null,
     postPublicoPadrao: pacienteUser?.postPublicoPadrao ?? true,
+    // Acesso B2B vencido → o front mostra a tela de "acesso terminou".
+    acessoBloqueado: !!(paciente.acessoExpiraEm && paciente.acessoExpiraEm < new Date()),
     primeiroMedicao,
   });
+});
+
+// GET /api/paciente-app/acesso — status enxuto do acesso B2B (para o gate do front).
+// NÃO fica atrás do bloqueio: precisa responder mesmo com o acesso vencido.
+router.get("/acesso", async (req: PacienteAuthRequest, res: Response) => {
+  const pac = await prisma.paciente.findUnique({
+    where: { id: req.pacienteId! },
+    select: { acessoExpiraEm: true },
+  });
+  const expiraEm = pac?.acessoExpiraEm ?? null;
+  res.json({ bloqueado: !!(expiraEm && expiraEm < new Date()), expiraEm });
 });
 
 // PUT /api/paciente-app/foto-perfil

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Home, SquarePen, Trophy, BarChart3, Stethoscope, User } from "lucide-react";
+import { Home, SquarePen, Trophy, BarChart3, Stethoscope, User, Clock } from "lucide-react";
 import { usePacienteAuth } from "../contexts/PacienteAuthContext";
 import { statusParceria } from "../lib/parceria";
+import apiPaciente from "../lib/apiPaciente";
 import { PacienteDataProvider } from "../lib/paciente-data";
 import EmailVerificacaoBannerPaciente from "./EmailVerificacaoBannerPaciente";
 import api from "../lib/api";
@@ -96,8 +97,20 @@ function arrayBufferToBase64(buf: ArrayBuffer) {
 }
 
 export default function PacienteLayout() {
-  const { token, loading, paciente } = usePacienteAuth();
+  const { token, loading, paciente, logout } = usePacienteAuth();
   const location = useLocation();
+
+  // Gate B2B: acesso definido pela nutri venceu → tela de "acesso terminou".
+  // Otimista (não segura a UI enquanto checa); só bloqueia quando confirma vencido.
+  const [bloqueadoB2b, setBloqueadoB2b] = useState(false);
+  useEffect(() => {
+    if (!token || paciente?.avulso) return; // avulso não tem prazo B2B
+    let vivo = true;
+    apiPaciente.get<{ bloqueado: boolean }>("/paciente-app/acesso")
+      .then(({ data }) => vivo && setBloqueadoB2b(!!data.bloqueado))
+      .catch(() => { /* offline: não bloqueia */ });
+    return () => { vivo = false; };
+  }, [token, paciente?.avulso]);
 
   // Gate do paciente AVULSO (B2C): sem acesso de marketplace ativo, o app fica
   // focado na escolha/contratação (Opção A). null = ainda verificando.
@@ -146,6 +159,27 @@ export default function PacienteLayout() {
   }
 
   if (!token) return <Navigate to="/login-paciente" replace />;
+
+  // Acesso B2B vencido → tela de bloqueio (paciente perde o app até a nutri renovar).
+  if (!paciente?.avulso && bloqueadoB2b) {
+    return (
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center px-8 text-center" style={{ background: BG }}>
+        <div className="grid size-16 place-items-center rounded-full" style={{ background: "rgba(255,93,93,0.12)" }}>
+          <Clock size={30} color="#FF5D5D" />
+        </div>
+        <h1 className="mt-5 text-[22px] font-extrabold text-white">Seu acesso terminou</h1>
+        <p className="mt-2 max-w-xs text-body-md" style={{ color: "#A1A1AA" }}>
+          O período de acesso ao app venceu. Fale com seu nutricionista para renovar e continuar sua evolução.
+        </p>
+        <button
+          onClick={logout}
+          className="mt-7 rounded-xl border border-white/10 px-5 py-2.5 text-body-sm font-semibold text-white transition-colors hover:bg-white/5"
+        >
+          Sair
+        </button>
+      </div>
+    );
+  }
 
   // Paciente avulso sem acesso ativo → só pode ficar na área do marketplace.
   if (paciente?.avulso) {

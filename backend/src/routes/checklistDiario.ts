@@ -2,11 +2,13 @@ import { Router, Response } from "express";
 import { z } from "zod";
 import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
+import { bloquearAcessoExpirado } from "../middleware/acessoPaciente";
 import { processarChecklist } from "../services/cicloService";
 import { validateBody } from "../middleware/validate";
 
 const router = Router();
 router.use(authPacienteMiddleware);
+router.use(bloquearAcessoExpirado);
 
 const checklistSchema = z.object({
   refeicoesOk: z.boolean().optional(),

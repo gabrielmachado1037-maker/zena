@@ -41,6 +41,8 @@ const criarPacienteSchema = z.object({
   objetivo: z.string().optional().nullable(),
   dataInicio: z.string({ error: "Data de início é obrigatória." }).min(1, "Data de início é obrigatória."),
   pesoMeta: num().optional().nullable(),
+  // Janela de acesso (B2B): ISO date/datetime ou null = sem prazo.
+  acessoExpiraEm: z.string().optional().nullable(),
 });
 const atualizarPacienteSchema = z.object({
   nome: z.string().optional().nullable(),
@@ -52,6 +54,8 @@ const atualizarPacienteSchema = z.object({
   dataNascimento: z.string().optional().nullable(),
   sexo: z.string().optional().nullable(),
   altura: num().optional().nullable(),
+  // Estender/reduzir/remover o prazo de acesso. undefined = não mexe; null = sem prazo.
+  acessoExpiraEm: z.string().optional().nullable(),
 });
 const planoMissoesSchema = z.object({
   numRefeicoes: z.number().optional(),
@@ -184,7 +188,7 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
 });
 
 router.post("/", validateBody(criarPacienteSchema), async (req: AuthRequest, res: Response) => {
-  const { nome, email, telefone, objetivo, dataInicio, pesoMeta } = req.body;
+  const { nome, email, telefone, objetivo, dataInicio, pesoMeta, acessoExpiraEm } = req.body;
   // Gera automaticamente o convite individual (uso único) já no cadastro do paciente.
   const paciente = await gerarPacienteComConvite({
     nome,
@@ -193,6 +197,7 @@ router.post("/", validateBody(criarPacienteSchema), async (req: AuthRequest, res
     objetivo,
     dataInicio: new Date(dataInicio),
     pesoMeta: pesoMeta ? parseFloat(pesoMeta) : null,
+    acessoExpiraEm: acessoExpiraEm ? new Date(acessoExpiraEm) : null,
     nutricionistaId: req.nutricionistaId!,
   });
   res.json(paciente);
@@ -245,7 +250,7 @@ router.post("/:id/convite", async (req: AuthRequest, res: Response) => {
 
 router.put("/:id", validateBody(atualizarPacienteSchema), async (req: AuthRequest, res: Response) => {
   const id = req.params["id"] as string;
-  const { nome, email, telefone, objetivo, pesoMeta, ativo, dataNascimento, sexo, altura } = req.body;
+  const { nome, email, telefone, objetivo, pesoMeta, ativo, dataNascimento, sexo, altura, acessoExpiraEm } = req.body;
   const paciente = await prisma.paciente.findFirst({ where: { id, nutricionistaId: req.nutricionistaId as string } });
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrada" });
   const updated = await prisma.paciente.update({
@@ -256,6 +261,8 @@ router.put("/:id", validateBody(atualizarPacienteSchema), async (req: AuthReques
       altura: altura !== undefined ? (altura ? parseFloat(altura) : null) : undefined,
       dataNascimento: dataNascimento ? new Date(dataNascimento) : null,
       sexo: sexo || null,
+      // undefined = não mexe no prazo; null = remove (sem prazo); data = estende/reduz.
+      acessoExpiraEm: acessoExpiraEm !== undefined ? (acessoExpiraEm ? new Date(acessoExpiraEm) : null) : undefined,
     },
   });
   res.json(updated);

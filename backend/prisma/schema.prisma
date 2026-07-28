@@ -108,6 +108,9 @@ model Paciente {
   telefone                  String?
   objetivo                  String
   dataInicio                DateTime
+  // Janela de acesso ao app, definida pela nutri (B2B): null = sem prazo (ilimitado).
+  // Vencido (< agora) bloqueia o paciente no app até a nutri renovar/estender.
+  acessoExpiraEm            DateTime?
   linkUnico                 String                     @unique @default(cuid())
   ativo                     Boolean                    @default(true)
   // Paciente B2C do marketplace: cadastrou-se sozinho, sem clínica/nutri cliente.
@@ -188,6 +191,7 @@ model Paciente {
   createdAt                 DateTime                   @default(now())
 
   @@index([nutricionistaId])
+  @@index([acessoExpiraEm])
 }
 
 model Anamnese {

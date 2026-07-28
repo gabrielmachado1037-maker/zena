@@ -14,6 +14,7 @@ import { mensagemConvite } from "../lib/convitePaciente";
 import Avatar from "../components/Avatar";
 import { progressoLiga, formatarXp, diasDesde, resolverPlanoRefeicoes, PLANO_REFEICOES_PADRAO, CORES_LIGA, type RefeicaoPlano } from "../lib/ligas";
 import { gerarInsights, type Insight, type InsightTone } from "../lib/insights";
+import AcessoPeriodoPicker from "../components/AcessoPeriodoPicker";
 import { LeagueEmblem, LeagueBadge, ProgressBarNx } from "../components/ui-nx";
 import DesafiosTab from "../components/diario/DesafiosTab";
 import LigaPontosTab from "../components/diario/LigaPontosTab";
@@ -39,6 +40,7 @@ interface DiarioData {
     planoRefeicoes?: RefeicaoPlano[] | null;
     aguaMetaMl?: number | null; sonoMetaHoras?: number | null; treinoDias?: number[] | null;
     conviteCodigo?: string | null; conviteStatus?: string | null; conviteExpiraEm?: string | null;
+    acessoExpiraEm?: string | null;
   };
   registros: Registro[];
   desafios: DesafioProgressoItem[];
@@ -198,6 +200,9 @@ export default function DiarioBordo() {
   const [treinoDias, setTreinoDias] = useState<number[]>([]);
   const [savingCfg, setSavingCfg] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
+  const [acessoAberto, setAcessoAberto] = useState(false);
+  const [acessoValue, setAcessoValue] = useState<string | null>(null);
+  const [salvandoAcesso, setSalvandoAcesso] = useState(false);
   const [confirmAberto, setConfirmAberto] = useState(false);
   const [confirmNome, setConfirmNome] = useState("");
   const [excluindo, setExcluindo] = useState(false);
@@ -303,6 +308,26 @@ export default function DiarioBordo() {
     } catch { setIncentivo("idle"); }
   }
 
+  function isoDe(v: string | null | undefined): string | null {
+    return v ? new Date(v).toISOString().slice(0, 10) : null;
+  }
+  function abrirAcesso() {
+    setAcessoValue(isoDe(data?.paciente?.acessoExpiraEm));
+    setMenuAberto(false);
+    setAcessoAberto(true);
+  }
+  async function salvarAcesso() {
+    if (!id || salvandoAcesso) return;
+    setSalvandoAcesso(true);
+    try {
+      await api.put(`/pacientes/${id}`, { acessoExpiraEm: acessoValue });
+      setData((d) => (d ? { ...d, paciente: { ...d.paciente, acessoExpiraEm: acessoValue } } : d));
+      setAcessoAberto(false);
+    } catch { /* mantém */ } finally {
+      setSalvandoAcesso(false);
+    }
+  }
+
   async function salvarCfg(body: Record<string, unknown>) {
     if (!id || savingCfg) return;
     setSavingCfg(true);
@@ -359,6 +384,13 @@ export default function DiarioBordo() {
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setMenuAberto(false)} />
                   <div role="menu" className="absolute right-0 top-11 z-50 w-52 overflow-hidden rounded-nx-md border border-nx-border bg-nx-surface shadow-nx-card">
+                    <button
+                      role="menuitem"
+                      onClick={abrirAcesso}
+                      className="flex w-full items-center gap-2.5 px-4 py-3 text-body-sm font-medium text-nx-on-surface hover:bg-nx-surface-hover transition-colors"
+                    >
+                      <CalendarClock size={16} className="text-nx-evo" /> Editar acesso
+                    </button>
                     <button
                       role="menuitem"
                       onClick={() => { setMenuAberto(false); setConfirmNome(""); setErroExcluir(null); setConfirmAberto(true); }}
@@ -737,6 +769,35 @@ export default function DiarioBordo() {
         )}
 
         {/* ══════════ Modal — excluir paciente (LGPD, irreversível) ══════════ */}
+        {acessoAberto && (
+          <div
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm md:items-center md:p-4"
+            onClick={() => !salvandoAcesso && setAcessoAberto(false)}
+          >
+            <div className={`${CARD} w-full max-w-md rounded-b-none p-6 md:rounded-b-nx-lg`} onClick={(e) => e.stopPropagation()}>
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-nx-evo/12 text-nx-evo"><CalendarClock size={18} /></span>
+                  <h2 className="text-headline-md text-nx-on-surface">Tempo de acesso</h2>
+                </div>
+                <button onClick={() => setAcessoAberto(false)} aria-label="Fechar" className="text-nx-on-surface-variant hover:text-nx-on-surface"><X size={20} /></button>
+              </div>
+              <p className="mb-4 text-body-sm text-nx-on-surface-variant">
+                {acessoValue
+                  ? `Vence em ${new Date(acessoValue + "T12:00:00").toLocaleDateString("pt-BR")}`
+                  : "Sem prazo — acesso ilimitado."}
+              </p>
+              <AcessoPeriodoPicker value={acessoValue} onChange={setAcessoValue} />
+              <div className="mt-6 flex gap-2">
+                <button onClick={() => setAcessoAberto(false)} className="flex-1 rounded-xl border border-nx-border py-3 text-body-sm font-medium text-nx-on-surface hover:bg-nx-surface-hover transition-colors">Cancelar</button>
+                <button onClick={salvarAcesso} disabled={salvandoAcesso} className="flex-1 rounded-xl bg-nx-evo py-3 text-body-sm font-bold text-nx-on-evo hover:bg-nx-evo-2 disabled:opacity-40 transition-colors">
+                  {salvandoAcesso ? "Salvando…" : "Salvar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {confirmAberto && pac && (
           <div
             className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm md:items-center md:p-4"

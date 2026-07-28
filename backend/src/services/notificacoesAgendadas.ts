@@ -103,3 +103,32 @@ export async function avisarParceriaExpirando(): Promise<void> {
     });
   }
 }
+
+/**
+ * Acesso B2B: avisa o paciente ~5 dias antes de a janela definida pela nutri
+ * (`acessoExpiraEm`) vencer. Transacional (só quiet-hours + dedupe). O paciente
+ * não renova sozinho — o texto pede para falar com a nutri.
+ */
+export async function avisarAcessoB2bExpirando(): Promise<void> {
+  const agora = Date.now();
+  const em4d = new Date(agora + 4 * DIA);
+  const em5d = new Date(agora + 5 * DIA);
+
+  const pacientes = await prisma.paciente.findMany({
+    where: {
+      ativo: true, anonimizadoEm: null,
+      acessoExpiraEm: { gt: em4d, lte: em5d }, // janela do "faltam 5 dias"
+      pushSubscriptionsPaciente: { some: {} },
+    },
+    select: { id: true, acessoExpiraEm: true },
+  });
+
+  for (const p of pacientes) {
+    await NotificationEngine.enviar(p.id, "acesso_b2b_expira", {
+      titulo: "⏳ Seu acesso vence em 5 dias",
+      corpo: "Fale com seu nutricionista para renovar e não perder seu acompanhamento.",
+      destination: "dashboard_paciente",
+      dedupeKey: `acesso_b2b:5:${p.id}:${ymd(p.acessoExpiraEm!)}`,
+    });
+  }
+}
