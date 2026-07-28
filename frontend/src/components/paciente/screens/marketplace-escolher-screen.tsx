@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star, ArrowLeft, Stethoscope } from "lucide-react";
+import { Star, ArrowLeft, Stethoscope, LogOut } from "lucide-react";
 import { ButtonNx, ChipNx } from "@/components/ui-nx";
 import { listarParceiros, type Parceiro } from "@/lib/parceria";
+import { usePacienteAuth } from "@/contexts/PacienteAuthContext";
 
 function Estrelas({ nota }: { nota: number }) {
   return (
@@ -53,6 +54,7 @@ function ParceiroCard({ p, onEscolher }: { p: Parceiro; onEscolher: () => void }
 
 export function MarketplaceEscolherScreen() {
   const navigate = useNavigate();
+  const { logout } = usePacienteAuth();
   const [parceiros, setParceiros] = useState<Parceiro[] | null>(null);
   const [erro, setErro] = useState(false);
 
@@ -89,7 +91,16 @@ export function MarketplaceEscolherScreen() {
 
       {parceiros?.length === 0 && (
         <div className="rounded-nx-lg border border-nx-border bg-nx-surface p-8 text-center">
-          <p className="text-body-md text-nx-on-surface-variant">Nenhum nutricionista disponível no momento.</p>
+          <p className="text-body-md font-semibold text-nx-on-surface">Nenhum nutricionista disponível no momento.</p>
+          <p className="mx-auto mt-1 max-w-xs text-body-sm text-nx-on-surface-variant">
+            Estamos preparando os profissionais parceiros — volte em breve.
+          </p>
+          <button
+            onClick={logout}
+            className="mt-5 inline-flex items-center gap-1.5 rounded-nx-md border border-nx-border px-4 py-2 text-body-sm font-semibold text-nx-on-surface-variant transition-colors hover:text-nx-on-surface"
+          >
+            <LogOut className="size-4" /> Sair da conta
+          </button>
         </div>
       )}
 

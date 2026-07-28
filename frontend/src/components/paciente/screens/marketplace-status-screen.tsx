@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Video, Trophy, MessageCircle, Star, Clock, AlertTriangle, ChevronRight, Stethoscope } from "lucide-react";
+import { Video, Trophy, MessageCircle, Star, Clock, AlertTriangle, ChevronRight, Stethoscope, LogOut } from "lucide-react";
 import { ButtonNx, ProgressBarNx, ChipNx } from "@/components/ui-nx";
 import { statusParceria, type StatusResp } from "@/lib/parceria";
 import { DIAS_ACESSO } from "@/lib/parceria-const";
+import { usePacienteAuth } from "@/contexts/PacienteAuthContext";
 
 function AcessoAtivo({ s }: { s: StatusResp }) {
   const navigate = useNavigate();
@@ -130,6 +131,7 @@ function SemAcesso({ s }: { s: StatusResp }) {
 }
 
 export function MarketplaceStatusScreen() {
+  const { logout } = usePacienteAuth();
   const [status, setStatus] = useState<StatusResp | null>(null);
   const [erro, setErro] = useState(false);
 
@@ -139,9 +141,19 @@ export function MarketplaceStatusScreen() {
 
   return (
     <div className="space-y-6 px-5 pb-24 pt-7">
-      <header>
-        <h1 className="text-headline-lg text-nx-on-surface">Nutricionista</h1>
-        <p className="mt-0.5 text-body-md text-nx-on-surface-variant">Acompanhamento com especialistas parceiros</p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-headline-lg text-nx-on-surface">Nutricionista</h1>
+          <p className="mt-0.5 text-body-md text-nx-on-surface-variant">Acompanhamento com especialistas parceiros</p>
+        </div>
+        {/* Saída sempre disponível — o paciente avulso fica focado nesta área, então
+            precisa poder sair da conta a qualquer momento (senão fica preso). */}
+        <button
+          onClick={logout}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-nx-md border border-nx-border px-3 py-1.5 text-body-sm font-semibold text-nx-on-surface-variant transition-colors hover:text-nx-on-surface"
+        >
+          <LogOut className="size-4" /> Sair
+        </button>
       </header>
 
       {erro && (
