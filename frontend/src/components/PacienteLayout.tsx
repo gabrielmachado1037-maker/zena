@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Home, SquarePen, Trophy, BarChart3, User } from "lucide-react";
+import { Home, SquarePen, Trophy, BarChart3, Stethoscope, User } from "lucide-react";
 import { usePacienteAuth } from "../contexts/PacienteAuthContext";
 import { PacienteDataProvider } from "../lib/paciente-data";
 import EmailVerificacaoBannerPaciente from "./EmailVerificacaoBannerPaciente";
@@ -11,11 +11,12 @@ import { pingNotificacaoAberta } from "../lib/pushPaciente";
 const BG = "#09090B";
 
 const TABS = [
-  { to: "/paciente/dashboard", icon: Home,       label: "Início" },
-  { to: "/paciente/registro",  icon: SquarePen,  label: "Registro" },
-  { to: "/paciente/desafios",  icon: Trophy,     label: "Desafios" },
-  { to: "/paciente/ranking",   icon: BarChart3,  label: "Ranking" },
-  { to: "/paciente/conta",     icon: User,       label: "Perfil" },
+  { to: "/paciente/dashboard", icon: Home,        label: "Início" },
+  { to: "/paciente/registro",  icon: SquarePen,   label: "Registro" },
+  { to: "/paciente/desafios",  icon: Trophy,      label: "Desafios" },
+  { to: "/paciente/ranking",   icon: BarChart3,   label: "Ranking" },
+  { to: "/paciente/parceria",  icon: Stethoscope, label: "Nutri" },
+  { to: "/paciente/conta",     icon: User,        label: "Perfil" },
 ];
 
 function PacienteNav() {

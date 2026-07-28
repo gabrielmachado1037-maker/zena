@@ -6,7 +6,8 @@ import { calcularProgressoCiclo, encerrarCiclo, notificarAquecimento, notificarU
 import { finalizarDesafiosVencidos } from "./services/desafioService";
 import { enviarLembretesInteligentes } from "./services/lembretesHabito";
 import { recalcularHorariosPreferidos } from "./services/horarioInteligente";
-import { enviarReativacao, enviarPositivas } from "./services/notificacoesAgendadas";
+import { enviarReativacao, enviarPositivas, avisarParceriaExpirando } from "./services/notificacoesAgendadas";
+import { expirarVencidas } from "./lib/parceria";
 import {
   calcularLiga,
   arredondarXp,
@@ -322,6 +323,18 @@ export function initCron() {
   // Positivas (Fase 3): semanal, segunda 11h BRT — só quando há evolução real.
   cron.schedule("0 11 * * 1", () => {
     enviarPositivas().catch((e) => console.error("Cron positivas error:", e));
+  }, TZ);
+
+  // Marketplace de parceiros: diária às 10h BRT — fecha acessos vencidos e avisa
+  // quem está a 5 dias do vencimento.
+  cron.schedule("0 10 * * *", async () => {
+    try {
+      const fechadas = await expirarVencidas();
+      if (fechadas > 0) console.log(`[cron parceria] ${fechadas} acesso(s) expirado(s).`);
+      await avisarParceriaExpirando();
+    } catch (e) {
+      console.error("Cron parceria error:", e);
+    }
   }, TZ);
 
   // Daily at 9am BRT: create reminders for overdue payments

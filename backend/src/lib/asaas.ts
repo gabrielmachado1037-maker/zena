@@ -104,6 +104,39 @@ export async function cancelarAssinatura(subscriptionId: string) {
   return nexvelReq("DELETE", `/subscriptions/${subscriptionId}`);
 }
 
+// ── Marketplace de parceiros: cobrança AVULSA (one-off) com split ──────────────
+// Usa a chave DO NEXVEL (plataforma). O split manda `valorParceiro` para a wallet
+// do parceiro; o restante (R$50) fica na conta da plataforma implicitamente.
+// Sem walletId (parceiro sem wallet cadastrada), cobra sem split para não travar a venda.
+export async function criarCobrancaSplitNexvel(
+  customerId: string,
+  valor: number,
+  vencimento: string,
+  descricao: string,
+  externalReference: string,
+  walletId: string | null | undefined,
+  valorParceiro: number,
+): Promise<{ charge: { id: string; status?: string }; pix: { payload?: string; encodedImage?: string } }> {
+  const body: Record<string, unknown> = {
+    customer: customerId,
+    billingType: "PIX",
+    value: valor,
+    dueDate: vencimento,
+    description: descricao,
+    externalReference,
+  };
+  if (walletId) body.split = [{ walletId, fixedValue: valorParceiro }];
+  const charge = await nexvelReq("POST", "/payments", body);
+  const pix = await nexvelReq("GET", `/payments/${charge.id}/pixQrCode`);
+  return { charge, pix };
+}
+
+/** true se a cobrança avulsa já foi efetivamente paga (Pix compensado). */
+export async function cobrancaFoiPaga(chargeId: string): Promise<boolean> {
+  const p = (await nexvelReq("GET", `/payments/${chargeId}`)) as { status?: string };
+  return ["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"].includes(p?.status ?? "");
+}
+
 export async function buscarAssinatura(subscriptionId: string) {
   return nexvelReq("GET", `/subscriptions/${subscriptionId}`);
 }

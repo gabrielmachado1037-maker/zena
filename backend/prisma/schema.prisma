@@ -9,52 +9,52 @@ datasource db {
 }
 
 model Nutricionista {
-  id                   String              @id @default(cuid())
-  nome                 String
-  email                String              @unique
-  senha                String
-  crn                  String
-  tipoProfissional     String              @default("nutricionista")
-  foto                 String?
-  plano                String              @default("trial")
-  planoAtivo           Boolean             @default(true)
-  trialEnd             DateTime?
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  asaasApiKey          String?
-  asaasCustomerId      String?
-  asaasSubscriptionId  String?
-  planoVencimento      DateTime?
-  planoSlug            String?
-  subscriptionStatus   String              @default("trial")
-  subscriptionType     String?
-  subscriptionEndsAt   DateTime?
-  modulosAtivos        String[]            @default([])
-  nomeConsultorio      String?
-  logoConsultorio      String?
-  enderecoConsultorio  String?
-  codigoVinculo        String?             @unique
+  id                       String              @id @default(cuid())
+  nome                     String
+  email                    String              @unique
+  senha                    String
+  crn                      String
+  tipoProfissional         String              @default("nutricionista")
+  foto                     String?
+  plano                    String              @default("trial")
+  planoAtivo               Boolean             @default(true)
+  trialEnd                 DateTime?
+  stripeCustomerId         String?
+  stripeSubscriptionId     String?
+  asaasApiKey              String?
+  asaasCustomerId          String?
+  asaasSubscriptionId      String?
+  planoVencimento          DateTime?
+  planoSlug                String?
+  subscriptionStatus       String              @default("trial")
+  subscriptionType         String?
+  subscriptionEndsAt       DateTime?
+  modulosAtivos            String[]            @default([])
+  nomeConsultorio          String?
+  logoConsultorio          String?
+  enderecoConsultorio      String?
+  codigoVinculo            String?             @unique
   // LGPD: registro de consentimento no cadastro.
-  aceiteTermosEm       DateTime?
-  aceiteTermosVersao   String?
-  emailVerificado      Boolean             @default(false)
+  aceiteTermosEm           DateTime?
+  aceiteTermosVersao       String?
+  emailVerificado          Boolean             @default(false)
   // Onboarding de 1º acesso (guia de configuração da clínica).
-  onboardingStatus         String          @default("pendente") // pendente | andamento | concluido
-  onboardingConviteEnviado Boolean         @default(false)
-  pacientes            Paciente[]
-  horarios             HorarioDisponivel[]
-  lembretes            Lembrete[]
-  rankingConfig        RankingConfig?
-  rankingPontuacoes    RankingPontuacao[]
-  feedPosts            FeedPost[]
-  pushSubscriptions    PushSubscription[]
-  ciclos               Ciclo[]
-  feedEncerramentos    FeedEncerramento[]
-  cicloCampeoes        CicloCampeao[]
-  desafios             Desafio[]
-  mensagensNutri       MensagemNutri[]
-  mensagensChat        MensagemChat[]
-  createdAt            DateTime            @default(now())
+  onboardingStatus         String              @default("pendente") // pendente | andamento | concluido
+  onboardingConviteEnviado Boolean             @default(false)
+  pacientes                Paciente[]
+  horarios                 HorarioDisponivel[]
+  lembretes                Lembrete[]
+  rankingConfig            RankingConfig?
+  rankingPontuacoes        RankingPontuacao[]
+  feedPosts                FeedPost[]
+  pushSubscriptions        PushSubscription[]
+  ciclos                   Ciclo[]
+  feedEncerramentos        FeedEncerramento[]
+  cicloCampeoes            CicloCampeao[]
+  desafios                 Desafio[]
+  mensagensNutri           MensagemNutri[]
+  mensagensChat            MensagemChat[]
+  createdAt                DateTime            @default(now())
 }
 
 model TokenRedefinicao {
@@ -102,84 +102,87 @@ model RefreshTokenPaciente {
 }
 
 model Paciente {
-  id                String             @id @default(cuid())
-  nome              String
-  email             String?
-  telefone          String?
-  objetivo          String
-  dataInicio        DateTime
-  linkUnico         String             @unique @default(cuid())
-  ativo             Boolean            @default(true)
-  pesoMeta          Float?
-  dataNascimento    DateTime?
-  sexo              String?
-  altura            Float?
-  fotoInicial       String?
-  fotoPerfilUrl     String?
-  nutricionistaId   String
-  nutricionista     Nutricionista      @relation(fields: [nutricionistaId], references: [id])
+  id                        String                     @id @default(cuid())
+  nome                      String
+  email                     String?
+  telefone                  String?
+  objetivo                  String
+  dataInicio                DateTime
+  linkUnico                 String                     @unique @default(cuid())
+  ativo                     Boolean                    @default(true)
+  pesoMeta                  Float?
+  dataNascimento            DateTime?
+  sexo                      String?
+  altura                    Float?
+  fotoInicial               String?
+  fotoPerfilUrl             String?
+  nutricionistaId           String
+  nutricionista             Nutricionista              @relation(fields: [nutricionistaId], references: [id])
   // Convite de vínculo individual (uso único) — gerado só pela nutri.
-  conviteCodigo     String?            @unique
-  conviteStatus     String             @default("pendente") // pendente | utilizado | expirado | cancelado
-  conviteExpiraEm   DateTime?
-  conviteUsadoEm    DateTime?
+  conviteCodigo             String?                    @unique
+  conviteStatus             String                     @default("pendente") // pendente | utilizado | expirado | cancelado
+  conviteExpiraEm           DateTime?
+  conviteUsadoEm            DateTime?
   // Notificações: preferências por categoria (null = todas ligadas) + fuso do dispositivo.
-  prefsNotificacao  Json?
-  timezone          String?
+  prefsNotificacao          Json?
+  timezone                  String?
   // Último acesso ao app (abertura) — base da reativação (≠ ultimoCheckin).
-  ultimoAcesso      DateTime?
+  ultimoAcesso              DateTime?
   // Hora habitual de engajamento (0-23, fuso do paciente) — aprendida do histórico
   // de check-ins; desloca os lembretes de hábito. null = ainda sem dado suficiente.
-  horarioLembrete   Int?
-  notificacaoLogs   NotificacaoLog[]
-  registroEventos   RegistroEvento[]
-  pontosTotal       Float              @default(0)
-  streakAtual       Int                @default(0)
-  streakMaximo      Int                @default(0)
-  ultimoCheckin     DateTime?
-  ligaAtual         String             @default("Bronze")
-  ligaNivel         String             @default("III")
-  diasInativo       Int                @default(0)
-  barraCongelada    Boolean            @default(false)
+  horarioLembrete           Int?
+  notificacaoLogs           NotificacaoLog[]
+  registroEventos           RegistroEvento[]
+  pontosTotal               Float                      @default(0)
+  streakAtual               Int                        @default(0)
+  streakMaximo              Int                        @default(0)
+  ultimoCheckin             DateTime?
+  ligaAtual                 String                     @default("Bronze")
+  ligaNivel                 String                     @default("III")
+  diasInativo               Int                        @default(0)
+  barraCongelada            Boolean                    @default(false)
   // Plano de missões — refeições configuradas pela nutri: [{ key, label }] (3–6).
   // null = 4 refeições padrão (café/almoço/lanche/jantar). Alimentação satura em 4 XP.
-  planoRefeicoes    Json?
+  planoRefeicoes            Json?
   // Metas configuradas pela nutri (null = padrão). Água em ml; sono em horas;
   // treinoDias = dias da semana com missão de treino (0=domingo..6=sábado; vazio = todo dia).
-  aguaMetaMl        Int?
-  sonoMetaHoras     Int?
-  treinoDias        Int[]              @default([])
-  medicoes          Medicao[]
-  consultas         Consulta[]
-  cobrancas         Cobranca[]
-  planosAlimentares PlanoAlimentar[]
-  checkIns          CheckIn[]
-  mensagens         MensagemWhatsApp[]
-  registrosContato  RegistroContato[]
-  anamnese          Anamnese?
-  lembretes         Lembrete[]
-  planoCobranca     PlanoCobranca?
-  fotosEvolucao     FotoEvolucao[]
-  registrosFotos    RegistroFotos[]
-  rankingPontuacoes        RankingPontuacao[]
-  feedPosts                FeedPost[]
-  pacienteUser             PacienteUser?
+  aguaMetaMl                Int?
+  sonoMetaHoras             Int?
+  treinoDias                Int[]                      @default([])
+  medicoes                  Medicao[]
+  consultas                 Consulta[]
+  cobrancas                 Cobranca[]
+  planosAlimentares         PlanoAlimentar[]
+  checkIns                  CheckIn[]
+  mensagens                 MensagemWhatsApp[]
+  registrosContato          RegistroContato[]
+  anamnese                  Anamnese?
+  lembretes                 Lembrete[]
+  planoCobranca             PlanoCobranca?
+  fotosEvolucao             FotoEvolucao[]
+  registrosFotos            RegistroFotos[]
+  rankingPontuacoes         RankingPontuacao[]
+  feedPosts                 FeedPost[]
+  pacienteUser              PacienteUser?
   pushSubscriptionsPaciente PushSubscriptionPaciente[]
-  checklistsDiarios     ChecklistDiario[]
-  cicloParticipantes    CicloParticipante[]
-  relatoriosCiclo       RelatorioCiclo[]
-  feedEncerramentos     FeedEncerramento[]
-  cicloCampeoes         CicloCampeao[]
-  streakMarcos          StreakMarco[]
-  pontosLogs            PontosLog[]
-  registros             Registro[]
-  desafiosProgresso     DesafioProgresso[]
-  conquistas            Conquista[]
-  mensagensNutri        MensagemNutri[]
-  mensagensChat         MensagemChat[]
+  checklistsDiarios         ChecklistDiario[]
+  cicloParticipantes        CicloParticipante[]
+  relatoriosCiclo           RelatorioCiclo[]
+  feedEncerramentos         FeedEncerramento[]
+  cicloCampeoes             CicloCampeao[]
+  streakMarcos              StreakMarco[]
+  pontosLogs                PontosLog[]
+  registros                 Registro[]
+  desafiosProgresso         DesafioProgresso[]
+  conquistas                Conquista[]
+  mensagensNutri            MensagemNutri[]
+  mensagensChat             MensagemChat[]
+  // Marketplace de nutricionistas parceiros (feature isolada — não é o vínculo B2B):
+  // acessos de 30 dias que o paciente compra avulso a um parceiro in-house.
+  consultasParceria         ConsultaParceria[]
   // LGPD: marca quando os dados pessoais foram anonimizados a pedido do titular.
-  anonimizadoEm         DateTime?
-  createdAt                DateTime           @default(now())
+  anonimizadoEm             DateTime?
+  createdAt                 DateTime                   @default(now())
 
   @@index([nutricionistaId])
 }
@@ -312,19 +315,19 @@ model Consulta {
 }
 
 model Cobranca {
-  id              String    @id @default(cuid())
-  pacienteId      String
-  paciente        Paciente  @relation(fields: [pacienteId], references: [id])
-  valor           Float
-  vencimento      DateTime
-  status          String    @default("pendente")
-  metodo          String?
-  pagoEm          DateTime?
-  descricao       String?
-  asaasChargeId   String?
-  pixCopiaECola   String?
-  linkPagamento   String?
-  createdAt       DateTime  @default(now())
+  id            String    @id @default(cuid())
+  pacienteId    String
+  paciente      Paciente  @relation(fields: [pacienteId], references: [id])
+  valor         Float
+  vencimento    DateTime
+  status        String    @default("pendente")
+  metodo        String?
+  pagoEm        DateTime?
+  descricao     String?
+  asaasChargeId String?
+  pixCopiaECola String?
+  linkPagamento String?
+  createdAt     DateTime  @default(now())
 
   @@index([pacienteId])
   @@index([status])
@@ -338,7 +341,7 @@ model FotoEvolucao {
   data       DateTime
   tipo       String
   imagem     String
-  criadoEm  DateTime @default(now())
+  criadoEm   DateTime @default(now())
 
   @@index([pacienteId])
 }
@@ -365,20 +368,20 @@ model RegistroContato {
   tipo       String   @default("whatsapp")
   resumo     String
   data       DateTime @default(now())
-  criadoEm  DateTime @default(now())
+  criadoEm   DateTime @default(now())
 
   @@index([pacienteId])
 }
 
 model PlanoCobranca {
-  id              String   @id @default(cuid())
-  pacienteId      String   @unique
-  paciente        Paciente @relation(fields: [pacienteId], references: [id])
-  valor           Float
-  periodicidade   String   @default("mensal")
-  diaVencimento   Int      @default(10)
-  ativo           Boolean  @default(true)
-  criadoEm        DateTime @default(now())
+  id            String   @id @default(cuid())
+  pacienteId    String   @unique
+  paciente      Paciente @relation(fields: [pacienteId], references: [id])
+  valor         Float
+  periodicidade String   @default("mensal")
+  diaVencimento Int      @default(10)
+  ativo         Boolean  @default(true)
+  criadoEm      DateTime @default(now())
 }
 
 model DailyQuote {
@@ -395,9 +398,9 @@ model DailyQuote {
 model FeedPost {
   id              String           @id @default(cuid())
   tipo            String           @default("CONQUISTA") // legado: META_BATIDA | PESO_ALCANCADO | CONQUISTA
-  categoria       String           @default("MOMENTO")   // REFEICAO | TREINO | MOMENTO
-  privacidade     String           @default("PUBLICO")   // PUBLICO | APENAS_NUTRI
-  pacienteId      String?          // null = post da nutri no Mural (sem paciente-alvo)
+  categoria       String           @default("MOMENTO") // REFEICAO | TREINO | MOMENTO
+  privacidade     String           @default("PUBLICO") // PUBLICO | APENAS_NUTRI
+  pacienteId      String? // null = post da nutri no Mural (sem paciente-alvo)
   paciente        Paciente?        @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   nutricionistaId String
   nutricionista   Nutricionista    @relation(fields: [nutricionistaId], references: [id], onDelete: Cascade)
@@ -405,7 +408,7 @@ model FeedPost {
   fotoUrl         String?
   autorAvatarUrl  String?
   curtidas        Int              @default(0)
-  privado         Boolean          @default(false)       // legado — usar privacidade
+  privado         Boolean          @default(false) // legado — usar privacidade
   autorNutri      Boolean          @default(false)
   criadoEm        DateTime         @default(now())
   comentarios     FeedComentario[]
@@ -416,11 +419,11 @@ model FeedPost {
 }
 
 model FeedComentario {
-  id         String   @id @default(cuid())
-  feedPostId String
-  feedPost   FeedPost @relation(fields: [feedPostId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  feedPostId     String
+  feedPost       FeedPost @relation(fields: [feedPostId], references: [id], onDelete: Cascade)
   autorId        String
-  autorTipo      String   // NUTRICIONISTA | PACIENTE
+  autorTipo      String // NUTRICIONISTA | PACIENTE
   autorNome      String
   autorAvatarUrl String?
   texto          String
@@ -438,13 +441,13 @@ model RankingConfig {
   nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id])
 
   // Pesos (devem somar 100)
-  pesoPesoMeta             Int @default(40) // peso da métrica % objetivo de peso
-  pesoHabitosConsecutivos  Int @default(30) // peso da métrica hábitos consecutivos
-  pesoMetasSemanais        Int @default(30) // peso da métrica metas semanais batidas
+  pesoPesoMeta            Int @default(40) // peso da métrica % objetivo de peso
+  pesoHabitosConsecutivos Int @default(30) // peso da métrica hábitos consecutivos
+  pesoMetasSemanais       Int @default(30) // peso da métrica metas semanais batidas
 
   // Thresholds de referência para pontuação máxima
-  diasConsecutivosAlvo Int @default(7)  // dias consecutivos = 100pts nessa métrica
-  metasSemanaisAlvo    Int @default(4)  // check-ins por mês = 100pts nessa métrica
+  diasConsecutivosAlvo Int @default(7) // dias consecutivos = 100pts nessa métrica
+  metasSemanaisAlvo    Int @default(4) // check-ins por mês = 100pts nessa métrica
 
   ativo        Boolean  @default(true)
   criadoEm     DateTime @default(now())
@@ -460,8 +463,8 @@ model RankingPontuacao {
 
   // Período de referência
   periodo String @default("semanal") // "semanal" | "mensal"
-  semana  Int?   // ISO week (1–53), preenchido quando periodo = "semanal"
-  mes     Int?   // 1–12, preenchido quando periodo = "mensal"
+  semana  Int? // ISO week (1–53), preenchido quando periodo = "semanal"
+  mes     Int? // 1–12, preenchido quando periodo = "mensal"
   ano     Int
 
   // Scores individuais (0–100 cada)
@@ -470,8 +473,8 @@ model RankingPontuacao {
   metasSemanaisBatidas    Int   @default(0) // número de semanas com adesão >= 7 no período
 
   // Score final ponderado (0–100)
-  pontuacaoTotal  Float @default(0)
-  posicaoRanking  Int?  // posição entre pacientes da nutricionista naquele período
+  pontuacaoTotal Float @default(0)
+  posicaoRanking Int? // posição entre pacientes da nutricionista naquele período
 
   calculadoEm DateTime @default(now())
 
@@ -483,20 +486,20 @@ model RankingPontuacao {
 }
 
 model PacienteUser {
-  id                String   @id @default(cuid())
-  email             String   @unique
-  senha             String
-  fotoUrl           String?
-  postPublicoPadrao Boolean  @default(true)
-  emailVerificado   Boolean  @default(false)
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  senha              String
+  fotoUrl            String?
+  postPublicoPadrao  Boolean   @default(true)
+  emailVerificado    Boolean   @default(false)
   // Consentimento LGPD registrado no cadastro (aceite explícito dos Termos + Privacidade).
   // Contas antigas ficam false/null (não houve fluxo de aceite quando criadas).
   aceiteTermos       Boolean   @default(false)
   aceiteTermosEm     DateTime?
   aceiteTermosVersao String?
-  pacienteId        String   @unique
-  paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
+  pacienteId         String    @unique
+  paciente           Paciente  @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  createdAt          DateTime  @default(now())
 
   @@index([email])
 }
@@ -542,8 +545,8 @@ model NotificacaoLog {
   titulo     String
   corpo      String
   url        String
-  status     String    // enviado | pulado | falha
-  motivo     String?   // preferencia | quiet_hours | duplicado | intervalo | sem_dispositivo
+  status     String // enviado | pulado | falha
+  motivo     String? // preferencia | quiet_hours | duplicado | intervalo | sem_dispositivo
   enviadoEm  DateTime  @default(now())
   abertaEm   DateTime?
 
@@ -556,7 +559,7 @@ model RegistroEvento {
   id         String   @id @default(cuid())
   pacienteId String
   paciente   Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
-  tipo       String   // cafe | almoco | lanche | jantar | agua | treino | sono | checkin
+  tipo       String // cafe | almoco | lanche | jantar | agua | treino | sono | checkin
   ocorridoEm DateTime @default(now())
 
   @@index([pacienteId, tipo])
@@ -591,18 +594,18 @@ model PlanoSaas {
 // ─── Gamificação: Ciclos ──────────────────────────────────────────────────────
 
 model Ciclo {
-  id               String        @id @default(cuid())
-  nutricionistaId  String
-  nutricionista    Nutricionista @relation(fields: [nutricionistaId], references: [id])
-  numero           Int
-  titulo           String?
-  dataInicio       DateTime
-  dataFim          DateTime
-  status           String        @default("ativo")
-  premioDescricao  String?
-  premioTipo       String        @default("reconhecimento")
-  relatorioGerado  Boolean       @default(false)
-  createdAt        DateTime      @default(now())
+  id              String        @id @default(cuid())
+  nutricionistaId String
+  nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id])
+  numero          Int
+  titulo          String?
+  dataInicio      DateTime
+  dataFim         DateTime
+  status          String        @default("ativo")
+  premioDescricao String?
+  premioTipo      String        @default("reconhecimento")
+  relatorioGerado Boolean       @default(false)
+  createdAt       DateTime      @default(now())
 
   participantes    CicloParticipante[]
   relatorios       RelatorioCiclo[]
@@ -751,71 +754,71 @@ model PontosLog {
 // ─── Sistema de Ligas (Nexvel) ─────────────────────────────────────────────
 
 model Registro {
-  id             String   @id @default(cuid())
-  pacienteId     String
-  paciente       Paciente @relation(fields: [pacienteId], references: [id])
-  data           DateTime @db.Date
+  id         String   @id @default(cuid())
+  pacienteId String
+  paciente   Paciente @relation(fields: [pacienteId], references: [id])
+  data       DateTime @db.Date
 
-  alimentacaoOk  Boolean  @default(false)
-  treinoOk       Boolean  @default(false)
-  aguaOk         Boolean  @default(false)
-  sonoOk         Boolean  @default(false)
+  alimentacaoOk Boolean @default(false)
+  treinoOk      Boolean @default(false)
+  aguaOk        Boolean @default(false)
+  sonoOk        Boolean @default(false)
 
   // Detalhe por refeição (alimenta insights/relatório da nutri). Nullable = "sem dado"
   // p/ registros antigos. cafeOk etc. = derivados de *Status ("seguiu"), mantidos p/ as
   // agregações booleanas legadas. alimentacaoOk = derivado (xpAlimentacao >= 3).
-  cafeOk         Boolean?
-  almocoOk       Boolean?
-  lancheOk       Boolean?
-  jantarOk       Boolean?
+  cafeOk   Boolean?
+  almocoOk Boolean?
+  lancheOk Boolean?
+  jantarOk Boolean?
 
   // Estado por refeição (3 estados): "seguiu" | "adaptou" | "pulou". Base da análise
   // de comportamento alimentar da nutri e da pontuação (seguiu 1 / adaptou 0.5 / pulou 0).
-  cafeStatus     String?
-  almocoStatus   String?
-  lancheStatus   String?
-  jantarStatus   String?
+  cafeStatus      String?
+  almocoStatus    String?
+  lancheStatus    String?
+  jantarStatus    String?
   // Notas por refeição: { cafe: { nota?, motivo? }, ... } (o que mudou / por que pulou)
-  refeicoesNotas Json?
+  refeicoesNotas  Json?
   // Estado por refeição para N refeições (3–6): { key: "seguiu|adaptou|comeu_mal|pulou" }.
   // Fonte da verdade da alimentação quando o plano tem != 4 refeições; para o padrão de 4,
   // as colunas cafeStatus…jantarStatus continuam espelhadas (retrocompat com agregações).
   refeicoesStatus Json?
 
   // Água como progresso (ml) em vez de booleano. aguaOk = derivado (aguaMl >= aguaMetaMl).
-  aguaMl         Int?
-  aguaMetaMl     Int?
+  aguaMl     Int?
+  aguaMetaMl Int?
 
   // Treino em 3 estados: "conforme" (3 XP) | "parcial" (1) | "nao" (0). treinoOk = derivado
   // (status != "nao"). Motivo preenchido quando não conseguiu treinar.
-  treinoStatus   String?
-  treinoMotivo   String?
+  treinoStatus String?
+  treinoMotivo String?
   // Sono por faixa de horas: "menos5" (0) | "5a7" (1) | "7a9" (2) | "mais9" (2). sonoOk = XP > 0.
-  sonoFaixa      String?
+  sonoFaixa    String?
   // Horas dormidas informadas pelo paciente. Pontua por tolerância vs Paciente.sonoMetaHoras
   // (±1h = 2 XP · até 2h = 1 · além = 0). Registros antigos sem este campo usam sonoFaixa.
-  sonoHoras      Float?
+  sonoHoras    Float?
 
   // O dia foi fechado (finalizado) — só então credita registro_diario + bônus + streak.
   // Antes disso o registro é editável (autosave) e não pontua na liga.
-  finalizado     Boolean  @default(false)
+  finalizado Boolean @default(false)
 
-  tipoRegistro   String   @default("normal") // normal | excecao | ajuste_necessario
+  tipoRegistro String @default("normal") // normal | excecao | ajuste_necessario
 
-  fotoUrl        String?
-  descricao      String?
-  humor          String?  // otimo | bom | neutro | dificil | pessimo
-  tags           String[] @default([])
+  fotoUrl   String?
+  descricao String?
+  humor     String? // otimo | bom | neutro | dificil | pessimo
+  tags      String[] @default([])
 
-  pontosGanhos   Float    @default(0)
+  pontosGanhos   Float @default(0)
   pontosDetalhes Json?
 
-  pediuAjuste    Boolean  @default(false)
-  motivoAjuste   String?
-  ajusteLido     Boolean  @default(false)
-  revisado       Boolean  @default(false)
+  pediuAjuste  Boolean @default(false)
+  motivoAjuste String?
+  ajusteLido   Boolean @default(false)
+  revisado     Boolean @default(false)
 
-  createdAt      DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@unique([pacienteId, data])
   @@index([pacienteId])
@@ -823,57 +826,57 @@ model Registro {
 }
 
 model Desafio {
-  id              String             @id @default(cuid())
+  id              String        @id @default(cuid())
   nutricionistaId String
-  nutricionista   Nutricionista      @relation(fields: [nutricionistaId], references: [id])
+  nutricionista   Nutricionista @relation(fields: [nutricionistaId], references: [id])
   titulo          String
   descricao       String?
-  tipo            String             @default("custom") // hidratacao | alimentacao | treino | sono | custom
+  tipo            String        @default("custom") // hidratacao | alimentacao | treino | sono | custom
   metaValor       Float?
   metaUnidade     String?
-  duracaoDias     Int                @default(7)
-  dataInicio      DateTime?          @db.Date
-  dataFim         DateTime?          @db.Date
-  icone           String             @default("🎯")
-  pontosBonus     Int                @default(0)
-  status          String             @default("ativo")
-  createdAt       DateTime           @default(now())
+  duracaoDias     Int           @default(7)
+  dataInicio      DateTime?     @db.Date
+  dataFim         DateTime?     @db.Date
+  icone           String        @default("🎯")
+  pontosBonus     Int           @default(0)
+  status          String        @default("ativo")
+  createdAt       DateTime      @default(now())
 
-  progresso       DesafioProgresso[]
+  progresso DesafioProgresso[]
 
   @@index([nutricionistaId])
 }
 
 model DesafioProgresso {
-  id         String   @id @default(cuid())
-  desafioId  String
-  desafio    Desafio  @relation(fields: [desafioId], references: [id])
-  pacienteId String
-  paciente   Paciente @relation(fields: [pacienteId], references: [id])
-  progresso  Float    @default(0) // percentual 0-100 (derivado de diasCumpridos/duração)
-  diasCumpridos Int    @default(0) // dias de aderência cumpridos na janela do desafio
-  diasManuais String[] @default([]) // datas (yyyy-mm-dd) marcadas à mão em desafios custom
-  concluido  Boolean  @default(false)
+  id            String    @id @default(cuid())
+  desafioId     String
+  desafio       Desafio   @relation(fields: [desafioId], references: [id])
+  pacienteId    String
+  paciente      Paciente  @relation(fields: [pacienteId], references: [id])
+  progresso     Float     @default(0) // percentual 0-100 (derivado de diasCumpridos/duração)
+  diasCumpridos Int       @default(0) // dias de aderência cumpridos na janela do desafio
+  diasManuais   String[]  @default([]) // datas (yyyy-mm-dd) marcadas à mão em desafios custom
+  concluido     Boolean   @default(false)
   // Encerrado (janela terminou): concluído=true venceu; concluído=false = não atingiu o mínimo.
   // Ativo = concluido=false E encerradoEm=null.
-  encerradoEm DateTime?
-  createdAt  DateTime @default(now())
-  atualizadoEm DateTime @default(now()) @updatedAt
+  encerradoEm   DateTime?
+  createdAt     DateTime  @default(now())
+  atualizadoEm  DateTime  @default(now()) @updatedAt
 
   @@unique([desafioId, pacienteId])
   @@index([pacienteId])
 }
 
 model Conquista {
-  id           String   @id @default(cuid())
-  pacienteId   String
-  paciente     Paciente @relation(fields: [pacienteId], references: [id])
-  tipo         String   // sequencia_7 | sequencia_30 | subiu_liga | desafio_concluido | checkpoint_foto | lendario
-  titulo       String
-  descricao    String?
-  icone        String?
-  pontosBonus  Int      @default(0)
-  createdAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  pacienteId  String
+  paciente    Paciente @relation(fields: [pacienteId], references: [id])
+  tipo        String // sequencia_7 | sequencia_30 | subiu_liga | desafio_concluido | checkpoint_foto | lendario
+  titulo      String
+  descricao   String?
+  icone       String?
+  pontosBonus Int      @default(0)
+  createdAt   DateTime @default(now())
 
   @@index([pacienteId])
 }
@@ -908,4 +911,66 @@ model MensagemChat {
 
   @@index([nutricionistaId])
   @@index([pacienteId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Marketplace de Nutricionistas Parceiros (feature isolada do fluxo B2B)
+// Parceiros são profissionais in-house da plataforma — NÃO são clientes do SaaS
+// (não têm modelo Nutricionista). O paciente compra acesso avulso de 30 dias a um
+// deles via Pix/Asaas com split (R$150 parceiro / R$50 plataforma).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model NutricionistaParceiro {
+  id            String             @id @default(cuid())
+  nome          String
+  foto          String?
+  especialidade String
+  avaliacao     Float              @default(5) // 0–5, exibido em estrelas
+  bio           String?
+  // Wallet do Asaas do parceiro — recebe o split de R$150. Sem ela, a cobrança
+  // é criada sem split (100% na plataforma) para não travar a venda.
+  walletIdAsaas String?
+  ativo         Boolean            @default(true)
+  createdAt     DateTime           @default(now())
+  consultas     ConsultaParceria[]
+
+  @@index([ativo])
+}
+
+model ConsultaParceria {
+  id              String                @id @default(cuid())
+  pacienteId      String
+  paciente        Paciente              @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  parceiroId      String
+  parceiro        NutricionistaParceiro @relation(fields: [parceiroId], references: [id])
+  status          String                @default("pendente") // pendente | ativo | expirado | cancelado
+  valor           Float                 @default(200)
+  // Pagamento Asaas (avulso, com split). Espelha o padrão do model Cobranca.
+  asaasCustomerId String?
+  asaasChargeId   String?
+  pixCopiaECola   String?
+  // Janela de acesso: preenchida quando o pagamento é confirmado.
+  iniciaEm        DateTime?
+  expiraEm        DateTime?
+  pagoEm          DateTime?
+  // Sala de vídeo única por consulta (Jitsi) — mesma para paciente e parceiro.
+  videoRoom       String                @unique @default(cuid())
+  createdAt       DateTime              @default(now())
+  mensagens       MensagemParceria[]
+
+  @@index([pacienteId])
+  @@index([parceiroId])
+  @@index([pacienteId, status])
+  @@index([status, expiraEm])
+}
+
+model MensagemParceria {
+  id         String           @id @default(cuid())
+  consultaId String
+  consulta   ConsultaParceria @relation(fields: [consultaId], references: [id], onDelete: Cascade)
+  autor      String // "paciente" | "parceiro"
+  conteudo   String
+  criadoEm   DateTime         @default(now())
+
+  @@index([consultaId, criadoEm])
 }

@@ -74,3 +74,32 @@ export async function enviarPositivas(pacienteIds?: string[]): Promise<void> {
     });
   }
 }
+
+/**
+ * Marketplace de parceiros: avisa o paciente quando faltam ~5 dias para o acesso
+ * de 30 dias vencer. Transacional (não é engajamento): não é gated por preferência
+ * — só respeita quiet-hours e o dedupe (dispara 1x por consulta). Roda no cron diário.
+ */
+export async function avisarParceriaExpirando(): Promise<void> {
+  const agora = Date.now();
+  const em4d = new Date(agora + 4 * DIA);
+  const em5d = new Date(agora + 5 * DIA);
+
+  const consultas = await prisma.consultaParceria.findMany({
+    where: {
+      status: "ativo",
+      expiraEm: { gt: em4d, lte: em5d }, // janela do "faltam 5 dias"
+      paciente: { anonimizadoEm: null, pushSubscriptionsPaciente: { some: {} } },
+    },
+    select: { id: true, pacienteId: true, parceiro: { select: { nome: true } } },
+  });
+
+  for (const c of consultas) {
+    await NotificationEngine.enviar(c.pacienteId, "parceria_expira", {
+      titulo: "⏳ Seu acesso vence em 5 dias",
+      corpo: `Faltam 5 dias no seu acesso a ${c.parceiro.nome}. Renove para não perder o acompanhamento.`,
+      destination: "parceria",
+      dedupeKey: `acesso_expira:5:${c.id}`,
+    });
+  }
+}

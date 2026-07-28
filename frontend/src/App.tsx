@@ -6,6 +6,7 @@ import { PacienteAuthProvider } from "./contexts/PacienteAuthContext";
 import Layout from "./components/Layout";
 import PacienteLayout from "./components/PacienteLayout";
 import RotaProtegida from "./components/RotaProtegida";
+import ParceriaAccessGuard from "./components/ParceriaAccessGuard";
 import BannerInstalacao from "./components/BannerInstalacao";
 
 // Lazy-loaded pages — each route only downloads when visited
@@ -55,6 +56,12 @@ const EvolucaoPaciente     = lazy(() => import("./pages/paciente/EvolucaoPacient
 const DesafiosPaciente     = lazy(() => import("./pages/paciente/DesafiosPaciente"));
 const PerfilPaciente       = lazy(() => import("./pages/paciente/PerfilPaciente"));
 const RelatorioCiclo       = lazy(() => import("./pages/paciente/RelatorioCiclo"));
+const ParceriaStatus       = lazy(() => import("./pages/paciente/ParceriaStatus"));
+const ParceriaEscolher     = lazy(() => import("./pages/paciente/ParceriaEscolher"));
+const ParceriaPagar        = lazy(() => import("./pages/paciente/ParceriaPagar"));
+const ParceriaRanking      = lazy(() => import("./pages/paciente/ParceriaRanking"));
+const ParceriaChat         = lazy(() => import("./pages/paciente/ParceriaChat"));
+const ParceriaDieta        = lazy(() => import("./pages/paciente/ParceriaDieta"));
 
 function PageSpinner() {
   return (
@@ -137,6 +144,14 @@ function AppRoutes() {
           <Route path="conta"          element={<PerfilPaciente />} />
           <Route path="configuracoes"  element={<ContaPaciente />} />
           <Route path="relatorio/:cicloId" element={<RelatorioCiclo />} />
+          {/* Marketplace de nutricionistas parceiros. Escolher/pagar/status são livres;
+              ranking/chat/dieta exigem acesso ativo (ParceriaAccessGuard, espelha o gate do backend). */}
+          <Route path="parceria"           element={<ParceriaStatus />} />
+          <Route path="parceria/escolher"  element={<ParceriaEscolher />} />
+          <Route path="parceria/pagar/:parceiroId" element={<ParceriaPagar />} />
+          <Route path="parceria/ranking"   element={<ParceriaAccessGuard><ParceriaRanking /></ParceriaAccessGuard>} />
+          <Route path="parceria/chat"      element={<ParceriaAccessGuard><ParceriaChat /></ParceriaAccessGuard>} />
+          <Route path="parceria/dieta"     element={<ParceriaAccessGuard><ParceriaDieta /></ParceriaAccessGuard>} />
         </Route>
 
         <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />
