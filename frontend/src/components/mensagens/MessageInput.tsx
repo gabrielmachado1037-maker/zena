@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { RESPOSTAS_RAPIDAS } from "../../lib/mensagens";
+import { useGravadorAudio, formatarDuracao } from "../../lib/useGravadorAudio";
 
 interface Props {
   valor: string;
@@ -24,6 +25,18 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
   const fileRef = useRef<HTMLInputElement>(null);
   const [rapidasAberto, setRapidasAberto] = useState(false);
   const [anexo, setAnexo] = useState<string | null>(null);
+  const grav = useGravadorAudio();
+
+  async function iniciarGravacao() {
+    if (disabled) return;
+    const ok = await grav.iniciar();
+    if (!ok) alert("Não foi possível acessar o microfone. Verifique a permissão.");
+  }
+  async function enviarGravacao() {
+    if (disabled) return; // guarda antes de consumir a gravação
+    const audio = await grav.parar();
+    if (audio) onEnviar(audio);
+  }
 
   // Auto-resize: replica `this.style.height = 'auto'; = scrollHeight` do mockup.
   useLayoutEffect(() => {
@@ -70,6 +83,29 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
           <span className="text-label-sm text-nx-on-surface-variant">Imagem anexada</span>
         </div>
       )}
+      {grav.estado === "gravando" ? (
+        <div className="flex items-center gap-3 bg-nx-container-high rounded-xl p-2">
+          <button
+            onClick={grav.cancelar}
+            title="Cancelar gravação"
+            className="p-2 rounded-full text-nx-danger hover:bg-nx-danger/10 transition-colors"
+          >
+            <span className="material-symbols-outlined">delete</span>
+          </button>
+          <div className="flex flex-1 items-center gap-2">
+            <span className="size-2.5 rounded-full bg-nx-danger animate-pulse" />
+            <span className="text-body-md tabular-nums text-nx-on-surface">Gravando {formatarDuracao(grav.segundos)}</span>
+          </div>
+          <button
+            onClick={enviarGravacao}
+            disabled={disabled}
+            title="Enviar áudio"
+            className="p-2 bg-nx-evo text-nx-on-evo rounded-full hover:bg-nx-evo-2 transition-colors disabled:opacity-40"
+          >
+            <span className="material-symbols-outlined">send</span>
+          </button>
+        </div>
+      ) : (
       <div className="flex items-end gap-3 bg-nx-container-high rounded-xl p-2 focus-within:ring-1 focus-within:ring-nx-evo transition-all">
         <button
           onClick={() => fileRef.current?.click()}
@@ -92,6 +128,14 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
         />
 
         <div className="flex gap-1 mb-1 relative">
+          <button
+            title="Gravar áudio"
+            onClick={iniciarGravacao}
+            disabled={disabled}
+            className="p-2 text-nx-on-surface-variant hover:text-nx-evo bg-nx-surface-hover/40 rounded-full transition-colors flex items-center justify-center disabled:opacity-40"
+          >
+            <span className="material-symbols-outlined">mic</span>
+          </button>
           <button
             title="Respostas Rápidas"
             onClick={() => setRapidasAberto((s) => !s)}
@@ -129,6 +173,7 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

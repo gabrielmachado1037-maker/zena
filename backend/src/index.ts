@@ -29,6 +29,7 @@ import diarioNutriRouter from "./routes/diarioNutri";
 import relatoriosRouter from "./routes/relatorios";
 import desafiosRouter from "./routes/desafios";
 import onboardingRouter from "./routes/onboarding";
+import parceriaRouter from "./routes/parceria";
 import { initCron } from "./cron";
 import { verificarSeguranca } from "./lib/verificacaoSeguranca";
 import { assinarMidia, testarAssinatura } from "./lib/midia";
@@ -133,6 +134,7 @@ app.use(assinarMidia);
 
 app.use("/api/auth", authRouter);
 app.use("/api/auth/paciente", authPacienteRouter);
+app.use("/api/paciente-app/parceria", parceriaRouter);
 app.use("/api/paciente-app", pacienteAppRouter);
 app.use("/api/pacientes", pacientesRouter);
 app.use("/api/dashboard", dashboardRouter);

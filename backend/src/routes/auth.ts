@@ -13,6 +13,7 @@ import { excluirNutricionista } from "../lib/excluirNutricionista";
 import { buscarNutricionistaPorEmail, normalizarEmail } from "../lib/email-lookup";
 import { limitePorConta } from "../lib/limitePorConta";
 import { hashSenha, gastarTempoDeSenha, precisaRehash } from "../lib/senha";
+import { PLATAFORMA_EMAIL } from "../lib/plataforma";
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -159,6 +160,12 @@ router.post("/register", registerLimiter, validateBody(registerSchema), async (r
   }
   if (String(senha).length < 6) {
     return res.status(400).json({ error: "A senha deve ter ao menos 6 caracteres." });
+  }
+
+  // E-mail reservado da conta interna "nutri-plataforma" (dona dos pacientes B2C):
+  // se alguém o registrasse, sequestraria o funil de cadastro avulso.
+  if (String(email).trim().toLowerCase() === PLATAFORMA_EMAIL) {
+    return res.status(409).json({ error: "E-mail já cadastrado" });
   }
 
   // Insensível a caixa: sem isso, Ana@x.com e ana@x.com viravam duas contas.

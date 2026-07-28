@@ -8,10 +8,13 @@ export interface PacienteUser {
   id: string;
   nome: string;
   email: string;
-  nutricionistaNome: string;
+  nutricionistaNome: string | null;
   nomeConsultorio?: string | null;
   fotoUrl?: string | null;
   emailVerificado?: boolean;
+  // Paciente B2C do marketplace (cadastro avulso, sem clínica). true = sem nutri
+  // vinculado; o app o direciona a contratar/vincular.
+  avulso?: boolean;
 }
 
 interface PacienteAuthContextType {
@@ -19,6 +22,7 @@ interface PacienteAuthContextType {
   token: string | null;
   login: (email: string, senha: string) => Promise<void>;
   register: (email: string, senha: string, codigoVinculo: string, telefone4: string | undefined, aceiteTermos: boolean) => Promise<void>;
+  signup: (nome: string, email: string, senha: string, telefone: string | undefined, aceiteTermos: boolean) => Promise<void>;
   logout: () => void;
   updateFoto: (url: string) => void;
   updatePaciente: (patch: Partial<PacienteUser>) => void;
@@ -79,6 +83,12 @@ export function PacienteAuthProvider({ children }: { children: ReactNode }) {
     guardarSessao(res.data.token, res.data.paciente, res.data.refreshToken);
   }
 
+  // Cadastro avulso (B2C): sem código de convite — o paciente entra sozinho e depois contrata.
+  async function signup(nome: string, email: string, senha: string, telefone: string | undefined, aceiteTermos: boolean) {
+    const res = await api.post("/auth/paciente/signup", { nome, email, senha, telefone, aceiteTermos });
+    guardarSessao(res.data.token, res.data.paciente, res.data.refreshToken);
+  }
+
   function logout() {
     // Revoga o refresh no servidor (best-effort).
     const rt = localStorage.getItem("zena_refresh_paciente");
@@ -113,7 +123,7 @@ export function PacienteAuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <PacienteAuthContext.Provider value={{ paciente, token, login, register, logout, updateFoto, updatePaciente, loading }}>
+    <PacienteAuthContext.Provider value={{ paciente, token, login, register, signup, logout, updateFoto, updatePaciente, loading }}>
       {children}
     </PacienteAuthContext.Provider>
   );

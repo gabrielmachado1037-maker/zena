@@ -189,6 +189,14 @@ export default function LoginPaciente() {
               {isLogin ? "Criar conta" : "Entrar"}
             </button>
           </p>
+
+          {/* Paciente sem nutricionista → caminho B2C (contratar um parceiro) */}
+          <div className="mt-6 border-t border-white/[0.06] pt-5 text-center">
+            <p className="text-body-sm text-[#71717A]">Não tem nutricionista?</p>
+            <Link to="/paciente-comecar" className="mt-1 inline-block text-body-sm font-bold text-nx-evo transition-colors hover:text-nx-evo-2">
+              Contratar um nutricionista →
+            </Link>
+          </div>
         </div>
       </div>
     </div>

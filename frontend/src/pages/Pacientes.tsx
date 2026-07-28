@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import api from "../lib/api";
 import Avatar from "../components/Avatar";
+import AcessoPeriodoPicker from "../components/AcessoPeriodoPicker";
 import { LeagueEmblem } from "../components/ui-nx";
 import { progressoLiga, diasDesde, CORES_LIGA, formatarXp } from "../lib/ligas";
 import { gerarUrlWhatsApp } from "../lib/utils";
@@ -492,6 +493,7 @@ function ExcluirModal({ paciente, onClose, onExcluido }: {
 
 function NovoPacienteModal({ onClose, onCriado }: { onClose: () => void; onCriado: () => void }) {
   const [form, setForm] = useState({ nome: "", email: "", telefone: "", objetivo: "", pesoMeta: "" });
+  const [acessoExpira, setAcessoExpira] = useState<string | null>(null); // vencimento do acesso (null = sem prazo)
   const [salvando, setSalvando] = useState(false);
   const [criado, setCriado] = useState<{ conviteCodigo: string; nome: string; telefone: string | null } | null>(null);
   const [copiado, setCopiado] = useState(false);
@@ -501,7 +503,7 @@ function NovoPacienteModal({ onClose, onCriado }: { onClose: () => void; onCriad
     if (!form.nome.trim()) return;
     setSalvando(true);
     try {
-      const r = await api.post("/pacientes", { ...form, dataInicio: new Date().toISOString() });
+      const r = await api.post("/pacientes", { ...form, dataInicio: new Date().toISOString(), acessoExpiraEm: acessoExpira });
       // Mantém a lógica atual de cadastro; apenas mostra o convite já gerado no backend.
       setCriado({ conviteCodigo: r.data.conviteCodigo, nome: r.data.nome, telefone: r.data.telefone ?? null });
     } catch {
@@ -556,6 +558,10 @@ function NovoPacienteModal({ onClose, onCriado }: { onClose: () => void; onCriad
                   className="w-full bg-nx-container border border-nx-border rounded-xl px-3 py-2.5 text-body-sm text-nx-on-surface placeholder:text-nx-on-surface-variant focus:outline-none focus:border-nx-evo/50 focus:ring-1 focus:ring-nx-evo/40 transition-colors"
                 />
               ))}
+              <div className="pt-1">
+                <p className="mb-2 text-body-sm font-medium text-nx-on-surface-variant">Tempo de acesso</p>
+                <AcessoPeriodoPicker value={acessoExpira} onChange={setAcessoExpira} />
+              </div>
             </div>
             <button
               onClick={salvar}

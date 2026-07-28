@@ -49,6 +49,7 @@ function resolveDeepLink(destination, id) {
     case 'feed_paciente':         return '/paciente/feed';
     case 'evolucao_paciente':     return '/paciente/evolucao';
     case 'conta_paciente':        return '/paciente/conta';
+    case 'parceria':              return '/paciente/parceria';
     // nutricionista
     case 'conversation_nutri':    return id ? '/app/mensagens/' + id : '/app/mensagens';
     case 'patient':               return id ? '/app/pacientes/' + id : '/app/pacientes';

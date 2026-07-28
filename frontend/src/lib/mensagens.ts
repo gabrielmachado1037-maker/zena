@@ -25,7 +25,8 @@ export interface Mensagem {
   texto: string;
   hora: string; // "10:30"
   avatarUrl: string | null;
-  anexoUrl?: string | null; // imagem anexada (URL do Supabase ou data URI otimista)
+  anexoUrl?: string | null; // imagem/áudio anexado (URL do Supabase ou data URI otimista)
+  anexoTipo?: string | null; // "imagem" | "audio"
   nome?: string; // primeiro nome do paciente (rótulo acima do balão)
 }
 
@@ -55,7 +56,7 @@ interface ThreadResp {
   pacienteAvatarUrl: string | null;
   nutriAvatarUrl: string | null;
   paciente?: PacienteContexto | null;
-  mensagens: { id: string; autor: Autor; conteudo: string; anexoUrl?: string | null; criadoEm: string }[];
+  mensagens: { id: string; autor: Autor; conteudo: string; anexoUrl?: string | null; anexoTipo?: string | null; criadoEm: string }[];
   hasMore?: boolean;
   nextCursor?: string | null;
 }
@@ -89,6 +90,7 @@ function mapMensagens(
     hora: formatHora(m.criadoEm),
     avatarUrl: m.autor === "nutri" ? nutriAvatarUrl : pacienteAvatarUrl,
     anexoUrl: m.anexoUrl ?? null,
+    anexoTipo: m.anexoTipo ?? null,
     nome: m.autor === "paciente" ? primeiroNome : undefined,
   }));
 }
@@ -125,12 +127,12 @@ export async function enviarMensagem(
   conversaId: string,
   conteudo: string,
   anexoBase64?: string,
-): Promise<{ id: string; criadoEm: string; anexoUrl: string | null }> {
-  const { data } = await api.post<{ id: string; conteudo: string; anexoUrl: string | null; criadoEm: string }>(
+): Promise<{ id: string; criadoEm: string; anexoUrl: string | null; anexoTipo: string | null }> {
+  const { data } = await api.post<{ id: string; conteudo: string; anexoUrl: string | null; anexoTipo?: string | null; criadoEm: string }>(
     `/mensagens/thread/${conversaId}`,
     { conteudo, anexoBase64 },
   );
-  return { id: data.id, criadoEm: data.criadoEm, anexoUrl: data.anexoUrl ?? null };
+  return { id: data.id, criadoEm: data.criadoEm, anexoUrl: data.anexoUrl ?? null, anexoTipo: data.anexoTipo ?? null };
 }
 
 export async function marcarLida(conversaId: string): Promise<void> {

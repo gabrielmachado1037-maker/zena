@@ -4,7 +4,7 @@ import prisma from "../lib/prisma";
 import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
 import { NotificationEngine } from "../services/notificationEngine";
-import { uploadImagemChat, UploadError } from "../lib/supabase";
+import { uploadAnexoChat, UploadError } from "../lib/supabase";
 import { parseMsgPaginacao, buscarPaginaMensagens } from "../lib/mensagensPaginacao";
 
 const router = Router();
@@ -106,7 +106,7 @@ router.get("/thread/:pacienteId", async (req: AuthRequest, res: Response) => {
     { nutricionistaId, pacienteId }, limit, before,
   );
   const mensagens = pagina.map((m) => ({
-    id: m.id, autor: m.autor, conteudo: m.conteudo, anexoUrl: m.anexoUrl, criadoEm: m.criadoEm,
+    id: m.id, autor: m.autor, conteudo: m.conteudo, anexoUrl: m.anexoUrl, anexoTipo: m.anexoTipo, criadoEm: m.criadoEm,
   }));
 
   // Página anterior (scroll pra cima): só o histórico, sem recomputar contexto/marcar lida.
@@ -178,12 +178,12 @@ router.post("/thread/:pacienteId", validateBody(enviarMensagemSchema), async (re
   if (!paciente) return res.status(404).json({ error: "Paciente não encontrada" });
 
   let anexoUrl: string | null = null;
+  let anexoTipo: "imagem" | "audio" | null = null;
   if (anexoBase64) {
-    if (!anexoBase64.startsWith("data:image/")) {
-      return res.status(400).json({ error: "Anexo inválido (apenas imagens)" });
-    }
     try {
-      anexoUrl = await uploadImagemChat(`chat/${nutricionistaId}/${pacienteId}/${Date.now()}.jpg`, anexoBase64);
+      const r = await uploadAnexoChat(nutricionistaId, pacienteId, anexoBase64);
+      anexoUrl = r.url;
+      anexoTipo = r.tipo;
     } catch (e) {
       if (e instanceof UploadError) return res.status(400).json({ error: e.message });
       return res.status(502).json({ error: "Falha ao enviar o anexo. Tente novamente." });
@@ -191,12 +191,12 @@ router.post("/thread/:pacienteId", validateBody(enviarMensagemSchema), async (re
   }
 
   const msg = await prisma.mensagemChat.create({
-    data: { nutricionistaId, pacienteId, autor: "nutri", conteudo, anexoUrl, lida: true },
+    data: { nutricionistaId, pacienteId, autor: "nutri", conteudo, anexoUrl, anexoTipo, lida: true },
   });
 
   // Notificação push via NotificationEngine (respeita preferência/quiet-hours/log).
   {
-    const previa = conteudo || "📷 Enviou uma imagem";
+    const previa = conteudo || (anexoTipo === "audio" ? "🎤 Enviou um áudio" : "📷 Enviou uma imagem");
     NotificationEngine.enviar(pacienteId, "mensagem", {
       titulo: "💬 Sua nutricionista enviou uma nova mensagem",
       corpo: previa.length > 80 ? previa.slice(0, 77) + "..." : previa,
@@ -204,7 +204,7 @@ router.post("/thread/:pacienteId", validateBody(enviarMensagemSchema), async (re
     }).catch(() => {});
   }
 
-  res.json({ id: msg.id, autor: msg.autor, conteudo: msg.conteudo, anexoUrl: msg.anexoUrl, criadoEm: msg.criadoEm });
+  res.json({ id: msg.id, autor: msg.autor, conteudo: msg.conteudo, anexoUrl: msg.anexoUrl, anexoTipo: msg.anexoTipo, criadoEm: msg.criadoEm });
 });
 
 // PATCH /api/mensagens/thread/:pacienteId/lida — marca conversa como lida.

@@ -6,6 +6,7 @@ import { PacienteAuthProvider } from "./contexts/PacienteAuthContext";
 import Layout from "./components/Layout";
 import PacienteLayout from "./components/PacienteLayout";
 import RotaProtegida from "./components/RotaProtegida";
+import ParceriaAccessGuard from "./components/ParceriaAccessGuard";
 import BannerInstalacao from "./components/BannerInstalacao";
 
 // Lazy-loaded pages — each route only downloads when visited
@@ -36,6 +37,8 @@ const EmBreve       = lazy(() => import("./pages/EmBreve"));
 const DesignShowcase = lazy(() => import("./pages/DesignShowcase"));
 const Feed               = lazy(() => import("./pages/Feed"));
 const LoginPaciente      = lazy(() => import("./pages/LoginPaciente"));
+const PacienteComecar    = lazy(() => import("./pages/paciente/PacienteComecar"));
+const PacienteCadastro   = lazy(() => import("./pages/paciente/PacienteCadastro"));
 const CompletarPerfil    = lazy(() => import("./pages/paciente/CompletarPerfil"));
 const AtivarNotificacoes = lazy(() => import("./pages/paciente/AtivarNotificacoes"));
 const VerificarEmailPaciente = lazy(() => import("./pages/VerificarEmailPaciente"));
@@ -55,6 +58,12 @@ const EvolucaoPaciente     = lazy(() => import("./pages/paciente/EvolucaoPacient
 const DesafiosPaciente     = lazy(() => import("./pages/paciente/DesafiosPaciente"));
 const PerfilPaciente       = lazy(() => import("./pages/paciente/PerfilPaciente"));
 const RelatorioCiclo       = lazy(() => import("./pages/paciente/RelatorioCiclo"));
+const ParceriaStatus       = lazy(() => import("./pages/paciente/ParceriaStatus"));
+const ParceriaEscolher     = lazy(() => import("./pages/paciente/ParceriaEscolher"));
+const ParceriaPagar        = lazy(() => import("./pages/paciente/ParceriaPagar"));
+const ParceriaRanking      = lazy(() => import("./pages/paciente/ParceriaRanking"));
+const ParceriaChat         = lazy(() => import("./pages/paciente/ParceriaChat"));
+const ParceriaDieta        = lazy(() => import("./pages/paciente/ParceriaDieta"));
 
 function PageSpinner() {
   return (
@@ -117,6 +126,8 @@ function AppRoutes() {
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/nutri" element={<NutriLanding />} />
         <Route path="/login-paciente" element={<LoginPaciente />} />
+        <Route path="/paciente-comecar" element={<PacienteComecar />} />
+        <Route path="/paciente-cadastro" element={<PacienteCadastro />} />
         <Route path="/instalar" element={<Instalar />} />
         <Route path="/esqueci-senha-paciente" element={<EsqueciSenhaPaciente />} />
         <Route path="/redefinir-senha-paciente" element={<RedefinirSenhaPaciente />} />
@@ -137,6 +148,14 @@ function AppRoutes() {
           <Route path="conta"          element={<PerfilPaciente />} />
           <Route path="configuracoes"  element={<ContaPaciente />} />
           <Route path="relatorio/:cicloId" element={<RelatorioCiclo />} />
+          {/* Marketplace de nutricionistas parceiros. Escolher/pagar/status são livres;
+              ranking/chat/dieta exigem acesso ativo (ParceriaAccessGuard, espelha o gate do backend). */}
+          <Route path="parceria"           element={<ParceriaStatus />} />
+          <Route path="parceria/escolher"  element={<ParceriaEscolher />} />
+          <Route path="parceria/pagar/:parceiroId" element={<ParceriaPagar />} />
+          <Route path="parceria/ranking"   element={<ParceriaAccessGuard><ParceriaRanking /></ParceriaAccessGuard>} />
+          <Route path="parceria/chat"      element={<ParceriaAccessGuard><ParceriaChat /></ParceriaAccessGuard>} />
+          <Route path="parceria/dieta"     element={<ParceriaAccessGuard><ParceriaDieta /></ParceriaAccessGuard>} />
         </Route>
 
         <Route path="/dashboard" element={<Navigate to="/app/dashboard" replace />} />

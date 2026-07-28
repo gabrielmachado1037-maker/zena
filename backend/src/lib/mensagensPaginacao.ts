@@ -22,7 +22,7 @@ export async function buscarPaginaMensagens(
   limit: number,
   before: string | null,
 ): Promise<{
-  pagina: Array<{ id: string; autor: string; conteudo: string; anexoUrl: string | null; criadoEm: Date }>;
+  pagina: Array<{ id: string; autor: string; conteudo: string; anexoUrl: string | null; anexoTipo: string | null; criadoEm: Date }>;
   hasMore: boolean;
   nextCursor: string | null;
 }> {
@@ -31,7 +31,7 @@ export async function buscarPaginaMensagens(
     orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
     take: limit + 1,
     ...(before ? { cursor: { id: before }, skip: 1 } : {}),
-    select: { id: true, autor: true, conteudo: true, anexoUrl: true, criadoEm: true },
+    select: { id: true, autor: true, conteudo: true, anexoUrl: true, anexoTipo: true, criadoEm: true },
   });
   const hasMore = rows.length > limit;
   const pagina = (hasMore ? rows.slice(0, limit) : rows).reverse(); // desc → asc

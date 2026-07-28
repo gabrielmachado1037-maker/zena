@@ -6,6 +6,7 @@ import { authMiddleware, AuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
 import { criarClienteNexvel, criarAssinaturaPix, cancelarAssinatura, assinaturaTemPagamentoConfirmado } from "../lib/asaas";
 import { MODULOS_POR_PLANO } from "../middleware/checkModulo";
+import { REF_PREFIX, processarWebhookParceria } from "../lib/parceria";
 
 const router = Router();
 
@@ -452,6 +453,18 @@ router.post("/asaas-webhook", async (req: Request, res: Response) => {
 
   const { event, payment } = req.body as { event: string; payment?: { externalReference?: string; dueDate?: string } };
   if (!payment?.externalReference) return res.json({ ok: true });
+
+  // Marketplace de parceiros (externalReference "mkt:<consultaId>") — fluxo isolado
+  // do B2B. Roteia para a ativação do acesso de 30 dias e encerra aqui.
+  if (payment.externalReference.startsWith(REF_PREFIX)) {
+    try {
+      await processarWebhookParceria(event, payment.externalReference.slice(REF_PREFIX.length));
+    } catch (e) {
+      console.error("[asaas-webhook/parceria] falhou:", (e as Error).message);
+      return res.status(500).json({ error: "erro ao processar webhook" });
+    }
+    return res.json({ ok: true });
+  }
 
   const nutricionistaId = payment.externalReference;
 

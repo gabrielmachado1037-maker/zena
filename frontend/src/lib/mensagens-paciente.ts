@@ -11,6 +11,7 @@ export interface MensagemNutri {
   texto: string;
   hora: string; // "10:30"
   anexoUrl?: string | null;
+  anexoTipo?: string | null; // "imagem" | "audio"
   criadoEm: string; // ISO — usado pra agrupar por dia
 }
 
@@ -25,7 +26,7 @@ export interface ThreadNutri {
 interface ThreadResp {
   nutriNome: string;
   nutriAvatarUrl: string | null;
-  mensagens: { id: string; autor: Autor; conteudo: string; anexoUrl?: string | null; criadoEm: string }[];
+  mensagens: { id: string; autor: Autor; conteudo: string; anexoUrl?: string | null; anexoTipo?: string | null; criadoEm: string }[];
   hasMore?: boolean;
   nextCursor?: string | null;
 }
@@ -57,6 +58,7 @@ function mapMensagens(msgs: ThreadResp["mensagens"]): MensagemNutri[] {
     texto: m.conteudo,
     hora: formatHora(m.criadoEm),
     anexoUrl: m.anexoUrl ?? null,
+    anexoTipo: m.anexoTipo ?? null,
     criadoEm: m.criadoEm,
   }));
 }
@@ -85,16 +87,17 @@ export async function getMensagensNutriAnteriores(
   };
 }
 
-export async function enviarMensagemNutri(conteudo: string): Promise<MensagemNutri> {
+export async function enviarMensagemNutri(conteudo: string, anexoBase64?: string): Promise<MensagemNutri> {
   const { data } = await apiPaciente.post<{
-    id: string; autor: Autor; conteudo: string; anexoUrl?: string | null; criadoEm: string;
-  }>("/paciente-app/mensagens", { conteudo });
+    id: string; autor: Autor; conteudo: string; anexoUrl?: string | null; anexoTipo?: string | null; criadoEm: string;
+  }>("/paciente-app/mensagens", { conteudo, anexoBase64 });
   return {
     id: data.id,
     autor: data.autor,
     texto: data.conteudo,
     hora: formatHora(data.criadoEm),
     anexoUrl: data.anexoUrl ?? null,
+    anexoTipo: data.anexoTipo ?? null,
     criadoEm: data.criadoEm,
   };
 }

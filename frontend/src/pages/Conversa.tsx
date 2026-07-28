@@ -97,9 +97,10 @@ export default function Conversa() {
     if (!txt && !anexoBase64) return;
 
     const tempId = `tmp-${txt.length}-${thread?.mensagens.length ?? 0}`;
+    const tipoOtim = anexoBase64 ? (anexoBase64.startsWith("data:audio/") ? "audio" : "imagem") : null;
     const otim: Mensagem = {
       id: tempId, autor: "nutri", texto: txt, hora: formatHora(new Date()),
-      avatarUrl: thread?.nutriAvatarUrl ?? null, anexoUrl: anexoBase64 ?? null,
+      avatarUrl: thread?.nutriAvatarUrl ?? null, anexoUrl: anexoBase64 ?? null, anexoTipo: tipoOtim,
     };
     setThread((t) => (t ? { ...t, mensagens: [...t.mensagens, otim] } : t));
     setTexto("");
@@ -107,7 +108,7 @@ export default function Conversa() {
     try {
       const r = await enviarMensagem(id, txt, anexoBase64);
       setThread((t) =>
-        t ? { ...t, mensagens: t.mensagens.map((m) => (m.id === tempId ? { ...m, id: r.id, anexoUrl: r.anexoUrl ?? m.anexoUrl } : m)) } : t,
+        t ? { ...t, mensagens: t.mensagens.map((m) => (m.id === tempId ? { ...m, id: r.id, anexoUrl: r.anexoUrl ?? m.anexoUrl, anexoTipo: r.anexoTipo ?? m.anexoTipo } : m)) } : t,
       );
     } catch {
       setThread((t) => (t ? { ...t, mensagens: t.mensagens.filter((m) => m.id !== tempId) } : t));
