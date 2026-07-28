@@ -599,6 +599,36 @@ function ConfigModal({ onClose, onSaved, zonaN, setZonaN }: {
   );
 }
 
+/* ───────── Top 10 da clínica (mesmo ranking por XP que o paciente vê) ───────── */
+function Top10Clinica({ pacientes }: { pacientes: LigaPaciente[] }) {
+  const navigate = useNavigate();
+  const top = [...pacientes].sort((a, b) => b.pontosTotal - a.pontosTotal).slice(0, 10);
+  if (top.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      {top.map((p, idx) => (
+        <button
+          key={p.id}
+          onClick={() => navigate(`/app/pacientes/${p.id}`)}
+          className="flex w-full items-center gap-3 rounded-xl border border-nx-border bg-nx-surface px-3 py-2.5 text-left transition-colors hover:bg-nx-surface-hover"
+        >
+          <span className="w-5 shrink-0 text-center text-body-sm font-bold text-nx-on-surface-variant tabular-nums">{idx + 1}</span>
+          <Avatar src={p.foto} nome={p.nome} tamanho={38} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-body-md font-semibold text-nx-on-surface">{p.nome}</p>
+            <p className="truncate text-label-sm text-nx-on-surface-variant">{p.liga} {p.nivel}</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-body-md font-bold tabular-nums" style={{ color: p.cor }}>{nf(p.pontosTotal)}</p>
+            <p className="text-label-sm text-nx-on-surface-variant">XP</p>
+          </div>
+          <ChevronRight size={16} className="shrink-0 text-nx-outline" />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /* ───────── página ───────── */
 export default function Ligas() {
   const [periodo, setPeriodo] = useState<"semanal" | "mensal">("semanal");
@@ -697,6 +727,14 @@ export default function Ligas() {
                   <MovCard tipo="queda" valor={null} />
                 </>
               )}
+            </section>
+
+            {/* Top 10 da clínica (ranking por XP — o mesmo que o paciente vê) */}
+            <section>
+              <h2 className="mb-4 text-body-lg font-semibold text-nx-on-surface">Top 10 da clínica</h2>
+              <StateBox loading={loading} error={error} onRetry={refetch} empty={data?.total === 0} minH="h-64">
+                {data && <Top10Clinica pacientes={data.pacientes} />}
+              </StateBox>
             </section>
 
             {/* Classificação das Ligas */}
