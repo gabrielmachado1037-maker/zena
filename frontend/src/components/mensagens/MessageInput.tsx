@@ -28,10 +28,12 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
   const grav = useGravadorAudio();
 
   async function iniciarGravacao() {
+    if (disabled) return;
     const ok = await grav.iniciar();
     if (!ok) alert("Não foi possível acessar o microfone. Verifique a permissão.");
   }
   async function enviarGravacao() {
+    if (disabled) return; // guarda antes de consumir a gravação
     const audio = await grav.parar();
     if (audio) onEnviar(audio);
   }
@@ -96,8 +98,9 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
           </div>
           <button
             onClick={enviarGravacao}
+            disabled={disabled}
             title="Enviar áudio"
-            className="p-2 bg-nx-evo text-nx-on-evo rounded-full hover:bg-nx-evo-2 transition-colors"
+            className="p-2 bg-nx-evo text-nx-on-evo rounded-full hover:bg-nx-evo-2 transition-colors disabled:opacity-40"
           >
             <span className="material-symbols-outlined">send</span>
           </button>
@@ -128,7 +131,8 @@ export default function MessageInput({ valor, onChange, onEnviar, disabled }: Pr
           <button
             title="Gravar áudio"
             onClick={iniciarGravacao}
-            className="p-2 text-nx-on-surface-variant hover:text-nx-evo bg-nx-surface-hover/40 rounded-full transition-colors flex items-center justify-center"
+            disabled={disabled}
+            className="p-2 text-nx-on-surface-variant hover:text-nx-evo bg-nx-surface-hover/40 rounded-full transition-colors flex items-center justify-center disabled:opacity-40"
           >
             <span className="material-symbols-outlined">mic</span>
           </button>

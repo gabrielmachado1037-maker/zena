@@ -118,8 +118,9 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
   }
 
   async function enviarAudio() {
+    if (enviando) return // guarda ANTES de consumir a gravação (parar() esvazia o buffer)
     const audio = await grav.parar()
-    if (!audio || enviando) return
+    if (!audio) return
     const otimista: MensagemNutri = {
       id: `tmp-${Date.now()}`, autor: "paciente", texto: "",
       hora: formatHora(new Date()), criadoEm: new Date().toISOString(),
@@ -341,7 +342,7 @@ export function MensagensScreen({ onNavigate }: { onNavigate: NavigateFn }) {
             <button
               type="button"
               onClick={iniciarGravacao}
-              disabled={loading}
+              disabled={loading || enviando}
               aria-label="Gravar áudio"
               className="grid size-[42px] shrink-0 place-items-center rounded-nx-lg bg-nx-evo text-nx-on-evo transition-opacity disabled:opacity-40"
             >

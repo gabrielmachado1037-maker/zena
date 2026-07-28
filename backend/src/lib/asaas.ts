@@ -108,7 +108,11 @@ export async function cancelarAssinatura(subscriptionId: string) {
 // Usa a chave DO NEXVEL (plataforma). O split manda `valorParceiro` para a wallet
 // do parceiro; o restante (R$50) fica na conta da plataforma implicitamente.
 // Sem walletId (parceiro sem wallet cadastrada), cobra sem split para não travar a venda.
-export async function criarCobrancaSplitNexvel(
+// Passos separados (POST → GET QR) de propósito: o chamador guarda o chargeId
+// ASSIM que a cobrança é criada, antes de buscar o QR. Se o QR falhar, ainda dá
+// para CANCELAR a cobrança (senão vira cobrança órfã que o cliente pode pagar sem
+// receber acesso).
+export async function criarPagamentoSplitNexvel(
   customerId: string,
   valor: number,
   vencimento: string,
@@ -116,7 +120,7 @@ export async function criarCobrancaSplitNexvel(
   externalReference: string,
   walletId: string | null | undefined,
   valorParceiro: number,
-): Promise<{ charge: { id: string; status?: string }; pix: { payload?: string; encodedImage?: string } }> {
+): Promise<{ id: string; status?: string }> {
   const body: Record<string, unknown> = {
     customer: customerId,
     billingType: "PIX",
@@ -126,9 +130,15 @@ export async function criarCobrancaSplitNexvel(
     externalReference,
   };
   if (walletId) body.split = [{ walletId, fixedValue: valorParceiro }];
-  const charge = await nexvelReq("POST", "/payments", body);
-  const pix = await nexvelReq("GET", `/payments/${charge.id}/pixQrCode`);
-  return { charge, pix };
+  return nexvelReq("POST", "/payments", body) as Promise<{ id: string; status?: string }>;
+}
+
+export async function buscarPixNexvel(chargeId: string): Promise<{ payload?: string; encodedImage?: string }> {
+  return nexvelReq("GET", `/payments/${chargeId}/pixQrCode`) as Promise<{ payload?: string; encodedImage?: string }>;
+}
+
+export async function cancelarCobrancaNexvel(chargeId: string): Promise<void> {
+  await nexvelReq("DELETE", `/payments/${chargeId}`);
 }
 
 /** true se a cobrança avulsa já foi efetivamente paga (Pix compensado). */

@@ -88,14 +88,20 @@ router.post("/feed", validateBody(feedSchema), async (req: PacienteAuthRequest, 
     fotoUrl = await uploadFeedFoto(path, fotoBase64);
   }
 
-  const pacienteUserSnap = await prisma.pacienteUser.findUnique({
-    where: { pacienteId: req.pacienteId! },
-    select: { fotoUrl: true, postPublicoPadrao: true },
-  });
+  const [pacienteUserSnap, pacienteSnap] = await Promise.all([
+    prisma.pacienteUser.findUnique({
+      where: { pacienteId: req.pacienteId! },
+      select: { fotoUrl: true, postPublicoPadrao: true },
+    }),
+    prisma.paciente.findUnique({ where: { id: req.pacienteId! }, select: { avulso: true } }),
+  ]);
 
   // Se o cliente não especificar, usa a preferência de privacidade padrão do paciente.
-  const privacidadeFinal =
-    privacidade ?? (pacienteUserSnap?.postPublicoPadrao === false ? "APENAS_NUTRI" : "PUBLICO");
+  // ⚠️ Paciente AVULSO (B2C) compartilha a nutri-plataforma com TODOS os outros avulsos,
+  // então "PUBLICO" vazaria o post pra estranhos → força APENAS_NUTRI para esse caso.
+  const privacidadeFinal = pacienteSnap?.avulso
+    ? "APENAS_NUTRI"
+    : (privacidade ?? (pacienteUserSnap?.postPublicoPadrao === false ? "APENAS_NUTRI" : "PUBLICO"));
 
   const post = await prisma.feedPost.create({
     data: {

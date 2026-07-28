@@ -153,7 +153,7 @@ export function initCron() {
   cron.schedule("0 9 * * 1", async () => {
     try {
       const nutris = await prisma.nutricionista.findMany({
-        where: { planoAtivo: true },
+        where: { planoAtivo: true, plano: { not: "plataforma" } }, // exclui a conta interna B2C
         select: { id: true },
       });
       for (const n of nutris) {

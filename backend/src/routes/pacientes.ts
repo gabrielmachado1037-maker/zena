@@ -187,6 +187,13 @@ router.get("/:id", async (req: AuthRequest, res: Response) => {
   res.json(paciente);
 });
 
+// yyyy-mm-dd (do date-picker) → FIM do dia no fuso BRT. Sem isso, `new Date("2026-08-01")`
+// vira meia-noite UTC = 21h BRT do dia 31, bloqueando o paciente quase um dia antes da
+// data que a nutri escolheu. Datas com hora (ISO completo) passam direto.
+function parseVencimentoAcesso(s: string): Date {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T23:59:59-03:00`) : new Date(s);
+}
+
 router.post("/", validateBody(criarPacienteSchema), async (req: AuthRequest, res: Response) => {
   const { nome, email, telefone, objetivo, dataInicio, pesoMeta, acessoExpiraEm } = req.body;
   // Gera automaticamente o convite individual (uso único) já no cadastro do paciente.
@@ -197,7 +204,7 @@ router.post("/", validateBody(criarPacienteSchema), async (req: AuthRequest, res
     objetivo,
     dataInicio: new Date(dataInicio),
     pesoMeta: pesoMeta ? parseFloat(pesoMeta) : null,
-    acessoExpiraEm: acessoExpiraEm ? new Date(acessoExpiraEm) : null,
+    acessoExpiraEm: acessoExpiraEm ? parseVencimentoAcesso(acessoExpiraEm) : null,
     nutricionistaId: req.nutricionistaId!,
   });
   res.json(paciente);
@@ -262,7 +269,7 @@ router.put("/:id", validateBody(atualizarPacienteSchema), async (req: AuthReques
       dataNascimento: dataNascimento ? new Date(dataNascimento) : null,
       sexo: sexo || null,
       // undefined = não mexe no prazo; null = remove (sem prazo); data = estende/reduz.
-      acessoExpiraEm: acessoExpiraEm !== undefined ? (acessoExpiraEm ? new Date(acessoExpiraEm) : null) : undefined,
+      acessoExpiraEm: acessoExpiraEm !== undefined ? (acessoExpiraEm ? parseVencimentoAcesso(acessoExpiraEm) : null) : undefined,
     },
   });
   res.json(updated);

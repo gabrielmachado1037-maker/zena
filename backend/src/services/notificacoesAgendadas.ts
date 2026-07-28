@@ -82,24 +82,26 @@ export async function enviarPositivas(pacienteIds?: string[]): Promise<void> {
  */
 export async function avisarParceriaExpirando(): Promise<void> {
   const agora = Date.now();
-  const em4d = new Date(agora + 4 * DIA);
   const em5d = new Date(agora + 5 * DIA);
 
+  // Janela "≤ 5 dias" (não uma faixa de 24h): se o cron pular um dia, o aviso ainda
+  // sai no dia seguinte. O dedupeKey (por consulta) garante exatamente 1 envio.
   const consultas = await prisma.consultaParceria.findMany({
     where: {
       status: "ativo",
-      expiraEm: { gt: em4d, lte: em5d }, // janela do "faltam 5 dias"
+      expiraEm: { gt: new Date(agora), lte: em5d },
       paciente: { anonimizadoEm: null, pushSubscriptionsPaciente: { some: {} } },
     },
-    select: { id: true, pacienteId: true, parceiro: { select: { nome: true } } },
+    select: { id: true, pacienteId: true, expiraEm: true, parceiro: { select: { nome: true } } },
   });
 
   for (const c of consultas) {
+    const dias = Math.max(1, Math.ceil((c.expiraEm!.getTime() - agora) / DIA));
     await NotificationEngine.enviar(c.pacienteId, "parceria_expira", {
-      titulo: "⏳ Seu acesso vence em 5 dias",
-      corpo: `Faltam 5 dias no seu acesso a ${c.parceiro.nome}. Renove para não perder o acompanhamento.`,
+      titulo: `⏳ Seu acesso vence em ${dias} ${dias === 1 ? "dia" : "dias"}`,
+      corpo: `Faltam ${dias} ${dias === 1 ? "dia" : "dias"} no seu acesso a ${c.parceiro.nome}. Renove para não perder o acompanhamento.`,
       destination: "parceria",
-      dedupeKey: `acesso_expira:5:${c.id}`,
+      dedupeKey: `acesso_expira:${c.id}`,
     });
   }
 }
@@ -111,24 +113,27 @@ export async function avisarParceriaExpirando(): Promise<void> {
  */
 export async function avisarAcessoB2bExpirando(): Promise<void> {
   const agora = Date.now();
-  const em4d = new Date(agora + 4 * DIA);
   const em5d = new Date(agora + 5 * DIA);
 
+  // Janela "≤ 5 dias" auto-curável (ver avisarParceriaExpirando). O dedupeKey inclui a
+  // data de vencimento: se a nutri ESTENDER o prazo e ele voltar a se aproximar, um
+  // novo aviso é permitido (chave diferente).
   const pacientes = await prisma.paciente.findMany({
     where: {
       ativo: true, anonimizadoEm: null,
-      acessoExpiraEm: { gt: em4d, lte: em5d }, // janela do "faltam 5 dias"
+      acessoExpiraEm: { gt: new Date(agora), lte: em5d },
       pushSubscriptionsPaciente: { some: {} },
     },
     select: { id: true, acessoExpiraEm: true },
   });
 
   for (const p of pacientes) {
+    const dias = Math.max(1, Math.ceil((p.acessoExpiraEm!.getTime() - agora) / DIA));
     await NotificationEngine.enviar(p.id, "acesso_b2b_expira", {
-      titulo: "⏳ Seu acesso vence em 5 dias",
+      titulo: `⏳ Seu acesso vence em ${dias} ${dias === 1 ? "dia" : "dias"}`,
       corpo: "Fale com seu nutricionista para renovar e não perder seu acompanhamento.",
       destination: "dashboard_paciente",
-      dedupeKey: `acesso_b2b:5:${p.id}:${ymd(p.acessoExpiraEm!)}`,
+      dedupeKey: `acesso_b2b:${p.id}:${ymd(p.acessoExpiraEm!)}`,
     });
   }
 }

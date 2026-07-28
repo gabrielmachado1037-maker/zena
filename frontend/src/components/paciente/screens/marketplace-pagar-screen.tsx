@@ -16,6 +16,7 @@ export function MarketplacePagarScreen() {
   const [copiado, setCopiado] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const navTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function gerar() {
     setErro(null);
@@ -49,11 +50,14 @@ export function MarketplacePagarScreen() {
         if (s.pago) {
           setConfirmado(true);
           if (pollRef.current) clearInterval(pollRef.current);
-          setTimeout(() => navigate("/paciente/parceria", { replace: true }), 1400);
+          navTimerRef.current = setTimeout(() => navigate("/paciente/parceria", { replace: true }), 1400);
         }
       } catch { /* segue tentando */ }
     }, 4000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (navTimerRef.current) clearTimeout(navTimerRef.current);
+    };
   }, [pix, navigate]);
 
   async function copiar() {

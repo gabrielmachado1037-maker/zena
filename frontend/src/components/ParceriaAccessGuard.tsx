@@ -12,9 +12,11 @@ export default function ParceriaAccessGuard({ children }: { children: React.Reac
   const [ativo, setAtivo] = useState<boolean | null>(null);
 
   useEffect(() => {
+    let vivo = true;
     statusParceria()
-      .then((s) => setAtivo(s.ativo))
-      .catch(() => setAtivo(false));
+      .then((s) => vivo && setAtivo(s.ativo))
+      .catch(() => vivo && setAtivo(false));
+    return () => { vivo = false; };
   }, []);
 
   if (ativo === null) {

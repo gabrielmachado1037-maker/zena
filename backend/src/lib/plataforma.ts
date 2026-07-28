@@ -7,7 +7,7 @@ import { hashSenha } from "./senha";
 // clínica). Assim o FK obrigatório `Paciente.nutricionistaId` continua válido e
 // NADA do fluxo B2B precisa mudar. Ela nunca faz login (senha aleatória) e é
 // marcada com plano/status "ativo" para ficar fora dos crons de trial/cobrança.
-const PLATAFORMA_EMAIL = "plataforma@nexvel.tech";
+export const PLATAFORMA_EMAIL = "plataforma@nexvel.tech";
 let cacheId: string | null = null;
 
 export async function getPlataformaNutriId(): Promise<string> {

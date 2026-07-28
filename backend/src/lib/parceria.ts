@@ -63,36 +63,60 @@ export async function acessoAtivo(pacienteId: string) {
  * Idempotente: se já estiver ativa, não reabre a janela.
  */
 export async function ativarConsulta(consultaId: string): Promise<void> {
-  await prisma.$transaction(async (tx) => {
-    const consulta = await tx.consultaParceria.findUnique({ where: { id: consultaId } });
-    if (!consulta) return;
-    if (consulta.status === "ativo") return; // idempotência: webhook + poll não reabrem a janela
+  try {
+    await prisma.$transaction(async (tx) => {
+      const consulta = await tx.consultaParceria.findUnique({ where: { id: consultaId } });
+      if (!consulta) return;
+      if (consulta.status === "ativo") return; // idempotência: webhook + poll não reabrem a janela
 
-    const agora = new Date();
-    const expira = new Date(agora.getTime() + DIAS_ACESSO * DIA_MS);
+      // Double-pay: se o paciente JÁ tem outro acesso ativo vigente, NÃO troca pelo novo
+      // (o primeiro pago tem que valer). Deixa este pendente e loga p/ reembolso manual —
+      // nunca "mata" um acesso recém-pago.
+      const outroAtivo = await tx.consultaParceria.findFirst({
+        where: { pacienteId: consulta.pacienteId, status: "ativo", expiraEm: { gt: new Date() }, id: { not: consultaId } },
+        select: { id: true },
+      });
+      if (outroAtivo) {
+        console.error(`[parceria] DOUBLE-PAY: paciente ${consulta.pacienteId} pagou a consulta ${consultaId} mas já tem acesso ativo (${outroAtivo.id}). Reembolso manual necessário.`);
+        return;
+      }
 
-    // Regra: só um acesso ativo por paciente. Encerra os demais ativos.
-    await tx.consultaParceria.updateMany({
-      where: { pacienteId: consulta.pacienteId, status: "ativo", id: { not: consultaId } },
-      data: { status: "expirado" },
+      const agora = new Date();
+      const expira = new Date(agora.getTime() + DIAS_ACESSO * DIA_MS);
+
+      // Encerra acessos vencidos deste paciente (defesa; não deveria haver ativo aqui).
+      await tx.consultaParceria.updateMany({
+        where: { pacienteId: consulta.pacienteId, status: "ativo", id: { not: consultaId } },
+        data: { status: "expirado" },
+      });
+
+      await tx.consultaParceria.update({
+        where: { id: consultaId },
+        data: { status: "ativo", iniciaEm: agora, expiraEm: expira, pagoEm: agora },
+      });
+
+      // Agenda automática: o link do vídeo nasce como a 1ª mensagem do chat. Só posta
+      // se ainda não existir a mensagem-sistema (não duplica em ativação repetida).
+      const jaTemMsg = await tx.mensagemParceria.count({ where: { consultaId, autor: "sistema" } });
+      if (jaTemMsg === 0) {
+        await tx.mensagemParceria.create({
+          data: {
+            consultaId,
+            autor: "sistema",
+            conteudo: `🎥 Sua consulta por vídeo está liberada! Entrem por este link a qualquer momento: ${jitsiUrl(consulta.videoRoom)}`,
+          },
+        });
+      }
     });
-
-    await tx.consultaParceria.update({
-      where: { id: consultaId },
-      data: { status: "ativo", iniciaEm: agora, expiraEm: expira, pagoEm: agora },
-    });
-
-    // Agenda automática (sem hora marcada): assim que ativa, a consulta por vídeo
-    // já nasce como a PRIMEIRA mensagem da conversa — os dois lados veem o mesmo
-    // link no chat, sem botão separado. Roda 1x (a ativação é idempotente).
-    await tx.mensagemParceria.create({
-      data: {
-        consultaId,
-        autor: "sistema",
-        conteudo: `🎥 Sua consulta por vídeo está liberada! Entrem por este link a qualquer momento: ${jitsiUrl(consulta.videoRoom)}`,
-      },
-    });
-  });
+  } catch (e) {
+    // P2002 = índice único parcial "um acesso ativo por paciente": outra ativação
+    // concorrente venceu a corrida. O paciente já tem acesso; nada a fazer aqui.
+    if ((e as { code?: string })?.code === "P2002") {
+      console.warn(`[parceria] ativação concorrente da consulta ${consultaId} barrada pelo índice único; acesso já ativo.`);
+      return;
+    }
+    throw e;
+  }
 }
 
 /**
@@ -143,7 +167,9 @@ export async function rankingDoParceiro(parceiroId: string): Promise<LinhaRankin
     where: { parceiroId, status: "ativo", expiraEm: { gt: new Date() } },
     select: { paciente: { select: { id: true, nome: true, fotoPerfilUrl: true, streakAtual: true } } },
   });
-  const pacientes = consultas.map((c) => c.paciente);
+  // Dedup por paciente (defesa: se por corrida houver 2 ativos, aparece 1x só — igual ao global).
+  const vistos = new Set<string>();
+  const pacientes = consultas.map((c) => c.paciente).filter((p) => (vistos.has(p.id) ? false : (vistos.add(p.id), true)));
   const counts = await checkins30d(pacientes.map((p) => p.id));
   const linhas: LinhaRanking[] = pacientes.map((p) => {
     const n = counts.get(p.id) ?? 0;

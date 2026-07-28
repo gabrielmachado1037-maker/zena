@@ -4,7 +4,7 @@ import prisma from "../lib/prisma";
 import { authPacienteMiddleware, PacienteAuthRequest } from "../middleware/auth";
 import { validateBody } from "../middleware/validate";
 import { exigirAcessoParceria, ParceriaRequest } from "../middleware/parceriaAccess";
-import { criarClienteNexvel, criarCobrancaSplitNexvel, cobrancaFoiPaga } from "../lib/asaas";
+import { criarClienteNexvel, criarPagamentoSplitNexvel, buscarPixNexvel, cancelarCobrancaNexvel, cobrancaFoiPaga } from "../lib/asaas";
 import {
   PRECO_CONSULTA, VALOR_PARCEIRO, REF_PREFIX,
   acessoAtivo, ativarConsulta, diasRestantes,
@@ -106,25 +106,58 @@ router.post("/checkout", validateBody(checkoutSchema), async (req: PacienteAuthR
   const email = paciente.pacienteUser?.email || paciente.email || `${req.pacienteId}@paciente.nexvel.tech`;
   const nomeCliente = (nome ?? "").trim() || paciente.nome;
 
+  if (!parceiro.walletIdAsaas) {
+    // Sem wallet, a cobrança sai SEM split (100% na plataforma; o parceiro fica a zero).
+    // Não é erro fatal, mas precisa de rastro — dinheiro que devia ir pro parceiro não vai.
+    console.warn(`[parceria/checkout] parceiro ${parceiro.id} (${parceiro.nome}) SEM walletIdAsaas — cobrança sairá SEM split.`);
+  }
+
+  // Regra "uma cobrança por vez": cancela cobranças PENDENTES anteriores deste paciente
+  // (e a cobrança correspondente no Asaas) antes de criar a nova — senão o paciente
+  // acumularia vários Pix pagáveis e poderia pagar em dobro sem ganhar acesso extra.
+  const pendentes = await prisma.consultaParceria.findMany({
+    where: { pacienteId: req.pacienteId!, status: "pendente" },
+    select: { id: true, asaasChargeId: true },
+  });
+  for (const p of pendentes) {
+    if (p.asaasChargeId) await cancelarCobrancaNexvel(p.asaasChargeId).catch(() => {});
+  }
+  if (pendentes.length > 0) {
+    await prisma.consultaParceria.updateMany({
+      where: { id: { in: pendentes.map((p) => p.id) } },
+      data: { status: "cancelado" },
+    });
+  }
+
   // Cria a consulta PENDENTE antes da cobrança — o id vira o externalReference (mkt:<id>).
   const consulta = await prisma.consultaParceria.create({
     data: { pacienteId: req.pacienteId!, parceiroId, valor: PRECO_CONSULTA },
   });
 
+  let chargeId: string | null = null;
   try {
     const cliente = await criarClienteNexvel(nomeCliente, email, cpf);
     const hoje = new Date().toISOString().split("T")[0];
-    const { charge, pix } = await criarCobrancaSplitNexvel(
+    const charge = await criarPagamentoSplitNexvel(
       cliente.id, PRECO_CONSULTA, hoje,
       `Consulta Nexvel — ${parceiro.nome}`,
       `${REF_PREFIX}${consulta.id}`,
       parceiro.walletIdAsaas, VALOR_PARCEIRO,
     );
+    chargeId = charge.id;
+    // Grava o chargeId ASSIM que a cobrança existe — assim, mesmo se o passo do QR
+    // falhar, o webhook consegue casar o pagamento com esta consulta.
+    await prisma.consultaParceria.update({
+      where: { id: consulta.id },
+      data: { asaasCustomerId: cliente.id, asaasChargeId: charge.id },
+    });
+
+    const pix = await buscarPixNexvel(charge.id);
     if (!pix?.payload || !pix?.encodedImage) throw new Error("Asaas não retornou o QR do Pix.");
 
     await prisma.consultaParceria.update({
       where: { id: consulta.id },
-      data: { asaasCustomerId: cliente.id, asaasChargeId: charge.id, pixCopiaECola: pix.payload },
+      data: { pixCopiaECola: pix.payload },
     });
 
     res.json({
@@ -135,7 +168,9 @@ router.post("/checkout", validateBody(checkoutSchema), async (req: PacienteAuthR
       pixQrCode: pix.encodedImage,
     });
   } catch (e) {
-    // Falhou a cobrança: remove a consulta órfã para não poluir o histórico.
+    // Falhou depois de criar a cobrança: CANCELA a cobrança no Asaas (senão fica
+    // órfã e pagável por e-mail sem gerar acesso) e remove a consulta local.
+    if (chargeId) await cancelarCobrancaNexvel(chargeId).catch(() => {});
     await prisma.consultaParceria.delete({ where: { id: consulta.id } }).catch(() => {});
     console.error("[parceria/checkout] Asaas falhou:", (e as Error).message);
     const msg = (e as Error).message || "";
