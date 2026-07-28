@@ -135,9 +135,8 @@ export function RankingScreen() {
     const gap = acima ? Math.max(0, acima.points - meusPts) : 0
     const lidera = meIdx === 0
 
-    // vizinhança: 2 acima + você + 2 abaixo (nunca a lista inteira)
-    const start = Math.max(0, meIdx - 2)
-    const regiao = meIdx >= 0 ? ranking.slice(start, meIdx + 3) : []
+    // top 10 da clínica
+    const regiao = ranking.slice(0, 10)
 
     // zona de classificação (real: posição vs total)
     let zona: "promocao" | "segura" | "rebaixamento" = "segura"
@@ -270,7 +269,7 @@ export function RankingScreen() {
           {/* 4 · Minha região do ranking */}
           {view.regiao.length > 0 && (
             <section className="space-y-2">
-              <h2 className="px-1 text-label-md uppercase tracking-wide text-nx-on-surface-variant">Sua vizinhança</h2>
+              <h2 className="px-1 text-label-md uppercase tracking-wide text-nx-on-surface-variant">Top 10</h2>
               {view.regiao.map((u) => (
                 <RegionRow
                   key={`${u.name}-${u.position}`}
