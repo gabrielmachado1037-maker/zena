@@ -25,10 +25,6 @@ const checkoutSchema = z.object({
 });
 const chatSchema = z.object({ conteudo: z.string().min(1).max(2000) });
 
-function jitsiUrl(room: string): string {
-  return `https://meet.jit.si/${room}`;
-}
-
 // ── GET /parceiros — os nutricionistas parceiros disponíveis (3 in-house) ──────
 router.get("/parceiros", async (_req: PacienteAuthRequest, res: Response) => {
   const parceiros = await prisma.nutricionistaParceiro.findMany({
@@ -187,12 +183,8 @@ router.post("/cancelar/:consultaId", async (req: PacienteAuthRequest, res: Respo
 });
 
 // ── Recursos do parceiro — SÓ com acesso ativo (gate) ─────────────────────────
-
-// GET /video — link único da videochamada (mesmo para paciente e parceiro).
-router.get("/video", exigirAcessoParceria, async (req: ParceriaRequest, res: Response) => {
-  const g = req.parceria!;
-  res.json({ url: jitsiUrl(g.videoRoom), room: g.videoRoom, parceiroNome: g.parceiro.nome });
-});
+// O link da videochamada NÃO tem rota própria: ele é postado no chat como a
+// primeira mensagem (autor "sistema") no momento da ativação (ver lib/parceria.ts).
 
 // GET /dieta — plano do nutricionista parceiro (reaproveita o plano de refeições do paciente).
 router.get("/dieta", exigirAcessoParceria, async (req: ParceriaRequest, res: Response) => {

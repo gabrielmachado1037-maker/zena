@@ -1,8 +1,42 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Send } from "lucide-react";
+import { ArrowLeft, Send, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { listarChat, enviarChat, type MensagemParceria } from "@/lib/parceria";
+
+const URL_RE = /(https?:\/\/[^\s]+)/;
+
+// Deixa qualquer URL da mensagem clicável.
+function comLinks(texto: string) {
+  return texto.split(/(https?:\/\/[^\s]+)/g).map((p, i) =>
+    URL_RE.test(p)
+      ? <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="underline">{p}</a>
+      : <span key={i}>{p}</span>,
+  );
+}
+
+// Mensagem automática do sistema (ex.: link da videochamada) — destaque + botão.
+function BolhaSistema({ conteudo }: { conteudo: string }) {
+  const url = conteudo.match(URL_RE)?.[0] ?? null;
+  const texto = conteudo.replace(URL_RE, "").trim();
+  return (
+    <div className="mx-auto max-w-[92%]">
+      <div className="rounded-nx-lg border border-nx-evo/40 bg-nx-evo/[0.08] p-4 text-center">
+        <p className="text-body-sm text-nx-on-surface">{texto}</p>
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center justify-center gap-2 rounded-nx-md bg-nx-evo px-5 py-2.5 text-body-sm font-bold text-nx-on-evo transition-colors hover:bg-nx-evo-2"
+          >
+            <Video className="size-4" /> Entrar na videochamada
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function MarketplaceChatScreen() {
   const navigate = useNavigate();
@@ -56,18 +90,22 @@ export function MarketplaceChatScreen() {
             <p className="mt-1 text-body-sm text-nx-on-surface-variant">Envie a primeira para {parceiroNome || "seu nutricionista"}.</p>
           </div>
         ) : (
-          msgs.map((m) => (
-            <div key={m.id} className={cn("flex", m.autor === "paciente" ? "justify-end" : "justify-start")}>
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-nx-lg px-3.5 py-2.5 text-body-sm",
-                  m.autor === "paciente" ? "bg-nx-evo text-nx-on-evo" : "border border-nx-border bg-nx-surface text-nx-on-surface",
-                )}
-              >
-                {m.conteudo}
+          msgs.map((m) =>
+            m.autor === "sistema" ? (
+              <BolhaSistema key={m.id} conteudo={m.conteudo} />
+            ) : (
+              <div key={m.id} className={cn("flex", m.autor === "paciente" ? "justify-end" : "justify-start")}>
+                <div
+                  className={cn(
+                    "max-w-[80%] whitespace-pre-wrap break-words rounded-nx-lg px-3.5 py-2.5 text-body-sm",
+                    m.autor === "paciente" ? "bg-nx-evo text-nx-on-evo" : "border border-nx-border bg-nx-surface text-nx-on-surface",
+                  )}
+                >
+                  {comLinks(m.conteudo)}
+                </div>
               </div>
-            </div>
-          ))
+            ),
+          )
         )}
         <div ref={fimRef} />
       </div>

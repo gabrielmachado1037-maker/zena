@@ -59,12 +59,10 @@ export const checkoutParceria = (parceiroId: string, cpf: string, nome?: string)
   apiPaciente.post<CheckoutResp>(`${P}/checkout`, { parceiroId, cpf, nome }).then((r) => r.data);
 export const statusPagamento = (consultaId: string) =>
   apiPaciente.get<PagamentoStatus>(`${P}/pagamento/${consultaId}/status`).then((r) => r.data);
-export const linkVideo = () =>
-  apiPaciente.get<{ url: string; room: string; parceiroNome: string }>(`${P}/video`).then((r) => r.data);
 export const rankingParceria = (escopo: "meu" | "global") =>
   apiPaciente.get<RankingResp>(`${P}/ranking`, { params: { escopo } }).then((r) => r.data);
 
-export interface MensagemParceria { id: string; autor: "paciente" | "parceiro"; conteudo: string; criadoEm: string }
+export interface MensagemParceria { id: string; autor: "paciente" | "parceiro" | "sistema"; conteudo: string; criadoEm: string }
 export const listarChat = () =>
   apiPaciente.get<{ parceiroNome: string; mensagens: MensagemParceria[] }>(`${P}/chat`).then((r) => r.data);
 export const enviarChat = (conteudo: string) =>

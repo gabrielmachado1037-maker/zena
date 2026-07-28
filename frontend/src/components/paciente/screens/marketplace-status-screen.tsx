@@ -2,23 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Video, Trophy, MessageCircle, Star, Clock, AlertTriangle, ChevronRight, Stethoscope } from "lucide-react";
 import { ButtonNx, ProgressBarNx, ChipNx } from "@/components/ui-nx";
-import { statusParceria, linkVideo, type StatusResp } from "@/lib/parceria";
+import { statusParceria, type StatusResp } from "@/lib/parceria";
 import { DIAS_ACESSO } from "@/lib/parceria-const";
 
 function AcessoAtivo({ s }: { s: StatusResp }) {
   const navigate = useNavigate();
-  const [abrindo, setAbrindo] = useState(false);
   const dias = s.consulta!.diasRestantes;
   const pct = Math.min(100, Math.max(2, (dias / DIAS_ACESSO) * 100));
-
-  async function iniciarVideo() {
-    setAbrindo(true);
-    try {
-      const { url } = await linkVideo();
-      window.open(url, "_blank", "noopener");
-    } catch { /* gate/expiração — o guard trata */ }
-    finally { setAbrindo(false); }
-  }
 
   return (
     <>
@@ -51,16 +41,25 @@ function AcessoAtivo({ s }: { s: StatusResp }) {
           <ProgressBarNx value={pct} tone="evo" aria-label="Dias restantes de acesso" />
         </div>
 
-        <ButtonNx variant="evo" block size="lg" className="mt-5" leftIcon={<Video className="size-5" />} onClick={iniciarVideo} disabled={abrindo}>
-          {abrindo ? "Abrindo…" : "Iniciar Consulta por Vídeo"}
-        </ButtonNx>
+        {/* Consulta por vídeo — o link fica no chat (primeira mensagem), sem botão separado. */}
+        <button
+          onClick={() => navigate("/paciente/parceria/chat")}
+          className="mt-5 flex w-full items-center gap-3 rounded-nx-lg border border-nx-evo/40 bg-nx-evo/10 px-4 py-3.5 text-left transition-colors hover:bg-nx-evo/[0.16]"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-nx-md bg-nx-evo/20 text-nx-evo"><Video className="size-5" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-body-md font-bold text-nx-on-surface">Consulta por vídeo</span>
+            <span className="block truncate text-label-sm text-nx-on-surface-variant">O link está no seu chat com {s.parceiro!.nome.split(" ")[0]}</span>
+          </span>
+          <ChevronRight className="size-5 shrink-0 text-nx-on-surface-variant" />
+        </button>
       </section>
 
       {/* Acesso liberado */}
       <section className="space-y-2">
         <h3 className="px-1 text-label-md uppercase tracking-wide text-nx-on-surface-variant">Acesso liberado</h3>
+        <FeatureRow icon={MessageCircle} label="Conversar" hint="Chat + link da consulta por vídeo" onClick={() => navigate("/paciente/parceria/chat")} />
         <FeatureRow icon={Trophy} label="Ranking" hint="Meu nutricionista e global" onClick={() => navigate("/paciente/parceria/ranking")} />
-        <FeatureRow icon={MessageCircle} label="Conversar" hint="Fale com seu nutricionista" onClick={() => navigate("/paciente/parceria/chat")} />
         <FeatureRow icon={Stethoscope} label="Minha dieta" hint="Plano do seu nutricionista" onClick={() => navigate("/paciente/parceria/dieta")} />
       </section>
     </>

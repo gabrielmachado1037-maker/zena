@@ -17,6 +17,11 @@ export const REF_PREFIX = "mkt:";
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 
+/** Link único da videochamada da consulta (Jitsi) — mesmo para paciente e parceiro. */
+export function jitsiUrl(room: string): string {
+  return `https://meet.jit.si/${room}`;
+}
+
 export function diasRestantes(expiraEm: Date | null | undefined): number {
   if (!expiraEm) return 0;
   return Math.max(0, Math.ceil((expiraEm.getTime() - Date.now()) / DIA_MS));
@@ -75,6 +80,17 @@ export async function ativarConsulta(consultaId: string): Promise<void> {
     await tx.consultaParceria.update({
       where: { id: consultaId },
       data: { status: "ativo", iniciaEm: agora, expiraEm: expira, pagoEm: agora },
+    });
+
+    // Agenda automática (sem hora marcada): assim que ativa, a consulta por vídeo
+    // já nasce como a PRIMEIRA mensagem da conversa — os dois lados veem o mesmo
+    // link no chat, sem botão separado. Roda 1x (a ativação é idempotente).
+    await tx.mensagemParceria.create({
+      data: {
+        consultaId,
+        autor: "sistema",
+        conteudo: `🎥 Sua consulta por vídeo está liberada! Entrem por este link a qualquer momento: ${jitsiUrl(consulta.videoRoom)}`,
+      },
     });
   });
 }
